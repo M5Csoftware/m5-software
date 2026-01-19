@@ -2,9 +2,9 @@
 import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import { Button } from "@mui/material";
-import React, { useCallback, useContext, useState } from "react";
+import React, { useCallback, useContext, useState, useEffect } from "react";
 
-const ShipperTable = () => {
+const ShipperTable = ({ onAccountCodesSelected }) => {
   const [codes, setCodes] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const { server } = useContext(GlobalContext);
@@ -14,6 +14,11 @@ const ShipperTable = () => {
   const handleChange = useCallback((e) => {
     setInputValue(e.target.value);
   }, []);
+  useEffect(() => {
+    if (onAccountCodesSelected) {
+      onAccountCodesSelected(codes);
+    }
+  }, [codes, onAccountCodesSelected]);
 
   // Extract account codes from input string
   const extractAccountCodes = useCallback((input) => {
@@ -104,7 +109,7 @@ const ShipperTable = () => {
   }, [inputValue, codes, extractAccountCodes, validateAccountCode]);
 
   // Clear all codes
-  const handleReset = useCallback(() => {
+ const handleReset = useCallback(() => {
     setCodes([]);
     setInputValue("");
   }, []);
