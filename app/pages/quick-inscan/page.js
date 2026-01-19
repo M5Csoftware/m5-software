@@ -9,9 +9,12 @@ import { useForm } from "react-hook-form";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import axios from "axios";
 import NotificationFlag from "@/app/components/Notificationflag";
+import { useAuth } from "@/app/Context/AuthContext"; // ✅ Import useAuth
+import pushAWBLog from "@/app/lib/pushAWBLog"; // ✅ Import pushAWBLog
 
 function QuickIncan() {
   const { server } = useContext(GlobalContext);
+  const { user } = useAuth(); // ✅ Get user from AuthContext
   const { register, setValue, watch, handleSubmit, reset } = useForm();
   const [totalWeight, setTotalWeight] = useState(0);
   const [rowData, setRowData] = useState([]);
@@ -95,17 +98,17 @@ function QuickIncan() {
   // Debounce function
   const useDebounce = (value, delay) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
-    
+
     useEffect(() => {
       const handler = setTimeout(() => {
         setDebouncedValue(value);
       }, delay);
-      
+
       return () => {
         clearTimeout(handler);
       };
     }, [value, delay]);
-    
+
     return debouncedValue;
   };
 
@@ -127,7 +130,7 @@ function QuickIncan() {
       try {
         setIsFetchingClient(true);
         setClientSearchError(false);
-        
+
         const response = await axios.get(
           `${server}/quick-inscan/client?accountCode=${debouncedClientCode}`,
           { timeout: 5000 }
@@ -136,17 +139,17 @@ function QuickIncan() {
         if (response.data.success) {
           const client = response.data.data;
           setCurrentClientData(client);
-          
+
           // Set client name
           setValue("clientState", client.name || "");
-          
+
           // Set email (handle multiple emails)
           setValue("email", client.email || "");
-          
+
           // Set today's date
           const today = new Date().toISOString().split("T")[0];
           setValue("receiveAmt", today);
-          
+
           setClientSearchError(false);
         } else {
           // Client not found but API returned success false
@@ -240,7 +243,9 @@ function QuickIncan() {
 
     // Focus back to Client Code field for quick entry
     setTimeout(() => {
-      const clientInput = document.querySelector('input[placeholder="Client Code"]');
+      const clientInput = document.querySelector(
+        'input[placeholder="Client Code"]'
+      );
       if (clientInput) {
         clientInput.focus();
       }
@@ -249,7 +254,21 @@ function QuickIncan() {
     showNotification("success", "Entry added to table successfully");
   };
 
-  // Send email to all clients and save to EventActivity
+  // ✅ Helper function to get customer name from account code
+  const getCustomerName = async (accountCode) => {
+    if (!accountCode) return "";
+    try {
+      const customerResponse = await axios.get(
+        `${server}/customer-account?accountCode=${accountCode}`
+      );
+      return customerResponse.data?.name || "";
+    } catch (err) {
+      console.warn("Failed to fetch customer name:", err);
+      return "";
+    }
+  };
+
+  // Send email to all clients and save to EventActivity + AWB Log
   const handleSendMail = async () => {
     console.log("=== Send Mail Button Clicked ===");
     console.log("CD Number:", cdNumber);
@@ -316,6 +335,40 @@ function QuickIncan() {
           `Email sent successfully to ${response.data.emailsSent} client(s) and data saved to EventActivity!`
         );
 
+        // ✅ PUSH AWB LOGS FOR EACH ROW
+        console.log("📝 Starting AWB log creation for all entries...");
+
+        for (const row of rowData) {
+          if (row.awbNo) {
+            try {
+              const customer = await getCustomerName(row.clientCode);
+
+              const awbLogPayload = {
+                awbNo: row.awbNo,
+                accountCode: row.clientCode,
+                customer: customer || row.clientName, // Fallback to clientName if fetch fails
+                action: "Quick Inscan - Load Receiving",
+                actionUser: user?.userId || "System",
+              };
+
+              console.log("📝 Pushing AWB log for:", row.awbNo, awbLogPayload);
+
+              const awbLogResponse = await pushAWBLog(awbLogPayload);
+
+              console.log("✅ AWB log created for:", row.awbNo, awbLogResponse);
+            } catch (awbLogError) {
+              console.error(
+                "❌ Failed to create AWB log for:",
+                row.awbNo,
+                awbLogError
+              );
+              // Continue with other AWBs even if one fails
+            }
+          }
+        }
+
+        console.log("✅ All AWB logs processed");
+
         // Refresh form after successful submission
         handleRefresh();
       } else {
@@ -338,7 +391,13 @@ function QuickIncan() {
   };
 
   // Get button state based on validation
-  const isAddToTableDisabled = loading || isFetchingClient || !currentClientData || !cdNumber || !watchAwb || !watchWeight;
+  const isAddToTableDisabled =
+    loading ||
+    isFetchingClient ||
+    !currentClientData ||
+    !cdNumber ||
+    !watchAwb ||
+    !watchWeight;
   const isSendMailDisabled = loading || rowData.length === 0;
 
   return (
@@ -347,7 +406,9 @@ function QuickIncan() {
         type={notificationState.type}
         message={notificationState.message}
         visible={notificationState.visible}
-        setVisible={(v) => setNotificationState({ ...notificationState, visible: v })}
+        setVisible={(v) =>
+          setNotificationState({ ...notificationState, visible: v })
+        }
       />
       <Heading
         title="Quick Scan (Load Receiving)"
@@ -461,11 +522,11 @@ function QuickIncan() {
                 disabled={isAddToTableDisabled}
               />
               <SimpleButton
-            type="button"
-            name={loading ? "Sending..." : "Send Mail"}
-            onClick={handleSendMail}
-            disabled={isSendMailDisabled}
-          />
+                type="button"
+                name={loading ? "Sending..." : "Send Mail"}
+                onClick={handleSendMail}
+                disabled={isSendMailDisabled}
+              />
             </div>
           </div>
         </div>
@@ -500,9 +561,7 @@ function QuickIncan() {
             onClick={handleRefresh}
           /> */}
         </div>
-        <div className="">
-          
-        </div>
+        <div className=""></div>
       </div>
     </form>
   );

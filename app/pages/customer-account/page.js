@@ -36,12 +36,15 @@ const Customer = () => {
     setShowCreateAccount(false);
   };
 
-  // ✅ Handle successful save from customer form - go back to user management
+  // ✅ Handle successful save from customer form - go back to CUSTOMER MANAGEMENT
   const handleSaveSuccess = () => {
     console.log("=== Customer Form Save Success ===");
     setShowCustomerForm(false);
     setEditingUser(null);
-    setUserManagementForm(true);
+    setUserManagementForm(false); // ✅ Changed: Don't go to user management
+    setShowCreateAccount(false);
+    setSelectedUserData(null);
+    // All states reset - will show CustomerManagement by default
   };
 
   // ✅ Handle back from customer form

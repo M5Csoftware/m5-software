@@ -12,6 +12,34 @@ import Table from "../Table";
 import { DummyInputBoxWithLabelDarkGray } from "../DummyInputBox";
 import NotificationFlag from "../Notificationflag";
 
+// Confirmation Modal Component
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Yes", cancelText = "No" }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+        <h3 className="text-lg font-semibold text-eerie-black mb-3">{title}</h3>
+        <p className="text-sm text-gray-600 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 text-sm font-medium text-black bg-red-600 rounded hover:bg-red-700 transition-colors"
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
   const { sectors, server } = useContext(GlobalContext);
   const [remoteZones, setRemoteZones] = useState([]);
@@ -23,6 +51,11 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedZoneMatrix, setSelectedZoneMatrix] = useState("");
   const [isViewing, setIsViewing] = useState(false);
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedData, setEditedData] = useState({});
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const effectiveFrom = watch("effectiveDateFrom");
   const effectiveTo = watch("effectiveDateTo");
@@ -64,10 +97,8 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
     setNotification({ type, message, visible: true });
   };
 
-  // Watch sector selection
   const selectedSector = watch("sector");
 
-  // Get unique zone matrices from filtered zones
   const uniqueZoneMatrices = useMemo(() => {
     if (!filteredZones || filteredZones.length === 0) return [];
     
@@ -75,7 +106,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
     return unique.sort();
   }, [filteredZones]);
 
-  // Fetch zones data from API
   const fetchZonesData = async () => {
     try {
       setLoading(true);
@@ -84,7 +114,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
       
       console.log("API Response:", data);
       
-      // Fix: Extract zones array from response
       const zonesArray = data.zones || data || [];
       
       console.log("Zones Array:", zonesArray);
@@ -101,32 +130,26 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
     }
   };
 
-  // Load data on component mount
   useEffect(() => {
     fetchZonesData();
   }, []);
 
-  // Handle sector selection change
   useEffect(() => {
     console.log("Selected Sector:", selectedSector);
     console.log("All Zones Data:", allZonesData);
 
     if (selectedSector && allZonesData.length > 0) {
-      // Debug: Check what sectors are available in data
       const availableSectors = [
         ...new Set(allZonesData.map((zone) => zone.sector)),
       ];
       console.log("Available sectors in data:", availableSectors);
 
-      // Try different matching strategies
       let sectorZones = [];
 
-      // 1. Exact match
       sectorZones = allZonesData.filter(
         (zone) => zone.sector === selectedSector
       );
 
-      // 2. Case insensitive match
       if (sectorZones.length === 0) {
         sectorZones = allZonesData.filter(
           (zone) =>
@@ -135,7 +158,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
         );
       }
 
-      // 3. Partial match (for cases like "United Kingdom" vs "UK")
       if (sectorZones.length === 0) {
         sectorZones = allZonesData.filter(
           (zone) =>
@@ -145,7 +167,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
         );
       }
 
-      // 4. Check common abbreviations
       if (sectorZones.length === 0) {
         const sectorMappings = {
           "united kingdom": "uk",
@@ -170,16 +191,13 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
         const firstZone = sectorZones[0];
         console.log("First zone data:", firstZone);
 
-        // Force update with timeout to ensure form is ready
         setTimeout(() => {
-          // Set Zone Matrix
           console.log("Setting zoneTariff:", firstZone.zoneMatrix);
           setValue("zoneTariff", firstZone.zoneMatrix || "", {
             shouldDirty: true,
             shouldTouch: true,
           });
 
-          // Set Remote Zones
           if (firstZone.remoteZones && firstZone.remoteZones.length > 0) {
             const remoteZonesStr = firstZone.remoteZones.join(", ");
             console.log("Setting remoteZones:", remoteZonesStr);
@@ -197,7 +215,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
             setRemoteZones([]);
           }
 
-          // Set Unserviceable Zones
           if (
             firstZone.unserviceableZones &&
             firstZone.unserviceableZones.length > 0
@@ -221,7 +238,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
         }, 100);
       } else {
         console.log("No zones found for selected sector");
-        // Clear fields if no data found
         setValue("zoneTariff", "");
         setValue("remoteZones", "");
         setValue("unserviceableZones", "");
@@ -229,7 +245,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
         setUnserviceableZones([]);
       }
     } else {
-      // Clear data if no sector selected
       setTimeout(() => {
         setValue("zoneTariff", "", { shouldDirty: true, shouldTouch: true });
         setValue("remoteZones", "", { shouldDirty: true, shouldTouch: true });
@@ -243,7 +258,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
     }
   }, [selectedSector, allZonesData, setValue]);
 
-  // Handle View button click
   const handleView = () => {
     if (!selectedSector) {
       showNotification("error", "Please select a sector first");
@@ -260,14 +274,12 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
     console.log("Filtering data for sector:", selectedSector);
     console.log("Total zones before filter:", data.length);
 
-    // sector filter (case insensitive)
     data = data.filter(
       (z) => z.sector && z.sector.toLowerCase() === selectedSector.toLowerCase()
     );
 
     console.log("Zones after sector filter:", data.length);
 
-    // date filter
     const from = normalizeDate(effectiveFrom);
     const to = normalizeDate(effectiveTo);
 
@@ -275,7 +287,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
       console.log("Applying date filter - From:", from, "To:", to);
       
       data = data.filter((z) => {
-        // If no effective dates in zone, include it
         if (!z.effectiveDateFrom && !z.effectiveDateTo) return true;
 
         const zoneFromDate = z.effectiveDateFrom ? normalizeDate(z.effectiveDateFrom.toString().split('T')[0]) : null;
@@ -283,10 +294,7 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
 
         console.log("Zone dates - From:", zoneFromDate, "To:", zoneToDate);
 
-        // If user selected from date, zone must start on or after that date
         if (from && zoneFromDate && zoneFromDate < from) return false;
-        
-        // If user selected to date, zone must end on or before that date
         if (to && zoneToDate && zoneToDate > to) return false;
 
         return true;
@@ -299,6 +307,7 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
     setSearchFilteredZones(data);
     setSearchQuery("");
     setSelectedZoneMatrix("");
+    setSelectedRows([]);
 
     if (data.length === 0) {
       showNotification("error", `No zones found for sector "${selectedSector}"${from || to ? ' in the selected date range' : ''}`);
@@ -309,7 +318,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
     }
   };
 
-  // Handle search across all table headers
   useEffect(() => {
     if (!filteredZones || filteredZones.length === 0) {
       setSearchFilteredZones([]);
@@ -318,12 +326,10 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
 
     let result = [...filteredZones];
 
-    // Filter by zone matrix dropdown
     if (selectedZoneMatrix) {
       result = result.filter(zone => zone.zoneMatrix === selectedZoneMatrix);
     }
 
-    // Filter by search query across all columns
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(zone => {
@@ -338,6 +344,112 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
     setSearchFilteredZones(result);
   }, [searchQuery, selectedZoneMatrix, filteredZones, columns]);
 
+  const handleEdit = () => {
+    if (selectedRows.length === 0) {
+      showNotification("error", "Please select at least one zone to edit");
+      return;
+    }
+
+    setIsEditMode(true);
+    showNotification("info", `Editing ${selectedRows.length} zone(s)`);
+  };
+
+  const handleUpdateClick = () => {
+    if (selectedRows.length === 0) {
+      showNotification("error", "Please select at least one zone to update");
+      return;
+    }
+    setShowEditModal(true);
+  };
+
+  const confirmUpdate = async () => {
+    setShowEditModal(false);
+    
+    try {
+      setLoading(true);
+      
+      const updatePromises = selectedRows.map(zoneId => {
+        const updatedZone = editedData[zoneId] || searchFilteredZones.find(z => z.id === zoneId);
+        
+        return fetch(`${server}/zones/${zoneId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatedZone),
+        });
+      });
+
+      const results = await Promise.all(updatePromises);
+      const allSuccess = results.every(res => res.ok);
+
+      if (allSuccess) {
+        showNotification("success", `Successfully updated ${selectedRows.length} zone(s)`);
+        
+        await fetchZonesData();
+        
+        if (isViewing) {
+          handleView();
+        }
+        
+        setSelectedRows([]);
+        setIsEditMode(false);
+        setEditedData({});
+      } else {
+        showNotification("error", "Some zones could not be updated");
+      }
+    } catch (error) {
+      console.error("Error updating zones:", error);
+      showNotification("error", "Failed to update zones");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteClick = () => {
+    if (selectedRows.length === 0) {
+      showNotification("error", "Please select at least one zone to delete");
+      return;
+    }
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    setShowDeleteModal(false);
+
+    try {
+      setLoading(true);
+      
+      const deletePromises = selectedRows.map(zoneId =>
+        fetch(`${server}/zones/${zoneId}`, {
+          method: 'DELETE',
+        })
+      );
+
+      const results = await Promise.all(deletePromises);
+      const allSuccess = results.every(res => res.ok);
+
+      if (allSuccess) {
+        showNotification("success", `Successfully deleted ${selectedRows.length} zone(s)`);
+        
+        await fetchZonesData();
+        
+        if (isViewing) {
+          handleView();
+        }
+        
+        setSelectedRows([]);
+      } else {
+        showNotification("error", "Some zones could not be deleted");
+      }
+    } catch (error) {
+      console.error("Error deleting zones:", error);
+      showNotification("error", "Failed to delete zones");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDownload = () => {
     if (!searchFilteredZones || searchFilteredZones.length === 0) {
       showNotification("error", "No data to download");
@@ -348,7 +460,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
     showNotification("success", "File downloaded successfully");
   };
 
-  // Reset on tab change
   useEffect(() => {
     fetchZonesData();
     setFilteredZones([]);
@@ -358,6 +469,9 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
     setSearchQuery("");
     setSelectedZoneMatrix("");
     setIsViewing(false);
+    setSelectedRows([]);
+    setIsEditMode(false);
+    setEditedData({});
 
     setValue("sector", "");
     setValue("zoneTariff", "");
@@ -375,6 +489,27 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
         visible={notification.visible}
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
+      
+      <ConfirmationModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onConfirm={confirmUpdate}
+        title="Confirm Update"
+        message={`Are you sure you want to update ${selectedRows.length} zone(s)?`}
+        confirmText="Yes"
+        cancelText="No"
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Confirm Delete"
+        message={`Are you sure you want to delete ${selectedRows.length} zone(s)? This action cannot be undone.`}
+        confirmText="Yes"
+        cancelText="No"
+      />
+
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3">
           <div className="font-semibold text-sm flex gap-1 items-center justify-end">
@@ -442,8 +577,28 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
         </div>
         <div className="flex justify-between">
           <div className="flex gap-2">
-            <EditButton perm="Accounts Edit" />
-            <DeleteButton perm="Accounts Deleteion" />
+            {isEditMode ? (
+              <button
+                onClick={handleUpdateClick}
+                disabled={selectedRows.length === 0 || loading}
+                className={`px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors ${
+                  (selectedRows.length === 0 || loading) ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                Update
+              </button>
+            ) : (
+              <EditButton 
+                perm="Accounts Edit" 
+                onClick={handleEdit}
+                disabled={selectedRows.length === 0 || loading}
+              />
+            )}
+            <DeleteButton 
+              perm="Accounts Deletion" 
+              onClick={handleDeleteClick}
+              disabled={selectedRows.length === 0 || loading}
+            />
           </div>
           <div className="flex gap-2 ">
             <div className="w-36 ">
@@ -464,13 +619,13 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
         </div>
       </div>
       
-      {/* Debug info */}
       {allZonesData.length > 0 && (
         <div className="text-xs text-gray-500">
           Total zones in database: {allZonesData.length}
           {searchFilteredZones.length !== filteredZones.length && 
             ` | Showing: ${searchFilteredZones.length} of ${filteredZones.length}`
           }
+          {selectedRows.length > 0 && ` | Selected: ${selectedRows.length}`}
         </div>
       )}
       
@@ -504,6 +659,17 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
             register={register}
             setValue={setValue}
             name={"zones"}
+            selectable={true}
+            selectedRows={selectedRows}
+            onSelectionChange={setSelectedRows}
+            editable={isEditMode}
+            onDataChange={setEditedData}
+            onEditComplete={() => {
+              setIsEditMode(false);
+              setEditedData({});
+              fetchZonesData();
+              if (isViewing) handleView();
+            }}
           />
         )}
       </div>
@@ -513,7 +679,6 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
 
 export default ViewZones;
 
-// exportToCSV Table Data
 function exportToCSV(data, filename = "zone-matrix.csv") {
   if (!data || data.length === 0) return;
 
@@ -527,13 +692,12 @@ function exportToCSV(data, filename = "zone-matrix.csv") {
   ];
 
   const csvRows = [
-    headers.join(","), // header row
+    headers.join(","),
     ...data.map((row) =>
       headers
         .map((key) => {
           const value = row[key];
 
-          // handle objects / null safely
           if (value === null || value === undefined) return `""`;
           if (typeof value === "object") return `"${JSON.stringify(value)}"`;
 

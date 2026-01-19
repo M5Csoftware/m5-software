@@ -23,18 +23,19 @@ import { RadioButtonLarge } from "@/app/components/RadioButton";
 import { DummyInputBoxWithLabelDarkGray } from "@/app/components/DummyInputBox";
 import NotificationFlag from "@/app/components/Notificationflag";
 
-const ShipperTariff = () => {
+const ShipperTariffBulk = () => {
   const { register, setValue, reset, watch, getValues, handleSubmit } =
     useForm();
 
   const [serviceOptions, setServiceOptions] = useState([]);
-  const [zoneMatrixOptions, setzoneMatrixOptions] = useState([]);
+  const [zoneMatrixOptions, setZoneMatrixOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const { sectors, server } = useContext(GlobalContext);
-  const [responseMsg, setResponseMsg] = useState("");
-  const [visibleFlag, setVisibleFlag] = useState(false);
   const [rowData, setRowData] = useState([]);
+  const [selectedAccountCodes, setSelectedAccountCodes] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0); // Added refresh key
+  const [formKey, setFormKey] = useState(0); // Added form key
 
   const [notification, setNotification] = useState({
     type: "success",
@@ -44,67 +45,75 @@ const ShipperTariff = () => {
 
   const showNotification = (type, message) => {
     setNotification({ type, message, visible: true });
+    setTimeout(() => {
+      setNotification({ ...notification, visible: false });
+    }, 3000);
   };
 
-  const selectedSector = watch("sector");
+  const [reportType, setReportType] = useState("Rate Update");
+  const modeOptions = ["Normal Rate", "Zip Code Wise"];
 
-  // Fetch zones data based on sector
-  const fetchZonesData = async (sector) => {
+  const selectedSector = watch("sector");
+  const selectedClient = watch("client");
+
+  // Receive selected account codes from ShipperTable
+  const handleAccountCodesSelected = useCallback((codes) => {
+    const validCodes = codes.filter(code => code.isValid).map(code => code.code);
+    setSelectedAccountCodes(validCodes);
+  }, []);
+
+  // Fetch services and zone matrix based on sector
+  const fetchServicesAndZones = async (sector) => {
     if (!sector) {
       setServiceOptions([]);
-      setzoneMatrixOptions([]);
+      setZoneMatrixOptions([]);
       return;
     }
 
     try {
-      const response = await fetch(`${server}/zones`);
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
-
-      const data = await response.json();
-      const sectorMapping = { "United States": "USA", USA: "USA" };
-      const mappedSector = sectorMapping[sector] || sector;
-
-      const filteredData = data.filter(
-        (item) => item.sector?.toUpperCase() === mappedSector.toUpperCase()
+      const response = await axios.get(
+        `${server}/shipper-tariff/get-zones?sector=${encodeURIComponent(sector)}`
       );
-
-      const uniqueServices = [
-        ...new Set(
-          filteredData
-            .filter((item) => item.service)
-            .map((item) => item.service)
-        ),
-      ];
-
-      const uniqueZoneMatrices = [
-        ...new Set(
-          filteredData
-            .filter((item) => item.zoneMatrix)
-            .map((item) => item.zoneMatrix)
-        ),
-      ];
-
-      setServiceOptions(uniqueServices);
-      setzoneMatrixOptions(uniqueZoneMatrices);
+      
+      const services = response.data?.services || [];
+      const zoneMatrices = response.data?.zoneMatrix || [];
+      
+      setServiceOptions(services);
+      setZoneMatrixOptions(zoneMatrices);
     } catch (error) {
       console.error("Error fetching zones data:", error);
       setServiceOptions([]);
-      setzoneMatrixOptions([]);
+      setZoneMatrixOptions([]);
+      showNotification("error", "Failed to load services and zones");
     }
   };
 
   useEffect(() => {
     if (selectedSector) {
-      fetchZonesData(selectedSector);
+      fetchServicesAndZones(selectedSector);
     }
   }, [selectedSector]);
 
-  // Add to table only
+  // Handle report type change
+  const handleReportTypeChange = (value) => {
+    setReportType(value);
+    // Reset form when switching between Rate Update and Service Update
+    reset({
+      sector: getValues("sector"),
+      client: getValues("client"),
+    });
+    setRowData([]);
+  };
+
+  // Add to table only - for Rate Update
   const handleApplicableRates = () => {
+    if (selectedAccountCodes.length === 0) {
+      showNotification("error", "Please select valid account codes first");
+      return;
+    }
+
     const requiredFields = [
       "sector",
-      "client",
       "network",
       "service",
       "zoneMatrix",
@@ -114,69 +123,124 @@ const ShipperTariff = () => {
       "to",
     ];
 
-    // run validation
-    const formValid = requiredFields.every((field) => {
-      const v = getValues(field);
-      return v && v.toString().trim() !== "";
+    // Validate all required fields
+    const missingFields = requiredFields.filter(field => {
+      const value = getValues(field);
+      return !value || value.toString().trim() === "";
     });
 
-    if (!formValid) {
-      alert("Fill all fields before adding to table");
-      showNotification("error", "Fill all fields before adding to table");
+    if (missingFields.length > 0) {
+      showNotification("error", `Please fill all required fields: ${missingFields.join(", ")}`);
       return;
     }
 
     const formData = getValues();
+    const fromDate = normalizeDate(formData.from);
+    const toDate = normalizeDate(formData.to);
 
-    const newRow = {
-      id: Date.now(),
-      customer: formData.client,
+    if (!fromDate || !toDate) {
+      showNotification("error", "Invalid date format");
+      return;
+    }
+
+    // Create rows for all selected account codes
+    const newRows = selectedAccountCodes.map(accountCode => ({
+      id: Date.now() + Math.random(),
+      customer: `${accountCode}`, // You might want to get customer name from account code
       network: formData.network,
       service: formData.service,
       zoneMatrix: formData.zoneMatrix,
       rateTariff: formData.rateTariff,
       country: formData.sector,
       mode: formData.mode,
-      fromDate: formData.from,
-      toDate: formData.to,
-    };
+      fromDate: fromDate,
+      toDate: toDate,
+    }));
 
-    setRowData((prev) => [...prev, newRow]);
+    setRowData(prev => [...prev, ...newRows]);
+    showNotification("success", `Added ${newRows.length} rates to table`);
+  };
+
+  // Add to table only - for Service Update
+  const handleApplicableService = () => {
+    if (selectedAccountCodes.length === 0) {
+      showNotification("error", "Please select valid account codes first");
+      return;
+    }
+
+    const requiredFields = [
+      "sector",
+      "network",
+      "service",
+    ];
+
+    // Validate all required fields
+    const missingFields = requiredFields.filter(field => {
+      const value = getValues(field);
+      return !value || value.toString().trim() === "";
+    });
+
+    if (missingFields.length > 0) {
+      showNotification("error", `Please fill all required fields: ${missingFields.join(", ")}`);
+      return;
+    }
+
+    const formData = getValues();
+
+    // Create service rows for all selected account codes
+    const newRows = selectedAccountCodes.map(accountCode => ({
+      id: Date.now() + Math.random(),
+      customer: `${accountCode}`,
+      network: formData.network,
+      service: formData.service,
+      country: formData.sector,
+      serviceType: "Applicable Service", // Mark as service update
+    }));
+
+    setRowData(prev => [...prev, ...newRows]);
+    showNotification("success", `Added ${newRows.length} services to table`);
+  };
+
+  // Normalize date format
+  const normalizeDate = (val) => {
+    if (!val) return "";
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+      const [d, m, y] = val.split("/");
+      return `${y}-${m}-${d}`;
+    }
+
+    return "";
   };
 
   // Save to database
   const onSubmit = async (data) => {
+    if (rowData.length === 0) {
+      showNotification("error", "No data to save. Please add data to table first.");
+      return;
+    }
+
     setLoading(true);
-    const formData = getValues();
-
-    const payload = {
-      customer: formData.client || "",
-      network: formData.network || "",
-      service: formData.service || "",
-      zoneMatrix: formData.zoneMatrix || "",
-      rateTariff: formData.rateTariff || "",
-      country: formData.sector || "",
-      mode: formData.mode || "",
-      fromDate: formData.from || "",
-      toDate: formData.to || "",
-    };
-
     try {
-      const response = await axios.post(`${server}/shipper-tariff`, payload);
-      console.log("Saved to database:", response.data);
+      const response = await axios.post(`${server}/shipper-tariff/bulk`, {
+        type: reportType,
+        data: rowData
+      });
 
+      console.log("Bulk data saved to database:", response.data);
+      
       // Reset form and clear data
       reset();
+      setRowData([]);
       setServiceOptions([]);
-      setzoneMatrixOptions([]);
-
-      console.log("Data saved successfully!");
-      showNotification("success", "Data saved successfully!");
+      setZoneMatrixOptions([]);
+      
+      showNotification("success", `Successfully saved ${rowData.length} ${reportType === "Rate Update" ? "rates" : "services"}`);
     } catch (error) {
-      console.error("Error saving data:", error);
-      const errorMessage =
-        error.response?.data?.error || "Error saving data. Please try again.";
-      console.log(errorMessage);
+      console.error("Error saving bulk data:", error);
+      const errorMessage = error.response?.data?.error || "Error saving data. Please try again.";
       showNotification("error", errorMessage);
     } finally {
       setLoading(false);
@@ -184,51 +248,90 @@ const ShipperTariff = () => {
   };
 
   // Filter table data based on search
+  const filteredRowData = useMemo(() => {
+    if (!searchTerm.trim()) return rowData;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return rowData.filter((row) =>
+      Object.values(row).some((value) =>
+        value && value.toString().toLowerCase().includes(searchLower)
+      )
+    );
+  }, [rowData, searchTerm, refreshKey]); // Added refreshKey dependency
 
-  // Process pasted or typed string into codes
-  const [reportType, setReportType] = useState("Rate Update");
-  const networkOptions = ["MPL", "M5C"];
-  const modeOptions = ["Normal Rate", "Express Rate", "Priority Rate"];
+  // Define columns based on report type
+  const columns = useMemo(() => {
+    if (reportType === "Rate Update") {
+      return [
+        { key: "customer", label: "Customer" },
+        { key: "network", label: "Network" },
+        { key: "service", label: "Service" },
+        { key: "zoneMatrix", label: "Zone Tariff" },
+        { key: "rateTariff", label: "Rate Tariff" },
+        { key: "country", label: "Country" },
+        { key: "mode", label: "Mode" },
+        { key: "fromDate", label: "From Date" },
+        { key: "toDate", label: "To Date" },
+      ];
+    } else {
+      return [
+        { key: "customer", label: "Customer" },
+        { key: "network", label: "Network" },
+        { key: "service", label: "Service" },
+        { key: "country", label: "Country" },
+        { key: "serviceType", label: "Type" },
+      ];
+    }
+  }, [reportType]);
 
-  const handleReportTypeChange = (value) => {
-    setReportType(value);
-  };
-
-  const columns = useMemo(
-    () => [
-      { key: "customer", label: "Customer" },
-      { key: "network", label: "Network" },
-      { key: "service", label: "Service" },
-      { key: "zoneMatrix", label: "Zone Tariff" },
-      { key: "rateTariff", label: "Rate Tariff" },
-      { key: "country", label: "Country" },
-      { key: "mode", label: "Mode" },
-      { key: "fromDate", label: "From Date" },
-      { key: "toDate", label: "To Date" },
-    ],
-    []
-  );
-
+  // Enhanced refresh function like in General component
   const handleRefresh = () => {
-    reset(); // clear form values
-    setRowData([]); // clear table
+    // Clear all data states
+    setRowData([]);
+    setSelectedAccountCodes([]);
     setServiceOptions([]);
-    setzoneMatrixOptions([]);
+    setZoneMatrixOptions([]);
+    setSearchTerm("");
+    setLoading(false);
+    
+    // Increment keys to force re-renders
+    setFormKey(prev => prev + 1);
+    setRefreshKey(prev => prev + 1);
+    
+    // Reset form with default values
+    reset({
+      sector: "",
+      client: "",
+      network: "",
+      service: "",
+      zoneMatrix: "",
+      rateTariff: "",
+      mode: "",
+      from: "",
+      to: "",
+    });
+    
+    // Set default report type
+    setReportType("Rate Update");
+    
+    // Show success notification
+    showNotification("success", "Page refreshed successfully");
   };
 
   return (
-    <form className="flex flex-col gap-6" onSubmit={handleSubmit(onSubmit)}>
+    <form className="flex flex-col gap-6" onSubmit={handleSubmit(onSubmit)} key={formKey}>
       <NotificationFlag
         type={notification.type}
         message={notification.message}
         visible={notification.visible}
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
+      
       <Heading
         title="Shipper Tariff Bulk"
         bulkUploadBtn="hidden"
         codeListBtn="hidden"
-        onRefresh={handleRefresh}
+        onRefresh={handleRefresh} // Pass refresh handler
       />
 
       <div className="flex w-full gap-3">
@@ -247,61 +350,51 @@ const ShipperTariff = () => {
       </div>
 
       <div className="flex gap-6 h-full">
+        {/* Left side: Shipper Table */}
         <div className="flex-1 max-w-[350px] min-w-[260px]">
-          <ShipperTable />
+          <ShipperTable 
+            key={refreshKey} // Add refreshKey to force re-render
+            onAccountCodesSelected={handleAccountCodesSelected} 
+          />
         </div>
 
-        {["Rate Update", "Service Update"].includes(reportType) && (
-          <div className="flex flex-col gap-6 w-full">
-            <div className="flex flex-col gap-3">
-              <h2 className="text-[16px] text-red font-semibold">
-                Shipper Details
-              </h2>
+        {/* Right side: Form and Table */}
+        <div className="flex flex-col gap-6 w-full">
+          <div className="flex flex-col gap-3">
+            <h2 className="text-[16px] text-red font-semibold">
+              {reportType === "Rate Update" ? "Rate Details" : "Service Details"}
+            </h2>
 
-              <div className="flex gap-[20px]">
-                {reportType === "Rate Update" ? (
-                  // <InputBox
-                  //   placeholder="Type"
-                  //   register={register}
-                  //   setValue={setValue}
-                  //   value="type"
-                  // />
-                  <LabeledDropdown
-                    title={`Network`}
-                    register={register}
-                    setValue={setValue}
-                    value="network"
-                    options={["M5C", "MPL"]}
-                  />
-                ) : (
-                  <DummyInputBoxWithLabelDarkGray
-                    label="Network"
-                    register={register}
-                    setValue={setValue}
-                    value="dummyType"
-                  />
-                )}
+            <div className="flex gap-[20px]">
+              <LabeledDropdown
+                title="Network"
+                register={register}
+                setValue={setValue}
+                value="network"
+                options={["M5C", "MPL"]}
+              />
 
-                <LabeledDropdown
-                  options={sectors.map((sector) => sector.name)}
-                  register={register}
-                  setValue={setValue}
-                  value="sector"
-                  title="Sector"
-                  reset={reset}
-                />
+              <LabeledDropdown
+                options={sectors.map((sector) => sector.name)}
+                register={register}
+                setValue={setValue}
+                value="sector"
+                title="Sector"
+                reset={reset}
+              />
 
-                <LabeledDropdown
-                  options={serviceOptions}
-                  register={register}
-                  setValue={setValue}
-                  value="service"
-                  title="Service"
-                />
-              </div>
+              <LabeledDropdown
+                options={serviceOptions}
+                register={register}
+                setValue={setValue}
+                value="service"
+                title="Service"
+              />
+            </div>
 
-              <div className="flex gap-[20px]">
-                {reportType === "Rate Update" ? (
+            {reportType === "Rate Update" ? (
+              <>
+                <div className="flex gap-[20px]">
                   <LabeledDropdown
                     options={zoneMatrixOptions}
                     register={register}
@@ -309,122 +402,110 @@ const ShipperTariff = () => {
                     value="zoneMatrix"
                     title="Zone Matrix"
                   />
-                ) : (
-                  <DummyInputBoxWithLabelDarkGray
-                    label="Zone Matrix"
-                    register={register}
-                    setValue={setValue}
-                    value="dummyZoneMatrix"
-                  />
-                )}
 
-                <InputBox
-                  placeholder="Country"
-                  register={register}
-                  setValue={setValue}
-                  value="country"
-                />
-
-                {reportType === "Rate Update" ? (
                   <InputBox
                     placeholder="Rate Tariff"
                     register={register}
                     setValue={setValue}
                     value="rateTariff"
                   />
-                ) : (
-                  <DummyInputBoxWithLabelDarkGray
-                    label="Zone Tariff"
+
+                  <LabeledDropdown
+                    options={modeOptions}
                     register={register}
                     setValue={setValue}
-                    value="dummyZoneTariff"
-                  />
-                )}
-              </div>
-
-              <div className="flex gap-4">
-                {reportType === "Rate Update" ? (
-                  <InputBox
-                    placeholder="Rate Type"
-                    register={register}
-                    setValue={setValue}
-                    value="rateType"
-                  />
-                ) : (
-                  <DummyInputBoxWithLabelDarkGray
-                    label="Rate Type"
-                    register={register}
-                    setValue={setValue}
-                    value="dummyRateType"
-                  />
-                )}
-
-                <DateInputBox
-                  register={register}
-                  setValue={setValue}
-                  value="from"
-                  placeholder="From"
-                />
-                <DateInputBox
-                  register={register}
-                  setValue={setValue}
-                  value="to"
-                  placeholder="To"
-                />
-              </div>
-            </div>
-
-            <div className="flex w-full">
-              <div className="w-full">
-                <DeleteButton />
-              </div>
-              <div className="flex gap-2 w-full justify-end">
-                <div>{/* <OutlinedButtonRed label="Close" /> */}</div>
-
-                <div className="w-[259px]">
-                  <SimpleButton
-                    name={
-                      reportType === "Rate Update"
-                        ? "Applicable Rates"
-                        : "Applicable Service"
-                    }
-                    type="button"
-                    onClick={handleApplicableRates}
+                    value="mode"
+                    title="Mode"
                   />
                 </div>
-                <div>
-                  <SimpleButton
-                    name={loading ? "Loading..." : "Save"}
-                    type="submit"
-                    disabled={loading}
+
+                <div className="flex gap-4">
+                  <DateInputBox
+                    register={register}
+                    setValue={setValue}
+                    value="from"
+                    placeholder="From Date"
+                  />
+                  
+                  <DateInputBox
+                    register={register}
+                    setValue={setValue}
+                    value="to"
+                    placeholder="To Date"
                   />
                 </div>
+              </>
+            ) : (
+              <div className="text-gray-500 text-sm">
+                Service Update: Only Network, Sector, and Service are required
               </div>
-            </div>
+            )}
+          </div>
 
-            <SearchInputBox
-              placeholder={
-                reportType === "Rate Update"
-                  ? "Search Tariff"
-                  : "Search Service"
-              }
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <div>
-              <Table
-                columns={columns}
-                rowData={rowData}
-                register={register}
-                setValue={setValue}
-                name="shippertariff"
-              />
+          <div className="flex w-full justify-between items-center">
+            <div className="text-sm">
+              {selectedAccountCodes.length > 0 ? (
+                <span className="text-green-600">
+                  {selectedAccountCodes.length} account code(s) selected
+                </span>
+              ) : (
+                <span className="text-red">No account codes selected</span>
+              )}
+            </div>
+            
+            <div className="flex gap-2">
+              <div className="w-[259px]">
+                <SimpleButton
+                  name={
+                    reportType === "Rate Update"
+                      ? "Applicable Rates"
+                      : "Applicable Service"
+                  }
+                  type="button"
+                  onClick={reportType === "Rate Update" ? handleApplicableRates : handleApplicableService}
+                />
+              </div>
+              
+              <div>
+                <SimpleButton
+                  name={loading ? "Saving..." : "Save All"}
+                  type="submit"
+                  disabled={loading || rowData.length === 0}
+                />
+              </div>
             </div>
           </div>
-        )}
+
+          <SearchInputBox
+            placeholder={
+              reportType === "Rate Update"
+                ? "Search Tariff..."
+                : "Search Service..."
+            }
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          
+          <div className="border rounded-lg overflow-hidden">
+            <Table
+              key={`table-${refreshKey}`} // Add refreshKey to force table re-render
+              columns={columns}
+              rowData={filteredRowData}
+              register={register}
+              setValue={setValue}
+              name="shippertariffbulk"
+            />
+          </div>
+
+          {rowData.length > 0 && (
+            <div className="text-sm text-gray-600">
+              Total rows in table: {rowData.length}
+            </div>
+          )}
+        </div>
       </div>
     </form>
   );
 };
 
-export default ShipperTariff;
+export default ShipperTariffBulk;
