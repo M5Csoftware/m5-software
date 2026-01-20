@@ -464,96 +464,106 @@ function AwbBilling() {
   };
 
   // handle AWB Billing Operations
-  const handleAWBBilling = async (data) => {
-    // Check service validation before submission
-    if (selectedService && serviceValidation && !serviceValidation.valid) {
-      showNotification(
-        "error",
-        "Service validation failed. Please check errors."
-      );
+  // handle AWB Billing Operations
+const handleAWBBilling = async (data) => {
+  // ✅ NEW: Check if runNo and bagNo exist before billing
+  if (!fetchedAwbData?.runNo || !fetchedAwbData?.bag) {
+    showNotification(
+      "error",
+      "Cannot bill this AWB - Run No and Bag No are missing. Please bag the shipment first."
+    );
+    return;
+  }
+
+  // Check service validation before submission
+  if (selectedService && serviceValidation && !serviceValidation.valid) {
+    showNotification(
+      "error",
+      "Service validation failed. Please check errors."
+    );
+    return;
+  }
+
+  // Check for warnings and ask for confirmation
+  if (serviceValidation.warnings?.length > 0) {
+    const shouldProceed = window.confirm(
+      `Service has ${serviceValidation.warnings.length} warnings:\n` +
+        serviceValidation.warnings.join("\n") +
+        "\n\nDo you want to proceed?"
+    );
+
+    if (!shouldProceed) {
       return;
     }
+  }
 
-    // Check for warnings and ask for confirmation
-    if (serviceValidation.warnings?.length > 0) {
-      const shouldProceed = window.confirm(
-        `Service has ${serviceValidation.warnings.length} warnings:\n` +
-          serviceValidation.warnings.join("\n") +
-          "\n\nDo you want to proceed?"
+  const { code, ...fillterData } = data;
+  const accountCode = code;
+  const updateUser = user?.userId;
+  const payload = { accountCode, ...fillterData };
+  console.log("Billing payload: ", payload, newShipment);
+
+  // small helper to safely fetch customer name
+  const getCustomerName = async (accountCode) => {
+    try {
+      if (!accountCode) return "";
+      const customerResponse = await axios.get(
+        `${server}/customer-account?accountCode=${accountCode}`
       );
-
-      if (!shouldProceed) {
-        return;
-      }
-    }
-
-    const { code, ...fillterData } = data;
-    const accountCode = code;
-    const updateUser = user?.userId;
-    const payload = { accountCode, ...fillterData };
-    console.log("Billing payload: ", payload, newShipment);
-
-    // small helper to safely fetch customer name
-    const getCustomerName = async (accountCode) => {
-      try {
-        if (!accountCode) return "";
-        const customerResponse = await axios.get(
-          `${server}/customer-account?accountCode=${accountCode}`
-        );
-        return customerResponse.data?.name || "";
-      } catch (err) {
-        console.warn("Failed to fetch customer name:", err);
-        return "";
-      }
-    };
-
-    if (newShipment == "old" && btnAction == "save" && isEdit == false) {
-      try {
-        setIsSubmitting(true);
-
-        const response = await axios.put(
-          `${server}/portal/create-shipment/awb-billing?awbNo=${awbNo}`,
-          { ...payload, updateUser }
-        );
-
-        if (response?.status === 200) {
-          const customer = await getCustomerName(accountCode);
-          await pushAWBLog({
-            awbNo,
-            accountCode,
-            customer,
-            action: "Billing Updated",
-            actionUser: user?.userId,
-            department: "Billing",
-          });
-        }
-
-        if (response.data?.holdReason != "") {
-          const customer = await getCustomerName(accountCode);
-          const pushHoldLogPayload = {
-            awbNo: response.data?.awbNo || payload?.awbNo,
-            accountCode,
-            customer,
-            action: "Hold",
-            actionUser: user?.userId,
-            departmentName: user?.department || "Billing",
-            holdReason: payload?.holdReason || "Billing Update",
-          };
-          const holdLogResponse = await pushHoldLog(pushHoldLogPayload);
-          console.log("Hold log response:", holdLogResponse);
-        }
-
-        showNotification("success", "Billing Updated Successfully");
-        handleRefresh();
-      } catch (error) {
-        console.error(error);
-        showNotification("error", "Error updating AWB Billing");
-      } finally {
-        setIsSubmitting(false);
-        setBtnAction(null);
-      }
+      return customerResponse.data?.name || "";
+    } catch (err) {
+      console.warn("Failed to fetch customer name:", err);
+      return "";
     }
   };
+
+  if (newShipment == "old" && btnAction == "save" && isEdit == false) {
+    try {
+      setIsSubmitting(true);
+
+      const response = await axios.put(
+        `${server}/portal/create-shipment/awb-billing?awbNo=${awbNo}`,
+        { ...payload, updateUser }
+      );
+
+      if (response?.status === 200) {
+        const customer = await getCustomerName(accountCode);
+        await pushAWBLog({
+          awbNo,
+          accountCode,
+          customer,
+          action: "Billing Updated",
+          actionUser: user?.userId,
+          department: "Billing",
+        });
+      }
+
+      if (response.data?.holdReason != "") {
+        const customer = await getCustomerName(accountCode);
+        const pushHoldLogPayload = {
+          awbNo: response.data?.awbNo || payload?.awbNo,
+          accountCode,
+          customer,
+          action: "Hold",
+          actionUser: user?.userId,
+          departmentName: user?.department || "Billing",
+          holdReason: payload?.holdReason || "Billing Update",
+        };
+        const holdLogResponse = await pushHoldLog(pushHoldLogPayload);
+        console.log("Hold log response:", holdLogResponse);
+      }
+
+      showNotification("success", "Billing Updated Successfully");
+      handleRefresh();
+    } catch (error) {
+      console.error(error);
+      showNotification("error", "Error updating AWB Billing");
+    } finally {
+      setIsSubmitting(false);
+      setBtnAction(null);
+    }
+  }
+};
 
   // Window handlers
   const openVolumeWtWindow = () => {

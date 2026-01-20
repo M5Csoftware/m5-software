@@ -43,6 +43,7 @@ import { useAlertCheck } from "@/app/hooks/useAlertCheck";
 import { AlertModal } from "@/app/components/AlertModal";
 import PasswordModal from "@/app/components/passwordModal";
 
+
 function AwbEntry() {
   const {
     register,
@@ -922,53 +923,56 @@ function AwbEntry() {
   }, [account]);
 
   // filtering final services based on applicable rates AND removing In-Active services
-  useEffect(() => {
-    if (filteredServices.length > 0 && applicableRates) {
-      const applicableList = Array.isArray(applicableRates)
-        ? applicableRates
-        : applicableRates?.ApplicableRates || [];
+useEffect(() => {
+  if (filteredServices.length > 0 && applicableRates) {
+    const applicableList = Array.isArray(applicableRates)
+      ? applicableRates
+      : applicableRates?.ApplicableRates || [];
 
-      const normalizeService = (str) =>
-        str
-          ?.toLowerCase()
-          .replace(/[-\s]+/g, "")
-          .trim() || "";
+    const normalizeService = (str) =>
+      str
+        ?.toLowerCase()
+        .replace(/[-\s]+/g, "")
+        .trim() || "";
 
-      const applicableSet = new Set(
-        applicableList.map((a) => normalizeService(a.service))
-      );
+    const applicableSet = new Set(
+      applicableList.map((a) => normalizeService(a.service))
+    );
 
-      const commonServices = filteredServices.filter((f) =>
-        Array.from(applicableSet).some(
-          (service) =>
-            normalizeService(f.service).includes(service) ||
-            service.includes(normalizeService(f.service))
-        )
-      );
+    const commonServices = filteredServices.filter((f) =>
+      Array.from(applicableSet).some(
+        (service) =>
+          normalizeService(f.service).includes(service) ||
+          service.includes(normalizeService(f.service))
+      )
+    );
 
-      const availableServices = Array.from(
-        new Map(
-          commonServices.map((item) => [
-            `${normalizeService(item.service)}-${item.zone}`,
-            item,
-          ])
-        ).values()
-      );
+    // ✅ FIX: Create unique services by service name only, not by service+zone
+    // This prevents duplicate service names in the dropdown
+    const uniqueServiceNames = new Map();
+    commonServices.forEach((item) => {
+      const normalizedName = normalizeService(item.service);
+      if (!uniqueServiceNames.has(normalizedName)) {
+        uniqueServiceNames.set(normalizedName, item);
+      }
+    });
 
-      const activeServiceSet = new Set(
-        serviceMasterList
-          .filter((s) => s.softwareStatus?.toLowerCase() === "active")
-          .map((s) => s.serviceName.toLowerCase().trim())
-      );
+    const availableServices = Array.from(uniqueServiceNames.values());
 
-      const onlyActiveServices = availableServices.filter((s) =>
-        activeServiceSet.has(s.service.toLowerCase().trim())
-      );
+    const activeServiceSet = new Set(
+      serviceMasterList
+        .filter((s) => s.softwareStatus?.toLowerCase() === "active")
+        .map((s) => s.serviceName.toLowerCase().trim())
+    );
 
-      setFinalServices(onlyActiveServices);
-      console.log("Active Final Services:", onlyActiveServices);
-    }
-  }, [filteredServices, applicableRates, serviceMasterList]);
+    const onlyActiveServices = availableServices.filter((s) =>
+      activeServiceSet.has(s.service.toLowerCase().trim())
+    );
+
+    setFinalServices(onlyActiveServices);
+    console.log("Active Final Services (Unique):", onlyActiveServices);
+  }
+}, [filteredServices, applicableRates, serviceMasterList]);
 
   // fetching amount details
   useEffect(() => {
