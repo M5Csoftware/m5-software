@@ -12,20 +12,52 @@ import { OutlinedButtonRed } from "../Buttons";
 import Table from "../Table";
 import NotificationFlag from "../Notificationflag";
 
+// Confirmation Modal Component
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Yes", cancelText = "No" }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+        <h3 className="text-lg font-semibold text-eerie-black mb-3">{title}</h3>
+        <p className="text-sm text-gray-600 mb-6">{message}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+          >
+            {cancelText}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 text-sm font-medium text-black bg-red-600 rounded hover:bg-red-700 transition-colors"
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) => {
   const { sectors, server } = useContext(GlobalContext);
-  const [rowData, setRowData] = useState([]); // Store CSV Data
-  const [searchFilteredData, setSearchFilteredData] = useState([]); // Filtered data for display
+  const [rowData, setRowData] = useState([]);
+  const [searchFilteredData, setSearchFilteredData] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [remoteZones, setRemoteZones] = useState([]);
   const [unserviceableZones, setUnserviceableZones] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [fileName, setFileName] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0); // Add refresh key
+  const [refreshKey, setRefreshKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedZoneMatrix, setSelectedZoneMatrix] = useState("");
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedData, setEditedData] = useState({});
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // Define table columns
   const columns = useMemo(
     () => [
       { key: "zoneMatrix", label: "Zone Matrix" },
@@ -53,7 +85,6 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
   const zoneTariff = watch("zoneTariff");
   const selectedSector = watch("sector");
 
-  // Get unique zone matrices from uploaded data
   const uniqueZoneMatrices = useMemo(() => {
     if (!rowData || rowData.length === 0) return [];
     
@@ -61,20 +92,16 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
     return unique.sort();
   }, [rowData]);
 
-  // Normalize date format
   const normalizeDate = (val) => {
     if (!val) return null;
 
-    // Already in YYYY-MM-DD format
     if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
 
-    // Convert DD/MM/YYYY to YYYY-MM-DD
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
       const [d, m, y] = val.split("/");
       return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
     }
 
-    // Try to parse as Date object
     try {
       const date = new Date(val);
       if (!isNaN(date.getTime())) {
@@ -90,12 +117,11 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
     return null;
   };
 
-  // Validate CSV data
   const validateCSVData = (data) => {
     const errors = [];
     
     data.forEach((row, index) => {
-      const rowNum = index + 2; // +2 because index starts at 0 and row 1 is header
+      const rowNum = index + 2;
       
       if (!row.zoneMatrix || row.zoneMatrix.trim() === '') {
         errors.push(`Row ${rowNum}: Zone Matrix is required`);
@@ -112,13 +138,11 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
       if (!row.destination || row.destination.trim() === '') {
         errors.push(`Row ${rowNum}: Destination is required`);
       }
-      // Zipcode is optional - no validation required
     });
 
     return errors;
   };
 
-  // Handle CSV Upload
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     
@@ -128,23 +152,20 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
       return;
     }
 
-    // Validate file type
     if (!file.name.endsWith('.csv')) {
       setErrorMessage("Please upload a valid CSV file.");
       showNotification("error", "Invalid file type. Please upload a CSV file");
-      event.target.value = null; // Reset file input
+      event.target.value = null;
       return;
     }
 
-    // Check if dates are selected
     if (!effectiveFrom || !effectiveTo) {
       setErrorMessage("Please select Effective From and To dates first.");
       showNotification("error", "Please select effective dates before uploading CSV");
-      event.target.value = null; // Reset file input
+      event.target.value = null;
       return;
     }
 
-    // Validate date range
     const fromDate = new Date(effectiveFrom);
     const toDate = new Date(effectiveTo);
     
@@ -171,14 +192,11 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
           return;
         }
 
-        // Get actual headers from CSV (case-insensitive)
         const headers = result.meta.fields || [];
         console.log("CSV Headers:", headers);
 
-        // Normalize headers to lowercase for comparison
         const normalizedHeaders = headers.map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
         
-        // Check for required columns (flexible matching)
         const requiredColumns = [
           { key: 'zoneMatrix', variations: ['zonematrix', 'zone matrix', 'zone_matrix'] },
           { key: 'service', variations: ['service'] },
@@ -188,7 +206,6 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
           { key: 'zipcode', variations: ['zipcode', 'zip code', 'zip_code', 'pincode', 'pin_code'] }
         ];
 
-        // Create column mapping
         const columnMapping = {};
         requiredColumns.forEach(col => {
           const matchedHeader = headers.find((h, idx) => {
@@ -201,7 +218,6 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
           }
         });
 
-        // Check if all required columns are found
         const missingColumns = requiredColumns
           .filter(col => !columnMapping[col.key])
           .map(col => col.key);
@@ -216,18 +232,14 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         const from = normalizeDate(effectiveFrom);
         const to = normalizeDate(effectiveTo);
 
-        // Parse and transform data using the column mapping
         const parsedData = result.data
           .filter(row => {
-            // Filter out completely empty rows
             return Object.values(row).some(val => val && val.toString().trim() !== '');
           })
           .map((row, index) => {
-            // Helper function to safely get and convert values
             const safeValue = (val) => {
               if (val === null || val === undefined || val === '') return '';
               const str = val.toString().trim();
-              // Remove .0 from numbers like 110001.0
               if (/^\d+\.0+$/.test(str)) {
                 return str.split('.')[0];
               }
@@ -235,7 +247,7 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
             };
 
             return {
-              id: `zone-${Date.now()}-${index}`, // Add unique ID
+              id: `zone-${Date.now()}-${index}`,
               zoneMatrix: safeValue(row[columnMapping.zoneMatrix]),
               service: safeValue(row[columnMapping.service]),
               sector: safeValue(row[columnMapping.sector]),
@@ -247,7 +259,6 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
             };
           });
 
-        // Validate parsed data
         const validationErrors = validateCSVData(parsedData);
         
         if (validationErrors.length > 0) {
@@ -261,10 +272,9 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         console.log("Processed CSV Data:", parsedData);
         setRowData(parsedData);
         setSearchFilteredData(parsedData);
-        setErrorMessage(""); // Clear any previous errors
+        setErrorMessage("");
         showNotification("success", `Successfully loaded ${parsedData.length} zones from ${file.name}`);
         
-        // Reset file input for re-upload
         event.target.value = null;
       },
       error: (error) => {
@@ -278,7 +288,6 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
     });
   };
 
-  // Handle search across all table headers
   useEffect(() => {
     if (!rowData || rowData.length === 0) {
       setSearchFilteredData([]);
@@ -287,12 +296,10 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
 
     let result = [...rowData];
 
-    // Filter by zone matrix dropdown
     if (selectedZoneMatrix) {
       result = result.filter(zone => zone.zoneMatrix === selectedZoneMatrix);
     }
 
-    // Filter by search query across all columns
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(zone => {
@@ -307,9 +314,64 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
     setSearchFilteredData(result);
   }, [searchQuery, selectedZoneMatrix, rowData, columns]);
 
-  // Handle Save
+  const handleEdit = () => {
+    if (selectedRows.length === 0) {
+      showNotification("error", "Please select at least one zone to edit");
+      return;
+    }
+
+    setIsEditMode(true);
+    showNotification("info", `Editing ${selectedRows.length} zone(s)`);
+  };
+
+  const handleUpdateClick = () => {
+    if (selectedRows.length === 0) {
+      showNotification("error", "Please select at least one zone to update");
+      return;
+    }
+    setShowEditModal(true);
+  };
+
+  const confirmUpdate = () => {
+    setShowEditModal(false);
+    
+    // Update the rowData with edited values
+    const updatedRowData = rowData.map(row => {
+      const updated = editedData[row.id];
+      return updated || row;
+    });
+    
+    setRowData(updatedRowData);
+    setSearchFilteredData(updatedRowData);
+    setIsEditMode(false);
+    setEditedData({});
+    setSelectedRows([]);
+    
+    showNotification("success", `Successfully updated ${selectedRows.length} zone(s) in preview`);
+  };
+
+  const handleDeleteClick = () => {
+    if (selectedRows.length === 0) {
+      showNotification("error", "Please select at least one zone to delete");
+      return;
+    }
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    setShowDeleteModal(false);
+    
+    // Filter out selected rows
+    const updatedData = rowData.filter(zone => !selectedRows.includes(zone.id));
+    
+    setRowData(updatedData);
+    setSearchFilteredData(updatedData);
+    setSelectedRows([]);
+    
+    showNotification("success", `Removed ${selectedRows.length} zone(s) from preview`);
+  };
+
   const handleSave = async () => {
-    // Validation checks
     if (!rowData || rowData.length === 0) {
       showNotification("error", "No data to upload. Please upload a CSV file first");
       return;
@@ -333,7 +395,6 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
     try {
       setIsUploading(true);
 
-      // Prepare data with additional metadata
       const dataToSubmit = {
         zones: rowData,
         zoneTariff: zoneTariff.trim(),
@@ -348,7 +409,6 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
 
       console.log("Submitting Zone Data:", dataToSubmit);
 
-      // Call the API endpoint
       const response = await fetch(`${server}/zones`, {
         method: 'POST',
         headers: {
@@ -372,10 +432,8 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         (unserviceableZones.length > 0 ? ` and ${unserviceableZones.length} unserviceable zones` : '')
       );
       
-      // Clear the form after successful upload
       handleClear();
 
-      // Call parent's onSubmit if provided
       if (onSubmit) {
         await onSubmit(dataToSubmit);
       }
@@ -388,9 +446,7 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
     }
   };
 
-  // Handle Clear/Reset
   const handleClear = () => {
-    // Clear state
     setRowData([]);
     setSearchFilteredData([]);
     setFileName("");
@@ -399,8 +455,10 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
     setUnserviceableZones([]);
     setSearchQuery("");
     setSelectedZoneMatrix("");
+    setSelectedRows([]);
+    setIsEditMode(false);
+    setEditedData({});
     
-    // Reset form values
     setValue("zoneTariff", "");
     setValue("sector", "");
     setValue("effectiveDateFrom", "");
@@ -408,17 +466,14 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
     setValue("remoteZones", []);
     setValue("unserviceableZones", []);
     
-    // Reset file input
     const fileInput = document.getElementById("zone-upload");
     if (fileInput) {
       fileInput.value = null;
     }
 
-    // Increment refresh key to force re-render
     setRefreshKey(prev => prev + 1);
   };
 
-  // Update rowData when dates or remote zones change
   useEffect(() => {
     if (rowData.length > 0) {
       const from = normalizeDate(effectiveFrom);
@@ -444,6 +499,27 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         visible={notification.visible}
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
+      
+      <ConfirmationModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onConfirm={confirmUpdate}
+        title="Confirm Update"
+        message={`Are you sure you want to update ${selectedRows.length} zone(s) in the preview?`}
+        confirmText="Yes"
+        cancelText="No"
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Confirm Delete"
+        message={`Are you sure you want to remove ${selectedRows.length} zone(s) from the preview?`}
+        confirmText="Yes"
+        cancelText="No"
+      />
+
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3">
           <div className="font-semibold text-sm flex gap-1 items-center justify-end">
@@ -515,8 +591,28 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         </div>
         <div className="flex justify-between">
           <div className="flex gap-2">
-            <EditButton perm="Accounts Edit" />
-            <DeleteButton perm="Accounts Deletion" />
+            {isEditMode ? (
+              <button
+                onClick={handleUpdateClick}
+                disabled={selectedRows.length === 0 || isUploading}
+                className={`px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors ${
+                  (selectedRows.length === 0 || isUploading) ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                Update
+              </button>
+            ) : (
+              <EditButton 
+                perm="Accounts Edit" 
+                onClick={handleEdit}
+                disabled={selectedRows.length === 0 || isUploading}
+              />
+            )}
+            <DeleteButton 
+              perm="Accounts Deletion" 
+              onClick={handleDeleteClick}
+              disabled={selectedRows.length === 0 || isUploading}
+            />
           </div>
           <div className="flex gap-2">
             <label
@@ -553,7 +649,6 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
           </div>
         </div>
         
-        {/* File Info and Zone Info */}
         {(fileName || remoteZones.length > 0 || unserviceableZones.length > 0) && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
             {fileName && (
@@ -564,6 +659,11 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
                 {searchFilteredData.length !== rowData.length && (
                   <span className="text-blue-600 font-semibold">
                     | Showing: {searchFilteredData.length}
+                  </span>
+                )}
+                {selectedRows.length > 0 && (
+                  <span className="text-purple-600 font-semibold">
+                    | Selected: {selectedRows.length}
                   </span>
                 )}
               </div>
@@ -604,18 +704,17 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
           />
         </div>
         
-        {/* Display Error Message */}
         {errorMessage && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
             <span className="block sm:inline">{errorMessage}</span>
           </div>
         )}
         
-        {/* Table to Display Uploaded Data - Always Visible */}
         <div>
           {rowData.length > 0 && (
             <div className="mb-2 text-sm font-semibold text-gray-700">
               Preview: {searchFilteredData.length} of {rowData.length} zones
+              {selectedRows.length > 0 && ` | Selected: ${selectedRows.length}`}
             </div>
           )}
           <Table
@@ -624,6 +723,15 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
             register={register}
             setValue={setValue}
             name={"zones"}
+            selectable={true}
+            selectedRows={selectedRows}
+            onSelectionChange={setSelectedRows}
+            editable={isEditMode}
+            onDataChange={setEditedData}
+            onEditComplete={() => {
+              setIsEditMode(false);
+              setEditedData({});
+            }}
           />
         </div>
       </div>

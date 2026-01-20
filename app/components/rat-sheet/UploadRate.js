@@ -7,6 +7,7 @@ import { DropdownRedLabel, LabeledDropdown } from "../Dropdown";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import Papa from "papaparse";
 import Table from "../Table";
+import NotificationFlag from "../Notificationflag";
 
 const UploadRate = ({ register, setValue, reset, onSubmit }) => {
   const [tabChange, setTabChange] = useState(false);
@@ -15,6 +16,18 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
   const [searchFilteredData, setSearchFilteredData] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedShipper, setSelectedShipper] = useState("");
+  const [selectedRows, setSelectedRows] = useState([]); // Track selected rows
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  const [notification, setNotification] = useState({
+    type: "success",
+    message: "",
+    visible: false,
+  });
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message, visible: true });
+  };
 
   const columns = useMemo(() => {
     const baseColumns = [
@@ -53,9 +66,10 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
         console.log("Raw parsed data:", result.data[0]); // Debug log
         console.log("CSV headers:", result.meta.fields); // Debug log
         
-        const parsedData = result.data.map((row) => {
+        const parsedData = result.data.map((row, index) => {
           // Build the JSON object with the correct column mapping
           const jsonData = {
+            _tempId: `temp_${Date.now()}_${index}`, // Temporary ID for local editing
             shipper: row.shipper?.trim() || "",
             network: row.network?.trim() || "",
             service: row.service?.trim() || "",
@@ -65,7 +79,6 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
           };
 
           // Extract zone rates (columns 1-35)
-          // Note: The CSV has headers like "1", "2", "3", etc.
           for (let i = 1; i <= 35; i++) {
             const columnName = i.toString();
             const value = row[columnName]?.trim();
@@ -85,8 +98,13 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
         console.log("Processed CSV Data:", parsedData);
         setRowData(parsedData);
         setSearchFilteredData(parsedData);
+        setSelectedRows([]); // Clear selection
+        showNotification("success", `Loaded ${parsedData.length} records from CSV`);
       },
-      error: (error) => console.error("Error parsing CSV:", error),
+      error: (error) => {
+        console.error("Error parsing CSV:", error);
+        showNotification("error", "Failed to parse CSV file");
+      },
     });
   };
 
@@ -123,31 +141,99 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
     console.log("Current rowData:", rowData);
   }, [rowData]);
 
-  const handleSave = () => {
-    if (rowData.length === 0) {
-      alert("No data to upload. Please upload a valid file.");
+  // Handle Edit button click
+  const handleEdit = () => {
+    if (selectedRows.length === 0) {
+      showNotification("error", "Please select at least one record to edit");
       return;
     }
 
-    console.log("Saving data:", rowData);
-    onSubmit(rowData); // Call the handleUploadData function passed as a prop
+    setIsEditMode(true);
+    showNotification("info", `Editing ${selectedRows.length} record(s)`);
+  };
+
+  // Handle Delete button click
+  const handleDelete = () => {
+    if (selectedRows.length === 0) {
+      showNotification("error", "Please select at least one record to delete");
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} record(s)?`)) {
+      return;
+    }
+
+    try {
+      // Remove selected rows from rowData
+      const updatedData = rowData.filter(
+        item => !selectedRows.includes(item._tempId)
+      );
+
+      setRowData(updatedData);
+      setSearchFilteredData(updatedData);
+      setSelectedRows([]);
+      
+      showNotification("success", `Successfully deleted ${selectedRows.length} record(s)`);
+    } catch (error) {
+      console.error("Error deleting records:", error);
+      showNotification("error", "Failed to delete records");
+    }
+  };
+
+  // Handle edit completion
+  const handleEditComplete = (updatedData) => {
+    setRowData(updatedData);
+    setSearchFilteredData(updatedData);
+    setIsEditMode(false);
+    setSelectedRows([]);
+    showNotification("success", "Records updated successfully");
+  };
+
+  const handleSave = () => {
+    if (rowData.length === 0) {
+      showNotification("error", "No data to upload. Please upload a valid CSV file.");
+      return;
+    }
+
+    // Remove temporary IDs before sending to backend
+    const dataToSave = rowData.map(({ _tempId, ...rest }) => rest);
+
+    console.log("Saving data:", dataToSave);
+    onSubmit(dataToSave); // Call the handleUploadData function passed as a prop
   };
 
   const handleClear = () => {
+    if (rowData.length > 0) {
+      if (!window.confirm("Are you sure you want to clear all data?")) {
+        return;
+      }
+    }
+
     setRowData([]);
     setSearchFilteredData([]);
     setSearchQuery("");
     setSelectedShipper("");
+    setSelectedRows([]);
+    setIsEditMode(false);
     
     // Reset file input
     const fileInput = document.getElementById("rate-upload");
     if (fileInput) {
       fileInput.value = null;
     }
+
+    showNotification("info", "All data cleared");
   };
 
   return (
     <div className="flex flex-col gap-3">
+      <NotificationFlag
+        type={notification.type}
+        message={notification.message}
+        visible={notification.visible}
+        setVisible={(v) => setNotification({ ...notification, visible: v })}
+      />
+
       <div className="flex flex-col gap-3">
         <div className="flex justify-between">
           <div>
@@ -215,8 +301,16 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
 
       <div className="flex justify-between">
         <div className="flex gap-3">
-          <EditButton perm="Accounts Edit" />
-          <DeleteButton perm="Accounts Deletion" />
+          <EditButton 
+            perm="Accounts Edit" 
+            onClick={handleEdit}
+            disabled={selectedRows.length === 0}
+          />
+          <DeleteButton 
+            perm="Accounts Deletion" 
+            onClick={handleDelete}
+            disabled={selectedRows.length === 0}
+          />
         </div>
         <div className="flex gap-3">
           {/* File Upload Button */}
@@ -248,10 +342,15 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <div className="text-sm text-gray-700 flex items-center gap-2">
             <span className="font-semibold">Loaded:</span>
-            <span className="text-green-600 font-semibold">({rowData.length} records)</span>
+            <span className="text-green-600 font-semibold">{rowData.length} records</span>
             {searchFilteredData.length !== rowData.length && (
               <span className="text-blue-600 font-semibold">
                 | Showing: {searchFilteredData.length}
+              </span>
+            )}
+            {selectedRows.length > 0 && (
+              <span className="text-red font-semibold">
+                | Selected: {selectedRows.length}
               </span>
             )}
           </div>
@@ -291,6 +390,16 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
             register={register}
             setValue={setValue}
             name={"zones"}
+            selectable={true}
+            selectedRows={selectedRows}
+            onSelectionChange={setSelectedRows}
+            editable={isEditMode}
+            onEditComplete={() => {
+              setIsEditMode(false);
+              showNotification("success", "Changes applied successfully");
+            }}
+            useLocalEdit={true} // Flag to indicate local editing without API
+            onLocalEditComplete={handleEditComplete}
           />
         </div>
       </div>

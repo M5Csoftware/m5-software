@@ -8,21 +8,224 @@ export default function Table({
   name,
   columns = [],
   rowData = [],
+  // New props for edit/delete functionality
+  selectable = false,
+  selectedRows = [],
+  onSelectionChange,
+  editable = false,
+  onEditComplete,
 }) {
+  const [editedData, setEditedData] = useState({});
+  const [localSelectedRows, setLocalSelectedRows] = useState(selectedRows);
+
   useEffect(() => {
     setValue(`${name}Table`, rowData);
   }, [rowData]);
 
+  useEffect(() => {
+    setLocalSelectedRows(selectedRows);
+  }, [selectedRows]);
+
+  useEffect(() => {
+    if (editable && rowData) {
+      const initialEditData = {};
+      rowData.forEach(row => {
+        initialEditData[row.id || row._id] = { ...row };
+      });
+      setEditedData(initialEditData);
+    }
+  }, [editable, rowData]);
+
+  // Handle checkbox selection
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      const allIds = rowData.map(row => row.id || row._id);
+      setLocalSelectedRows(allIds);
+      if (onSelectionChange) {
+        onSelectionChange(allIds);
+      }
+    } else {
+      setLocalSelectedRows([]);
+      if (onSelectionChange) {
+        onSelectionChange([]);
+      }
+    }
+  };
+
+  const handleSelectRow = (rowId) => {
+    const newSelection = localSelectedRows.includes(rowId)
+      ? localSelectedRows.filter(id => id !== rowId)
+      : [...localSelectedRows, rowId];
+    
+    setLocalSelectedRows(newSelection);
+    if (onSelectionChange) {
+      onSelectionChange(newSelection);
+    }
+  };
+
+  // Handle cell editing
+  const handleCellEdit = (rowId, columnKey, value) => {
+    setEditedData(prev => ({
+      ...prev,
+      [rowId]: {
+        ...prev[rowId],
+        [columnKey]: value
+      }
+    }));
+  };
+
+  // Save edits
+  const handleSaveEdits = () => {
+    if (onEditComplete) {
+      const updatedRows = Object.values(editedData);
+      onEditComplete(updatedRows);
+    }
+  };
+
+  if (!rowData || rowData.length === 0) {
+    return (
+      <div className="h-64 w-full overflow-auto rounded-lg border border-battleship-gray text-xs">
+        <table className="w-full">
+          <thead className="sticky top-0 bg-white border-b">
+            <tr className="h-12">
+              {selectable && (
+                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase w-12">
+                  <input
+                    type="checkbox"
+                    disabled
+                    className="rounded border-gray-300"
+                  />
+                </th>
+              )}
+              {columns.map((col, index) => (
+                <th
+                  key={col.key}
+                  className={`${index !== columns.length - 1 ? "border-r" : ""} px-4 py-2 text-left cursor-pointer select-none`}
+                >
+                  <div className="flex items-center gap-2 text-nowrap">
+                    {col.label}
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td
+                colSpan={columns.length + (selectable ? 1 : 0)}
+                className="px-4 py-8 text-center text-gray-500"
+              >
+                No data available
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <input type="hidden" {...register(`${name}Table`)} />
+      </div>
+    );
+  }
+
+  const allSelected = localSelectedRows.length === rowData.length && rowData.length > 0;
+  const someSelected = localSelectedRows.length > 0 && localSelectedRows.length < rowData.length;
+
   return (
-    <div className="h-64 w-full overflow-auto  rounded-lg border border-battleship-gray text-xs">
+    <div className="h-64 w-full overflow-auto rounded-lg border border-battleship-gray text-xs">
       <table className="w-full">
-        <TableHeader columns={columns} />
+        <thead className="sticky top-0 bg-white border-b">
+          <tr className="h-12">
+            {selectable && (
+              <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase w-12">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={input => {
+                    if (input) input.indeterminate = someSelected;
+                  }}
+                  onChange={handleSelectAll}
+                  className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                />
+              </th>
+            )}
+            {columns.map((column, index) => (
+              <th
+                key={column.key}
+                className={`${index !== columns.length - 1 ? "border-r" : ""} px-4 py-2 text-left cursor-pointer select-none`}
+              >
+                <div className="flex items-center gap-2 text-nowrap">
+                  {column.label}
+                </div>
+              </th>
+            ))}
+          </tr>
+        </thead>
         <tbody>
-          {rowData.map((item, index) => (
-            <TableRow key={index} rowData={item} columns={columns} />
-          ))}
+          {rowData.map((item, index) => {
+            const rowId = item.id || item._id || index;
+            const isSelected = localSelectedRows.includes(rowId);
+            const currentRowData = editable ? (editedData[rowId] || item) : item;
+
+            return (
+              <tr
+                key={rowId}
+                className={`border-b h-11 hover:bg-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}
+              >
+                {selectable && (
+                  <td className="px-4 py-2 w-12">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectRow(rowId)}
+                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                    />
+                  </td>
+                )}
+                {columns.map((column, colIndex) => (
+                  <td
+                    key={colIndex}
+                    className={`px-4 py-2 text-gray-600 ${colIndex !== columns.length - 1 ? "border-r" : ""}`}
+                  >
+                    {editable ? (
+                      <input
+                        type="text"
+                        value={currentRowData[column.key] || ''}
+                        onChange={(e) => handleCellEdit(rowId, column.key, e.target.value)}
+                        className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      />
+                    ) : (
+                      <span>
+                        {currentRowData[column.key] !== null ? currentRowData[column.key] : "-"}
+                      </span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+
+      {editable && (
+        <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex justify-end gap-2">
+          <button
+            onClick={handleSaveEdits}
+            className="px-4 py-2 bg-red text-white rounded-md hover:bg-red-600 font-semibold text-sm transition-colors"
+          >
+            Save Changes
+          </button>
+        </div>
+      )}
+
+      {selectable && (
+        <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-xs text-gray-600">
+          Showing {rowData.length} {rowData.length === 1 ? 'row' : 'rows'}
+          {localSelectedRows.length > 0 && (
+            <span className="ml-2 font-semibold">
+              ({localSelectedRows.length} selected)
+            </span>
+          )}
+        </div>
+      )}
+
       <input type="hidden" {...register(`${name}Table`)} />
     </div>
   );
@@ -156,7 +359,6 @@ function TableHeaderWithSorting({
             <div className="flex items-center gap-2 text-nowrap">
               {column.label}
               <span className="text-xs text-gray-500 hover:text-black">
-                {/* {sortKey === column.key && (sortOrder === "asc" ? "▲" : "▼")} */}
                 {sortKey === column.key && (
                   <div
                     className={`${sortOrder === "asc" ? "rotate-180" : ""
@@ -303,7 +505,7 @@ export function TableWithCheckboxEditDelete({
   rowData = [],
   handleDelete,
   handleEdit,
-  originalIndex = 0, // Default value for originalIndex
+  originalIndex = 0,
   className
 }) {
   const [sortKey, setSortKey] = useState("awbNo");
@@ -394,13 +596,11 @@ export function TableWithCheckboxEditDelete({
   };
 
   const formatDate = (dateString) => {
-    // Add your date formatting logic here
     return dateString;
   };
 
   return (
     <div className={`${className ? className : "h-64"} flex flex-col`}>
-      {/* Table Container */}
       <div
         className={`flex-1 overflow-x-auto table-scrollbar rounded-lg border border-b-0 rounded-b-none border-battleship-gray text-xs`}
       >
@@ -438,7 +638,6 @@ export function TableWithCheckboxEditDelete({
         <input type="hidden" {...register(`${name}Table`)} />
       </div>
 
-      {/* Fixed Total Weight Section */}
       <div className="px-4 py-1 rounded-t-none border-t-0 border-battleship-gray border-[1px] bg-[#D0D5DDB8] text-right rounded-md">
         <span className="text-xs text-gray-600">
           {totalColumn === "weight" && (
@@ -468,7 +667,6 @@ function TableHeaderWithSortingCheckbox({
   return (
     <thead className="sticky top-0 bg-white border-b text-dim-gray">
       <tr className="h-12">
-        {/* Checkbox column */}
         <th className="border-r text-center">
           <div className="flex items-center justify-center gap-2 text-nowrap">
             <input
@@ -508,7 +706,6 @@ function TableHeaderWithSortingCheckbox({
           </th>
         ))}
 
-        {/* Actions column */}
         <th className="border-r px-4 py-2 text-center">
           <div className="flex items-center gap-2 text-nowrap justify-center">
             <button
@@ -542,7 +739,6 @@ function TableRowWithSortingCheckbox({
 }) {
   return (
     <tr className="border-b h-11">
-      {/* Checkbox column */}
       <td className="border-r text-center">
         <input
           type="checkbox"
@@ -566,7 +762,6 @@ function TableRowWithSortingCheckbox({
         </td>
       ))}
 
-      {/* Actions column */}
       <td className="border-r px-4 py-2 text-center">
         <div className="flex items-center justify-center gap-2">
           <button
