@@ -30,6 +30,13 @@ const CreateChildNumber = () => {
     setAwbreset(!awbreset);
   };
 
+  // Prevent Ref Shipper from being selected
+  const handleRadioChange = (value) => {
+    if (value !== "Ref Shipper") {
+      setDemoRadio(value);
+    }
+  };
+
   return (
     <div className="w-full flex flex-col gap-[17px]">
       <Heading
@@ -55,7 +62,7 @@ const CreateChildNumber = () => {
                 register={register}
                 setValue={setValue}
                 selectedValue={demoRadio}
-                setSelectedValue={setDemoRadio}
+                setSelectedValue={handleRadioChange}
               />
               <RadioButtonLarge
                 id="Ref Shipper"
@@ -64,7 +71,7 @@ const CreateChildNumber = () => {
                 register={register}
                 setValue={setValue}
                 selectedValue={demoRadio}
-                setSelectedValue={setDemoRadio}
+                setSelectedValue={handleRadioChange}
               />
             </div>
           </div>
@@ -82,7 +89,7 @@ const CreateChildNumber = () => {
                 register={register}
                 setValue={setValue}
                 selectedValue={demoRadio}
-                setSelectedValue={setDemoRadio}
+                setSelectedValue={handleRadioChange}
               />
               <RadioButtonLarge
                 id="Ref Shipper"
@@ -91,7 +98,7 @@ const CreateChildNumber = () => {
                 register={register}
                 setValue={setValue}
                 selectedValue={demoRadio}
-                setSelectedValue={setDemoRadio}
+                setSelectedValue={handleRadioChange}
               />
             </div>
           </div>
@@ -102,7 +109,6 @@ const CreateChildNumber = () => {
       </div>
 
       {demoRadio === "Org Shipper" && <OrgShipper awbreset={awbreset} onRefresh={handleRefresh} />}
-      {demoRadio === "Ref Shipper" && <RefShipper />}
     </div>
   );
 };
