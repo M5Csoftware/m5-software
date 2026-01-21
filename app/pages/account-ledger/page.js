@@ -19,7 +19,7 @@ import NotificationFlag from "@/app/components/Notificationflag";
 function AccountLedger() {
   const { handleSubmit, register, setValue, reset, getValues, watch } =
     useForm();
-  const [isChecked, setIsChecked] = useState(false);
+  const [isChecked, setIsChecked] = useState(true);
   const [rowData, setRowData] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
