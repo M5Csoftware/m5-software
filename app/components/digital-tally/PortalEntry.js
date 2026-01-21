@@ -691,7 +691,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 register={register}
                 setValue={setValue}
                 value="mawbNumber"
-                title="MAWB Number"
+                title="HAWB Number"
                 onChange={(value) => {
                   setValue("mawbNumber", value);
                   fetchPortalData(value);
