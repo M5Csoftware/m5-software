@@ -28,6 +28,7 @@ const BookingReport = () => {
   const [balanceShipment, setBalanceShipmet] = useState(false);
   const [added, setAdded] = useState(false);
   const [csbV, setcsbV] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Loading state
   const { server } = useContext(GlobalContext);
   const [reports, setReports] = useState([]);
 
@@ -111,7 +112,7 @@ const BookingReport = () => {
       try {
         // Fetch customer account by code (using same endpoint as PaymentCollectionReport)
         const response = await axios.get(
-          `${server}/customer-account?accountCode=${codeValue.trim()}`
+          `${server}/customer-account?accountCode=${codeValue.trim()}`,
         );
 
         if (response.data && response.data.name) {
@@ -152,6 +153,7 @@ const BookingReport = () => {
   };
 
   const onSubmit = async (data) => {
+    setIsLoading(true); // Start loading
     try {
       console.log("Form data received:", data);
 
@@ -176,7 +178,7 @@ const BookingReport = () => {
       ) {
         showNotification(
           "error",
-          "Invalid date format. Please select valid dates."
+          "Invalid date format. Please select valid dates.",
         );
         return;
       }
@@ -209,7 +211,7 @@ const BookingReport = () => {
 
       const response = await axios.post(
         `${server}/reports/booking-report`,
-        formattedData
+        formattedData,
       );
 
       console.log("API Response count:", response.data?.length || 0);
@@ -256,11 +258,10 @@ const BookingReport = () => {
         setValue("client", "");
       }
 
-
       if (filteredData.length > 0) {
         showNotification(
           "success",
-          `Booking report generated (${filteredData.length} records)`
+          `Booking report generated (${filteredData.length} records)`,
         );
       } else {
         showNotification("error", "No records found for selected criteria");
@@ -271,6 +272,8 @@ const BookingReport = () => {
         error.response?.data?.error || "Error downloading booking report";
       setReports([]);
       showNotification("error", errorMessage);
+    } finally {
+      setIsLoading(false); // Stop loading
     }
   };
 
@@ -282,7 +285,7 @@ const BookingReport = () => {
 
     const csvHeaders = columns.map((col) => col.label).join(",");
     const csvRows = reports.map((row) =>
-      columns.map((col) => `"${row[col.key] || ""}"`).join(",")
+      columns.map((col) => `"${row[col.key] || ""}"`).join(","),
     );
     const csvContent = [csvHeaders, ...csvRows].join("\n");
 
@@ -429,7 +432,11 @@ const BookingReport = () => {
           </div>
 
           <div>
-            <OutlinedButtonRed type="submit" label={"View"} />
+            <OutlinedButtonRed
+              type="submit"
+              label={isLoading ? "Loading..." : "View"}
+              disabled={isLoading}
+            />
           </div>
 
           <div className="flex justify-between items-center gap-3">
