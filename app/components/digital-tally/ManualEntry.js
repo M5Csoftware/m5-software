@@ -366,7 +366,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
               }}
             />
             <InputBox
-              placeholder="MAWB Number"
+              placeholder="HAWB Number"
               register={register}
               setValue={setValue}
               value="mawbNumber"
