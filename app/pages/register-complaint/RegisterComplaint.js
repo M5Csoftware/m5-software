@@ -793,7 +793,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
             <div className="flex gap-2 w-full">
               <LabeledDropdown
                 key={`status-${formKey}`}
-                options={["Open", "Close"]}
+                options={["Open", "Close", "Process Claim", "Claim Processed"]}
                 register={register}
                 setValue={setValue}
                 title="Status"

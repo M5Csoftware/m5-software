@@ -10,7 +10,7 @@ import { DropdownOptionOnly } from "@/app/components/Dropdown";
 import dayjs from "dayjs";
 import localeData from "dayjs/plugin/localeData";
 import { GlobalContext } from "@/app/lib/GlobalContext";
-import { EllipsisIcon, EllipsisVertical } from "lucide-react";
+import { EllipsisIcon, EllipsisVertical, Download, ExternalLink } from "lucide-react";
 import NotificationFlag from "@/app/components/Notificationflag";
 import axios from "axios";
 
@@ -54,11 +54,16 @@ function CSDashboard() {
   const [selectedHubForRunHandover, setSelectedHubForRunHandover] =
     useState("Delhi");
   const [trackingLoading, setTrackingLoading] = useState(false);
+  const [totalRunsCount, setTotalRunsCount] = useState(0);
+  const [totalRunsLoading, setTotalRunsLoading] = useState(false);
+  const [claimsPendingCount, setClaimsPendingCount] = useState(0);
+  const [claimsLoading, setClaimsLoading] = useState(false);
   const [notification, setNotification] = useState({
     type: "",
     message: "",
     visible: false,
   });
+
   const showNotification = (type, message) => {
     setNotification({
       type,
@@ -66,6 +71,7 @@ function CSDashboard() {
       visible: true,
     });
   };
+
   const trackingReportColumns = [
     { key: "runNo", label: "Run No" },
     { key: "awbNo", label: "Awb No" },
@@ -90,53 +96,110 @@ function CSDashboard() {
     { key: "deliveryRemarks", label: "Delivery Remarks" },
   ];
 
-  // Function to fetch and download tracking report CSV
-  const handleTrackingReportDownload = async (data) => {
-    const { runNo, from, to } = data;
+  const totalRunsColumns = [
+    { key: "runNo", label: "Run No" },
+    { key: "accountType", label: "Account Type" },
+    { key: "sector", label: "Sector" },
+    { key: "origin", label: "Origin" },
+    { key: "destination", label: "Destination" },
+    { key: "hub", label: "Hub" },
+    { key: "flight", label: "Flight" },
+    { key: "flightnumber", label: "Flight Number" },
+    { key: "date", label: "Date" },
+    { key: "transportType", label: "Transport Type" },
+    { key: "almawb", label: "AL MAWB" },
+    { key: "counterpart", label: "Counterpart" },
+    { key: "cdNumber", label: "CD Number" },
+    { key: "obc", label: "OBC" },
+  ];
 
-    // Validation
-    if (!runNo && !from && !to) {
-      showNotification("error", "Please enter Run Number or Date Range");
-      return;
-    }
+  const claimsColumns = [
+    { key: "claimNo", label: "Claim No" },
+    { key: "claimDate", label: "Claim Date" },
+    { key: "awbNo", label: "AWB No" },
+    { key: "customerName", label: "Customer Name" },
+    { key: "customerCode", label: "Customer Code" },
+    { key: "sector", label: "Sector" },
+    { key: "claimType", label: "Claim Type" },
+    { key: "claimAmount", label: "Claim Amount" },
+    { key: "status", label: "Status" },
+    { key: "assignedTo", label: "Assigned To" },
+  ];
 
-    // Date range validation
-    if ((from && !to) || (!from && to)) {
-      showNotification("error", "Please enter both From and To dates");
-      return;
-    }
-
-    setTrackingLoading(true);
-
+  // Function to fetch total runs count
+  const fetchTotalRunsCount = async (range) => {
     try {
-      // Build query parameters
-      const params = {};
-      if (runNo && runNo.trim() !== "") params.runNumber = runNo.trim();
-      if (from) params.fromDate = from;
-      if (to) params.toDate = to;
+      const response = await axios.get(`${server}/cs-dashboard/total-runs`, {
+        params: { range },
+      });
+      setTotalRunsCount(response.data.count || 0);
+    } catch (error) {
+      console.error("Error fetching total runs count:", error);
+      setTotalRunsCount(0);
+    }
+  };
 
-      // Fetch tracking data
-      const response = await axios.get(`${server}/tracking-report`, { params });
+  // Function to fetch claims pending count
+  const fetchClaimsPendingCount = async (range) => {
+    try {
+      const response = await axios.get(`${server}/cs-dashboard/claims-pending`, {
+        params: { 
+          range,
+          status: "Process Claim" // Filter by status
+        },
+      });
+      setClaimsPendingCount(response.data.count || 0);
+    } catch (error) {
+      console.error("Error fetching claims pending count:", error);
+      setClaimsPendingCount(0);
+    }
+  };
 
-      if (!response.data || !Array.isArray(response.data)) {
-        showNotification("error", "No data found for the given criteria");
+  // Update counts when range changes
+  useEffect(() => {
+    fetchTotalRunsCount(selectedRanges.bags);
+    fetchClaimsPendingCount(selectedRanges.claims);
+  }, [selectedRanges.bags, selectedRanges.claims, server]);
+
+  // Function to download total runs Excel
+  const handleTotalRunsDownload = async () => {
+    setTotalRunsLoading(true);
+    try {
+      const response = await axios.get(`${server}/cs-dashboard/total-runs`, {
+        params: { 
+          range: selectedRanges.bags,
+          download: true 
+        },
+      });
+
+      if (!response.data || !response.data.runs || response.data.runs.length === 0) {
+        showNotification("error", "No runs found for the selected period");
         return;
       }
 
-      const trackingData = response.data;
+      const runs = response.data.runs;
 
-      if (trackingData.length === 0) {
-        showNotification("error", "No records found");
-        return;
-      }
+      // Format date helper
+      const formatDate = (dateValue) => {
+        if (!dateValue) return "";
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) return "";
+        return dayjs(date).format("DD/MM/YYYY");
+      };
 
       // Generate CSV
-      const headers = trackingReportColumns.map((col) => col.label).join(",");
-      const csvContent = trackingData
+      const headers = totalRunsColumns.map((col) => col.label).join(",");
+      const csvContent = runs
         .map((row) =>
-          trackingReportColumns
+          totalRunsColumns
             .map((col) => {
-              const value = row[col.key] || "";
+              let value = row[col.key] || "";
+              
+              // Format date fields
+              if (col.key === "date") {
+                value = formatDate(value);
+              }
+              
               // Escape quotes and wrap in quotes if contains comma
               return `"${value.toString().replace(/"/g, '""')}"`;
             })
@@ -154,7 +217,168 @@ function CSDashboard() {
       const link = document.createElement("a");
       link.href = url;
 
-      // Create filename with date/run number
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `total_runs_${selectedRanges.bags.replace(/\s+/g, "_")}_${timestamp}.csv`;
+
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      showNotification(
+        "success",
+        `Excel downloaded successfully! (${runs.length} records)`
+      );
+    } catch (error) {
+      console.error("Error downloading total runs:", error);
+      showNotification(
+        "error",
+        "Failed to download Excel. Please try again."
+      );
+    } finally {
+      setTotalRunsLoading(false);
+    }
+  };
+
+  // Function to download claims pending Excel
+  const handleClaimsDownload = async () => {
+    setClaimsLoading(true);
+    try {
+      const response = await axios.get(`${server}/cs-dashboard/claims-pending`, {
+        params: { 
+          range: selectedRanges.claims,
+          status: "Process Claim",
+          download: true 
+        },
+      });
+
+      if (!response.data || !response.data.claims || response.data.claims.length === 0) {
+        showNotification("error", "No claims found for the selected period");
+        return;
+      }
+
+      const claims = response.data.claims;
+
+      // Format date helper
+      const formatDate = (dateValue) => {
+        if (!dateValue) return "";
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) return "";
+        return dayjs(date).format("DD/MM/YYYY");
+      };
+
+      // Generate CSV
+      const headers = claimsColumns.map((col) => col.label).join(",");
+      const csvContent = claims
+        .map((row) =>
+          claimsColumns
+            .map((col) => {
+              let value = row[col.key] || "";
+              
+              // Format date fields
+              if (col.key === "claimDate") {
+                value = formatDate(value);
+              }
+              
+              // Escape quotes and wrap in quotes if contains comma
+              return `"${value.toString().replace(/"/g, '""')}"`;
+            })
+            .join(",")
+        )
+        .join("\n");
+
+      const fullCsvContent = headers + "\n" + csvContent;
+
+      // Create and download CSV file
+      const blob = new Blob([fullCsvContent], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `claims_pending_${selectedRanges.claims.replace(/\s+/g, "_")}_${timestamp}.csv`;
+
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      showNotification(
+        "success",
+        `Claims Excel downloaded successfully! (${claims.length} records)`
+      );
+    } catch (error) {
+      console.error("Error downloading claims:", error);
+      showNotification(
+        "error",
+        "Failed to download claims Excel. Please try again."
+      );
+    } finally {
+      setClaimsLoading(false);
+    }
+  };
+
+  // Function to fetch and download tracking report CSV
+  const handleTrackingReportDownload = async (data) => {
+    const { runNo, from, to } = data;
+
+    if (!runNo && !from && !to) {
+      showNotification("error", "Please enter Run Number or Date Range");
+      return;
+    }
+
+    if ((from && !to) || (!from && to)) {
+      showNotification("error", "Please enter both From and To dates");
+      return;
+    }
+
+    setTrackingLoading(true);
+
+    try {
+      const params = {};
+      if (runNo && runNo.trim() !== "") params.runNumber = runNo.trim();
+      if (from) params.fromDate = from;
+      if (to) params.toDate = to;
+
+      const response = await axios.get(`${server}/tracking-report`, { params });
+
+      if (!response.data || !Array.isArray(response.data)) {
+        showNotification("error", "No data found for the given criteria");
+        return;
+      }
+
+      const trackingData = response.data;
+
+      if (trackingData.length === 0) {
+        showNotification("error", "No records found");
+        return;
+      }
+
+      const headers = trackingReportColumns.map((col) => col.label).join(",");
+      const csvContent = trackingData
+        .map((row) =>
+          trackingReportColumns
+            .map((col) => {
+              const value = row[col.key] || "";
+              return `"${value.toString().replace(/"/g, '""')}"`;
+            })
+            .join(",")
+        )
+        .join("\n");
+
+      const fullCsvContent = headers + "\n" + csvContent;
+
+      const blob = new Blob([fullCsvContent], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+
       const timestamp = new Date().toISOString().split("T")[0];
       const filename = runNo
         ? `tracking_report_${runNo}_${timestamp}.csv`
@@ -220,7 +444,7 @@ function CSDashboard() {
     };
 
     fetchComplaintSummary();
-  }, []);
+  }, [server]);
 
   useEffect(() => {
     const fetchPodSummary = async () => {
@@ -229,11 +453,7 @@ function CSDashboard() {
       setPodSummary(data);
     };
     fetchPodSummary();
-  }, []);
-
-  useEffect(() => {
-    setHoldSummary({ shipmentCount: 14, totalWeight: 1250 });
-  }, []);
+  }, [server]);
 
   useEffect(() => {
     const fetchHoldSummary = async () => {
@@ -242,7 +462,7 @@ function CSDashboard() {
       setHoldSummary(data);
     };
     fetchHoldSummary();
-  }, []);
+  }, [server]);
 
   useEffect(() => {
     const fetchComplaintCounts = async () => {
@@ -256,7 +476,7 @@ function CSDashboard() {
     };
 
     fetchComplaintCounts();
-  }, []);
+  }, [server]);
 
   const summaries = [
     {
@@ -294,67 +514,26 @@ function CSDashboard() {
     {
       key: "claims",
       title: "CLAIMS PENDING",
-      Component: <Value value={4} />,
+      Component: <Value value={claimsPendingCount} label="Pending" />,
+      onDownload: handleClaimsDownload,
+      downloadLoading: claimsLoading,
+      showDownload: true,
     },
     {
       key: "bags",
-      title: "TOTAL BAGS",
-      Component: <Value value={555} />,
+      title: "TOTAL RUNS",
+      Component: <Value value={totalRunsCount} label="Runs" />,
+      onDownload: handleTotalRunsDownload,
+      downloadLoading: totalRunsLoading,
+      showDownload: true,
     },
   ];
 
-  const defaultShipmentRunOverviewData = {
-    "Last 7 Days": [
-      { label: "Active Runs", value: 18 },
-      { label: "Delays Notified", value: 5 },
-      { label: "Total Bags", value: 420 },
-      { label: "Pending Pre-Alerts", value: 7 },
-      { label: "Total Weight", value: "12,350 kg" },
-    ],
-    "Last 30 Days": [
-      { label: "Active Runs", value: 72 },
-      { label: "Delays Notified", value: 19 },
-      { label: "Total Bags", value: 1_750 },
-      { label: "Pending Pre-Alerts", value: 15 },
-      { label: "Total Weight", value: "51,480 kg" },
-    ],
-    "Last Year": [
-      { label: "Active Runs", value: 860 },
-      { label: "Delays Notified", value: 210 },
-      { label: "Total Bags", value: 21_600 },
-      { label: "Pending Pre-Alerts", value: 65 },
-      { label: "Total Weight", value: "645,320 kg" },
-    ],
-  };
+  const options = ["Today", "Yesterday", "Last 7 Days", "Last 30 Days"];
 
-  // aggregated summary numbers (kept for the small chart box)
-  const defaultComplaintSummaryData = {
-    "Last 7 Days": [
-      { label: "Complaints Received", value: 18 },
-      { label: "Resolved", value: 13 },
-      { label: "Unresolved", value: 5 },
-    ],
-    "Last 30 Days": [
-      { label: "Complaints Received", value: 72 },
-      { label: "Resolved", value: 60 },
-      { label: "Unresolved", value: 12 },
-    ],
-    "Last Year": [
-      { label: "Complaints Received", value: 860 },
-      { label: "Resolved", value: 800 },
-      { label: "Unresolved", value: 60 },
-    ],
-  };
-
-  const options = Object.keys(defaultComplaintSummaryData); // use complaint ranges for select
-
-  const [complaintSummaryData, setComplaintSummaryData] = useState(
-    defaultComplaintSummaryData
-  );
   const [complaintSummarySelectedRange, setComplaintSummarySelectedRange] =
     useState("Last 7 Days");
 
-  // --- POD calendar state
   const calendarRefPODUpdate = useRef(null);
   const [selectedMonthForPODUpdate, setSelectedMonthForPODUpdate] = useState(
     dayjs()
@@ -362,14 +541,12 @@ function CSDashboard() {
   const [showCalendarForPODUpdate, setShowCalendarForPODUpdate] =
     useState(false);
 
-  // Run Handover calendar state (mirrors OperationDashboard)
   const calendarRefRunHandover = useRef(null);
   const [selectedMonthForRunHandover, setSelectedMonthForRunHandover] =
     useState(dayjs());
   const [showCalendarForRunHandover, setShowCalendarForRunHandover] =
     useState(false);
 
-  // Hold Report Calendar state
   const calendarRefHoldReport = useRef(null);
   const [selectedMonthForHoldReport, setSelectedMonthForHoldReport] = useState(
     dayjs()
@@ -379,7 +556,6 @@ function CSDashboard() {
 
   const tableHeadersForPODUpdate = ["Date", "Run Number", "Sector", "Status"];
 
-  // Run Hand Over table (array-of-objects)
   const tableHeadersForRunHandover = [
     "Flight Date",
     "Sector",
@@ -405,98 +581,6 @@ function CSDashboard() {
     "UnResolved",
   ];
 
-  // complaint rows per range - you can replace numbers with real data later
-  const complaintSummariesByRange = {
-    "Last 7 Days": [
-      {
-        Customer: {
-          id: "RJ061",
-          name: "Rajat Jain",
-          profile: "/customer_logo.png",
-        },
-        Resolved: 12,
-        UnResolved: 5,
-      },
-      {
-        Customer: {
-          id: "AN102",
-          name: "Anita Nair",
-          profile: "/customer_logo.png",
-        },
-        Resolved: 8,
-        UnResolved: 2,
-      },
-      {
-        Customer: {
-          id: "MK220",
-          name: "Mohit Kumar",
-          profile: "/customer_logo.png",
-        },
-        Resolved: 10,
-        UnResolved: 1,
-      },
-    ],
-    "Last 30 Days": [
-      {
-        Customer: {
-          id: "RJ061",
-          name: "Rajat Jain",
-          profile: "/customer_logo.png",
-        },
-        Resolved: 30,
-        UnResolved: 10,
-      },
-      {
-        Customer: {
-          id: "AN102",
-          name: "Anita Nair",
-          profile: "/customer_logo.png",
-        },
-        Resolved: 22,
-        UnResolved: 5,
-      },
-      {
-        Customer: {
-          id: "MK220",
-          name: "Mohit Kumar",
-          profile: "/customer_logo.png",
-        },
-        Resolved: 28,
-        UnResolved: 3,
-      },
-    ],
-    "Last Year": [
-      {
-        Customer: {
-          id: "RJ061",
-          name: "Rajat Jain",
-          profile: "/customer_logo.png",
-        },
-        Resolved: 320,
-        UnResolved: 40,
-      },
-      {
-        Customer: {
-          id: "AN102",
-          name: "Anita Nair",
-          profile: "/customer_logo.png",
-        },
-        Resolved: 250,
-        UnResolved: 30,
-      },
-      {
-        Customer: {
-          id: "MK220",
-          name: "Mohit Kumar",
-          profile: "/customer_logo.png",
-        },
-        Resolved: 290,
-        UnResolved: 20,
-      },
-    ],
-  };
-
-  // displayed rows based on selected range
   const displayedComplaintSummaries = complaintSummaryTable.map((item) => ({
     Customer: {
       id: item.accountCode,
@@ -511,7 +595,6 @@ function CSDashboard() {
 
   const months = dayjs.months();
 
-  // Close calendars when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -537,7 +620,6 @@ function CSDashboard() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // unified handler for month click
   const handleMonthClick = (monthIndex, type) => {
     const now = dayjs();
     if (type === "podUpdates") {
@@ -567,7 +649,6 @@ function CSDashboard() {
     }
   };
 
-  // unified changeYear
   const changeYear = (delta, type) => {
     const currentYear = dayjs().year();
     if (type === "podUpdates") {
@@ -596,7 +677,6 @@ function CSDashboard() {
     }
   };
 
-  // totals for runHandOver
   const totalBags = runHandOver.reduce(
     (acc, row) => acc + (parseNumber(row["BAG"]) || 0),
     0
@@ -606,7 +686,6 @@ function CSDashboard() {
     0
   );
 
-  // Helper to compute hold totals (numbers only)
   const computeHoldTotalForHeader = (header) => {
     return holdReports.reduce((acc, row) => {
       const v = parseNumber(row[header]);
@@ -620,13 +699,6 @@ function CSDashboard() {
     const month = selectedMonthForHoldReport.month();
     const year = selectedMonthForHoldReport.year();
 
-    console.log("Fetching Hold Report →", {
-      month,
-      year,
-      selectedBranch,
-      url: `${server}/cs-dashboard/hold-report?month=${month}&year=${year}&origin=${selectedBranch}`,
-    });
-
     const res = await fetch(
       `${server}/cs-dashboard/hold-report?month=${month}&year=${year}&origin=${selectedBranch}`
     );
@@ -637,7 +709,7 @@ function CSDashboard() {
 
   useEffect(() => {
     fetchHoldReport();
-  }, [selectedMonthForHoldReport, selectedBranch]);
+  }, [selectedMonthForHoldReport, selectedBranch, server]);
 
   const fetchRunHandover = async () => {
     const month = selectedMonthForRunHandover.month();
@@ -648,14 +720,12 @@ function CSDashboard() {
     );
 
     const data = await res.json();
-
-    // DO NOT TOUCH THE KEYS – use as-is from backend
     setRunHandOver(data);
   };
 
   useEffect(() => {
     fetchRunHandover();
-  }, [selectedMonthForRunHandover, selectedHubForRunHandover]);
+  }, [selectedMonthForRunHandover, selectedHubForRunHandover, server]);
 
   const formatDateDDMMYYYY = (d) => {
     if (!d) return "";
@@ -674,7 +744,7 @@ function CSDashboard() {
         }
       />
       <div className="flex justify-between gap-3">
-        {summaries.map(({ key, title, Component, link }, index) => (
+        {summaries.map(({ key, title, Component, link, onDownload, downloadLoading, showDownload }, index) => (
           <CSValue
             key={index}
             title={title}
@@ -683,13 +753,16 @@ function CSDashboard() {
             rangeKey={key}
             selectedRanges={selectedRanges}
             setSelectedRanges={setSelectedRanges}
+            onDownload={onDownload}
+            downloadLoading={downloadLoading}
+            showDownload={showDownload}
           />
         ))}
       </div>
 
       <div className="flex gap-9">
         <div className="flex flex-col gap-6 w-full">
-          <div className=" bg-seasalt  border border-french-gray rounded-md h-48 p-5 flex flex-col gap-4">
+          <div className="bg-seasalt border border-french-gray rounded-md h-48 p-5 flex flex-col gap-4">
             <h2 className="font-bold">Tracking Report</h2>
             <form
               onSubmit={handleSubmit(handleTrackingReportDownload)}
@@ -701,7 +774,7 @@ function CSDashboard() {
                 setValue={setValue}
                 value={`runNo`}
               />
-              <div className="flex gap-2 ">
+              <div className="flex gap-2">
                 <DateInputBox
                   register={register}
                   setValue={setValue}
@@ -723,7 +796,7 @@ function CSDashboard() {
             </form>
           </div>
 
-          {/* POD Update (object rows) */}
+          {/* Run Summary table */}
           <div className="p-5 border-battleship-gray border h-[52vh] bg-seasalt rounded-md flex flex-col gap-5">
             <div className="flex justify-between items-start flex-col gap-4">
               <span className="font-bold">Run Summary</span>
@@ -733,7 +806,6 @@ function CSDashboard() {
                   className="relative inline-block"
                   ref={calendarRefPODUpdate}
                 >
-                  {/* Calendar Trigger */}
                   <div
                     className="flex gap-3 text-dim-gray border rounded-md items-center justify-between py-2 px-6 border-battleship-gray bg-white w-[255px] cursor-pointer"
                     onClick={() =>
@@ -754,7 +826,6 @@ function CSDashboard() {
                     />
                   </div>
 
-                  {/* Calendar Popover */}
                   {showCalendarForPODUpdate && (
                     <div className="absolute z-10 mt-2 p-4 bg-white shadow-lg border rounded-md w-[255px]">
                       <div className="flex justify-between items-center mb-3">
@@ -865,7 +936,7 @@ function CSDashboard() {
                             return (
                               <td
                                 key={cellIndex}
-                                className="px-4 py-3 text-center text-dim-gray "
+                                className="px-4 py-3 text-center text-dim-gray"
                               >
                                 {isStatusColumn ? (
                                   <span
@@ -946,7 +1017,7 @@ function CSDashboard() {
                   </thead>
                 </table>
 
-                <div className=" table-scrollbar overflow-y-auto hidden-scrollbar">
+                <div className="table-scrollbar overflow-y-auto hidden-scrollbar">
                   <table className="w-full text-sm border-collapse table-fixed">
                     <colgroup>
                       <col style={{ width: "58%" }} />
@@ -962,11 +1033,9 @@ function CSDashboard() {
                         >
                           {tableHeadersForComplaintSummary.map(
                             (header, cellIndex) => {
-                              // Map header to object key
-                              const key = header; // headers match object keys: 'Customer', 'Resolved', 'UnResolved'
+                              const key = header;
                               const cell = row[key];
 
-                              // Customer cell: render avatar + name + id
                               if (key === "Customer") {
                                 const customer = cell || {};
                                 return (
@@ -976,7 +1045,6 @@ function CSDashboard() {
                                   >
                                     <div className="flex items-center gap-3">
                                       <div className="w-9 h-9 relative rounded-full overflow-hidden">
-                                        {/* plain <img> is fine here; if you prefer next/image you can swap */}
                                         <img
                                           src={
                                             customer.profile ||
@@ -1000,7 +1068,6 @@ function CSDashboard() {
                                 );
                               }
 
-                              // Numeric cells (Resolved / UnResolved) — render inside a square
                               return (
                                 <td
                                   key={cellIndex}
@@ -1046,12 +1113,11 @@ function CSDashboard() {
       </div>
 
       {/* Hold Report */}
-      <div className="p-5 border-battleship-gray border bg-seasalt rounded-md flex flex-col gap-5 ">
+      <div className="p-5 border-battleship-gray border bg-seasalt rounded-md flex flex-col gap-5">
         <div className="flex justify-between items-start">
-          <span className="font-bold ">Hold Report</span>
+          <span className="font-bold">Hold Report</span>
           <div className="flex gap-8 text-xs">
             <div className="relative inline-block" ref={calendarRefHoldReport}>
-              {/* Calendar Trigger */}
               <div
                 className="flex gap-3 text-dim-gray border rounded-md items-center justify-between py-2 px-6 border-battleship-gray bg-white w-[255px] cursor-pointer"
                 onClick={() =>
@@ -1067,7 +1133,6 @@ function CSDashboard() {
                 <img src="calender.svg" height={18} width={18} alt="calendar" />
               </div>
 
-              {/* Calendar Popover */}
               {showCalendarForHoldReport && (
                 <div className="absolute z-10 mt-2 p-4 bg-white shadow-lg border rounded-md w-[255px]">
                   <div className="flex justify-between items-center mb-3">
@@ -1128,19 +1193,18 @@ function CSDashboard() {
             </div>
           </div>
         </div>
-        {/* Hold Report (object rows + totals) */}
-        <div className="border-t border-l border-r border-alice-blue border-collapse rounded-md overflow-hidden ">
+        <div className="border-t border-l border-r border-alice-blue border-collapse rounded-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-dim-gray border-collapse table-fixed">
               <colgroup>
-                <col style={{ width: "18%" }} /> {/* Service */}
-                <col style={{ width: "12%" }} /> {/* Reason Wise */}
-                <col style={{ width: "12%" }} /> {/* Without Reason */}
-                <col style={{ width: "12%" }} /> {/* Adv. Baggiing */}
-                <col style={{ width: "12%" }} /> {/* AMD/MUM-DEL */}
-                <col style={{ width: "18%" }} /> {/* Total W/O Hold */}
-                <col style={{ width: "12%" }} /> {/* Total with Hold */}
-                <col style={{ width: "6%" }} /> {/* action column */}
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "6%" }} />
               </colgroup>
               <thead className="bg-seasalt text-xs font-medium">
                 <tr className="border-b border-alice-blue">
@@ -1160,14 +1224,14 @@ function CSDashboard() {
             <div className="max-h-[370px] table-scrollbar overflow-y-auto hidden-scrollbar">
               <table className="w-full text-sm border-collapse table-fixed">
                 <colgroup>
-                  <col style={{ width: "18%" }} /> {/* Service */}
-                  <col style={{ width: "12%" }} /> {/* Reason Wise */}
-                  <col style={{ width: "12%" }} /> {/* Without Reason */}
-                  <col style={{ width: "12%" }} /> {/* Adv. Baggiing */}
-                  <col style={{ width: "12%" }} /> {/* AMD/MUM-DEL */}
-                  <col style={{ width: "18%" }} /> {/* Total W/O Hold */}
-                  <col style={{ width: "12%" }} /> {/* Total with Hold */}
-                  <col style={{ width: "6%" }} /> {/* action column */}
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "6%" }} />
                 </colgroup>
                 <tbody>
                   {holdReports.map((row, rowIndex) => (
@@ -1182,16 +1246,14 @@ function CSDashboard() {
                         return (
                           <td
                             key={cellIndex}
-                            className="px-4 py-3 text-center text-dim-gray "
+                            className="px-4 py-3 text-center text-dim-gray"
                           >
                             {cell}
                           </td>
                         );
                       })}
-
-                      {/* single action column to match header */}
                       <td className="w-14 text-center">
-                        <div className="flex  items-center gap-3">
+                        <div className="flex items-center gap-3">
                           <span className="text-red text-sm cursor-pointer">
                             View
                           </span>
@@ -1206,7 +1268,6 @@ function CSDashboard() {
               </table>
             </div>
 
-            {/* Fixed Total Row for Hold Report */}
             <table className="w-full text-sm border-collapse table-fixed">
               <colgroup>
                 <col style={{ width: "18%" }} />
@@ -1257,12 +1318,11 @@ function CSDashboard() {
       </div>
 
       {/* Run Hand Over */}
-      <div className="p-5 border-battleship-gray border bg-seasalt rounded-md flex flex-col gap-5 ">
+      <div className="p-5 border-battleship-gray border bg-seasalt rounded-md flex flex-col gap-5">
         <div className="flex justify-between items-start">
-          <span className="font-bold ">Run Hand Over</span>
+          <span className="font-bold">Run Hand Over</span>
           <div className="flex gap-8 text-xs">
             <div className="relative inline-block" ref={calendarRefRunHandover}>
-              {/* Calendar Trigger */}
               <div
                 className="flex gap-3 text-dim-gray border rounded-md items-center justify-between py-2 px-6 border-battleship-gray bg-white w-[255px] cursor-pointer"
                 onClick={() =>
@@ -1278,7 +1338,6 @@ function CSDashboard() {
                 <img src="calender.svg" height={18} width={18} alt="calendar" />
               </div>
 
-              {/* Calendar Popover */}
               {showCalendarForRunHandover && (
                 <div className="absolute z-10 mt-2 p-4 bg-white shadow-lg border rounded-md w-[255px]">
                   <div className="flex justify-between items-center mb-3">
@@ -1339,8 +1398,7 @@ function CSDashboard() {
             </div>
           </div>
         </div>
-        {/* Run Hand Over (array-of-objects rows + totals) */}
-        <div className="border-t border-l border-r border-alice-blue border-collapse rounded-md overflow-hidden ">
+        <div className="border-t border-l border-r border-alice-blue border-collapse rounded-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-dim-gray border-collapse table-fixed">
               <colgroup>
@@ -1391,7 +1449,7 @@ function CSDashboard() {
                         return (
                           <td
                             key={cellIndex}
-                            className="px-4 py-3 text-center text-dim-gray "
+                            className="px-4 py-3 text-center text-dim-gray"
                           >
                             {isPreAlertColumn ? (
                               <span
@@ -1420,7 +1478,6 @@ function CSDashboard() {
               </table>
             </div>
 
-            {/* Fixed Total Row (same as OperationDashboard) */}
             <table className="w-full text-sm border-collapse table-fixed">
               <colgroup>
                 <col style={{ width: "20%" }} />
@@ -1467,7 +1524,6 @@ function CSDashboard() {
   );
 }
 
-// Generic Value box
 function CSValue({
   title,
   link,
@@ -1475,6 +1531,9 @@ function CSValue({
   rangeKey,
   selectedRanges,
   setSelectedRanges,
+  onDownload,
+  downloadLoading,
+  showDownload,
 }) {
   return (
     <div className="flex flex-col gap-2.5 border p-4 rounded-md border-french-gray w-full">
@@ -1490,14 +1549,28 @@ function CSValue({
 
       <div className="flex justify-between items-end">
         <div>{DataComponent}</div>
-        <Link href={link || "#"} className="hover:opacity-80">
-          <Image
-            src="/external-link.svg"
-            alt="external link"
-            width={18}
-            height={18}
-          />
-        </Link>
+        
+        {showDownload ? (
+          <button
+            onClick={onDownload}
+            disabled={downloadLoading}
+            className="hover:opacity-80 disabled:opacity-50 relative"
+            title="Download Excel"
+          >
+            <ExternalLink
+              className="w-5 h-5 text-red cursor-pointer"
+            />
+          </button>
+        ) : link ? (
+          <Link href={link} className="hover:opacity-80">
+            <Image
+              src="/external-link.svg"
+              alt="external link"
+              width={18}
+              height={18}
+            />
+          </Link>
+        ) : null}
       </div>
     </div>
   );
@@ -1511,7 +1584,6 @@ function Value({ value, label, subValue, subLabel, color = "text-red" }) {
         <span className="text-xs text-dim-gray">{label}</span>
       </div>
 
-      {/* show second value below if provided */}
       {subValue !== undefined && (
         <div className="flex-col flex">
           <span className="font-semibold text-lg text-green-3">{subValue}</span>
@@ -1532,7 +1604,7 @@ function Complaints({ data1, data2, label1, label2 }) {
 }
 
 function RangeDropdown({ selected, setSelected }) {
-  const options = ["Today", "Last 7 Days", "Last 30 Days"];
+  const options = ["Today", "Yesterday", "Last 7 Days", "Last 30 Days"];
   return (
     <div className="relative inline-block">
       <select
@@ -1547,7 +1619,6 @@ function RangeDropdown({ selected, setSelected }) {
         ))}
       </select>
 
-      {/* custom small arrow */}
       <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[8px] text-gray-500">
         ▼
       </span>
