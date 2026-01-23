@@ -678,7 +678,7 @@ const ShipperTariff = () => {
 
         <div className="flex w-full">
           <div className="w-full">
-            <DeleteButton />
+            {/* <DeleteButton /> */}
           </div>
           <div className="flex gap-2 w-full justify-end">
             <div>

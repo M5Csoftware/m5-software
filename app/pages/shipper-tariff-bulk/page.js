@@ -494,6 +494,7 @@ const ShipperTariffBulk = () => {
               register={register}
               setValue={setValue}
               name="shippertariffbulk"
+              height="h-72"
             />
           </div>
 
