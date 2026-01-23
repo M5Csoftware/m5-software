@@ -370,8 +370,8 @@ export function InputBoxYellow({
         disabled={disabled}
         className={`border outline-none bg-transparent rounded-md h-8 px-4 py-2 text-sm text-eerie-black placeholder:text-eerie-black w-full 
           ${error ? "border-red" : "border-[#CFB400]"} ${className} ${
-          disabled ? "cursor-default select-none" : ""
-        }`}
+            disabled ? "cursor-default select-none" : ""
+          }`}
       />
       <span
         className={`absolute transition-all px-2 left-4 ${
@@ -478,8 +478,8 @@ export function InputBoxYellowWithPrefix({
         disabled={disabled}
         className={`border outline-none bg-transparent rounded-md h-8 px-4 py-2 text-sm text-eerie-black placeholder:text-eerie-black w-full 
           ${error ? "border-red" : "border-[#CFB400]"} ${className} ${
-          disabled ? "cursor-default select-none" : ""
-        }`}
+            disabled ? "cursor-default select-none" : ""
+          }`}
       />
       <span
         className={`absolute transition-all px-2 left-4 ${
@@ -782,6 +782,11 @@ export function DateInputBox({
     setIsFocused(true);
   };
 
+  // Helper function to set today's date
+  const setTodayDate = () => {
+    handleDateSelect(today);
+  };
+
   // Handle manual input
   const handleManualInput = (e) => {
     let valueInput = e.target.value;
@@ -825,6 +830,24 @@ export function DateInputBox({
       if (setValue) {
         setValue(value, null);
       }
+    }
+  };
+
+  // Handle keyboard shortcuts for today's date
+  const handleKeyDown = (e) => {
+    // Enter on empty/incomplete input sets today
+    if (
+      e.key === "Enter" &&
+      (!displayValue ||
+        displayValue === "  /  /    " ||
+        displayValue.length < 10)
+    ) {
+      e.preventDefault();
+      setTodayDate();
+    }
+    // Tab on empty input sets today
+    if (e.key === "Tab" && (!displayValue || displayValue === "  /  /    ")) {
+      setTodayDate();
     }
   };
 
@@ -903,6 +926,7 @@ export function DateInputBox({
           onChange={handleManualInput}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
           disabled={disabled}
           placeholder=""
           className={`w-full h-8 px-4 pr-10 border rounded-md bg-transparent outline-none
@@ -1327,7 +1351,7 @@ export const MultipleEntryInputBox = forwardRef(
       error,
       className = "",
     },
-    ref
+    ref,
   ) => {
     const [entries, setEntries] = useState(initialValue);
     const [currentInput, setCurrentInput] = useState("");
@@ -1425,5 +1449,5 @@ export const MultipleEntryInputBox = forwardRef(
         {error && <span className="text-red text-xs">{error.message}</span>}
       </div>
     );
-  }
+  },
 );
