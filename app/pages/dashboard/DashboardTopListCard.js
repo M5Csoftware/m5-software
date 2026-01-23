@@ -172,11 +172,11 @@ const DashboardTopListCardRow = ({
           #{rank}
         </span>
         <img
-          src={imgSrc}
+          src="/logo.svg"
           alt="profile"
           width={32}
           height={32}
-          className="rounded-full object-cover"
+          className="rounded-full border-eerie-black p-[3px] border-[2px] object-cover"
         />
         <div className="flex flex-col">
           <div className="font-semibold">{name}</div>
