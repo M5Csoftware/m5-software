@@ -69,8 +69,8 @@ const SSDashboard = () => {
       );
       const data = await res.json();
 
-      setRtfCount(data.totalReady || 0);
-      setRtfWeight(data.totalWeight || 0);
+      setRtfCount(data.totalReady.toFixed(2) || 0);
+      setRtfWeight(data.totalWeight.toFixed(2) || 0);
     };
 
     loadRTF();
@@ -127,8 +127,8 @@ const SSDashboard = () => {
       );
       const data = await res.json();
 
-      setHoldCount(data.totalHold || 0);
-      setHoldWeight(data.totalWeight || 0);
+      setHoldCount(data.totalHold.toFixed(2) || 0);
+      setHoldWeight(data.totalWeight.toFixed(2) || 0);
     };
 
     fetchHold();
