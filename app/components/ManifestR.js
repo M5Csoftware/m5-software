@@ -229,7 +229,7 @@ const ManifestR = forwardRef((props, ref) => {
     }
   };
 
-  const handleDownloadPDF = async () => {
+ const handleDownloadPDF = async () => {
     if (rowData.length === 0) {
       showNotification("error", "No data to download");
       return;
@@ -333,7 +333,7 @@ const ManifestR = forwardRef((props, ref) => {
         columnStyles: columnStyles,
         theme: 'grid',
         headStyles: {
-          fillColor: [66, 66, 66], // Dark gray header
+          fillColor: [220, 38, 38], // Red header
           textColor: [255, 255, 255], // White text
           fontStyle: 'bold',
           fontSize: 8,
