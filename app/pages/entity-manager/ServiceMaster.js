@@ -178,132 +178,131 @@ const ServiceMaster = ({ setCurrentView }) => {
   }, [codeValue, data]); // Added data dependency
 
   // Function to fetch service master data
- // Function to fetch service master data
-const fetchServiceMasterData = async (code) => {
-  if (!code || !server || code.trim() === "") {
-    setEditId(null);
-    setServiceData(null);
-    return;
-  }
-
-  try {
-    setIsLoading(true);
-    const res = await axios.get(`${server}/service-master/getService`, {
-      params: { code: code.trim() },
-    });
-
-    // Check if service was found
-    if (res.data.found === false || !res.data._id) {
-      // No existing service master found - set default values
+  const fetchServiceMasterData = async (code) => {
+    if (!code || !server || code.trim() === "") {
       setEditId(null);
       setServiceData(null);
-      
-      // Set default values for checkboxes
-      setMultiplePcs(false);
-      setAverageWeight(false);
-      setValue("multiplePcsAllow", false);
-      setValue("averageWeightAllow", false);
-      
-      setValue("noOfPcs", "");
-      setValue("averageLimit", "");
-      setValue("boxLimit", "");
-      setValue("volDiscountPercent", "");
-      
-      // Reset all other fields
-      const resetFields = [
-        "minActualWeightperPcs",
-        "maxActualWeightperPcs",
-        "minVolumeWeightperPcs",
-        "maxVolumeWeightperPcs",
-        "minActualWeightperAWB",
-        "maxActualWeightperAWB",
-        "minVolumeWeightperAWB",
-        "maxVolumeWeightperAWB",
-        "minChargeableWeightperAWB",
-        "maxChargeableWeightperAWB",
-        "maxShipmentValue",
-        "maxPcsperAWB"
-      ];
-      
-      resetFields.forEach(field => setValue(field, ""));
-      
-      // Clear any existing notification about loading
-      setNotification(prev => ({ ...prev, visible: false }));
-      
       return;
     }
 
-    // Service found - populate data
-    const s = res.data;
-    setServiceData(s);
-    setEditId(s._id);
+    try {
+      setIsLoading(true);
+      const res = await axios.get(`${server}/service-master/getService`, {
+        params: { code: code.trim() },
+      });
 
-    // Set statuses from DB
-    const swStatus = s.softwareStatus || "Active";
-    const ptStatus = s.portalStatus || "Active";
-    
-    // FIXED: Properly handle boolean values for checkboxes
-    const multiPcs = Boolean(s.multiplePcsAllow);
-    const avgWeight = Boolean(s.averageWeightAllow);
+      // Check if service was found
+      if (res.data.found === false || !res.data._id) {
+        // No existing service master found - set default values
+        setEditId(null);
+        setServiceData(null);
+        
+        // Set default values for checkboxes
+        setMultiplePcs(false);
+        setAverageWeight(false);
+        setValue("multiplePcsAllow", false);
+        setValue("averageWeightAllow", false);
+        
+        setValue("noOfPcs", "");
+        setValue("averageLimit", "");
+        setValue("boxLimit", "");
+        setValue("volDiscountPercent", "");
+        
+        // Reset all other fields
+        const resetFields = [
+          "minActualWeightperPcs",
+          "maxActualWeightperPcs",
+          "minVolumeWeightperPcs",
+          "maxVolumeWeightperPcs",
+          "minActualWeightperAWB",
+          "maxActualWeightperAWB",
+          "minVolumeWeightperAWB",
+          "maxVolumeWeightperAWB",
+          "minChargeableWeightperAWB",
+          "maxChargeableWeightperAWB",
+          "maxShipmentValue",
+          "maxPcsperAWB"
+        ];
+        
+        resetFields.forEach(field => setValue(field, ""));
+        
+        // Clear any existing notification about loading
+        setNotification(prev => ({ ...prev, visible: false }));
+        
+        return;
+      }
 
-    setSoftwareStatus(swStatus);
-    setPortalStatus(ptStatus);
-    setMultiplePcs(multiPcs);
-    setAverageWeight(avgWeight);
-    
-    setValue("softwareStatus", swStatus);
-    setValue("portalStatus", ptStatus);
-    setValue("multiplePcsAllow", multiPcs);
-    setValue("averageWeightAllow", avgWeight);
+      // Service found - populate data
+      const s = res.data;
+      setServiceData(s);
+      setEditId(s._id);
 
-    // Service details
-    setValue("serviceName", s.serviceName || matchedEntity?.name || "");
+      // Set statuses from DB
+      const swStatus = s.softwareStatus || "Active";
+      const ptStatus = s.portalStatus || "Active";
+      
+      // FIXED: Properly handle boolean values for checkboxes
+      const multiPcs = Boolean(s.multiplePcsAllow);
+      const avgWeight = Boolean(s.averageWeightAllow);
 
-    // New fields - IMPORTANT: Use proper conditional checks for zero values
-    setValue("noOfPcs", s.noOfPcs !== undefined && s.noOfPcs !== 0 ? s.noOfPcs.toString() : "");
-    setValue("averageLimit", s.averageLimit !== undefined && s.averageLimit !== 0 ? s.averageLimit.toString() : "");
-    setValue("boxLimit", s.boxLimit !== undefined && s.boxLimit !== 0 ? s.boxLimit.toString() : "");
-    
-    // ✅ FIXED: Properly set volume discount percentage (ONLY for Service Master form)
-    if (s.volDiscountPercent !== undefined && s.volDiscountPercent !== null && s.volDiscountPercent !== 0) {
-      setValue("volDiscountPercent", s.volDiscountPercent.toString());
-    } else {
-      setValue("volDiscountPercent", "");
+      setSoftwareStatus(swStatus);
+      setPortalStatus(ptStatus);
+      setMultiplePcs(multiPcs);
+      setAverageWeight(avgWeight);
+      
+      setValue("softwareStatus", swStatus);
+      setValue("portalStatus", ptStatus);
+      setValue("multiplePcsAllow", multiPcs);
+      setValue("averageWeightAllow", avgWeight);
+
+      // Service details
+      setValue("serviceName", s.serviceName || matchedEntity?.name || "");
+
+      // New fields - IMPORTANT: Use proper conditional checks for zero values
+      setValue("noOfPcs", s.noOfPcs !== undefined && s.noOfPcs !== 0 ? s.noOfPcs.toString() : "");
+      setValue("averageLimit", s.averageLimit !== undefined && s.averageLimit !== 0 ? s.averageLimit.toString() : "");
+      setValue("boxLimit", s.boxLimit !== undefined && s.boxLimit !== 0 ? s.boxLimit.toString() : "");
+      
+      // ✅ FIXED: Properly set volume discount percentage (ONLY for Service Master form)
+      if (s.volDiscountPercent !== undefined && s.volDiscountPercent !== null && s.volDiscountPercent !== 0) {
+        setValue("volDiscountPercent", s.volDiscountPercent.toString());
+      } else {
+        setValue("volDiscountPercent", "");
+      }
+
+      // Per Pcs
+      setValue("minActualWeightperPcs", s.perPcs?.minActualWeight ? s.perPcs.minActualWeight.toString() : "");
+      setValue("maxActualWeightperPcs", s.perPcs?.maxActualWeight ? s.perPcs.maxActualWeight.toString() : "");
+      setValue("minVolumeWeightperPcs", s.perPcs?.minVolumeWeight ? s.perPcs.minVolumeWeight.toString() : "");
+      setValue("maxVolumeWeightperPcs", s.perPcs?.maxVolumeWeight ? s.perPcs.maxVolumeWeight.toString() : "");
+
+      // Per AWB
+      setValue("minActualWeightperAWB", s.perAWB?.minActualWeight ? s.perAWB.minActualWeight.toString() : "");
+      setValue("maxActualWeightperAWB", s.perAWB?.maxActualWeight ? s.perAWB.maxActualWeight.toString() : "");
+      setValue("minVolumeWeightperAWB", s.perAWB?.minVolumeWeight ? s.perAWB.minVolumeWeight.toString() : "");
+      setValue("maxVolumeWeightperAWB", s.perAWB?.maxVolumeWeight ? s.perAWB.maxVolumeWeight.toString() : "");
+      setValue(
+        "minChargeableWeightperAWB",
+        s.perAWB?.minChargeableWeight ? s.perAWB.minChargeableWeight.toString() : ""
+      );
+      setValue(
+        "maxChargeableWeightperAWB",
+        s.perAWB?.maxChargeableWeight ? s.perAWB.maxChargeableWeight.toString() : ""
+      );
+
+      // Others
+      setValue("maxShipmentValue", s.maxShipmentValue ? s.maxShipmentValue.toString() : "");
+      setValue("maxPcsperAWB", s.maxPcsPerAWB ? s.maxPcsPerAWB.toString() : "");
+
+    } catch (error) {
+      console.error("Error fetching service-master by code:", error);
+      setEditId(null);
+      setServiceData(null);
+      showNotification("error", "Error loading service data. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    // Per Pcs
-    setValue("minActualWeightperPcs", s.perPcs?.minActualWeight ? s.perPcs.minActualWeight.toString() : "");
-    setValue("maxActualWeightperPcs", s.perPcs?.maxActualWeight ? s.perPcs.maxActualWeight.toString() : "");
-    setValue("minVolumeWeightperPcs", s.perPcs?.minVolumeWeight ? s.perPcs.minVolumeWeight.toString() : "");
-    setValue("maxVolumeWeightperPcs", s.perPcs?.maxVolumeWeight ? s.perPcs.maxVolumeWeight.toString() : "");
-
-    // Per AWB
-    setValue("minActualWeightperAWB", s.perAWB?.minActualWeight ? s.perAWB.minActualWeight.toString() : "");
-    setValue("maxActualWeightperAWB", s.perAWB?.maxActualWeight ? s.perAWB.maxActualWeight.toString() : "");
-    setValue("minVolumeWeightperAWB", s.perAWB?.minVolumeWeight ? s.perAWB.minVolumeWeight.toString() : "");
-    setValue("maxVolumeWeightperAWB", s.perAWB?.maxVolumeWeight ? s.perAWB.maxVolumeWeight.toString() : "");
-    setValue(
-      "minChargeableWeightperAWB",
-      s.perAWB?.minChargeableWeight ? s.perAWB.minChargeableWeight.toString() : ""
-    );
-    setValue(
-      "maxChargeableWeightperAWB",
-      s.perAWB?.maxChargeableWeight ? s.perAWB.maxChargeableWeight.toString() : ""
-    );
-
-    // Others
-    setValue("maxShipmentValue", s.maxShipmentValue ? s.maxShipmentValue.toString() : "");
-    setValue("maxPcsperAWB", s.maxPcsPerAWB ? s.maxPcsPerAWB.toString() : "");
-
-  } catch (error) {
-    console.error("Error fetching service-master by code:", error);
-    setEditId(null);
-    setServiceData(null);
-    showNotification("error", "Error loading service data. Please try again.");
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   // Function to clear all service master fields
   const clearServiceMasterFields = () => {
@@ -495,20 +494,25 @@ const fetchServiceMasterData = async (code) => {
     showNotification("success", "Page refreshed successfully");
   };
 
+  // UPDATED: Open code list like in Branch Master
   const openCodeList = () => {
     setCodeListConfig({
       data,
       columns,
       name: "Service Master",
-      handleAction: (selectedItem) => {
-        setValue("code", selectedItem.code);
-        setValue("serviceName", selectedItem.name);
-        setValue("sector", selectedItem.sector);
-        
-        // After selecting from code list, immediately check for service master
-        setTimeout(() => {
-          fetchServiceMasterData(selectedItem.code);
-        }, 100);
+      handleAction: (action, rowData) => {
+        if (action === "edit") {
+          setValue("code", rowData.code);
+          setValue("serviceName", rowData.name);
+          setValue("sector", rowData.sector);
+          
+          // After selecting from code list, immediately check for service master
+          setTimeout(() => {
+            fetchServiceMasterData(rowData.code);
+          }, 100);
+          
+          setToggleCodeList(false);
+        }
       },
     });
 
@@ -530,7 +534,7 @@ const fetchServiceMasterData = async (code) => {
         title={"Service Master"} 
         bulkUploadBtn="hidden" 
         onRefresh={handleRefresh} 
-        onClickCodeList={openCodeList} 
+        onClickCodeList={openCodeList}  
       />
 
       {/* Status Section */}
