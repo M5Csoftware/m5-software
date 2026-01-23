@@ -125,6 +125,16 @@ export function HoldReport() {
     "Custom Range",
   ];
 
+  // Helper function to check if shipment is ready to fly
+  const isReadyToFly = (shipment) => {
+    return (
+      shipment.forwardingNo &&
+      shipment.forwardingNo.trim() !== "" &&
+      (!shipment.runNo || shipment.runNo.trim() === "") &&
+      (!shipment.billNo || shipment.billNo.trim() === "")
+    );
+  };
+
   const downloadHoldReport = async (formData) => {
     setIsLoading(true);
 
@@ -233,6 +243,11 @@ export function HoldReport() {
 
       // Add data rows
       shipments.forEach((shipment) => {
+        // Determine hold reason - if ready to fly, show "Ready to Fly"
+        const displayHoldReason = isReadyToFly(shipment)
+          ? "Ready to Fly"
+          : shipment.holdReason || "";
+
         const row = [
           shipment.awbNo || "",
           shipment.date ? new Date(shipment.date).toLocaleDateString() : "",
@@ -248,7 +263,7 @@ export function HoldReport() {
           shipment.pcs || 0,
           shipment.totalActualWt || 0,
           shipment.chargeableWt || 0,
-          shipment.holdReason || "",
+          displayHoldReason,
           shipment.otherHoldReason || "",
           shipment.localMF || "",
           shipment.createdAt
@@ -355,17 +370,15 @@ export function HoldReport() {
       // Add summary section
       const summaryRowNum = worksheet.rowCount + 2;
 
-      // Count by hold reason categories
+      // Count by hold reason categories using the correct logic
       const creditLimitCount = shipments.filter(
         (s) =>
           s.holdReason &&
           s.holdReason.toLowerCase().includes("credit limit exceeded"),
       ).length;
 
-      const readyToFlyCount = shipments.filter(
-        (s) =>
-          s.holdReason && s.holdReason.toLowerCase().includes("ready to fly"),
-      ).length;
+      // Count ready to fly using the correct logic
+      const readyToFlyCount = shipments.filter((s) => isReadyToFly(s)).length;
 
       const otherReasonsCount =
         shipments.length - creditLimitCount - readyToFlyCount;
@@ -527,7 +540,6 @@ export function HoldReport() {
     </div>
   );
 }
-
 export function DataCardWithTable({
   register,
   setValue,
