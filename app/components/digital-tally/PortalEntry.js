@@ -76,21 +76,30 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
   useEffect(() => {
     const fetchManifestNumbers = async () => {
       try {
-        const res = await axios.get(
-          `${server}/portal/manifest?manifestNumber=${manifestNumber}`
-        );
+        const res = await axios.get(`${server}/portal/manifest`, {
+          params: { manifestNumber },
+        });
         const data = res.data;
 
-        console.log("Fetched manifest numbers:", data.manifest.awbNumbers);
+        console.log("Fetched manifest numbers:", data.manifest?.awbNumbers);
 
-        setMawbOptions(data.manifest.awbNumbers || []);
+        setMawbOptions(data.manifest?.awbNumbers || []);
       } catch (error) {
         console.error("Failed to fetch manifest numbers:", error);
+        // Try alternative endpoint if needed
+        // try {
+        //   const altRes = await axios.get(`${server}/manifest?number=${manifestNumber}`);
+        //   setMawbOptions(altRes.data?.awbNumbers || []);
+        // } catch (altError) {
+        //   console.error("Alternative fetch also failed:", altError);
+        // }
       }
     };
 
-    if (manifestNumber) {
+    if (manifestNumber && manifestNumber.length >= 2) {
       fetchManifestNumbers();
+    } else {
+      setMawbOptions([]);
     }
   }, [manifestNumber, server]);
 
@@ -99,10 +108,16 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
 
     try {
       const res = await axios.get(
-        `${server}/portal/get-shipments?awbNo=${mawbNumber}`
+        `${server}/portal/get-shipments?awbNo=${mawbNumber}`,
       );
       const data = res.data.shipment;
       const boxes = data.boxes || [];
+
+      console.log("Boxes data:", boxes);
+      if (boxes.length > 0) {
+        console.log("First box details:", boxes[0]);
+      }
+
       setBoxOptions(boxes);
 
       if (boxes.length > 0) {
@@ -119,7 +134,7 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
 
     try {
       const res = await axios.get(
-        `${server}/portal/get-shipments?awbNo=${mawbNumber}`
+        `${server}/portal/get-shipments?awbNo=${mawbNumber}`,
       );
 
       const data = res.data.shipment;
@@ -137,7 +152,7 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
         if (data.accountCode) {
           try {
             const customerRes = await axios.get(
-              `${server}/customer-account?accountCode=${data.accountCode}`
+              `${server}/customer-account?accountCode=${data.accountCode}`,
             );
             const customerEmail = customerRes.data.email || "";
             setValue("email", customerEmail);
@@ -178,49 +193,50 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
     }
   };
 
+  // Update the applyBoxData function to handle missing data better
   const applyBoxData = (box) => {
-    if (!box) return;
+    if (!box) {
+      console.log("No box data available");
+      return;
+    }
 
-    setValue("portalActualWeight", box.actualWt || "");
-    setValue("portalLength", box.length || "");
-    setValue("portalBreadth", box.width || "");
-    setValue("portalHeight", box.height || "");
-    setValue("portalVolWeight", box.volumeWeight || "");
+    console.log("Applying box data:", JSON.stringify(box, null, 2));
 
-    compareValues(box);
+    // Try different possible field names with better fallback
+    const actualWeight =
+      box.actualWt ?? box.actualWeight ?? box.weight ?? box.actualWt ?? "";
+    const length = box.length ?? box.l ?? "";
+    const breadth = box.width ?? box.breadth ?? box.b ?? "";
+    const height = box.height ?? box.h ?? "";
+
+    // Calculate volume weight if dimensions exist but volWeight doesn't
+    let volumeWeight = box.volumeWeight ?? box.volWeight ?? box.volWt ?? "";
+
+    if (!volumeWeight && length && breadth && height) {
+      volumeWeight = (
+        (Number(length) * Number(breadth) * Number(height)) /
+        5000
+      ).toFixed(2);
+      console.log("Calculated portal volumeWeight:", volumeWeight);
+    }
+
+    setValue("portalActualWeight", actualWeight);
+    setValue("portalLength", length);
+    setValue("portalBreadth", breadth);
+    setValue("portalHeight", height);
+    setValue("portalVolWeight", volumeWeight);
+
+    console.log("Set portal values:", {
+      portalActualWeight: actualWeight,
+      portalLength: length,
+      portalBreadth: breadth,
+      portalHeight: height,
+      portalVolWeight: volumeWeight,
+    });
+
+    // Trigger comparison after setting values
+    setTimeout(() => compareValues(box), 100);
   };
-
-  // const compareValues = (portalData) => {
-  //   const reasons = [];
-  //   const calculatedVolWeightData = (
-  //     (Number(length) * Number(breadth) * Number(height)) /
-  //     5000
-  //   ).toFixed(2);
-  //   setCalculatedVolWeight(calculatedVolWeightData);
-  //   setValue("volWeight", calculatedVolWeightData);
-
-  //   if (Number(actualWeight) !== Number(portalData.totalWeight))
-  //     reasons.push("Actual Weight Mismatch");
-  //   if (Number(length) !== Number(portalData.length))
-  //     reasons.push("Length Mismatch");
-  //   if (Number(breadth) !== Number(portalData.width))
-  //     reasons.push("Breadth Mismatch");
-  //   if (Number(height) !== Number(portalData.height))
-  //     reasons.push("Height Mismatch");
-
-  //   const epsilon = 0.01;
-  //   if (
-  //     Math.abs(
-  //       Number(calculatedVolWeight) - Number(portalData.volumetricWeight)
-  //     ) > epsilon
-  //   ) {
-  //     reasons.push("Vol. Weight Mismatch");
-  //   }
-
-  //   setHold(reasons.length > 0);
-  //   setHoldReasons(reasons);
-  //   setValue("holdReason", reasons.join(", "));
-  // };
 
   const compareValues = (portalData) => {
     if (!actualWeight || !length || !breadth || !height) {
@@ -242,12 +258,45 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
     const epsilon = 0.01;
 
     if (portalData) {
-      if (Number(actualWeight) !== Number(portalData.actualWt || 0)) {
+      const portalActualWt = Number(
+        portalData.actualWt ??
+          portalData.actualWeight ??
+          portalData.weight ??
+          0,
+      );
+
+      // Get portal vol weight, calculate if missing
+      let portalVol = Number(
+        portalData.volumeWeight ??
+          portalData.volWeight ??
+          portalData.volWt ??
+          0,
+      );
+
+      // If portal doesn't have volWeight but has dimensions, calculate it
+      if (
+        !portalVol &&
+        portalData.length &&
+        portalData.breadth &&
+        portalData.height
+      ) {
+        portalVol = Number(
+          (
+            (portalData.length * portalData.breadth * portalData.height) /
+            5000
+          ).toFixed(2),
+        );
+        // Update the form field with calculated value
+        setValue("portalVolWeight", portalVol);
+      }
+
+      if (Number(actualWeight) !== portalActualWt) {
         reasons.push("Actual Weight Mismatch");
       }
-      const epsilon = 0.01;
-      const portalVol = Number(portalData.volumeWeight || 0);
-      if (Math.abs(Number(calculatedVolWeightData) - portalVol) > epsilon) {
+      if (
+        portalVol > 0 &&
+        Math.abs(Number(calculatedVolWeightData) - portalVol) > epsilon
+      ) {
         reasons.push("Vol. Weight Mismatch");
       }
     }
@@ -267,20 +316,25 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
     return () => clearTimeout(timeout);
   }, [actualWeight, length, breadth, height]);
 
-  // const handleAddToTable = () => {
-  //   const newRow = {
-  //     awbNo: mawbNumber,
-  //     rcvDate: new Date().toLocaleDateString("en-GB"),
-  //     actWgt: actualWeight,
-  //     volwgt: watch("volWeight"),
-  //     service: watch("service"),
-  //     status: hold ? "Hold" : "Matched",
-  //     "Hold Reason": holdReasons.join(", "),
-  //   };
-  //   setRowData((prev) => [...prev, newRow]);
-  // };
+  // Debug effect to log current form values
+  useEffect(() => {
+    console.log("Current form values:", {
+      portalActualWeight: watch("portalActualWeight"),
+      portalVolWeight: watch("portalVolWeight"),
+      portalLength: watch("portalLength"),
+      portalBreadth: watch("portalBreadth"),
+      portalHeight: watch("portalHeight"),
+    });
+  }, [watch]);
+
+  // Effect to update portal data when box changes
+  useEffect(() => {
+    if (boxOptions[selectedBoxIndex]) {
+      applyBoxData(boxOptions[selectedBoxIndex]);
+    }
+  }, [selectedBoxIndex, boxOptions]);
+
   const handleAddToTable = () => {
-    // ✅ FIX: Determine correct status for table display
     const shouldHold = hold && holdReasons.length > 0;
     const status = shouldHold ? "Hold" : "Arrived at Origin Gateway Hub";
 
@@ -290,20 +344,18 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
       actWgt: actualWeight,
       volwgt: watch("volWeight"),
       service: watch("service"),
-      status: status, // ✅ Use the corrected status
+      status: status,
       "Hold Reason": shouldHold ? holdReasons.join(", ") : "-",
     };
     setRowData((prev) => [...prev, newRow]);
   };
 
   const handleSendEmail = async () => {
-    // Validate email checkbox
     if (!eMail) {
       console.log("Please enable Email checkbox to send email");
       return;
     }
 
-    // Validate table data
     if (rowData.length === 0) {
       console.log("Please add data to the table before sending email");
       return;
@@ -313,13 +365,11 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
     const customerName = watch("client");
     const cdNumber = watch("manifestNumber");
 
-    // Validate email
     if (!customerEmail) {
       showNotification("error", "Customer email is required");
       return;
     }
 
-    // Email validation regex
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(customerEmail)) {
       showNotification("error", "Please enter a valid email address");
@@ -342,7 +392,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
       } else {
         showNotification(
           "error",
-          "Failed to send email: " + (response.data.message || "Unknown error")
+          "Failed to send email: " + (response.data.message || "Unknown error"),
         );
       }
     } catch (error) {
@@ -357,13 +407,11 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
 
   const handleSave = async () => {
     try {
-      // ✅ Get both userId and userName from AuthContext
       const entryUser = user?.userId || "Unknown";
       const entryUserName = user?.userName || "Unknown";
 
       console.log("Entry User:", { entryUser, entryUserName, user });
 
-      // ✅ Validate required fields
       if (!watch("manifestNumber")) {
         showNotification("error", "Manifest Number is required");
         return;
@@ -374,20 +422,17 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         return;
       }
 
-      // ✅ Use first AWB number as per requirement
       const firstAwb = rowData[0]?.awbNo || "";
 
-      // ✅ Determine correct status
       const status =
         hold && holdReasons.length > 0
           ? "Hold"
           : "Arrived at Origin Gateway Hub";
 
-      // ✅ Build payload
       const payload = {
         entryType: "Portal",
         manifestNumber: watch("manifestNumber") || "",
-        mawbNumber: firstAwb, // must be string
+        mawbNumber: firstAwb,
         code: watch("code") || "",
         client: watch("client") || "",
         email: watch("email") || "",
@@ -396,7 +441,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         hubName: watch("hubName") || "",
         hubCode: watch("hubCode") || "",
         statusDate:
-          watch("statusDate") || new Date().toLocaleDateString("en-GB"), // DD/MM/YYYY
+          watch("statusDate") || new Date().toLocaleDateString("en-GB"),
         time:
           watch("time") ||
           new Date().toLocaleTimeString("en-GB", {
@@ -404,7 +449,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
             minute: "2-digit",
           }),
         remarks: watch("remarks") || "",
-        status: status, // ✅ Use correct status
+        status: status,
         hold: !!hold,
         holdReason: holdReasons.length ? holdReasons.join(", ") : "",
         actualWeight: watch("actualWeight") || null,
@@ -419,9 +464,9 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         portalVolWeight: watch("portalVolWeight") || null,
         consigneeDetails: watch("ConsigneeDetails") || "",
         consignorDetails: watch("ConsignorDetails") || "",
-        baggingTable: rowData, // all AWBs included here
-        inscanUser: entryUser, // ✅ Send inscanUser
-        inscanUserName: entryUserName, // ✅ Send inscanUserName
+        baggingTable: rowData,
+        inscanUser: entryUser,
+        inscanUserName: entryUserName,
       };
 
       console.log("Payload:", JSON.stringify(payload, null, 2));
@@ -432,7 +477,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         return;
       }
 
-      // ✅ Send payload to API
       const res = await axios.post(`${server}/digital-tally`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -443,7 +487,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         showNotification("success", "Portal entry saved successfully! ✅");
         console.log("✅ Response:", res.data);
 
-        // ✅ SAVE TO EVENT ACTIVITY FOR EACH AWB IN ROWDATA
         const currentDate = new Date();
         const formattedDate = currentDate.toLocaleDateString("en-GB");
         const formattedTime = currentDate.toLocaleTimeString("en-GB", {
@@ -451,7 +494,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
           minute: "2-digit",
         });
 
-        // Save EventActivity for each AWB in the table
         for (const row of rowData) {
           if (row.awbNo) {
             const eventCode = "OGH";
@@ -466,7 +508,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
             });
 
             try {
-              // Save EventActivity for this AWB
               const eventActivityPayload = {
                 awbNo: row.awbNo,
                 eventCode: eventCode,
@@ -485,26 +526,24 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 eventActivityPayload,
                 {
                   headers: { Authorization: `Bearer ${token}` },
-                }
+                },
               );
 
               console.log(
                 "✅ EventActivity saved for AWB:",
                 row.awbNo,
-                eventRes.data
+                eventRes.data,
               );
             } catch (eventError) {
               console.error(
                 "❌ Failed to save EventActivity for AWB:",
                 row.awbNo,
-                eventError
+                eventError,
               );
-              // Continue with other AWBs even if one fails
             }
           }
         }
 
-        // ✅ Reset form after save
         setRowData([]);
         setHoldReasons([]);
         setHold(false);
@@ -523,19 +562,17 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         setConsignorDetails("");
       }
 
-      // ✅ Extract response safely
       const responseData = res.data || {};
       const accountCode = responseData.code || payload.code;
 
       console.log("Response Data for logs:", responseData);
       console.log("Account Code for logs:", accountCode);
 
-      // ✅ Helper: Get customer name
       const getCustomerName = async (accountCode) => {
         if (!accountCode) return "";
         try {
           const customerResponse = await axios.get(
-            `${server}/customer-account?accountCode=${accountCode}`
+            `${server}/customer-account?accountCode=${accountCode}`,
           );
           return customerResponse.data?.name || "";
         } catch (err) {
@@ -544,12 +581,10 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         }
       };
 
-      // ✅ Log AWB activity only for successful new creation (201)
       if (res.status === 200 || res.status === 201) {
         const customer = await getCustomerName(accountCode);
         const awbNo = responseData.awbNo || firstAwb;
 
-        // ✅ Push AWB log
         const awbLogPayload = {
           awbNo,
           accountCode,
@@ -562,7 +597,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         const awbLogResponse = await pushAWBLog(awbLogPayload);
         console.log("AWB log response:", awbLogResponse);
 
-        // ✅ Push hold log (only if hold reason exists)
         if (payload.hold && payload.holdReason) {
           const holdLogPayload = {
             awbNo,
@@ -583,7 +617,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
       console.error("Error response:", error.response?.data);
       showNotification(
         "error",
-        "Error: " + (error.response?.data?.details || error.message)
+        "Error: " + (error.response?.data?.details || error.message),
       );
     }
   };
@@ -594,12 +628,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
       fetchShipmentData();
     }
   }, [mawbNumber]);
-
-  useEffect(() => {
-    if (boxOptions[selectedBoxIndex]) {
-      applyBoxData(boxOptions[selectedBoxIndex]);
-    }
-  }, [selectedBoxIndex]);
 
   const columns = [
     { key: "awbNo", label: "AWB No." },
@@ -620,7 +648,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
       <div className="flex w-full gap-4">
-        {" "}
         <div className="flex gap-4 w-1/2">
           <DummyInputBoxWithLabelDarkGray
             placeholder="--/--/--"
@@ -628,6 +655,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
             register={register}
             setValue={setValue}
             value={`statusDate`}
+            watch={watch}
           />
           <DummyInputBoxWithLabelDarkGray
             placeholder="00:00"
@@ -635,8 +663,9 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
             register={register}
             setValue={setValue}
             value={`time`}
+            watch={watch}
           />
-        </div>{" "}
+        </div>
         <div className="flex gap-4 w-1/2">
           <DummyInputBoxWithLabelDarkGray
             placeholder="Hub Code"
@@ -644,16 +673,16 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
             register={register}
             setValue={setValue}
             value="hubCode"
+            watch={watch}
             disabled
           />
           <LabeledDropdown
-            options={hubList.map((hub) => hub.name)} // show hub names
+            options={hubList.map((hub) => hub.name)}
             register={register}
             setValue={(name, value) => {
               setValue(name, value);
-              // find matching hub code
               const hub = hubList.find(
-                (h) => h.name.toLowerCase() === value.toLowerCase()
+                (h) => h.name.toLowerCase() === value.toLowerCase(),
               );
               setValue("hubCode", hub ? hub.code : "");
             }}
@@ -664,7 +693,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
       </div>
       <div className="flex gap-6 w-full">
         <div className="flex flex-col gap-3 w-1/2">
-          {/* MAWB + Box selector + Total boxes row */}
           <div className="flex gap-3 items-end">
             <div className="flex flex-col w-full gap-4">
               <RedLabelHeading label="Shipment Details" />
@@ -740,7 +768,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                   className="px-2 py-1 disabled:opacity-50"
                   onClick={() =>
                     setSelectedBoxIndex((prev) =>
-                      Math.min(prev + 1, boxOptions.length - 1)
+                      Math.min(prev + 1, boxOptions.length - 1),
                     )
                   }
                   disabled={selectedBoxIndex === boxOptions.length - 1}
@@ -753,10 +781,25 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                   />
                 </button>
               </div>
+
+              {/* Debug button */}
+              {/* <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (boxOptions[selectedBoxIndex]) {
+                      console.log("Current box:", boxOptions[selectedBoxIndex]);
+                      applyBoxData(boxOptions[selectedBoxIndex]);
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                >
+                  Refresh Portal Data
+                </button>
+              </div> */}
             </div>
           </div>
 
-          {/* Tally and Portal section */}
           <div className="flex gap-3">
             <div className="w-full flex flex-col gap-4">
               <RedLabelHeading label="Tally" />
@@ -838,6 +881,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 setValue={setValue}
                 initialValue={calculatedVolWeight || ""}
                 value="volWeight"
+                watch={watch}
               />
             </div>
 
@@ -847,36 +891,46 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 label="Actual Weight"
                 register={register}
                 setValue={setValue}
-                initialValue={selectedTally?.portalActualWeight || ""}
+                initialValue={watch("portalActualWeight") || ""}
                 value="portalActualWeight"
+                watch={watch}
+                disabled
               />
               <DummyInputBoxWithLabelDarkGray
                 label="Length"
                 register={register}
                 setValue={setValue}
-                initialValue={selectedTally?.portalLength || ""}
+                initialValue={watch("portalLength") || ""}
                 value="portalLength"
+                watch={watch}
+                disabled
               />
               <DummyInputBoxWithLabelDarkGray
                 label="Breadth"
                 register={register}
                 setValue={setValue}
-                initialValue={selectedTally?.portalBreadth || ""}
+                initialValue={watch("portalBreadth") || ""}
                 value="portalBreadth"
+                watch={watch}
+                disabled
               />
               <DummyInputBoxWithLabelDarkGray
                 label="Height"
                 register={register}
-                initialValue={selectedTally?.portalHeight || ""}
                 setValue={setValue}
+                initialValue={watch("portalHeight") || ""}
                 value="portalHeight"
+                watch={watch}
+                disabled
               />
               <DummyInputBoxWithLabelDarkGray
                 label="Vol. Weight"
                 register={register}
                 setValue={setValue}
-                initialValue={selectedTally?.portalVolWeight || ""}
+                initialValue={watch("portalVolWeight") || ""}
                 value="portalVolWeight"
+                watch={watch}
+                disabled
               />
             </div>
           </div>
@@ -895,9 +949,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
               <LabeledDropdown
                 options={[
                   "Actual Weight Mismatch",
-                  // "Length Mismatch",
-                  // "Breadth Mismatch",
-                  // "Height Mismatch",
                   "Vol. Weight Mismatch",
                   "Shipment & Packaging Issues",
                   "Overweight Item - OW",
@@ -953,10 +1004,11 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
               <div
                 className="flex h-[40px] bg-gray-200 border border-gray-300 rounded items-center p-4 text-gray-600 cursor-pointer"
                 onClick={() => {
-                  setSelectedReason(watch("selectedReason"));
-                  console.log("hello", selectedReason);
-                  if (selectedReason && !holdReasons.includes(selectedReason)) {
-                    const updated = [...holdReasons, selectedReason];
+                  const currentReason = watch("selectedReason");
+                  setSelectedReason(currentReason);
+                  console.log("Adding reason:", currentReason);
+                  if (currentReason && !holdReasons.includes(currentReason)) {
+                    const updated = [...holdReasons, currentReason];
                     setHoldReasons(updated);
                     setHold(true);
                     setValue("holdReason", updated.join(", "));
@@ -1011,6 +1063,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 register={register}
                 setValue={setValue}
                 value="code"
+                watch={watch}
               />
             </div>
             <DummyInputBoxWithLabelDarkGray
@@ -1018,6 +1071,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
               register={register}
               setValue={setValue}
               value="client"
+              watch={watch}
             />
           </div>
           <div className="flex gap-2 mt-1">
@@ -1026,12 +1080,14 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
               register={register}
               setValue={setValue}
               value="email"
+              watch={watch}
             />
             <DummyInputBoxWithLabelDarkGray
               label="Phone Number"
               register={register}
               setValue={setValue}
               value="phoneNumber"
+              watch={watch}
             />
           </div>
           <div className="flex gap-2">
@@ -1120,6 +1176,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
               register={register}
               setValue={setValue}
               value="remarks"
+              watch={watch}
             />
             <div>
               <SimpleButton name="Save" onClick={handleSave} />

@@ -383,7 +383,7 @@ export function SalesPersonCard({ rows }) {
   }, [selectedHub, month]);
 
   return (
-    <div className="rounded-lg border bg-[#F6F8F9] shadow-sm p-6 flex flex-col h-[964px]">
+    <div className="rounded-lg border bg-[#F6F8F9] shadow-sm p-6 flex flex-col min-h-[60vh]">
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <h2 className="font-bold text-black text-md">Sale Person</h2>
       </div>
@@ -444,7 +444,7 @@ export function OutstandingCard() {
   }, [server]);
 
   return (
-    <div className="rounded-lg border bg-[#F6F8F9] shadow-sm p-4 flex flex-col h-[810px]">
+    <div className="rounded-lg border bg-[#F6F8F9] shadow-sm p-4 flex flex-col min-h-[49vh]">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-semibold text-gray-800 text-lg">Outstanding</h2>
@@ -861,8 +861,8 @@ export function HSSBReport({ setNotification }) {
         <h2 className="font-bold">HSSB State-wise Report</h2>
 
         <form onSubmit={handleSubmit(onDownload)} className="flex flex-col">
-          <div className="flex gap-3 pb-2">
-            <div className="flex gap-3">
+          <div className="flex w-full gap-3 pb-2">
+            <div className="flex w-full gap-3">
               {/* State Dropdown (same source as Account form) */}
               <div className="w-1/4">
                 <LabeledDropdown

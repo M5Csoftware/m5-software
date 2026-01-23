@@ -56,7 +56,7 @@ export function MonthInput({
         onChange={handleChange}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        className={`border outline-none rounded-md h-10 px-2.5 py-2 w-full bg-transparent
+        className={`border outline-none rounded-md h-8 px-2.5 py-1 w-full bg-transparent
           ${error ? "border-red" : "border-[#979797]"}
           ${disabled ? "bg-white-smoke" : ""}
           ${isPlaceholderFloating ? "" : "text-transparent"}`}
