@@ -106,7 +106,7 @@ function SalesDashboardLayout() {
             />
 
             {/* Fixed Height Outstanding */}
-            <div className="h-[800px]">
+            <div className="">
               <OutstandingCard />
             </div>
           </div>
