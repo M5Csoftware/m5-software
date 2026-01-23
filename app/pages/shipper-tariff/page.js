@@ -1,7 +1,7 @@
 "use client";
 import { DeleteButton } from "@/app/components/AddUpdateDeleteButton";
 import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
-import { LabeledDropdown } from "@/app/components/Dropdown";
+import { LabeledDropdown, DropdownRedLabel } from "@/app/components/Dropdown";
 import Heading from "@/app/components/Heading";
 import InputBox, {
   DateInputBox,
@@ -33,6 +33,8 @@ const ShipperTariff = () => {
   const [zoneMatrixOptions, setzoneMatrixOptions] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [networkOptions, setNetworkOptions] = useState([]);
+  const [rateTariffOptions, setRateTariffOptions] = useState([]);
+  const [selectedRateTariff, setSelectedRateTariff] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const { sectors, server } = useContext(GlobalContext);
@@ -67,6 +69,39 @@ const ShipperTariff = () => {
     return "";
   };
 
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return "";
+    
+    try {
+      // Handle different date formats
+      if (typeof dateString === 'string') {
+        // If it's already in YYYY-MM-DD format
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+          return dateString;
+        }
+        
+        // If it's in ISO format with time
+        if (dateString.includes('T')) {
+          return dateString.split('T')[0];
+        }
+        
+        // Try to parse it
+        const date = new Date(dateString);
+        if (!isNaN(date.getTime())) {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        }
+      }
+      
+      return dateString;
+    } catch (error) {
+      console.error("Error formatting date:", error, dateString);
+      return dateString;
+    }
+  };
+
   // Fetch customer names with account codes
   const fetchCustomerNames = async () => {
     try {
@@ -95,74 +130,90 @@ const ShipperTariff = () => {
     }
   };
 
+  // Fetch rate tariff options from rate sheet
+  const fetchRateTariffOptions = async () => {
+    try {
+      const response = await axios.get(`${server}/rate-sheet`);
+      const rateData = response.data;
+
+      // Extract unique shipper names
+      const uniqueRateTariffs = [...new Set(rateData.map(item => item.shipper))].filter(Boolean);
+      setRateTariffOptions(uniqueRateTariffs.sort());
+    } catch (error) {
+      console.error("Error fetching rate tariff data:", error);
+      setRateTariffOptions([]);
+    }
+  };
+
   // Fetch zones data based on sector
-const fetchZonesData = async (sector) => {
-  if (!sector || sector === "All") {
-    setServiceOptions([]);
-    setzoneMatrixOptions([]);
-    return;
-  }
-
-  console.log("🔍 Fetching zones for sector:", sector);
-
-  try {
-    // Send the sector as-is to the backend
-    // Backend should handle normalization
-    const response = await axios.get(
-      `${server}/shipper-tariff/get-zones?sector=${encodeURIComponent(sector)}`
-    );
-    
-    console.log("✅ Zones response:", response.data);
-    
-    // Transform the response data to match your UI needs
-    const services = response.data?.services || [];
-    const zoneMatrices = response.data?.zoneMatrix || [];
-    
-    console.log("📋 Services found:", services);
-    console.log("📋 Zone Matrices found:", zoneMatrices);
-    
-    setServiceOptions(services);
-    setzoneMatrixOptions(zoneMatrices);
-    
-  } catch (error) {
-    console.error("❌ Error fetching zones data:", error);
-    console.error("Error details:", error.response?.data || error.message);
-    setServiceOptions([]);
-    setzoneMatrixOptions([]);
-    
-    // Show notification to user
-    showNotification("error", "Failed to load services and zones. Please try again.");
-  }
-};
-
-
-  // Fetch applicable rates from database based on sector and client
- const fetchApplicableRates = async (sector, client) => {
-  if (!client) {
-    setRowData([]);
-    return;
-  }
-
-  try {
-    let url = `${server}/shipper-tariff?customer=${encodeURIComponent(client)}`;
-
-    // If sector is not "All", add sector filter
-    if (sector && sector !== "All") {
-      url += `&sector=${encodeURIComponent(sector)}`;
+  const fetchZonesData = async (sector) => {
+    if (!sector || sector === "All") {
+      setServiceOptions([]);
+      setzoneMatrixOptions([]);
+      return;
     }
 
-    console.log("Fetching rates from:", url);
-    
-    const response = await axios.get(url);
-    console.log("Fetched applicable rates:", response.data);
+    console.log("🔍 Fetching zones for sector:", sector);
 
-    // Data is already transformed by backend
-    setRowData(response.data || []);
-  } catch (error) {
-    console.error("Error fetching applicable rates:", error);
-    setRowData([]);
-  }
-};
+    try {
+      // Send the sector as-is to the backend
+      // Backend should handle normalization
+      const response = await axios.get(
+        `${server}/shipper-tariff/get-zones?sector=${encodeURIComponent(sector)}`
+      );
+      
+      console.log("✅ Zones response:", response.data);
+      
+      // Transform the response data to match your UI needs
+      const services = response.data?.services || [];
+      const zoneMatrices = response.data?.zoneMatrix || [];
+      
+      console.log("📋 Services found:", services);
+      console.log("📋 Zone Matrices found:", zoneMatrices);
+      
+      setServiceOptions(services);
+      setzoneMatrixOptions(zoneMatrices);
+      
+    } catch (error) {
+      console.error("❌ Error fetching zones data:", error);
+      console.error("Error details:", error.response?.data || error.message);
+      setServiceOptions([]);
+      setzoneMatrixOptions([]);
+      
+      // Show notification to user
+      showNotification("error", "Failed to load services and zones. Please try again.");
+    }
+  };
+
+  // Fetch applicable rates from database based on sector and client
+  const fetchApplicableRates = async (sector, client) => {
+    if (!client) {
+      setRowData([]);
+      return;
+    }
+
+    try {
+      let url = `${server}/shipper-tariff?customer=${encodeURIComponent(client)}`;
+
+      if (sector && sector !== "All") {
+        url += `&sector=${encodeURIComponent(sector)}`;
+      }
+
+      const response = await axios.get(url);
+      
+      // Transform the dates in the response
+      const formattedData = response.data.map(item => ({
+        ...item,
+        fromDate: formatDisplayDate(item.fromDate),
+        toDate: formatDisplayDate(item.toDate)
+      }));
+      
+      setRowData(formattedData || []);
+    } catch (error) {
+      console.error("Error fetching applicable rates:", error);
+      setRowData([]);
+    }
+  };
 
   //Fetch Network
   const fetchNetworkData = async () => {
@@ -181,6 +232,7 @@ const fetchZonesData = async (sector) => {
   useEffect(() => {
     fetchCustomerNames();
     fetchNetworkData();
+    fetchRateTariffOptions();
   }, []);
 
   useEffect(() => {
@@ -208,100 +260,102 @@ const fetchZonesData = async (sector) => {
   }, [selectedClient]);
 
   // Add to table only
+  useEffect(() => {
+    const service = watch("service");
+    const client = watch("client");
+    const sector = watch("sector");
+    const zoneMatrix = watch("zoneMatrix");
+    const network = watch("network");
 
- useEffect(() => {
-  const service = watch("service");
-  const client = watch("client");
-  const sector = watch("sector");
-  const zoneMatrix = watch("zoneMatrix");
-  const network = watch("network");
+    if (!service || !client || !sector) return;
 
-  if (!service || !client || !sector) return;
+    // Helper function for case-insensitive comparison
+    const normalizeStr = (str) => (str || "").toString().toLowerCase().trim();
 
-  // Helper function for case-insensitive comparison
-  const normalizeStr = (str) => (str || "").toString().toLowerCase().trim();
+    const match = rowData.find(
+      (row) =>
+        normalizeStr(row.customer) === normalizeStr(client) &&
+        normalizeStr(row.country) === normalizeStr(sector) &&
+        normalizeStr(row.service) === normalizeStr(service)
+    );
 
-  const match = rowData.find(
-    (row) =>
-      normalizeStr(row.customer) === normalizeStr(client) &&
-      normalizeStr(row.country) === normalizeStr(sector) &&
-      normalizeStr(row.service) === normalizeStr(service)
-  );
+    if (match) {
+      setValue("rateTariff", match.rateTariff);
+      setSelectedRateTariff(match.rateTariff);
+      setValue("mode", match.mode);
+      setValue("from", normalizeDate(match.fromDate));
+      setValue("to", normalizeDate(match.toDate));
+    } else {
+      setValue("rateTariff", "");
+      setSelectedRateTariff("");
+      setValue("mode", "");
+      setValue("from", "");
+      setValue("to", "");
+    }
+  }, [watch("service"), watch("zoneMatrix"), watch("network")]);
 
-  if (match) {
-    setValue("rateTariff", match.rateTariff);
-    setValue("mode", match.mode);
-    setValue("from", normalizeDate(match.fromDate));
-    setValue("to", normalizeDate(match.toDate));
-  } else {
-    setValue("rateTariff", "");
-    setValue("mode", "");
-    setValue("from", "");
-    setValue("to", "");
-  }
-}, [watch("service"), watch("zoneMatrix"), watch("network")]);
   const handleApplicableRates = () => {
-  if (
-    !watch("sector") ||
-    !watch("client") ||
-    !watch("network") ||
-    !watch("service") ||
-    !watch("zoneMatrix") ||
-    !watch("rateTariff") ||
-    !watch("mode") ||
-    !watch("from") ||
-    !watch("to")
-  ) {
-    trigger();
-    return;
-  }
+    if (
+      !watch("sector") ||
+      !watch("client") ||
+      !watch("network") ||
+      !watch("service") ||
+      !watch("zoneMatrix") ||
+      !watch("rateTariff") ||
+      !watch("mode") ||
+      !watch("from") ||
+      !watch("to")
+    ) {
+      trigger();
+      return;
+    }
 
-  const formData = getValues();
+    const formData = getValues();
 
-  const fromDate = normalizeDate(formData.from);
-  const toDate = normalizeDate(formData.to);
+    const fromDate = normalizeDate(formData.from);
+    const toDate = normalizeDate(formData.to);
 
-  if (!fromDate || !toDate) {
-    showNotification("error", "Invalid date format");
-    return;
-  }
+    if (!fromDate || !toDate) {
+      showNotification("error", "Invalid date format");
+      return;
+    }
 
-  const newRow = {
-    id: Date.now(),
-    customer: formData.client,
-    network: formData.network,
-    service: formData.service,
-    zoneMatrix: formData.zoneMatrix,
-    rateTariff: formData.rateTariff,
-    country: formData.sector,
-    mode: formData.mode,
-    fromDate,
-    toDate,
+    const newRow = {
+      id: Date.now(),
+      customer: formData.client,
+      network: formData.network,
+      service: formData.service,
+      zoneMatrix: formData.zoneMatrix,
+      rateTariff: formData.rateTariff,
+      country: formData.sector,
+      mode: formData.mode,
+      fromDate: formatDisplayDate(fromDate),
+      toDate: formatDisplayDate(toDate),
+    };
+    const normalizeStr = (str) => (str || "").toString().toLowerCase().trim();
+
+    // ✅ Check if same tariff already exists (case-insensitive)
+    const existsIndex = rowData.findIndex(
+      (row) =>
+        normalizeStr(row.customer) === normalizeStr(formData.client) &&
+        normalizeStr(row.country) === normalizeStr(formData.sector) &&
+        normalizeStr(row.service) === normalizeStr(formData.service)
+    );
+
+    if (existsIndex !== -1) {
+      // ✅ Update existing row
+      const updatedRows = [...rowData];
+      updatedRows[existsIndex] = { ...updatedRows[existsIndex], ...newRow };
+      setRowData(updatedRows);
+      console.log("🔄 Modified existing tariff:", newRow);
+      showNotification("success", "Tariff updated in table");
+    } else {
+      // ✅ Insert new row
+      setRowData((prev) => [...prev, newRow]);
+      console.log("➕ Added new tariff:", newRow);
+      showNotification("success", "Tariff added to table");
+    }
   };
-  const normalizeStr = (str) => (str || "").toString().toLowerCase().trim();
-
-  // ✅ Check if same tariff already exists (case-insensitive)
-  const existsIndex = rowData.findIndex(
-    (row) =>
-      normalizeStr(row.customer) === normalizeStr(formData.client) &&
-      normalizeStr(row.country) === normalizeStr(formData.sector) &&
-      normalizeStr(row.service) === normalizeStr(formData.service)
-  );
-
-  if (existsIndex !== -1) {
-    // ✅ Update existing row
-    const updatedRows = [...rowData];
-    updatedRows[existsIndex] = { ...updatedRows[existsIndex], ...newRow };
-    setRowData(updatedRows);
-    console.log("🔄 Modified existing tariff:", newRow);
-    showNotification("success", "Tariff updated in table");
-  } else {
-    // ✅ Insert new row
-    setRowData((prev) => [...prev, newRow]);
-    console.log("➕ Added new tariff:", newRow);
-    showNotification("success", "Tariff added to table");
-  }
-};
 
   // Save to database
   const onSubmit = async () => {
@@ -319,6 +373,7 @@ const fetchZonesData = async (sector) => {
       setRowData([]);
       setServiceOptions([]);
       setzoneMatrixOptions([]);
+      setSelectedRateTariff("");
       setResetFlag(!resetFlag);
       console.log("Data saved successfully!");
       showNotification("success", "shipper tariff data added successfully!");
@@ -365,7 +420,6 @@ const fetchZonesData = async (sector) => {
   const sectorOptions = ["All", ...sectors.map((sector) => sector.name)];
 
   // Edit & Delete Row
-
   const [modalOpen, setModalOpen] = useState(false);
   const [modalAction, setModalAction] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(null);
@@ -428,6 +482,7 @@ const fetchZonesData = async (sector) => {
     setValue("service", row.service);
     setValue("zoneMatrix", row.zoneMatrix);
     setValue("rateTariff", row.rateTariff);
+    setSelectedRateTariff(row.rateTariff);
     setValue("mode", row.mode);
     setValue("from", row.fromDate);
     setValue("to", row.toDate);
@@ -440,8 +495,8 @@ const fetchZonesData = async (sector) => {
       zoneMatrix: row.zoneMatrix,
       rateTariff: row.rateTariff,
       mode: row.mode,
-      from: formatDate(row.fromDate), // ⬅ FIX
-      to: formatDate(row.toDate), // ⬅ FIX
+      from: formatDate(row.fromDate),
+      to: formatDate(row.toDate),
     });
 
     // Remove row being edited
@@ -454,6 +509,7 @@ const fetchZonesData = async (sector) => {
   //handle refresh btn
   const handleRefresh = () => {
     setResetFlag(!resetFlag);
+    setSelectedRateTariff("");
   };
 
   return (
@@ -567,19 +623,15 @@ const fetchZonesData = async (sector) => {
               defaultValue={formValues.zoneMatrix}
               resetFactor={resetFlag}
             />
-            <InputBox
-              placeholder="Rate Tariff"
+            <LabeledDropdown
+              options={rateTariffOptions}
               register={register}
-              setValue={setValue}
-              value="rateTariff"
-              error={errors.rateTariff}
-              validation={{
-                required: "Rate Tariff is required",
-                minLength: { value: 1, message: "Rate Tariff is required" },
+              setValue={(name, value) => {
+                setValue(name, value);
+                setSelectedRateTariff(value);
               }}
-              trigger={trigger}
-              resetFactor={resetFlag}
-              initialValue={formValues.rateTariff}
+              title="Rate Tariff"
+              value="rateTariff"
             />
           </div>
 
@@ -679,8 +731,7 @@ const fetchZonesData = async (sector) => {
 
 export default ShipperTariff;
 
-// ConfirModal
-
+// ConfirmModal
 function ConfirmModal({
   open,
   title = "Are you sure?",
