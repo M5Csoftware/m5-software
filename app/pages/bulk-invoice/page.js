@@ -1,4 +1,3 @@
-// BulkInvoice.jsx
 "use client";
 import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { SearchableDropDrown } from "@/app/components/Dropdown";
@@ -45,6 +44,19 @@ function RedCheckbox({ id, isChecked, onChange, label }) {
   );
 }
 
+// Helper function to parse DD/MM/YYYY format from DateInputBox
+const parseDateDDMMYYYY = (dateStr) => {
+  if (!dateStr) return null;
+  const parts = dateStr.split("/");
+  if (parts.length !== 3) return null;
+
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+  const year = parseInt(parts[2], 10);
+
+  return new Date(year, month, day);
+};
+
 const BulkInvoice = () => {
   const { register, setValue, watch } = useForm();
   const [step, setStep] = useState(1);
@@ -53,6 +65,7 @@ const BulkInvoice = () => {
   const { server } = useContext(GlobalContext);
   const [search, setSearch] = useState("");
   const [allCustomers, setAllCustomers] = useState([]);
+
   const handleNext = () => {
     if (!watch("fYear")) {
       showNotification("error", "Financial year is required");
@@ -62,6 +75,7 @@ const BulkInvoice = () => {
     showNotification("success", "Financial year selected");
     setStep(2);
   };
+
   const selectedBranch = watch("branch");
   const fromDate = watch("from");
   const toDate = watch("to");
@@ -77,21 +91,18 @@ const BulkInvoice = () => {
     setNotification({ type, message, visible: true });
   };
 
-  const toISODate = (val) => {
-    if (!val) return null;
+  // Updated toISO function that handles DD/MM/YYYY format
+  const toISODate = (dateStr) => {
+    if (!dateStr) return null;
 
-    // already yyyy-mm-dd
-    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-
-    // dd/mm/yyyy or mm/dd/yyyy
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
-      const [a, b, c] = val.split("/");
-      const iso = `${c}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
-      const d = new Date(iso);
-      return isNaN(d.getTime()) ? null : iso;
+    // Parse DD/MM/YYYY format
+    const parsedDate = parseDateDDMMYYYY(dateStr);
+    if (!parsedDate || isNaN(parsedDate.getTime())) {
+      return null;
     }
 
-    return null;
+    // Return ISO string without timezone adjustment
+    return parsedDate.toISOString();
   };
 
   useEffect(() => {
@@ -100,7 +111,7 @@ const BulkInvoice = () => {
         const res = await axios.get(`${server}/branch-master/get-branch`);
         const allowed = ["DEL", "AHM", "MHM"];
         setBranches(
-          res.data.map((b) => b.code).filter((code) => allowed.includes(code))
+          res.data.map((b) => b.code).filter((code) => allowed.includes(code)),
         );
       } catch (err) {
         console.log("Error fetching branches", err);
@@ -123,16 +134,26 @@ const BulkInvoice = () => {
     }
 
     try {
-      const fromISO = toISODate(fromDate);
-      const toISO = toISODate(toDate);
+      // Parse dates from DD/MM/YYYY format
+      const fromParsed = parseDateDDMMYYYY(fromDate);
+      const toParsed = parseDateDDMMYYYY(toDate);
 
-      if (!fromISO || !toISO) {
-        showNotification("error", "Invalid date range");
+      if (
+        !fromParsed ||
+        !toParsed ||
+        isNaN(fromParsed.getTime()) ||
+        isNaN(toParsed.getTime())
+      ) {
+        showNotification("error", "Invalid date format. Please use DD/MM/YYYY");
         return;
       }
 
+      // Format to ISO strings like BookingReport does
+      const fromISO = fromParsed.toISOString();
+      const toISO = toParsed.toISOString();
+
       const response = await axios.get(
-        `${server}/billing-bulk-invoice?branch=${selectedBranch}&search=${search}&from=${fromISO}&to=${toISO}`
+        `${server}/billing-bulk-invoice?branch=${selectedBranch}&search=${search}&from=${fromISO}&to=${toISO}`,
       );
 
       if (!response.data.length) {
@@ -162,7 +183,7 @@ const BulkInvoice = () => {
     }
 
     const filtered = allCustomers.filter((c) =>
-      `${c.accountCode} ${c.name}`.toLowerCase().includes(search.toLowerCase())
+      `${c.accountCode} ${c.name}`.toLowerCase().includes(search.toLowerCase()),
     );
 
     setCustomerList(filtered);
@@ -204,46 +225,76 @@ const BulkInvoice = () => {
       return;
     }
 
+    // Parse dates from DD/MM/YYYY format
+    const fromParsed = parseDateDDMMYYYY(fromDate);
+    const toParsed = parseDateDDMMYYYY(toDate);
+    const invoiceParsed = parseDateDDMMYYYY(watch("invoiceDate"));
+
+    if (
+      !fromParsed ||
+      !toParsed ||
+      !invoiceParsed ||
+      isNaN(fromParsed.getTime()) ||
+      isNaN(toParsed.getTime()) ||
+      isNaN(invoiceParsed.getTime())
+    ) {
+      showNotification("error", "Invalid date format. Please use DD/MM/YYYY");
+      return;
+    }
+
+    // Format to ISO strings
+    const fromISO = fromParsed.toISOString();
+    const toISO = toParsed.toISOString();
+    const invoiceISO = invoiceParsed.toISOString();
+
     const invoicesData = [];
     showNotification("success", "Fetching shipment data...");
 
     for (const cus of selectedCustomers) {
-      const summaryRes = await axios.post(`${server}/billing-invoice/summary`, {
-        accountCode: cus.accountCode,
-        from: fromDate,
-        to: toDate,
-      });
+      try {
+        const summaryRes = await axios.post(
+          `${server}/billing-invoice/summary`,
+          {
+            accountCode: cus.accountCode,
+            from: fromISO, // Send ISO string
+            to: toISO, // Send ISO string
+          },
+        );
 
-      const { shipments, summary } = summaryRes.data;
-      if (!shipments || shipments.length === 0) continue;
+        const { shipments, summary } = summaryRes.data;
+        if (!shipments || shipments.length === 0) continue;
 
-      invoicesData.push({ customer: cus, shipments, summary });
+        invoicesData.push({ customer: cus, shipments, summary });
+      } catch (error) {
+        console.error(`Error fetching summary for ${cus.accountCode}:`, error);
+        showNotification(
+          "error",
+          `Failed to fetch data for ${cus.accountCode}`,
+        );
+      }
     }
 
     if (invoicesData.length === 0) {
       showNotification("error", "No shipment found for these customers");
       return;
     }
-    const invoiceISO = toISODate(watch("invoiceDate"));
-    const fromISO = toISODate(fromDate);
-    const toISO = toISODate(toDate);
 
-    if (!invoiceISO || !fromISO || !toISO) {
-      showNotification("error", "Invalid date selected");
-      return;
+    try {
+      const res = await axios.post(`${server}/billing-bulk-invoice`, {
+        invoices: invoicesData,
+        branch: selectedBranch,
+        createdBy: "bulk",
+        invoiceDate: invoiceISO,
+        fromDate: fromISO,
+        toDate: toISO,
+        financialYear: watch("fYear"),
+      });
+
+      showNotification("success", res.data.message);
+    } catch (error) {
+      console.error("Error creating bulk invoice:", error);
+      showNotification("error", "Failed to create invoices");
     }
-
-    const res = await axios.post(`${server}/billing-bulk-invoice`, {
-      invoices: invoicesData,
-      branch: selectedBranch,
-      createdBy: "bulk",
-      invoiceDate: invoiceISO,
-      fromDate: fromISO,
-      toDate: toISO,
-      financialYear: watch("fYear"),
-    });
-
-    showNotification("success", res.data.message);
   };
 
   return (
@@ -263,7 +314,7 @@ const BulkInvoice = () => {
       {step === 1 && (
         <div className="flex gap-3">
           <SearchableDropDrown
-            options={["2025-26","2024-25", "2023-24"]}
+            options={["2025-26", "2024-25", "2023-24"]}
             register={register}
             setValue={setValue}
             value="fYear"
@@ -376,15 +427,15 @@ const ClientTableUI = ({ customerList, setCustomerList }) => {
   const toggleCheckbox = (id) => {
     setCustomerList((prev) =>
       prev.map((client) =>
-        client._id === id ? { ...client, selected: !client.selected } : client
-      )
+        client._id === id ? { ...client, selected: !client.selected } : client,
+      ),
     );
   };
 
   const toggleAll = () => {
     const allSelected = customerList.every((client) => client.selected);
     setCustomerList((prev) =>
-      prev.map((client) => ({ ...client, selected: !allSelected }))
+      prev.map((client) => ({ ...client, selected: !allSelected })),
     );
   };
 
