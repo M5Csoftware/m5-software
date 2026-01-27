@@ -175,14 +175,28 @@ const ShipmentStatusReport = () => {
     fromParsed.setHours(0, 0, 0, 0);
     toParsed.setHours(23, 59, 59, 999);
 
-    filters.from = fromParsed.toISOString();
-    filters.to = toParsed.toISOString();
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('from', fromParsed.toISOString());
+    params.append('to', toParsed.toISOString());
+    
+    // Add other filters if they exist
+    if (filters.code) params.append('code', filters.code);
+    if (filters.client) params.append('client', filters.client);
+    if (filters.runNumber) params.append('runNumber', filters.runNumber);
+    if (filters.branch) params.append('branch', filters.branch);
+    if (filters.origin) params.append('origin', filters.origin);
+    if (filters.sector) params.append('sector', filters.sector);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.destination) params.append('destination', filters.destination);
+    if (filters.network) params.append('network', filters.network);
+    if (filters.service) params.append('service', filters.service);
+    if (filters.counterPart) params.append('counterPart', filters.counterPart);
 
     try {
-      const res = await fetch(`${server}/shipment-status`, {
-        method: "POST",
+      const res = await fetch(`${server}/shipment-status?${params.toString()}`, {
+        method: "GET",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(filters),
       });
 
       if (!res.ok) throw new Error(`Server responded with ${res.status}`);

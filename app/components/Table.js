@@ -14,6 +14,7 @@ export default function Table({
   onSelectionChange,
   editable = false,
   onEditComplete,
+  height = "",
 }) {
   const [editedData, setEditedData] = useState({});
   const [localSelectedRows, setLocalSelectedRows] = useState(selectedRows);
@@ -84,7 +85,7 @@ export default function Table({
 
   if (!rowData || rowData.length === 0) {
     return (
-      <div className="h-64 w-full overflow-auto rounded-lg border border-battleship-gray text-xs">
+      <div className={`${height ? height : "h-64"} w-full overflow-auto rounded-lg border border-battleship-gray text-xs`}>
         <table className="w-full">
           <thead className="sticky top-0 bg-white border-b">
             <tr className="h-12">
