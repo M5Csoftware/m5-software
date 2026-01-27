@@ -81,7 +81,7 @@ const AutoCalculation = () => {
     try {
       // Fetch full customer details
       const customerResponse = await axios.get(
-        `${server}/customer-account?accountCode=${accountCode}`
+        `${server}/customer-account?accountCode=${accountCode}`,
       );
       const customerDetails = customerResponse.data;
 
@@ -94,7 +94,7 @@ const AutoCalculation = () => {
       console.error("Error fetching customer details:", error);
       console.log(
         "Failed to fetch customer details: " +
-          (error.response?.data?.message || error.message)
+          (error.response?.data?.message || error.message),
       );
       setSelectedAccount(null);
     } finally {
@@ -110,7 +110,7 @@ const AutoCalculation = () => {
     try {
       // Fetch shipments
       const response = await axios.get(
-        `${server}/portal/get-shipments?accountCode=${account.accountCode}`
+        `${server}/portal/get-shipments?accountCode=${account.accountCode}`,
       );
       const shipments = response.data.shipments;
 
@@ -127,12 +127,12 @@ const AutoCalculation = () => {
       setCalBasicAmount(totalBasic.toFixed(2));
       console.log(
         `Loaded ${shipments.length} shipments with Total Basic Amount:`,
-        totalBasic
+        totalBasic,
       );
       showNotification(
         "success",
         `Loaded ${shipments.length} shipments with Total Basic Amount:`,
-        totalBasic
+        totalBasic,
       );
 
       // Fetch account data (branch, tax, rates)
@@ -144,7 +144,7 @@ const AutoCalculation = () => {
       console.error("Error fetching shipments:", error);
       console.log(
         "Failed to fetch shipment data: " +
-          (error.response?.data?.message || error.message)
+          (error.response?.data?.message || error.message),
       );
       showNotification("error", "Error fetching shipments");
       setAllShipments([]);
@@ -161,7 +161,7 @@ const AutoCalculation = () => {
         axios.get(`${server}/branch-master/get-branch?code=${account.branch}`),
         axios.get(`${server}/tax-settings`),
         axios.get(
-          `${server}/shipper-tariff?accountCode=${account.accountCode}`
+          `${server}/shipper-tariff?accountCode=${account.accountCode}`,
         ),
       ]);
 
@@ -182,7 +182,7 @@ const AutoCalculation = () => {
   const fetchApplicableServices = async (accountCode) => {
     try {
       const response = await axios.get(
-        `${server}/shipper-tariff?accountCode=${accountCode}`
+        `${server}/shipper-tariff?accountCode=${accountCode}`,
       );
       const rates = response.data;
 
@@ -258,23 +258,31 @@ const AutoCalculation = () => {
 
     console.log(
       `Filtered to ${filtered.length} shipments with Total Basic Amount:`,
-      totalBasic
+      totalBasic,
     );
   }, [watch("from"), watch("to"), allShipments]);
 
   // Find zone for a shipment based on sector, destination, and NEW service
   const findZoneForShipment = async (shipment, newService) => {
     try {
-      console.log("\n=== Finding zone ===");
-      console.log("Shipment details:", {
-        awbNo: shipment.awbNo,
-        sector: shipment.sector,
-        destination: shipment.destination,
-        pincode: shipment.pincode,
-        service: newService,
-      });
+      // First, try to get zone from rate card (applicableRates)
+      const cleanService = newService.trim().toUpperCase();
+      const matchingRate = applicableRates?.find(
+        (r) => r.service && r.service.trim().toUpperCase() === cleanService,
+      );
 
-      // Build params safely
+      if (matchingRate?.zone) {
+        console.log(
+          `Using zone from rate card for ${shipment.awbNo}:`,
+          matchingRate.zone,
+        );
+        return Number(matchingRate.zone);
+      }
+
+      // If no zone in rate card, try zones API
+      console.log("\n=== Finding zone from zones API ===");
+
+      // Build params for zones API
       const params = {
         sector: shipment.sector,
         service: newService,
@@ -283,12 +291,7 @@ const AutoCalculation = () => {
       if (shipment.pincode) {
         params.pincode = shipment.pincode;
       } else if (shipment.destination) {
-        // if destination itself is numeric, treat as pincode
-        if (/^\d+$/.test(shipment.destination)) {
-          params.pincode = shipment.destination;
-        } else {
-          params.destination = shipment.destination;
-        }
+        params.destination = shipment.destination;
       }
 
       console.log("Zone API params:", params);
@@ -300,43 +303,20 @@ const AutoCalculation = () => {
 
       const zoneList = Array.isArray(data?.zones) ? data.zones : [];
 
-      if (!zoneList.length) {
-        console.warn(`No zone found from zone-master for ${shipment.awbNo}`);
+      if (zoneList.length > 0) {
+        const zoneObj = zoneList[0];
+        const zone =
+          zoneObj.zone ?? zoneObj.zoneNo ?? zoneObj.zone_number ?? null;
 
-        // fallback: try zone from rate card
-        if (Array.isArray(applicableRates)) {
-          const rateMatch = applicableRates.find(
-            (r) =>
-              r.service &&
-              r.service.trim().toUpperCase() ===
-                newService.trim().toUpperCase() &&
-              r.zone
-          );
-
-          if (rateMatch?.zone) {
-            console.log(
-              `Using fallback zone from rate card for ${shipment.awbNo}:`,
-              rateMatch.zone
-            );
-            return Number(rateMatch.zone);
-          }
+        if (zone) {
+          console.log(`Zone resolved for ${shipment.awbNo}:`, zone);
+          return Number(zone);
         }
-
-        return null;
       }
 
-      // take first matched zone
-      const zoneObj = zoneList[0];
-      const zone =
-        zoneObj.zone ?? zoneObj.zoneNo ?? zoneObj.zone_number ?? null;
-
-      if (!zone) {
-        console.warn(`Zone object found but zone value missing`, zoneObj);
-        return null;
-      }
-
-      console.log(`Zone resolved for ${shipment.awbNo}:`, zone);
-      return Number(zone);
+      // If still no zone found
+      console.warn(`No zone found for ${shipment.awbNo}`);
+      return null;
     } catch (error) {
       console.error(`Error fetching zone for ${shipment.awbNo}:`, error);
       return null;
@@ -353,6 +333,8 @@ const AutoCalculation = () => {
       sector: shipment.sector,
       destination: shipment.destination,
       pincode: shipment.pincode,
+      service: shipment.service,
+      newService: newService,
     });
 
     try {
@@ -362,6 +344,12 @@ const AutoCalculation = () => {
 
       if (!zone) {
         console.error("ERROR: Zone not found for this shipment");
+        // Show alert to user
+        if (typeof window !== "undefined") {
+          alert(
+            `Zone not found for AWB: ${shipment.awbNo}\nSector: ${shipment.sector}\nDestination: ${shipment.destination}\nService: ${newService}`,
+          );
+        }
         return {
           awbNo: shipment.awbNo,
           error: `Zone not found for shipment ${shipment.awbNo}`,
@@ -379,16 +367,24 @@ const AutoCalculation = () => {
       // Check if we have rate tariff in applicableRates
       const cleanService = newService.trim().toUpperCase();
       const matchingRate = applicableRates.find(
-        (r) => r.service && r.service.trim().toUpperCase() === cleanService
+        (r) => r.service && r.service.trim().toUpperCase() === cleanService,
       );
 
       if (!matchingRate) {
         console.error("ERROR: No matching rate found for service:", newService);
+        // Show alert to user
+        if (typeof window !== "undefined") {
+          alert(
+            `No matching rate found for service: ${newService}\nAWB: ${shipment.awbNo}`,
+          );
+        }
         return {
           awbNo: shipment.awbNo,
           error: `No matching rate found for service: ${newService}`,
         };
       }
+
+      console.log("Matching rate found:", matchingRate);
 
       // 3. Get weight-based rate for THIS shipment
       console.log("\n[Step 3] Getting weight-based rate...");
@@ -399,10 +395,13 @@ const AutoCalculation = () => {
         chargeableWt;
       const pcs = parseFloat(shipment.pcs) || parseFloat(shipment.noOfPcs) || 1;
 
-      // Clean rateTariff - remove ALL whitespace
-      const rateTariff = (matchingRate.rateTariff || "")
-        .replace(/\s+/g, " ")
-        .trim();
+      // Check if rateTariff exists and has valid data
+      let rateTariff =
+        matchingRate.rateTariff ||
+        matchingRate.rate ||
+        matchingRate.tariff ||
+        matchingRate.rateStructure ||
+        "";
 
       console.log("Rate calculation parameters:", {
         awbNo: shipment.awbNo,
@@ -412,8 +411,27 @@ const AutoCalculation = () => {
         actualWt: actualWt,
         pcs: pcs,
         rateTariffLength: rateTariff.length,
-        rateTariffSample: rateTariff.substring(0, 50) + "...",
+        rateTariff: rateTariff || "(EMPTY)",
       });
+
+      // If rateTariff is empty, show alert and stop
+      if (!rateTariff || rateTariff.trim() === "") {
+        console.error("❌ No rate tariff found");
+        // Show alert to user
+        if (typeof window !== "undefined") {
+          alert(
+            `No rate tariff found for service: ${newService}\nAWB: ${shipment.awbNo}\nPlease check rate configuration.`,
+          );
+        }
+        return {
+          awbNo: shipment.awbNo,
+          error: `No rate tariff found for service: ${newService}`,
+          matchingRate: matchingRate,
+        };
+      }
+
+      // Clean rateTariff
+      rateTariff = rateTariff.replace(/\s+/g, " ").trim();
 
       // Call rate calculation API
       const params = new URLSearchParams({
@@ -428,11 +446,36 @@ const AutoCalculation = () => {
       const apiUrl = `${server}/portal/create-shipment/get-rates?${params.toString()}`;
       console.log("API URL (decoded):", decodeURIComponent(apiUrl));
 
-      const rateResponse = await axios.get(apiUrl);
-      console.log("Rate API response:", rateResponse.data);
+      let rateResponse;
+      try {
+        rateResponse = await axios.get(apiUrl);
+        console.log("Rate API response:", rateResponse.data);
+      } catch (rateError) {
+        console.error("Rate API error:", rateError.message);
+        console.error("Rate API error response:", rateError.response?.data);
+
+        // Show alert to user
+        if (typeof window !== "undefined") {
+          alert(
+            `Rate calculation API failed for AWB: ${shipment.awbNo}\nError: ${rateError.message}\nPlease check rate configuration.`,
+          );
+        }
+
+        return {
+          awbNo: shipment.awbNo,
+          error: `Rate calculation API failed: ${rateError.message}`,
+          apiResponse: rateError.response?.data,
+        };
+      }
 
       if (!rateResponse.data || !rateResponse.data.rate) {
         console.error("ERROR: Rate API returned no rate");
+        // Show alert to user
+        if (typeof window !== "undefined") {
+          alert(
+            `Rate API returned no rate for AWB: ${shipment.awbNo}\nService: ${newService}\nZone: ${zone}`,
+          );
+        }
         return {
           awbNo: shipment.awbNo,
           error: "No rate returned from API",
@@ -443,7 +486,7 @@ const AutoCalculation = () => {
       // 4. Calculate basic amount for THIS shipment
       console.log("\n[Step 4] Calculating basic amount...");
       const rate = parseFloat(rateResponse.data.rate);
-      const rateType = rateResponse.data.type;
+      const rateType = rateResponse.data.type || "B";
       let basicAmount = 0;
 
       if (rateType === "S") {
@@ -502,18 +545,28 @@ const AutoCalculation = () => {
         zone: zone,
         rateType: rateType,
         chargeableWt: chargeableWt,
+        rateUsed: rate,
       };
 
       console.log("\n[Step 6] Final result for shipment:", result);
       console.log("VS Original shipment:", {
         originalBasic: shipment.basicAmt,
         originalTotal: shipment.totalAmt,
+        originalService: shipment.service,
       });
 
       return result;
     } catch (error) {
       console.error("\n[ERROR] Exception:", error.message);
       console.error("Error response:", error.response?.data);
+
+      // Show alert to user
+      if (typeof window !== "undefined") {
+        alert(
+          `Error calculating for AWB: ${shipment.awbNo}\nError: ${error.message}`,
+        );
+      }
+
       return {
         awbNo: shipment.awbNo,
         error: error.response?.data?.error || error.message,
@@ -548,45 +601,16 @@ const AutoCalculation = () => {
       updateUser: "Auto Calculation",
     };
 
+    console.log("Payload for shipment update:", {
+      awbNo: shipment.awbNo,
+      payload: payload,
+    });
+
     return axios.put(
       `${server}/portal/create-shipment/auto-calculation?awbNo=${shipment.awbNo}`,
       payload,
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { "Content-Type": "application/json" } },
     );
-  };
-
-  // Test function for debugging
-  const testCalculation = async () => {
-    if (!displayedShipments.length || !watch("service")) {
-      console.log("Cannot test: No shipments or service selected");
-      return;
-    }
-
-    const testShipment = displayedShipments[0];
-    const newService = watch("service");
-
-    console.log("\n=== TESTING CALCULATION FOR FIRST SHIPMENT ===");
-    console.log("Test shipment:", testShipment.awbNo);
-    console.log("Selected service:", newService);
-    console.log("Chargeable weight:", testShipment.chargeableWt);
-    console.log("Sector:", testShipment.sector);
-    console.log("Destination:", testShipment.destination);
-    console.log("Current basicAmt:", testShipment.basicAmt);
-    console.log("Current totalAmt:", testShipment.totalAmt);
-
-    const result = await calculateNewShipmentAmountDebug(
-      testShipment,
-      newService
-    );
-    console.log("Test calculation result:", result);
-
-    if (result.error) {
-      alert(`Test failed: ${result.error}`);
-    } else {
-      alert(
-        `Test successful!\nNew Basic: ₹${result.basicAmount}\nNew Grand Total: ₹${result.grandTotal}`
-      );
-    }
   };
 
   // Handle Auto Calculate button click
@@ -607,36 +631,25 @@ const AutoCalculation = () => {
       console.log("No shipments to calculate. Please select a customer first.");
       showNotification(
         "error",
-        "No shipments to calculate, Please select a customer first"
+        "No shipments to calculate, Please select a customer first",
       );
       return;
     }
 
-    // if (!newService || newService === "All") {
-    //   console.log(
-    //     "Please select a specific service from the dropdown to recalculate shipments."
-    //   );
-    //   showNotification(
-    //     "error",
-    //     "Please select a specific service from the dropdown to recalculate shipments"
-    //   );
-    //   return;
-    // }
-
     if (!applicableRates || !branch || !taxSettings) {
       console.log(
-        "Required data not loaded. Please ensure customer has valid rates and tax settings."
+        "Required data not loaded. Please ensure customer has valid rates and tax settings.",
       );
       showNotification(
         "error",
-        "Required data not loaded. Please ensure customer has valid rates and tax settings."
+        "Required data not loaded. Please ensure customer has valid rates and tax settings.",
       );
       return;
     }
 
     const confirmUpdate = confirm(
       `Are you sure you want to recalculate ${displayedShipments.length} shipment(s) with service "${newService}"?\n\n` +
-        `This will UPDATE the grand total for each shipment in the database.`
+        `Calculation will stop if any shipment fails. Check alerts for details.`,
     );
 
     if (!confirmUpdate) return;
@@ -647,7 +660,7 @@ const AutoCalculation = () => {
         "Starting auto calculation for",
         displayedShipments.length,
         "shipments with NEW service:",
-        newService
+        newService,
       );
 
       const recalculatedShipments = [];
@@ -668,7 +681,7 @@ const AutoCalculation = () => {
 
         const calculated = await calculateNewShipmentAmountDebug(
           shipment,
-          serviceToUse
+          serviceToUse,
         );
 
         console.log("Calculation result:", calculated);
@@ -676,10 +689,16 @@ const AutoCalculation = () => {
         if (calculated.error) {
           console.error(
             `✗ Error calculating for ${shipment.awbNo}:`,
-            calculated.error
+            calculated.error,
           );
           errorCount++;
-          continue; // Skip this shipment
+
+          // Stop processing after first error
+          showNotification(
+            "error",
+            `Calculation stopped due to error for AWB: ${shipment.awbNo}. Check alert for details.`,
+          );
+          break; // Stop the loop
         }
 
         // Debug logs
@@ -690,6 +709,8 @@ const AutoCalculation = () => {
           totalAmt: shipment.totalAmt,
           date: shipment.date,
           dateType: typeof shipment.date,
+          isHold: shipment.isHold,
+          holdReason: shipment.holdReason,
         });
         console.log("Calculated values:", {
           basicAmount: calculated.basicAmount,
@@ -716,24 +737,33 @@ const AutoCalculation = () => {
           setTimeout(async () => {
             try {
               const verify = await axios.get(
-                `${server}/portal/get-shipment?awbNo=${shipment.awbNo}`
+                `${server}/portal/get-shipment?awbNo=${shipment.awbNo}`,
               );
               console.log("Verification - Updated shipment:", {
                 basicAmt: verify.data.basicAmt,
                 totalAmt: verify.data.totalAmt,
                 service: verify.data.service,
+                isHold: verify.data.isHold,
+                holdReason: verify.data.holdReason,
               });
             } catch (verifyError) {
               console.error("Verification failed:", verifyError.message);
             }
-          }, 1000);
+          }, 500);
         } catch (updateError) {
           console.error(
             `✗ Failed to update shipment ${shipment.awbNo}:`,
-            updateError.message
+            updateError.message,
           );
           console.error("Error response:", updateError.response?.data);
           errorCount++;
+
+          // Stop processing after update error
+          showNotification(
+            "error",
+            `Update failed for AWB: ${shipment.awbNo}. Check console for details.`,
+          );
+          break; // Stop the loop
         }
       }
 
@@ -745,7 +775,7 @@ const AutoCalculation = () => {
         "| Errors:",
         errorCount,
         "| Updated in DB:",
-        updatedCount
+        updatedCount,
       );
       console.log("Total NEW Basic Amount:", totalNewBasic.toFixed(2));
       console.log("Total NEW SGST:", totalNewSGST.toFixed(2));
@@ -757,43 +787,26 @@ const AutoCalculation = () => {
       setValue("basicAmount", totalNewBasic.toFixed(2));
       setCalBasicAmount(totalNewBasic.toFixed(2));
 
-      // Refresh shipments to show updated data
+      // Refresh shipments to show updated data only if we had successes
       if (selectedAccount && updatedCount > 0) {
         console.log("Refreshing shipments...");
         await fetchAllShipments(selectedAccount);
       }
 
-      console.log(
-        `✓ Auto calculation complete!\n\n` + newService === "All"
-          ? "existing shipment services"
-          : `"${newService}"` +
-              `Shipments processed: ${displayedShipments.length}\n` +
-              `Successfully calculated: ${successCount}\n` +
-              `Updated in database: ${updatedCount}\n` +
-              `Errors: ${errorCount}\n\n` +
-              `NEW Total Basic Amount: ₹${totalNewBasic.toFixed(2)}\n` +
-              `NEW Total SGST: ₹${totalNewSGST.toFixed(2)}\n` +
-              `NEW Total CGST: ₹${totalNewCGST.toFixed(2)}\n` +
-              `NEW Total IGST: ₹${totalNewIGST.toFixed(2)}\n` +
-              `NEW Grand Total: ₹${totalNewGrandTotal.toFixed(2)}`
-      );
-
-      // Show notification
+      // Show appropriate notification
       if (updatedCount > 0) {
         showNotification(
           "success",
-          `Successfully updated ${updatedCount} shipments. New total: ₹${totalNewGrandTotal.toFixed(
-            2
-          )}`
+          `Successfully updated ${updatedCount} shipments. New total: ₹${totalNewGrandTotal.toFixed(2)}`,
         );
+      } else if (errorCount > 0) {
+        // Error notification already shown in the loop
       } else {
         showNotification(
           "warning",
-          "No shipments were updated. Check console for errors."
+          "No shipments were updated. Check console for errors.",
         );
       }
-
-      handleRefresh();
     } catch (error) {
       console.error("Error during auto calculation:", error);
       console.log("Auto calculation failed: " + error.message);
@@ -801,6 +814,41 @@ const AutoCalculation = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Also, update the testCalculation function to not refresh
+  const testCalculation = async () => {
+    if (!displayedShipments.length || !watch("service")) {
+      console.log("Cannot test: No shipments or service selected");
+      return;
+    }
+
+    const testShipment = displayedShipments[0];
+    const newService = watch("service");
+
+    console.log("\n=== TESTING CALCULATION FOR FIRST SHIPMENT ===");
+    console.log("Test shipment:", testShipment.awbNo);
+    console.log("Selected service:", newService);
+    console.log("Chargeable weight:", testShipment.chargeableWt);
+    console.log("Sector:", testShipment.sector);
+    console.log("Destination:", testShipment.destination);
+    console.log("Current basicAmt:", testShipment.basicAmt);
+    console.log("Current totalAmt:", testShipment.totalAmt);
+
+    const result = await calculateNewShipmentAmountDebug(
+      testShipment,
+      newService,
+    );
+    console.log("Test calculation result:", result);
+
+    if (result.error) {
+      alert(`Test failed: ${result.error}`);
+    } else {
+      alert(
+        `Test successful!\nNew Basic: ₹${result.basicAmount}\nNew Grand Total: ₹${result.grandTotal}`,
+      );
+    }
+    // Don't refresh after test
   };
 
   const handleRefresh = () => {
@@ -945,7 +993,9 @@ const AutoCalculation = () => {
           <SimpleButton
             name={isLoading ? "Calculating..." : `Auto Calculate & Update`}
             onClick={handleAutoCalculate}
-            disabled={isLoading || !displayedShipments.length}
+            disabled={
+              isLoading || !displayedShipments.length || !selectedAccount
+            }
           />
         </div>
       </div>
