@@ -128,40 +128,45 @@ function EmployeeManagement({ setShowEmployeeForm, onEditEmployee }) {
   };
 
   const handleDownloadExcel = () => {
-    const dataToExport = filteredUsers;
+  const dataToExport = filteredUsers;
 
-    if (dataToExport.length === 0) {
-      alert("No data to export");
-      return;
-    }
+  if (dataToExport.length === 0) {
+    alert("No data to export");
+    return;
+  }
 
-    const columns = [
-      { key: "userId", label: "User ID" },
-      { key: "userName", label: "Name" },
-      { key: "department", label: "Department" },
-      { key: "role", label: "Role" },
-      { key: "hub", label: "Hub" },
-      { key: "branch", label: "Branch" },
-      { key: "password", label: "Password" },
-    ];
+  // Updated columns to include email
+  const columns = [
+    { key: "userId", label: "User ID" },
+    { key: "userName", label: "Name" },
+    { key: "email", label: "Email" }, // Added email field
+    { key: "department", label: "Department" },
+    { key: "role", label: "Role" },
+    { key: "hub", label: "Hub" },
+    { key: "branch", label: "Branch" },
+    { key: "password", label: "Password" },
+  ];
 
-    const exportData = dataToExport.map((user) => {
-      const row = {};
-      columns.forEach((col) => {
-        row[col.label] = user[col.key] || "";
-      });
-      return row;
+  const exportData = dataToExport.map((user) => {
+    const row = {};
+    columns.forEach((col) => {
+      // Get the email value - you might need to adjust the property name
+      // If your API returns email differently, change 'email' to the correct property name
+      // For example: user.emailId, user.emailAddress, etc.
+      row[col.label] = user[col.key] || "";
     });
+    return row;
+  });
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Employees");
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Employees");
 
-    XLSX.writeFile(
-      wb,
-      `employees_${new Date().toISOString().split("T")[0]}.xlsx`
-    );
-  };
+  XLSX.writeFile(
+    wb,
+    `employees_${new Date().toISOString().split("T")[0]}.xlsx`
+  );
+};
 
   const handleEmployeeAction = async (action, employeeData) => {
     if (action === "edit") {

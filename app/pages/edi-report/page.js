@@ -11,7 +11,7 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import NotificationFlag from "@/app/components/Notificationflag";
 
 const EdiReport = () => {
-  const { register, setValue, watch } = useForm();
+  const { register, setValue, watch, handleSubmit } = useForm();
   const [rowData, setRowData] = useState([]);
   const [csbFile, setCsbFile] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -219,8 +219,13 @@ const EdiReport = () => {
     showNotification("success", "Refreshed successfully");
   };
 
+  // Handle form submission (prevents default page reload)
+  const onSubmit = (data) => {
+    fetchDataByRunNo();
+  };
+
   return (
-    <form className="flex flex-col gap-[34px]">
+    <form className="flex flex-col gap-[34px]" onSubmit={handleSubmit(onSubmit)}>
       <NotificationFlag
         type={notification.type}
         message={notification.message}
@@ -248,6 +253,7 @@ const EdiReport = () => {
               label={loading ? "Loading..." : "Show"}
               onClick={fetchDataByRunNo}
               disabled={loading}
+              type="button"
             />
           </div>
           <div>
@@ -255,6 +261,7 @@ const EdiReport = () => {
               name={"Download CSV"}
               onClick={downloadCSV}
               disabled={filteredData.length === 0}
+              type="button"
             />
           </div>
         </div>

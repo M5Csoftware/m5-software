@@ -1307,7 +1307,7 @@ export function DisplayInput({
         </span>
       )}
       <div
-        className={`flex flex-wrap gap-2 border rounded-md px-2 py-1 ${
+        className={`flex flex-wrap gap-2 h-8 border rounded-md px-2 py-1 ${
           disabled
             ? "bg-white-smoke border-[#979797] cursor-not-allowed"
             : "bg-white border-[#979797]"

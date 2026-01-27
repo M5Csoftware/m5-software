@@ -86,7 +86,7 @@ function AccountLedger() {
       { key: "ReferenceNo", label: "ReferenceNo." },
       { key: "RemainingBalance", label: "RemainingBalance." },
     ],
-    []
+    [],
   );
 
   // New function to apply filters
@@ -126,7 +126,7 @@ function AccountLedger() {
         ...item,
         Date: item.originalDate ? formatDate(item.originalDate) : "",
       })),
-    [rowData]
+    [rowData],
   );
 
   const handleRefresh = () => {
@@ -196,7 +196,7 @@ function AccountLedger() {
       setValue("email", "");
       showNotification(
         "error",
-        `Customer not found: ${error.response?.data?.error || error.message}`
+        `Customer not found: ${error.response?.data?.error || error.message}`,
       );
     }
   };
@@ -247,7 +247,15 @@ function AccountLedger() {
 
   return (
     <form
-      onSubmit={handleSubmit((data) => console.log(data))}
+      onSubmit={handleSubmit(() => {
+        handleFilterData();
+      })}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          handleFilterData();
+        }
+      }}
       className="flex flex-col gap-3"
     >
       <NotificationFlag
@@ -393,7 +401,7 @@ function AccountLedger() {
                 cleanRowData,
                 getValues("code"),
                 openingBalance,
-                totalBalance
+                totalBalance,
               );
             }}
             name={`Download`}
