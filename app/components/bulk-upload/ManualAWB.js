@@ -299,6 +299,11 @@ function ManualAutoAWB() {
     const quantities = parseCSV(excelRow.Quantity);
     const rates = parseCSV(excelRow.Rate);
 
+    const hasDimensions =
+      lengths.some((v) => Number(v) > 0) &&
+      breadths.some((v) => Number(v) > 0) &&
+      heights.some((v) => Number(v) > 0);
+
     // Create boxes array
     const boxes = [];
     const maxBoxes = Math.max(
@@ -314,13 +319,15 @@ function ManualAutoAWB() {
       const breadth = Number(breadths[0] || 0);
       const height = Number(heights[0] || 0);
       const weight = Number(weights[0] || 0);
-      const volumeWeight = calculateVolumeWeight(length, breadth, height);
+      const volumeWeight = hasDimensions
+        ? calculateVolumeWeight(length, breadth, height)
+        : 0;
 
       for (let i = 0; i < totalPcs; i++) {
         boxes.push({
-          length: length.toString(),
-          width: breadth.toString(),
-          height: height.toString(),
+          length: hasDimensions ? length.toString() : "0",
+          width: hasDimensions ? breadth.toString() : "0",
+          height: hasDimensions ? height.toString() : "0",
           pcs: 1,
           actualWt: weight / totalPcs,
           volumeWeight: volumeWeight / totalPcs,
@@ -333,12 +340,14 @@ function ManualAutoAWB() {
         const breadth = Number(breadths[i] || breadths[0] || 0);
         const height = Number(heights[i] || heights[0] || 0);
         const weight = Number(weights[i] || weights[0] || 0);
-        const volumeWeight = calculateVolumeWeight(length, breadth, height);
+        const volumeWeight = hasDimensions
+          ? calculateVolumeWeight(length, breadth, height)
+          : 0;
 
         boxes.push({
-          length: length.toString(),
-          width: breadth.toString(),
-          height: height.toString(),
+          length: hasDimensions ? length.toString() : "0",
+          width: hasDimensions ? breadth.toString() : "0",
+          height: hasDimensions ? height.toString() : "0",
           pcs: 1,
           actualWt: weight,
           volumeWeight: volumeWeight,
@@ -368,6 +377,15 @@ function ManualAutoAWB() {
       };
     }
 
+    const totalActualWt = boxes.reduce((sum, box) => sum + box.actualWt, 0);
+    const totalVolWt = hasDimensions
+      ? boxes.reduce((sum, box) => sum + box.volumeWeight, 0)
+      : 0;
+
+    const chargeableWt = Math.ceil(
+      hasDimensions ? Math.max(totalActualWt, totalVolWt) : totalActualWt,
+    );
+
     // Create shipment object (your existing logic)
     const shipment = {
       // ... your existing shipment creation logic
@@ -386,9 +404,9 @@ function ManualAutoAWB() {
 
       boxes: boxes,
 
-      chargeableWt: 0, // You'll need to calculate this
-      totalActualWt: boxes.reduce((sum, box) => sum + box.actualWt, 0),
-      totalVolWt: boxes.reduce((sum, box) => sum + box.volumeWeight, 0),
+      chargeableWt: chargeableWt,
+      totalActualWt: totalActualWt,
+      totalVolWt: totalVolWt,
       pcs: totalPcs,
 
       totalInvoiceValue: 0, // You'll need to calculate this
