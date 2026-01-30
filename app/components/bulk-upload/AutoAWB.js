@@ -273,6 +273,11 @@ function AutoAWB() {
     [],
   );
 
+  const calculateVolumeWeight = (length, breadth, height) => {
+    const volume = (length || 0) * (breadth || 0) * (height || 0);
+    return Math.round((volume / 5000) * 100) / 100;
+  };
+
   // Transform Excel row to Shipment JSON (WITHOUT AWB - will be auto-generated)
   const transformExcelToShipment = (excelRow, index) => {
     const timestamp = Date.now() + index;
@@ -299,6 +304,12 @@ function AutoAWB() {
     const quantities = parseCSV(excelRow.Quantity);
     const rates = parseCSV(excelRow.Rate);
 
+    // CRITICAL: Check if dimensions are provided
+    const hasDimensions =
+      lengths.some((v) => Number(v) > 0) &&
+      breadths.some((v) => Number(v) > 0) &&
+      heights.some((v) => Number(v) > 0);
+
     // Create boxes array
     const boxes = [];
     const maxBoxes = Math.max(
@@ -314,13 +325,17 @@ function AutoAWB() {
       const breadth = Number(breadths[0] || 0);
       const height = Number(heights[0] || 0);
       const weight = Number(weights[0] || 0);
-      const volumeWeight = calculateVolumeWeight(length, breadth, height);
+
+      // Only calculate volume weight if dimensions exist
+      const volumeWeight = hasDimensions
+        ? calculateVolumeWeight(length, breadth, height)
+        : 0;
 
       for (let i = 0; i < totalPcs; i++) {
         boxes.push({
-          length: length.toString(),
-          width: breadth.toString(),
-          height: height.toString(),
+          length: hasDimensions ? length.toString() : "0",
+          width: hasDimensions ? breadth.toString() : "0",
+          height: hasDimensions ? height.toString() : "0",
           pcs: 1,
           actualWt: weight / totalPcs,
           volumeWeight: volumeWeight / totalPcs,
@@ -333,12 +348,16 @@ function AutoAWB() {
         const breadth = Number(breadths[i] || breadths[0] || 0);
         const height = Number(heights[i] || heights[0] || 0);
         const weight = Number(weights[i] || weights[0] || 0);
-        const volumeWeight = calculateVolumeWeight(length, breadth, height);
+
+        // Only calculate volume weight if dimensions exist
+        const volumeWeight = hasDimensions
+          ? calculateVolumeWeight(length, breadth, height)
+          : 0;
 
         boxes.push({
-          length: length.toString(),
-          width: breadth.toString(),
-          height: height.toString(),
+          length: hasDimensions ? length.toString() : "0",
+          width: hasDimensions ? breadth.toString() : "0",
+          height: hasDimensions ? height.toString() : "0",
           pcs: 1,
           actualWt: weight,
           volumeWeight: volumeWeight,
@@ -440,9 +459,14 @@ function AutoAWB() {
     });
 
     const totalActualWt = boxes.reduce((sum, box) => sum + box.actualWt, 0);
-    const totalVolWt = boxes.reduce((sum, box) => sum + box.volumeWeight, 0);
-    const initalChargeableWt = Math.max(totalActualWt, totalVolWt);
-    const chargeableWt = Math.ceil(initalChargeableWt);
+    const totalVolWt = hasDimensions
+      ? boxes.reduce((sum, box) => sum + box.volumeWeight, 0)
+      : 0;
+
+    // CRITICAL: Chargeable weight logic - same as manual entry
+    const chargeableWt = Math.ceil(
+      hasDimensions ? Math.max(totalActualWt, totalVolWt) : totalActualWt,
+    );
 
     // Get first content for display
     const firstBoxItems =
@@ -600,11 +624,6 @@ function AutoAWB() {
     shipment.zipValidationStatus = zipValidation;
 
     return shipment;
-  };
-
-  const calculateVolumeWeight = (length, breadth, height) => {
-    const volume = (length || 0) * (breadth || 0) * (height || 0);
-    return Math.round((volume / 5000) * 100) / 100;
   };
 
   const handleBrowseClick = () => {
@@ -1244,8 +1263,8 @@ function AutoAWB() {
                 className="font-bold text-lg mb-2 flex items-center"
                 style={{ color: "#991B1B" }}
               >
-                <X className="text-dark-red" /> INDIAN ZIP CODES DETECTED IN CONSIGNEE-{" "}
-                {validationErrors.length} Shipments Blocked
+                <X className="text-dark-red" /> INDIAN ZIP CODES DETECTED IN
+                CONSIGNEE- {validationErrors.length} Shipments Blocked
               </h3>
               <div className="bg-white rounded p-3 mb-3 border border-red-300">
                 <p className="text-sm mb-2" style={{ color: "#DC2626" }}>
