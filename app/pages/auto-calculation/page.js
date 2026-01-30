@@ -19,7 +19,7 @@ const AutoCalculation = () => {
   const [allShipments, setAllShipments] = useState([]);
   const [displayedShipments, setDisplayedShipments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-
+  const [zoneMaster, setZoneMaster] = useState({});
   // Tax and calculation states
   const [branch, setBranch] = useState(null);
   const [taxSettings, setTaxSettings] = useState(null);
@@ -75,6 +75,30 @@ const AutoCalculation = () => {
     }
   }, [accountCode, codeList, setValue]);
 
+  const loadZoneMasterForShipments = async (shipments) => {
+    const uniqueSectors = [
+      ...new Set(shipments.map((s) => s.sector).filter(Boolean)),
+    ];
+
+    const zoneData = {};
+
+    for (const sector of uniqueSectors) {
+      try {
+        const res = await axios.get(
+          `${server}/portal/create-shipment/get-zones?sector=${sector}`,
+        );
+
+        zoneData[sector] = res.data || [];
+        console.log(`✅ Zone master loaded for ${sector}:`, res.data.length);
+      } catch (err) {
+        console.error(`❌ Failed to load zones for sector ${sector}`, err);
+        zoneData[sector] = [];
+      }
+    }
+
+    setZoneMaster(zoneData);
+  };
+
   // Fetch full customer details from separate route
   const fetchCustomerDetailsAndShipments = async (accountCode) => {
     setIsLoading(true);
@@ -117,6 +141,8 @@ const AutoCalculation = () => {
       console.log("Fetched All Shipments:", shipments);
       setAllShipments(shipments);
       setDisplayedShipments(shipments);
+
+      await loadZoneMasterForShipments(shipments);
 
       // Calculate total basic amount from all shipments
       const totalBasic = shipments.reduce((sum, shipment) => {
@@ -263,64 +289,32 @@ const AutoCalculation = () => {
   }, [watch("from"), watch("to"), allShipments]);
 
   // Find zone for a shipment based on sector, destination, and NEW service
-  const findZoneForShipment = async (shipment, newService) => {
-    try {
-      // First, try to get zone from rate card (applicableRates)
-      const cleanService = newService.trim().toUpperCase();
-      const matchingRate = applicableRates?.find(
-        (r) => r.service && r.service.trim().toUpperCase() === cleanService,
-      );
+  const findZoneLikeAWBEntry = (shipment, service) => {
+    const sectorZones = zoneMaster[shipment.sector];
 
-      if (matchingRate?.zone) {
-        console.log(
-          `Using zone from rate card for ${shipment.awbNo}:`,
-          matchingRate.zone,
-        );
-        return Number(matchingRate.zone);
-      }
-
-      // If no zone in rate card, try zones API
-      console.log("\n=== Finding zone from zones API ===");
-
-      // Build params for zones API
-      const params = {
-        sector: shipment.sector,
-        service: newService,
-      };
-
-      if (shipment.pincode) {
-        params.pincode = shipment.pincode;
-      } else if (shipment.destination) {
-        params.destination = shipment.destination;
-      }
-
-      console.log("Zone API params:", params);
-
-      const response = await axios.get(`${server}/zones`, { params });
-      const data = response.data;
-
-      console.log("Zone API response:", data);
-
-      const zoneList = Array.isArray(data?.zones) ? data.zones : [];
-
-      if (zoneList.length > 0) {
-        const zoneObj = zoneList[0];
-        const zone =
-          zoneObj.zone ?? zoneObj.zoneNo ?? zoneObj.zone_number ?? null;
-
-        if (zone) {
-          console.log(`Zone resolved for ${shipment.awbNo}:`, zone);
-          return Number(zone);
-        }
-      }
-
-      // If still no zone found
-      console.warn(`No zone found for ${shipment.awbNo}`);
-      return null;
-    } catch (error) {
-      console.error(`Error fetching zone for ${shipment.awbNo}:`, error);
+    if (!sectorZones || sectorZones.length === 0) {
+      console.error(`❌ No zone master for sector ${shipment.sector}`);
       return null;
     }
+
+    const zoneRow = sectorZones.find(
+      (z) =>
+        z.sector === shipment.sector &&
+        z.destination === shipment.destination &&
+        z.service === service,
+    );
+
+    if (!zoneRow) {
+      console.error("❌ Zone not found:", {
+        awbNo: shipment.awbNo,
+        sector: shipment.sector,
+        destination: shipment.destination,
+        service: service,
+      });
+      return null;
+    }
+
+    return zoneRow.zone;
   };
 
   const calculateNewShipmentAmountDebug = async (shipment, newService) => {
@@ -339,25 +333,16 @@ const AutoCalculation = () => {
 
     try {
       // 1. Get zone for THIS shipment
-      console.log("\n[Step 1] Getting zone for shipment...");
-      const zone = await findZoneForShipment(shipment, newService);
+      const zone = findZoneLikeAWBEntry(shipment, newService);
 
       if (!zone) {
-        console.error("ERROR: Zone not found for this shipment");
-        // Show alert to user
-        if (typeof window !== "undefined") {
-          alert(
-            `Zone not found for AWB: ${shipment.awbNo}\nSector: ${shipment.sector}\nDestination: ${shipment.destination}\nService: ${newService}`,
-          );
-        }
+        alert(
+          `ZONE NOT FOUND\n\nAWB: ${shipment.awbNo}\nSector: ${shipment.sector}\nDestination: ${shipment.destination}\nService: ${newService}\n\nPlease check Zone Master.`,
+        );
+
         return {
           awbNo: shipment.awbNo,
-          error: `Zone not found for shipment ${shipment.awbNo}`,
-          details: {
-            sector: shipment.sector,
-            destination: shipment.destination,
-            service: newService,
-          },
+          error: "Zone not found in Zone Master",
         };
       }
 

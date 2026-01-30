@@ -9,7 +9,7 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import NotificationFlag from "@/app/components/Notificationflag";
-import { X } from "lucide-react";
+import { X, AlertTriangle } from "lucide-react";
 
 // List of common Indian zip code prefixes (first 2 digits) for accurate validation
 const INDIAN_ZIP_PREFIXES = [
@@ -212,6 +212,8 @@ function ManualAutoAWB() {
 
   const [lastUploadData, setLastUploadData] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
+  const [sectorDestinationServiceErrors, setSectorDestinationServiceErrors] =
+    useState([]);
 
   const flightDate = watch("flightDate");
 
@@ -274,6 +276,12 @@ function ManualAutoAWB() {
     [],
   );
 
+  const calculateVolumeWeight = (length, breadth, height) => {
+    const volume = (length || 0) * (breadth || 0) * (height || 0);
+    return Math.round((volume / 5000) * 100) / 100;
+  };
+
+  // Transform Excel row to Shipment JSON
   const transformExcelToShipment = (excelRow, index) => {
     const timestamp = Date.now() + index;
 
@@ -299,6 +307,11 @@ function ManualAutoAWB() {
     const quantities = parseCSV(excelRow.Quantity);
     const rates = parseCSV(excelRow.Rate);
 
+    const hasDimensions =
+      lengths.some((v) => Number(v) > 0) &&
+      breadths.some((v) => Number(v) > 0) &&
+      heights.some((v) => Number(v) > 0);
+
     // Create boxes array
     const boxes = [];
     const maxBoxes = Math.max(
@@ -314,13 +327,15 @@ function ManualAutoAWB() {
       const breadth = Number(breadths[0] || 0);
       const height = Number(heights[0] || 0);
       const weight = Number(weights[0] || 0);
-      const volumeWeight = calculateVolumeWeight(length, breadth, height);
+      const volumeWeight = hasDimensions
+        ? calculateVolumeWeight(length, breadth, height)
+        : 0;
 
       for (let i = 0; i < totalPcs; i++) {
         boxes.push({
-          length: length.toString(),
-          width: breadth.toString(),
-          height: height.toString(),
+          length: hasDimensions ? length.toString() : "0",
+          width: hasDimensions ? breadth.toString() : "0",
+          height: hasDimensions ? height.toString() : "0",
           pcs: 1,
           actualWt: weight / totalPcs,
           volumeWeight: volumeWeight / totalPcs,
@@ -333,12 +348,14 @@ function ManualAutoAWB() {
         const breadth = Number(breadths[i] || breadths[0] || 0);
         const height = Number(heights[i] || heights[0] || 0);
         const weight = Number(weights[i] || weights[0] || 0);
-        const volumeWeight = calculateVolumeWeight(length, breadth, height);
+        const volumeWeight = hasDimensions
+          ? calculateVolumeWeight(length, breadth, height)
+          : 0;
 
         boxes.push({
-          length: length.toString(),
-          width: breadth.toString(),
-          height: height.toString(),
+          length: hasDimensions ? length.toString() : "0",
+          width: hasDimensions ? breadth.toString() : "0",
+          height: hasDimensions ? height.toString() : "0",
           pcs: 1,
           actualWt: weight,
           volumeWeight: volumeWeight,
@@ -368,35 +385,80 @@ function ManualAutoAWB() {
       };
     }
 
-    // Create shipment object (your existing logic)
+    const totalActualWt = boxes.reduce((sum, box) => sum + box.actualWt, 0);
+    const totalVolWt = hasDimensions
+      ? boxes.reduce((sum, box) => sum + box.volumeWeight, 0)
+      : 0;
+
+    const chargeableWt = Math.ceil(
+      hasDimensions ? Math.max(totalActualWt, totalVolWt) : totalActualWt,
+    );
+
+    // Create shipment object
     const shipment = {
-      // ... your existing shipment creation logic
       awbNo: excelRow.AWBNo?.toString().trim() || "",
       accountCode: excelRow.AccountCode?.toString().trim() || "DEFAULT",
       status: "Shipment Created!",
       date: new Date(),
       sector: (excelRow.Sector?.toString().trim() || "").toUpperCase(),
       origin: excelRow.Origin?.toString().trim() || "",
-      destination: excelRow.Destination?.toString().trim() || "",
+      destination: (
+        excelRow.Destination?.toString().trim() || ""
+      ).toUpperCase(),
       reference: excelRow.ReferenceNo?.toString().trim() || "",
       forwardingNo: "",
       forwarder: "",
       goodstype: excelRow.GoodsType?.toString().trim() || "",
       payment: "Credit",
-
       boxes: boxes,
-
-      chargeableWt: 0, // You'll need to calculate this
-      totalActualWt: boxes.reduce((sum, box) => sum + box.actualWt, 0),
-      totalVolWt: boxes.reduce((sum, box) => sum + box.volumeWeight, 0),
+      chargeableWt: chargeableWt,
+      totalActualWt: totalActualWt,
+      totalVolWt: totalVolWt,
       pcs: totalPcs,
-
-      totalInvoiceValue: 0, // You'll need to calculate this
+      totalInvoiceValue: 0,
       currency: excelRow.InvoiceCurrency?.toString().trim() || "INR",
       currencys: excelRow.InvoiceCurrency?.toString().trim() || "INR",
       content: contents.length > 0 ? [contents[0]] : [],
-
-      // ... rest of your shipment fields
+      operationRemark: excelRow.OperationRemark?.toString().trim() || "",
+      automation: false,
+      handling: false,
+      csb: isChecked,
+      commercialShipment: false,
+      isHold: true,
+      holdReason: "Hold for amount",
+      otherHoldReason: "",
+      basicAmt: 0,
+      cgst: 0,
+      sgst: 0,
+      igst: 0,
+      totalAmt: 0,
+      discount: 0,
+      discountAmt: 0,
+      duty: 0,
+      fuelAmt: 0,
+      fuelPercentage: 0,
+      handlingAmount: 0,
+      hikeAmt: 0,
+      manualAmount: 0,
+      miscChg: 0,
+      miscChgReason: "",
+      overWtHandling: 0,
+      volDisc: 0,
+      cashRecvAmount: 0,
+      billNo: "",
+      manifestNo: "",
+      runNo: "",
+      alMawb: "",
+      bag: "",
+      clubNo: "",
+      company: "",
+      customer: "",
+      flight: flightDate,
+      network: "",
+      networkName: "",
+      obc: "",
+      service: (excelRow.ServiceName?.toString().trim() || "").toUpperCase(),
+      localMF: "",
       consigneeFullName: excelRow.ConsigneeName?.toString().trim() || "",
       consigneePhoneNumber:
         excelRow.ConsigneeTelephone?.toString().trim() || "",
@@ -408,9 +470,42 @@ function ManualAutoAWB() {
       consigneeCity: excelRow.ConsigneeCity?.toString().trim() || "",
       consigneeState: excelRow.ConsigneeState?.toString().trim() || "",
       consigneeCountry: "",
-      consigneePincode: consigneeZipcode, // Use the validated zip code
-
-      // ... rest of your consignee/shipper fields
+      consigneePincode: consigneeZipcode,
+      shipperFullName: excelRow.ConsignorName?.toString().trim() || "",
+      shipperPhoneNumber: excelRow.ConsignorTelephone?.toString().trim() || "",
+      shipperEmail: "",
+      shipperAddressLine1:
+        excelRow.ConsignorAddressLine1?.toString().trim() || "",
+      shipperAddressLine2:
+        excelRow.ConsignorAddressLine2?.toString().trim() || "",
+      shipperCity: excelRow.ConsignorCity?.toString().trim() || "",
+      shipperState: excelRow.ConsignorState?.toString().trim() || "",
+      shipperCountry: "",
+      shipperPincode: excelRow.ConsignorPincode?.toString().trim() || "",
+      shipperKycType: excelRow.ConsignorKycType?.toString().trim() || "",
+      shipperKycNumber: excelRow.ConsignorKycNo?.toString().trim() || "",
+      coLoader: "",
+      coLoaderNumber: 0,
+      insertUser: "11111111",
+      updateUser: "11111111",
+      billingLocked: false,
+      awbStatus: "",
+      isBilled: false,
+      notifType: "",
+      notifMsg: "",
+      runDate: null,
+      completeDataLock: false,
+      gstNumber: "",
+      adCode: "",
+      termsOfInvoice: "",
+      crnNumber: "",
+      mhbsNumber: "",
+      exportThroughEcommerce: false,
+      meisScheme: false,
+      shipmentType: "Non-Document",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      __v: 0,
     };
 
     // Add display fields for table
@@ -421,27 +516,23 @@ function ManualAutoAWB() {
     return shipment;
   };
 
-  const calculateVolumeWeight = (length, breadth, height) => {
-    const volume = (length || 0) * (breadth || 0) * (height || 0);
-    return Math.round((volume / 5000) * 100) / 100;
-  };
-
   const handleBrowseClick = () => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       const selectedFileName = file.name;
       setFileName(selectedFileName);
       setValue("weight", selectedFileName, { shouldValidate: true });
       setValidationErrors([]);
+      setSectorDestinationServiceErrors([]);
       setRowData([]);
       setAwbInfo(null);
 
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         try {
           const data = new Uint8Array(event.target.result);
           const workbook = XLSX.read(data, { type: "array" });
@@ -449,7 +540,7 @@ function ManualAutoAWB() {
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-          // Check for validation errors immediately - CHECK EVERY ROW
+          // Check for zip code validation errors immediately - CHECK EVERY ROW
           const validationErrorsFound = [];
 
           jsonData.forEach((row, index) => {
@@ -467,6 +558,55 @@ function ManualAutoAWB() {
 
           setValidationErrors(validationErrorsFound);
 
+          // Validate sector-destination-service combinations
+          try {
+            setLoading(true);
+            const sectorDestServiceResponse = await axios.post(
+              `${server}/bulk-upload/validate-sector-destination`,
+              { shipments: jsonData },
+            );
+
+            if (!sectorDestServiceResponse.data.success) {
+              const sdsErrors =
+                sectorDestServiceResponse.data.validationErrors || [];
+              setSectorDestinationServiceErrors(sdsErrors);
+
+              // Show error notification
+              let errorSummary = `🚫 SECTOR-DESTINATION-SERVICE MISMATCH (${sdsErrors.length} issues):\n`;
+              errorSummary += sdsErrors
+                .slice(0, 5)
+                .map((err) => {
+                  const rowsText =
+                    err.rowIndices.length > 3
+                      ? `Rows ${err.rowIndices.slice(0, 3).join(", ")}... (+${err.rowIndices.length - 3} more)`
+                      : `Row${err.rowIndices.length > 1 ? "s" : ""} ${err.rowIndices.join(", ")}`;
+                  return `   • ${err.sector} → ${err.destination} → ${err.service} (${rowsText})`;
+                })
+                .join("\n");
+
+              if (sdsErrors.length > 5) {
+                errorSummary += `\n   ...and ${sdsErrors.length - 5} more issues`;
+              }
+
+              showNotification(
+                "error",
+                `❌ VALIDATION FAILED!\n\n${errorSummary}\n\n⚠️ These sector-destination-service combinations do not exist in your zone matrix.\nPlease verify your Excel data.`,
+              );
+            }
+          } catch (sdError) {
+            console.error(
+              "Sector-Destination-Service validation error:",
+              sdError,
+            );
+            showNotification(
+              "error",
+              "Error validating sector-destination-service combinations. Please try again.",
+            );
+          } finally {
+            setLoading(false);
+          }
+
+          // Show zip code validation results
           if (validationErrorsFound.length > 0) {
             const indianZipErrors = validationErrorsFound.filter((err) =>
               err.message.includes("INDIAN ZIP CODE"),
@@ -510,10 +650,10 @@ function ManualAutoAWB() {
               "error",
               `❌ VALIDATION FAILED!\n\n${errorSummary}\n\n⚠️ IMPORTANT: We only ship internationally!\nConsignee zip codes MUST be from: UK, USA, Canada, Australia, or Europe.\nIndian pincodes are NOT allowed.`,
             );
-          } else {
+          } else if (sectorDestinationServiceErrors.length === 0) {
             showNotification(
               "success",
-              `✅ Excel file loaded successfully!\n📦 ${jsonData.length} shipments found\n🌍 All consignee zip codes are valid international codes`,
+              `✅ Excel file loaded successfully!\n📦 ${jsonData.length} shipments found\n🌍 All consignee zip codes are valid international codes\n✓ All sector-destination-service combinations verified`,
             );
           }
 
@@ -543,7 +683,7 @@ function ManualAutoAWB() {
       return;
     }
 
-    // CRITICAL: Block if there are ANY validation errors from file load
+    // CRITICAL: Block if there are ANY zip code validation errors
     if (validationErrors.length > 0) {
       const indianZipCount = validationErrors.filter(
         (err) => err.isIndianZip,
@@ -566,6 +706,33 @@ function ManualAutoAWB() {
           `3. Re-upload the corrected file\n\n` +
           `✓ We only accept international zip codes (UK, USA, Canada, Australia, Europe)`,
       );
+      return;
+    }
+
+    // CRITICAL: Block if there are sector-destination-service errors
+    if (sectorDestinationServiceErrors.length > 0) {
+      let errorSummary = `🚫 SECTOR-DESTINATION-SERVICE MISMATCH!\n\n`;
+      errorSummary += `❌ ${sectorDestinationServiceErrors.length} invalid combinations found:\n\n`;
+
+      sectorDestinationServiceErrors.slice(0, 5).forEach((err) => {
+        const rowsText =
+          err.rowIndices.length > 3
+            ? `Rows ${err.rowIndices.slice(0, 3).join(", ")}... (+${err.rowIndices.length - 3} more)`
+            : `Row${err.rowIndices.length > 1 ? "s" : ""} ${err.rowIndices.join(", ")}`;
+        errorSummary += `• ${err.sector} → ${err.destination} → ${err.service}\n  ${rowsText}\n\n`;
+      });
+
+      if (sectorDestinationServiceErrors.length > 5) {
+        errorSummary += `...and ${sectorDestinationServiceErrors.length - 5} more mismatches\n\n`;
+      }
+
+      errorSummary += `⚠️ ACTION REQUIRED:\n`;
+      errorSummary += `1. These sector-destination-service combinations do not exist in your zone matrix\n`;
+      errorSummary += `2. Either fix the Sector/Destination/Service values in your Excel\n`;
+      errorSummary += `3. Or add these combinations to your zone matrix first\n`;
+      errorSummary += `4. Re-upload the corrected file`;
+
+      showNotification("error", errorSummary);
       return;
     }
 
@@ -656,7 +823,8 @@ function ManualAutoAWB() {
             (allValidationErrors.length > 0
               ? `⚠️ Filtered out: ${allValidationErrors.length} invalid shipments\n`
               : "") +
-            `🌍 All consignee zip codes are valid international codes`,
+            `🌍 All consignee zip codes are valid international codes\n` +
+            `✓ All sector-destination-service combinations verified`,
         );
       }
     } catch (error) {
@@ -757,7 +925,7 @@ function ManualAutoAWB() {
       });
 
       const response = await axios.post(
-        `${server}/your-upload-endpoint`,
+        `${server}/bulk-upload/manual-awb`,
         uploadData,
       );
 
@@ -766,7 +934,8 @@ function ManualAutoAWB() {
           "success",
           `🎉 Upload successful!\n` +
             `✓ Uploaded: ${rowData.length} shipments\n` +
-            `🌍 All shipments have valid international consignee zip codes.`,
+            `🌍 All shipments have valid international consignee zip codes.\n` +
+            `✓ All sector-destination-service combinations verified`,
         );
 
         // Reset form
@@ -775,6 +944,7 @@ function ManualAutoAWB() {
         setFileName("");
         setAwbInfo(null);
         setValidationErrors([]);
+        setSectorDestinationServiceErrors([]);
         setValue("weight", "");
         setValue("flightDate", "");
         setChecked(false);
@@ -801,6 +971,7 @@ function ManualAutoAWB() {
     setFileName("");
     setAwbInfo(null);
     setValidationErrors([]);
+    setSectorDestinationServiceErrors([]);
     setValue("weight", "");
     setValue("flightDate", "");
     setChecked(false);
@@ -810,6 +981,10 @@ function ManualAutoAWB() {
       fileInputRef.current.value = "";
     }
   };
+
+  const totalErrors =
+    validationErrors.length + sectorDestinationServiceErrors.length;
+  const hasAnyErrors = totalErrors > 0;
 
   return (
     <>
@@ -842,6 +1017,7 @@ function ManualAutoAWB() {
                   setRowData([]);
                   setAwbInfo(null);
                   setValidationErrors([]);
+                  setSectorDestinationServiceErrors([]);
                 }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 font-bold hover:text-red-700"
               >
@@ -866,7 +1042,7 @@ function ManualAutoAWB() {
             <OutlinedButtonRed
               type="submit"
               label={loading ? "Loading..." : "Show"}
-              disabled={loading || validationErrors.length > 0}
+              disabled={loading || hasAnyErrors}
             />
           </div>
         </div>
@@ -915,7 +1091,7 @@ function ManualAutoAWB() {
                 className="font-bold text-lg mb-2 flex items-center"
                 style={{ color: "#991B1B" }}
               >
-                <X className="text-dark-red" /> INDIAN ZIP CODES DETECTED IN
+                <X className="mr-2" size={24} /> INDIAN ZIP CODES DETECTED IN
                 CONSIGNEE - {validationErrors.length} Shipments Blocked
               </h3>
               <div className="bg-white rounded p-3 mb-3 border border-red-300">
@@ -929,12 +1105,82 @@ function ManualAutoAWB() {
                 style={{ color: "#991B1B" }}
               >
                 ⚠️ Action Required: Fix these {validationErrors.length}{" "}
-                shipments in your Excel file :
+                shipments in your Excel file:
               </span>
-              <span className="text-xs ml-2" style={{ color: "#DC2626" }}>
+              <span className="text-xs ml-1" style={{ color: "#DC2626" }}>
                 These shipments will be automatically filtered out and NOT
                 processed.
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sector-Destination-Service Errors Display */}
+      {sectorDestinationServiceErrors.length > 0 && (
+        <div
+          className="rounded-md p-4 mb-2 border-2"
+          style={{
+            backgroundColor: "#FEF3C7",
+            borderColor: "#F59E0B",
+          }}
+        >
+          <div className="flex items-start">
+            <div className="flex-1">
+              <h3
+                className="font-bold text-lg mb-2 flex items-center"
+                style={{ color: "#92400E" }}
+              >
+                <AlertTriangle className="mr-2" size={24} />{" "}
+                SECTOR-DESTINATION-SERVICE MISMATCH -{" "}
+                {sectorDestinationServiceErrors.length} Issues Found
+              </h3>
+              <div className="bg-white rounded p-3 mb-3 border border-amber-300">
+                <p className="text-sm mb-2" style={{ color: "#F59E0B" }}>
+                  The following sector-destination-service combinations{" "}
+                  <strong>do not exist or currently not active</strong> in zone
+                  matrix.
+                </p>
+              </div>
+              <div className="space-y-2">
+                {sectorDestinationServiceErrors.slice(0, 10).map((err, idx) => (
+                  <div
+                    key={idx}
+                    className="text-sm"
+                    style={{ color: "#92400E" }}
+                  >
+                    <strong>
+                      {err.sector} → {err.destination} → {err.service}
+                    </strong>
+                    <span className="ml-2 text-xs" style={{ color: "#D97706" }}>
+                      (Row{err.rowIndices.length > 1 ? "s" : ""}:{" "}
+                      {err.rowIndices.length > 5
+                        ? `${err.rowIndices.slice(0, 5).join(", ")}... +${err.rowIndices.length - 5} more`
+                        : err.rowIndices.join(", ")}
+                      )
+                    </span>
+                  </div>
+                ))}
+                {sectorDestinationServiceErrors.length > 10 && (
+                  <div
+                    className="text-sm font-semibold"
+                    style={{ color: "#92400E" }}
+                  >
+                    ...and {sectorDestinationServiceErrors.length - 10} more
+                    mismatches
+                  </div>
+                )}
+              </div>
+              <div className="mt-3 text-sm" style={{ color: "#92400E" }}>
+                <strong>⚠️ Action Required:</strong>
+                <ul className="list-disc ml-5 mt-1">
+                  <li>
+                    Verify sector-destination-service combinations in your Excel
+                    file
+                  </li>
+                  <li>Update the Excel data to match zone</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
