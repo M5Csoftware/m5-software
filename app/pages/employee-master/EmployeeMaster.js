@@ -129,6 +129,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-Invoice Deletion": false,
     "permission-Suspense Account Access": false,
     "permission-FOC Account": false,
+    "permission-Rate Calculator": false,
 
     "title-Operations": false,
     "permission-Operation Deletion": false,
@@ -293,6 +294,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-Debit Summary Report",
       "permission-Suspense Account Access",
       "permission-FOC Account",
+      "permission-Rate Calculator",
     ],
 
     "title-Operations": [
