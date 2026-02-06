@@ -151,6 +151,7 @@ function Sidebar() {
 
         // "Month Sale",
         // "New Sale Report",
+        "Rate Calculator",
       ],
     },
     {
