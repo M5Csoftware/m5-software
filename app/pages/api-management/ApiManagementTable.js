@@ -17,6 +17,9 @@ export default function ApiManagementTable({
         useState(false);
     const [userToDeactivate, setUserToDeactivate] = useState(null);
     const [isDeactivating, setIsDeactivating] = useState(false);
+    const [showUseCasesModal, setShowUseCasesModal] = useState(false);
+    const [selectedUserUseCases, setSelectedUserUseCases] = useState([]);
+    const [selectedUserName, setSelectedUserName] = useState("");
     const menuRef = useRef(null);
 
     const toggleSelectAll = () => {
@@ -69,6 +72,14 @@ export default function ApiManagementTable({
             default:
                 break;
         }
+    };
+
+    // Show all use cases modal
+    const showAllUseCases = (user) => {
+        const useCases = getUseCases(user);
+        setSelectedUserUseCases(useCases);
+        setSelectedUserName(user.customerName || "Customer");
+        setShowUseCasesModal(true);
     };
 
     const confirmDeactivate = async () => {
@@ -141,16 +152,50 @@ export default function ApiManagementTable({
         const handleEscape = (e) => {
             if (e.key === "Escape") {
                 setActiveMenu(null);
+                if (showUseCasesModal) {
+                    setShowUseCasesModal(false);
+                }
             }
         };
         document.addEventListener("keydown", handleEscape);
         return () => document.removeEventListener("keydown", handleEscape);
-    }, []);
+    }, [showUseCasesModal]);
 
     const getSortIcon = (key) => {
         if (sortConfig.key === key)
             return sortConfig.direction === "asc" ? "↑" : "↓";
         return "";
+    };
+
+    // Helper function to normalize apiUseCase data
+    const getUseCases = (user) => {
+        let useCaseData = user.apiUseCase;
+        
+        // If it's already an array, return it
+        if (Array.isArray(useCaseData)) {
+            return useCaseData;
+        }
+        
+        // If it's a string, try to parse it
+        if (typeof useCaseData === 'string') {
+            // Try to parse as JSON first
+            try {
+                const parsed = JSON.parse(useCaseData);
+                if (Array.isArray(parsed)) {
+                    return parsed;
+                }
+            } catch (e) {
+                // Not JSON, check if it's a comma-separated string
+                if (useCaseData.includes(',')) {
+                    return useCaseData.split(',').map(item => item.trim()).filter(item => item);
+                }
+                // Single string value
+                return [useCaseData.trim()];
+            }
+        }
+        
+        // Return empty array for null/undefined
+        return [];
     };
 
     const headers = [
@@ -236,7 +281,8 @@ export default function ApiManagementTable({
                 <div className="min-h-[55vh] bg-white overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 hidden-scrollbar">
                     {apiUsers.map((user) => {
                         const userId = user.id || user._id || user.userId;
-                        const normalizedStatus = (user.status || "").toLowerCase();
+                        const normalizedStatus = (user.status || user.Status || "").toLowerCase();
+                        const useCases = getUseCases(user);
 
                         return (
                             <div
@@ -266,7 +312,7 @@ export default function ApiManagementTable({
 
                                     {/* Contact */}
                                     <div className="w-[150px] text-gray-700 text-sm">
-                                        {user.contact || "+91 7458961230"}
+                                        {user.phone || user.contact || "+91 7458961230"}
                                     </div>
 
                                     {/* Branch */}
@@ -276,8 +322,26 @@ export default function ApiManagementTable({
 
                                     {/* Use Case */}
                                     <div className="w-[200px]">
-                                        <div className="text-gray-700 text-sm truncate">
-                                            {user.useCase || "tilak nagar, new delhi"}
+                                        <div className="text-gray-700 text-sm">
+                                            {useCases.length === 0 ? (
+                                                <span className="text-gray-400">No use case</span>
+                                            ) : (
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="truncate" title={useCases[0]}>
+                                                        {useCases[0]}
+                                                    </span>
+                                                    {useCases.length > 1 && (
+                                                        <button
+                                                            onClick={() => showAllUseCases(user)}
+                                                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                                            title="Click to view all use cases"
+                                                            type="button"
+                                                        >
+                                                            +{useCases.length - 1} more
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -301,11 +365,10 @@ export default function ApiManagementTable({
                                     {/* Status */}
                                     <div className="w-[150px]">
                                         <ApiStatusBadge
-                                            status={user.status}
+                                            status={user.status || user.Status}
                                             user={user}
                                             onAction={(action, user) => handleMenuAction(action, user)}
                                         />
-
                                     </div>
 
                                     {/* Menu */}
@@ -336,17 +399,6 @@ export default function ApiManagementTable({
                                                     role="menu"
                                                     aria-orientation="vertical"
                                                 >
-                                                    {/* View */}
-                                                    {/* <button
-                                                        onClick={(e) =>
-                                                            handleMenuAction("view", user, e)
-                                                        }
-                                                        className="w-full text-left px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 flex items-center gap-3"
-                                                        type="button"
-                                                    >
-                                                        <span>View details</span>
-                                                    </button> */}
-
                                                     {/* Edit */}
                                                     <button
                                                         onClick={(e) =>
@@ -357,7 +409,6 @@ export default function ApiManagementTable({
                                                     >
                                                         <span>Edit API user</span>
                                                     </button>
-
 
                                                     {/* Approve / Reject only if pending */}
                                                     {normalizedStatus === "pending" && (
@@ -411,7 +462,6 @@ export default function ApiManagementTable({
                                                                 <span>Regenerate API key</span>
                                                             </button>
                                                         </div>
-
                                                     ) : (
                                                         <button
                                                             onClick={(e) =>
@@ -471,6 +521,64 @@ export default function ApiManagementTable({
                     cancelText="Cancel"
                     isLoading={isDeactivating}
                 />
+            )}
+
+            {/* Use Cases Modal */}
+            {showUseCasesModal && (
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div
+                        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300"
+                        onClick={() => setShowUseCasesModal(false)}
+                        aria-hidden="true"
+                    ></div>
+
+                    <div className="flex min-h-full items-center justify-center p-4 text-center">
+                        <div
+                            className="relative transform overflow-hidden rounded-2xl bg-white px-6 pb-6 pt-5 text-left shadow-xl transition-all duration-300 w-full max-w-md"
+                            role="dialog"
+                            aria-modal="true"
+                            style={{ animation: "modalSlideIn 0.3s ease-out" }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="mb-4">
+                                <h3 className="text-lg font-semibold leading-6 text-gray-900 mb-1">
+                                    All Use Cases
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                    {selectedUserName}
+                                </p>
+                            </div>
+
+                            <div className="border-t border-gray-200 pt-4">
+                                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                                    {selectedUserUseCases.map((useCase, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
+                                        >
+                                            <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 text-xs font-semibold">
+                                                {index + 1}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm text-gray-800">{useCase}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="mt-6 flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowUseCasesModal(false)}
+                                    className="inline-flex justify-center rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-200 transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </>
     );
@@ -696,19 +804,6 @@ function ConfirmationModal({
                     </div>
                 </div>
             </div>
-
-            <style jsx>{`
-        @keyframes modalSlideIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95) translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-      `}</style>
         </div>
     );
 }
