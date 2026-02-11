@@ -102,10 +102,19 @@ const CreditLimit = ({
   const [uniqueServices, setUniqueServices] = useState([]);
   const { sectors, server } = useContext(GlobalContext);
 
-  // Watch fields for calculations
+  // Add state for summary totals
+  const [totals, setTotals] = useState({
+    totalSales: 0,
+    totalReceipt: 0,
+    totalDebit: 0,
+    totalCredit: 0,
+  });
+
+  // Watch fields for calculations - IMPORTANT: Watch accountCode properly
   const creditLimit = watch("creditLimit");
   const outstanding = watch("outstanding");
   const selectedSector = watch("volumeMetricWtSector");
+  const watchedAccountCode = watch("accountCode"); // Watch accountCode from form
 
   const columns = useMemo(
     () => [
@@ -118,11 +127,92 @@ const CreditLimit = ({
 
   const [rowData, setRowData] = useState([]);
 
+  // Initialize accountCode from customerData if available
+  useEffect(() => {
+    if (customerData?.accountCode) {
+      console.log("=== Setting initial accountCode from customerData:", customerData.accountCode);
+      setValue("accountCode", customerData.accountCode);
+    }
+  }, [customerData?.accountCode, setValue]);
+
+  // Fetch customer summary totals when accountCode changes
+  useEffect(() => {
+    const fetchCustomerSummary = async () => {
+      // Get accountCode - check both watched value and customerData
+      const accountCode = watchedAccountCode || customerData?.accountCode;
+      
+      if (!accountCode) {
+        console.log("=== No accountCode available, skipping payment entry fetch");
+        return;
+      }
+
+      try {
+        console.log("=== Fetching Customer Summary for accountCode:", accountCode);
+        console.log("Server URL:", server);
+        console.log("Full URL:", `${server}/payment-entry?accountCode=${accountCode}`);
+        
+        const response = await axios.get(
+          `${server}/payment-entry?accountCode=${accountCode}`
+        );
+
+        console.log("=== Payment Entry API Response:", response.data);
+        const summary = response.data.summary || {};
+        console.log("Customer Summary extracted:", summary);
+
+        // Update totals state with raw numbers
+        setTotals({
+          totalSales: summary.totalSales || 0,
+          totalReceipt: summary.totalReceipt || 0,
+          totalDebit: summary.totalDebit || 0,
+          totalCredit: summary.totalCredit || 0,
+        });
+
+        // Calculate outstanding: (Sales + Debit) - (Receipt + Credit)
+        // This matches the formula in PaymentEntry.jsx
+        const totalSales = parseFloat(summary.totalSales || 0);
+        const totalReceipt = parseFloat(summary.totalReceipt || 0);
+        const totalDebit = parseFloat(summary.totalDebit || 0);
+        const totalCredit = parseFloat(summary.totalCredit || 0);
+        
+        const calculatedOutstanding = (totalSales + totalDebit) - (totalReceipt + totalCredit);
+        
+        console.log("=== Outstanding Calculation ===");
+        console.log("Total Sales:", totalSales);
+        console.log("Total Debit:", totalDebit);
+        console.log("Total Receipt:", totalReceipt);
+        console.log("Total Credit:", totalCredit);
+        console.log("Formula: (Sales + Debit) - (Receipt + Credit)");
+        console.log(`(${totalSales} + ${totalDebit}) - (${totalReceipt} + ${totalCredit}) = ${calculatedOutstanding}`);
+        
+        setValue("outstanding", calculatedOutstanding.toFixed(2));
+      } catch (error) {
+        console.error("=== ERROR fetching customer summary ===");
+        console.error("Error details:", error);
+        console.error("Error response:", error.response?.data);
+        console.error("Error status:", error.response?.status);
+        
+        // Reset totals on error
+        setTotals({
+          totalSales: 0,
+          totalReceipt: 0,
+          totalDebit: 0,
+          totalCredit: 0,
+        });
+        setValue("outstanding", "0.00");
+      }
+    };
+
+    fetchCustomerSummary();
+  }, [watchedAccountCode, customerData?.accountCode, server, setValue]);
+
   // Fetch all unique services from rate sheets on mount
   useEffect(() => {
     const fetchRateSheets = async () => {
       try {
         console.log("=== Fetching Rate Sheets ===");
+        console.log("Server URL:", server);
+        console.log("Full URL:", `${server}/rate-sheet`);
+        
         const response = await axios.get(`${server}/rate-sheet`);
         console.log("Rate sheets fetched:", response.data);
 
@@ -136,7 +226,9 @@ const CreditLimit = ({
 
         setUniqueServices(services);
       } catch (error) {
-        console.error("Error fetching rate sheets:", error);
+        console.error("=== ERROR fetching rate sheets ===");
+        console.error("Error details:", error);
+        console.error("Error response:", error.response?.data);
       }
     };
 
@@ -147,8 +239,8 @@ const CreditLimit = ({
   useEffect(() => {
     if (creditLimit && outstanding) {
       const leftOver = parseFloat(creditLimit) - parseFloat(outstanding);
-      setValue("leftOverBalance", leftOver.toString());
-      console.log("Left Over Balance calculated:", leftOver);
+      setValue("leftOverBalance", leftOver.toFixed(2));
+      console.log("=== Left Over Balance calculated:", leftOver.toFixed(2));
     }
   }, [creditLimit, outstanding, setValue]);
 
@@ -271,14 +363,14 @@ const CreditLimit = ({
                   register={register}
                   label=""
                   setValue={setValue}
-                  value="portalBalance"
+                  value="leftOverBalance"
                   disabled={true}
-                  initialValue={customerData?.portalBalance || ""}
+                  initialValue={customerData?.leftOverBalance || ""}
                 />
               </div>
             </div>
 
-            {/* Total Outstanding Section */}
+            {/* Total Outstanding Section - Updated with calculated values */}
             <div className="flex flex-col gap-3 w-full">
               <RedLabelHeading label="Total Outstanding" />
               <div className="grid grid-cols-2 grid-rows gap-x-4 gap-y-4">
@@ -288,7 +380,7 @@ const CreditLimit = ({
                   setValue={setValue}
                   value="totalSales"
                   disabled={true}
-                  initialValue={customerData?.totalSales || ""}
+                  inputValue={(totals.totalSales || 0).toFixed(2)}
                 />
                 <DummyInputBoxWithLabelDarkGray
                   register={register}
@@ -296,7 +388,7 @@ const CreditLimit = ({
                   setValue={setValue}
                   value="totalPayment"
                   disabled={true}
-                  initialValue={customerData?.totalPayment || ""}
+                  inputValue={(totals.totalReceipt || 0).toFixed(2)}
                 />
               </div>
               <div className="grid grid-cols-2 grid-rows gap-x-4 gap-y-4">
@@ -306,7 +398,7 @@ const CreditLimit = ({
                   setValue={setValue}
                   value="totalDebitNote"
                   disabled={true}
-                  initialValue={customerData?.totalDebitNote || ""}
+                  inputValue={(totals.totalDebit || 0).toFixed(2)}
                 />
                 <DummyInputBoxWithLabelDarkGray
                   register={register}
@@ -314,7 +406,7 @@ const CreditLimit = ({
                   setValue={setValue}
                   value="totalCreditNote"
                   disabled={true}
-                  initialValue={customerData?.totalCreditNote || ""}
+                  inputValue={(totals.totalCredit || 0).toFixed(2)}
                 />
               </div>
               <DummyInputBoxWithLabelDarkGray
