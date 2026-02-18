@@ -14,6 +14,7 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import { useAuth } from "@/app/Context/AuthContext";
 import CodeList from "@/app/components/CodeList";
 import NotificationFlag from "@/app/components/Notificationflag";
+import { sendNotification } from "@/app/lib/sendNotifications";
 
 function EventActivity() {
   const { register, setValue, handleSubmit, reset, watch } = useForm();
@@ -294,6 +295,8 @@ function EventActivity() {
     const now = new Date();
     const newEvents = itemsToUpdate.map((item) => ({
       awbNo: item.awbNo,
+      accountCode: item.accountCode || "",
+      customerName: item.receiverFullName || item.customerName || "",
       eventDate: data.statusDate,
       eventTime: data["time(Use 24 hr Format)"],
       eventCode: data.eventCode,
@@ -474,6 +477,19 @@ function EventActivity() {
       console.log(eventData);
       await createEventActivity(eventData);
 
+      // Send notifications for each event
+      for (const event of eventData) {
+        await sendNotification({
+          accountCode: event.accountCode,
+          name: event.customerName,
+          awbNo: event.awbNo,
+          event: "Shipment Status Update",
+          description: `${event.awbNo} - ${event.eventCode}`,
+          message: `${event.awbNo} ~ ${event.status}`,
+          priority: "medium",
+        });
+      }
+
       // Reset additional UI state
       setResetForm((prev) => !prev);
       setRowData([]);
@@ -574,7 +590,7 @@ function EventActivity() {
         {eventCode && eventCode.length > 0 && (
           <div className="my-4">
             <CodeList
-              handleAction={() => {}}
+              handleAction={() => { }}
               data={eventCode} // assuming eventCode = [{ code: 'EV001', name: 'Delivered' }, ...]
               columns={[
                 { key: "code", label: "Event Code" },
@@ -614,15 +630,14 @@ function EventActivity() {
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-3">
             <RedLabelHeading
-              label={`Search ${
-                demoRadio === "AWB Wise"
-                  ? "Airwaybills"
-                  : demoRadio === "Run Wise"
+              label={`Search ${demoRadio === "AWB Wise"
+                ? "Airwaybills"
+                : demoRadio === "Run Wise"
                   ? "Runs"
                   : demoRadio === "Club No"
-                  ? "Clubbing Numbers"
-                  : "Excel File"
-              }`}
+                    ? "Clubbing Numbers"
+                    : "Excel File"
+                }`}
             />
 
             {/* Search Input and Button */}
@@ -669,8 +684,8 @@ function EventActivity() {
                         demoRadio === "AWB Wise"
                           ? "Airwaybill Number"
                           : demoRadio === "Club No"
-                          ? "Clubbing Number"
-                          : "Run Number"
+                            ? "Clubbing Number"
+                            : "Run Number"
                       }
                       register={register}
                       setValue={setValue}
@@ -678,8 +693,8 @@ function EventActivity() {
                         demoRadio === "AWB Wise"
                           ? "airwaybillNumber"
                           : demoRadio === "Club No"
-                          ? "clubbingNumber"
-                          : "runNumber"
+                            ? "clubbingNumber"
+                            : "runNumber"
                       }
                     />
                     <div className="min-w-[120px]">
