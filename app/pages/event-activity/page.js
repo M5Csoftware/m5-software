@@ -1,6 +1,6 @@
 "use client";
 import { RadioButtonLarge } from "@/app/components/RadioButton";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import Heading from "@/app/components/Heading";
 import InputBox, { DateInputBox } from "@/app/components/InputBox";
@@ -351,6 +351,7 @@ function EventActivity() {
         // Map data to match your table structure
         const shipments = jsonData.map((row) => ({
           awbNo: row["AWB No"] || "",
+          accountCode: row["Account Code"] || row["Customer Code"] || "",
           createdAt: normalizeDate(row["Shipment Date"] || ""),
           sector: row["Sector"] || "",
           destination: row["Destination"] || "",
@@ -480,15 +481,17 @@ function EventActivity() {
 
       // Send notifications for each event
       for (const event of eventData) {
-        await sendNotification({
-          accountCode: event.accountCode,
-          name: event.customerName,
-          awbNo: event.awbNo,
-          event: "Shipment Status Update",
-          description: `${event.awbNo} - ${event.eventCode}`,
-          message: `${event.awbNo} ~ ${event.status}`,
-          priority: "medium",
-        });
+        if (event.accountCode) {
+          await sendNotification({
+            accountCode: event.accountCode,
+            name: event.customerName,
+            awbNo: event.awbNo,
+            event: "Shipment Status", // Standardized name for preferences check
+            description: `${event.awbNo} - ${event.eventCode}`,
+            message: `${event.awbNo} ~ ${event.status}`,
+            priority: "medium",
+          });
+        }
       }
 
       // Reset additional UI state
@@ -508,9 +511,9 @@ function EventActivity() {
   // Create sample CSV data
   const downloadSampleCSV = () => {
     const csvData = [
-      ["AWB No", "Shipment Date", "Sector", "Destination", "Consignee Name"],
-      ["1234567890", "2025-03-16", "NYC-DEL", "New Delhi", "John Doe"],
-      ["9876543210", "2025-03-14", "LAX-LHR", "London", "Alice Smith"],
+      ["AWB No", "Account Code", "Shipment Date", "Sector", "Destination", "Consignee Name"],
+      ["1234567890", "A1001", "2025-03-16", "NYC-DEL", "New Delhi", "John Doe"],
+      ["9876543210", "A1002", "2025-03-14", "LAX-LHR", "London", "Alice Smith"],
     ];
 
     const csvContent = csvData.map((row) => row.join(",")).join("\n");
@@ -556,7 +559,18 @@ function EventActivity() {
   const eventCodeValue = watch("eventCode");
   const statusValue = watch("status");
 
-  // Sync Status when Event Code changes
+  // Filter statuses based on Event Code
+  const filteredStatuses = useMemo(() => {
+    if (!eventCodeValue) return eventCode.map((item) => item.name);
+
+    return eventCode
+      .filter((item) =>
+        item.code.toLowerCase().startsWith(eventCodeValue.toLowerCase())
+      )
+      .map((item) => item.name);
+  }, [eventCodeValue, eventCode]);
+
+  // Sync Event Status state when Event Code changes (internal state only)
   useEffect(() => {
     if (!eventCodeValue) return;
 
@@ -567,12 +581,12 @@ function EventActivity() {
 
       if (matchedEvent) {
         setEventStatus(matchedEvent.name);
-        setValue("status", matchedEvent.name);
+        // Removed: setValue("status", matchedEvent.name);
       }
     }, 400);
 
     return () => clearTimeout(handler);
-  }, [eventCodeValue, eventCode, setValue]);
+  }, [eventCodeValue, eventCode]);
 
   // Sync Event Code when Status changes
   const handleStatusChange = (selectedStatus) => {
@@ -778,6 +792,7 @@ function EventActivity() {
                   register={register}
                   setValue={setValue}
                   value="eventCode"
+                  initialValue={eventCodeValue}
                   required={true}
                   resetFactor={resetForm}
                 />
@@ -786,7 +801,7 @@ function EventActivity() {
               <div className="w-full">
                 <LabeledDropdown
                   title="Status"
-                  options={eventCode.map((item) => item.name)}
+                  options={filteredStatuses}
                   value="status"
                   register={register}
                   setValue={setValue}
