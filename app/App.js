@@ -2,6 +2,7 @@
 import { useContext, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { GlobalContext } from "./lib/GlobalContext";
+import { defaultEventCodes } from "./lib/eventCodes";
 import axios from "axios";
 import Sidebar from "./components/Sidebar";
 import Tabs from "./components/Tabs";
@@ -408,11 +409,29 @@ const App = () => {
           signal: controller.signal,
         });
         // ⚡ REPLACE data, don't append
-        setter(data.map((item) => ({ code: item.code, name: item.name })));
+        if (entityType === "Event") {
+          setter((prev) => {
+            const serverData = data.map((item) => ({ code: item.code, name: item.name }));
+            // Merge: Prefer local defaultEventCodes, add server ones that don't exist
+            const merged = [...defaultEventCodes];
+            serverData.forEach(s => {
+              if (!merged.find(m => m.code.toLowerCase() === s.code.toLowerCase())) {
+                merged.push(s);
+              }
+            });
+            return merged;
+          });
+        } else {
+          setter(data.map((item) => ({ code: item.code, name: item.name })));
+        }
       } catch (err) {
         if (err.name !== "CanceledError") {
           console.error(`Error fetching ${entityType}:`, err);
-          setter([]); // Clear on error
+          if (entityType === "Event") {
+            setter(defaultEventCodes); // Reset to defaults on error
+          } else {
+            setter([]); // Clear on error
+          }
         }
       }
     };
