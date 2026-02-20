@@ -15,6 +15,7 @@ import { useAuth } from "@/app/Context/AuthContext";
 import CodeList from "@/app/components/CodeList";
 import NotificationFlag from "@/app/components/Notificationflag";
 import { sendNotification } from "@/app/lib/sendNotifications";
+import { LabeledDropdown } from "@/app/components/Dropdown";
 
 function EventActivity() {
   const { register, setValue, handleSubmit, reset, watch } = useForm();
@@ -553,24 +554,38 @@ function EventActivity() {
 
   // Watch eventCode field
   const eventCodeValue = watch("eventCode");
+  const statusValue = watch("status");
 
+  // Sync Status when Event Code changes
   useEffect(() => {
-    if (!eventCodeValue) return; // don't run if empty
+    if (!eventCodeValue) return;
 
     const handler = setTimeout(() => {
-      // Find matching event by code
       const matchedEvent = eventCode.find(
         (item) => item.code.toLowerCase() === eventCodeValue.toLowerCase()
       );
 
       if (matchedEvent) {
         setEventStatus(matchedEvent.name);
-        setValue("status", matchedEvent.name); // Auto-fill Status
+        setValue("status", matchedEvent.name);
       }
-    }, 400); // 400ms debounce
+    }, 400);
 
-    return () => clearTimeout(handler); // cleanup on value change
-  }, [eventCodeValue, eventCode]);
+    return () => clearTimeout(handler);
+  }, [eventCodeValue, eventCode, setValue]);
+
+  // Sync Event Code when Status changes
+  const handleStatusChange = (selectedStatus) => {
+    if (!selectedStatus) return;
+
+    const matchedEvent = eventCode.find(
+      (item) => item.name.toLowerCase() === selectedStatus.toLowerCase()
+    );
+
+    if (matchedEvent) {
+      setValue("eventCode", matchedEvent.code);
+    }
+  };
 
   return (
     <form className="flex flex-col gap-9" onSubmit={handleSubmit(onSubmit)}>
@@ -768,15 +783,19 @@ function EventActivity() {
                 />
               </div>
 
-              <InputBox
-                placeholder="Status"
-                register={register}
-                setValue={setValue}
-                value="status"
-                required={true}
-                resetFactor={resetForm}
-                initialValue={eventStatus}
-              />
+              <div className="w-full">
+                <LabeledDropdown
+                  title="Status"
+                  options={eventCode.map((item) => item.name)}
+                  value="status"
+                  register={register}
+                  setValue={setValue}
+                  selectedValue={statusValue}
+                  onChange={handleStatusChange}
+                  resetFactor={resetForm}
+                  required={true}
+                />
+              </div>
 
               <div className="w-[350px]">
                 <InputBox
