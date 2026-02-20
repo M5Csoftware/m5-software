@@ -27,7 +27,7 @@ const Invoice = () => {
     <div className="flex flex-col gap-8">
       {step === 1 && (
         <div>
-          <Heading title="Invoice" codeListBtn="hidden" bulkUploadBtn="hidden"  refreshBtn="hidden"/>
+          <Heading title="Invoice" codeListBtn="hidden" bulkUploadBtn="hidden" refreshBtn="hidden" />
 
           <div className="flex gap-3 mt-6">
             <SearchableDropDrown
