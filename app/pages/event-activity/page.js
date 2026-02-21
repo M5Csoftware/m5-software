@@ -482,13 +482,25 @@ function EventActivity() {
       // Send notifications for each event
       for (const event of eventData) {
         if (event.accountCode) {
+          let dynamicEvent = "Shipment Status";
+          let dynamicMessage = `${event.awbNo} ~ ${event.status}`;
+
+          const statusLower = (event.status || "").toLowerCase();
+          if (statusLower.includes("hold")) {
+            dynamicEvent = "Shipment put on hold";
+            dynamicMessage = `Shipment ${event.awbNo} is put on hold because of ${event.status}!`;
+          } else if (statusLower.includes("delay")) {
+            dynamicEvent = "Shipment is delayed";
+            dynamicMessage = `Shipment ${event.awbNo} is delayed for ${event.status}!`;
+          }
+
           await sendNotification({
             accountCode: event.accountCode,
             name: event.customerName,
             awbNo: event.awbNo,
-            event: "Shipment Status", // Standardized name for preferences check
-            description: `${event.awbNo} - ${event.eventCode}`,
-            message: `${event.awbNo} ~ ${event.status}`,
+            event: dynamicEvent,
+            description: `[${event.eventCode}] ${event.status}`,
+            message: dynamicMessage,
             priority: "medium",
           });
         }

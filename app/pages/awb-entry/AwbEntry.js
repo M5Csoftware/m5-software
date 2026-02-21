@@ -179,10 +179,10 @@ function AwbEntry() {
     const availableBalance = account.leftOverBalance || 0;
     const creditLimit = account.creditLimit || 0;
     const totalAvailable = availableBalance + creditLimit;
-    
+
     // Check if credit limit is exceeded
     const creditExceeded = Number(grandTotal) > totalAvailable;
-    
+
     if (creditExceeded) {
       // Auto-hold due to credit limit
       setHoldReason("Credit Limit Exceeded");
@@ -211,10 +211,10 @@ function AwbEntry() {
       setValue("isHold", fetchedAwbData.isHold || false);
       setValue("holdReason", fetchedAwbData.holdReason || "");
       setValue("otherHoldReason", fetchedAwbData.otherHoldReason || "");
-      
+
       // Don't set holdEdit for existing holds - allow modification
       setHoldEdit(false);
-      
+
       console.log("Loaded hold data:", {
         isHold: fetchedAwbData.isHold,
         holdReason: fetchedAwbData.holdReason,
@@ -263,12 +263,10 @@ function AwbEntry() {
   const handleZoneAlertConfirm = () => {
     const currentRemark = watch("operationRemark") || "";
     const newRemark = currentRemark
-      ? `${currentRemark}. ${
-          zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
-        } area confirmed (Zone ${zoneAlertData.zone})`
-      : `${
-          zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
-        } area confirmed (Zone ${zoneAlertData.zone})`;
+      ? `${currentRemark}. ${zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
+      } area confirmed (Zone ${zoneAlertData.zone})`
+      : `${zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
+      } area confirmed (Zone ${zoneAlertData.zone})`;
 
     setValue("operationRemark", newRemark);
     setZoneAlertData({ ...zoneAlertData, isOpen: false });
@@ -276,8 +274,7 @@ function AwbEntry() {
 
     showNotification(
       "warning",
-      `${
-        zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
+      `${zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
       } area confirmed. Remark updated.`,
     );
   };
@@ -293,8 +290,7 @@ function AwbEntry() {
 
     showNotification(
       "info",
-      `Destination cleared. ${
-        zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
+      `Destination cleared. ${zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
       } area not selected.`,
     );
   };
@@ -410,9 +406,8 @@ function AwbEntry() {
         if (avgPerBox > serviceData.boxLimit) {
           errors.push({
             field: "actualWt",
-            msg: `Average per box: ${avgPerBox.toFixed(2)}kg exceeds limit of ${
-              serviceData.boxLimit
-            }kg per AWB`,
+            msg: `Average per box: ${avgPerBox.toFixed(2)}kg exceeds limit of ${serviceData.boxLimit
+              }kg per AWB`,
           });
         }
       }
@@ -520,15 +515,6 @@ function AwbEntry() {
     } else {
       setValue("chargeableWt", "0.00");
     }
-  }, [actualWt, volWt, volDisc, setValue]); 
-
-      setValue(
-        "chargeableWt",
-        actual < 1 ? actual.toFixed(2) : Math.ceil(actual),
-      );
-    } else {
-      setValue("chargeableWt", "0.00");
-    }
   }, [actualWt, volWt, volDisc, setValue]);
 
   // set values in globalContext
@@ -555,8 +541,8 @@ function AwbEntry() {
     if (serviceValidation.warnings?.length > 0) {
       const shouldProceed = window.confirm(
         `Service has ${serviceValidation.warnings.length} warnings:\n` +
-          serviceValidation.warnings.join("\n") +
-          "\n\nDo you want to proceed?",
+        serviceValidation.warnings.join("\n") +
+        "\n\nDo you want to proceed?",
       );
 
       if (!shouldProceed) {
@@ -568,16 +554,16 @@ function AwbEntry() {
     const accountCode = code;
     const insertUser = user?.userId;
     const updateUser = user?.userId;
-    
+
     // FIXED: Ensure hold reason is properly set in payload
-    const payload = { 
-      accountCode, 
+    const payload = {
+      accountCode,
       ...fillterData,
       isHold: isHold,
       holdReason: holdReason || fillterData.holdReason || "",
       otherHoldReason: fillterData.otherHoldReason || ""
     };
-    
+
     console.log("payload: ", payload, newShipment);
 
     // small helper to safely fetch customer name
@@ -1059,7 +1045,7 @@ function AwbEntry() {
 
       const applicableSet = new Set(
         applicableList.map((a) => normalizeService(a.service))
-
+      );
 
       const commonServices = filteredServices.filter((f) =>
         Array.from(applicableSet).some(
@@ -1312,8 +1298,8 @@ function AwbEntry() {
 
       const rate =
         amountDetails.rate !== undefined &&
-        amountDetails.rate !== null &&
-        Number(amountDetails.rate) > 0
+          amountDetails.rate !== null &&
+          Number(amountDetails.rate) > 0
           ? Number(amountDetails.rate)
           : 0;
 
@@ -1442,12 +1428,12 @@ function AwbEntry() {
 
       const updatedGrandTotal = round(
         baseGrandTotal +
-          taxableAdjustment +
-          adjSgst +
-          adjCgst +
-          adjIgst -
-          Number(cashRecvAmount) -
-          Number(discount),
+        taxableAdjustment +
+        adjSgst +
+        adjCgst +
+        adjIgst -
+        Number(cashRecvAmount) -
+        Number(discount),
       );
 
       isUpdatingRef.current = true;
@@ -2214,9 +2200,8 @@ function AwbEntry() {
             // Show alert modal
             setZoneAlertData({
               isOpen: true,
-              message: `The selected destination "${destinationValue}" is in a ${
-                isRemote ? "remote" : "unserviceable"
-              } zone (Zone ${zoneNumber}). Are you sure you want to continue?`,
+              message: `The selected destination "${destinationValue}" is in a ${isRemote ? "remote" : "unserviceable"
+                } zone (Zone ${zoneNumber}). Are you sure you want to continue?`,
               zoneType: isRemote ? "remote" : "unserviceable",
               destination: destinationValue,
               zone: zoneNumber,
@@ -2349,19 +2334,17 @@ function AwbEntry() {
 
               <div className="mb-4">
                 <div
-                  className={`p-3 rounded-lg mb-3 ${
-                    zoneAlertData.zoneType === "remote"
-                      ? "bg-yellow-50 border border-yellow-200"
-                      : "bg-red-50 border border-red-200"
-                  }`}
+                  className={`p-3 rounded-lg mb-3 ${zoneAlertData.zoneType === "remote"
+                    ? "bg-yellow-50 border border-yellow-200"
+                    : "bg-red-50 border border-red-200"
+                    }`}
                 >
                   <div className="flex items-center">
                     <svg
-                      className={`w-5 h-5 mr-2 ${
-                        zoneAlertData.zoneType === "remote"
-                          ? "text-yellow-500"
-                          : "text-red-500"
-                      }`}
+                      className={`w-5 h-5 mr-2 ${zoneAlertData.zoneType === "remote"
+                        ? "text-yellow-500"
+                        : "text-red-500"
+                        }`}
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -2372,11 +2355,10 @@ function AwbEntry() {
                       />
                     </svg>
                     <span
-                      className={`font-medium ${
-                        zoneAlertData.zoneType === "remote"
-                          ? "text-yellow-800"
-                          : "text-red-800"
-                      }`}
+                      className={`font-medium ${zoneAlertData.zoneType === "remote"
+                        ? "text-yellow-800"
+                        : "text-red-800"
+                        }`}
                     >
                       {zoneAlertData.zoneType === "remote"
                         ? "Remote Zone Detected"
@@ -2409,11 +2391,10 @@ function AwbEntry() {
                 <button
                   type="button"
                   onClick={handleZoneAlertConfirm}
-                  className={`px-4 py-2 text-sm font-medium text-white ${
-                    zoneAlertData.zoneType === "remote"
-                      ? "bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500"
-                      : "bg-red-600 hover:bg-red-700 focus:ring-red-500"
-                  } border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                  className={`px-4 py-2 text-sm font-medium text-white ${zoneAlertData.zoneType === "remote"
+                    ? "bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500"
+                    : "bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                    } border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 >
                   Continue
                 </button>
@@ -2534,11 +2515,10 @@ function AwbEntry() {
                     />
                     {isRemoteOrUnserviceable && (
                       <div
-                        className={`flex items-center px-3 py-2 rounded ${
-                          zoneAlertData.zoneType === "remote"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
+                        className={`flex items-center px-3 py-2 rounded ${zoneAlertData.zoneType === "remote"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                          }`}
                       >
                         <svg
                           className="w-5 h-5 mr-2"
@@ -2916,18 +2896,17 @@ function AwbEntry() {
                     register={register}
                     setValue={setValue}
                     resetFactor={refreshKey}
-                    title={`Service ${
-                      serviceValidation?.serviceDetails?.softwareStatus ===
+                    title={`Service ${serviceValidation?.serviceDetails?.softwareStatus ===
                       "In-Active"
-                        ? "⚠️"
-                        : ""
-                    }`}
+                      ? "⚠️"
+                      : ""
+                      }`}
                     value={`service`}
                     defaultValue={fetchedAwbData.service || ""}
                     disabled={isEdit || pendingZoneUpdate}
                     className={
                       serviceValidation?.serviceDetails?.softwareStatus ===
-                      "In-Active"
+                        "In-Active"
                         ? "border-yellow-500"
                         : ""
                     }
