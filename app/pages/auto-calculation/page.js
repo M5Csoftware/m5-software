@@ -6,9 +6,10 @@ import { LabeledDropdown } from "@/app/components/Dropdown";
 import Heading from "@/app/components/Heading";
 import InputBox, { DateInputBox } from "@/app/components/InputBox";
 import { GlobalContext } from "@/app/lib/GlobalContext";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import axios from "axios";
+import { AutoCalcModal } from "@/app/components/AutoCalcModal";
 
 const AutoCalculation = () => {
   const { register, setValue, watch } = useForm();
@@ -37,6 +38,44 @@ const AutoCalculation = () => {
   const showNotification = (type, message) => {
     setNotification({ type, message, visible: true });
   };
+
+  // ── Modal state ──────────────────────────────────────────────────────────
+  const [modal, setModal] = useState({ open: false, variant: "confirm" });
+  const modalConfirmRef = useRef(null); // stores resolve fn for confirm flow
+
+  const closeModal = () => setModal({ open: false, variant: "confirm" });
+
+  /** Show a themed confirm dialog; returns a Promise<boolean> */
+  const showConfirmModal = ({ title, message, meta, confirmLabel }) =>
+    new Promise((resolve) => {
+      modalConfirmRef.current = resolve;
+      setModal({ open: true, variant: "confirm", title, message, meta, confirmLabel });
+    });
+
+  /** Show a themed info/error modal (test result rows) */
+  const showInfoModal = ({ variant = "info", title, message, rows, meta }) =>
+    setModal({ open: true, variant, title, message, rows, meta });
+
+  /** Show a themed warning modal (failed shipments list) */
+  const showWarningModal = ({ title, message, failedItems, okItems, meta }) =>
+    setModal({ open: true, variant: "warning", title, message, failedItems, okItems, meta });
+
+  const handleModalConfirm = () => {
+    closeModal();
+    if (modalConfirmRef.current) {
+      modalConfirmRef.current(true);
+      modalConfirmRef.current = null;
+    }
+  };
+
+  const handleModalClose = () => {
+    closeModal();
+    if (modalConfirmRef.current) {
+      modalConfirmRef.current(false);
+      modalConfirmRef.current = null;
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Fetch customer list for CodeList
   useEffect(() => {
@@ -95,7 +134,7 @@ const AutoCalculation = () => {
       console.error("Error fetching customer details:", error);
       console.log(
         "Failed to fetch customer details: " +
-          (error.response?.data?.message || error.message),
+        (error.response?.data?.message || error.message),
       );
       setSelectedAccount(null);
     } finally {
@@ -137,7 +176,7 @@ const AutoCalculation = () => {
       console.error("Error fetching shipments:", error);
       console.log(
         "Failed to fetch shipment data: " +
-          (error.response?.data?.message || error.message),
+        (error.response?.data?.message || error.message),
       );
       showNotification("error", "Error fetching shipments");
       setAllShipments([]);
@@ -271,8 +310,8 @@ const AutoCalculation = () => {
           goodstype: shipment.goodstype || "",
           chargeableWt: Math.ceil(
             Number(shipment.chargeableWt) ||
-              Number(shipment.totalActualWt) ||
-              0,
+            Number(shipment.totalActualWt) ||
+            0,
           ),
           pcs: Number(shipment.pcs) || 1,
           totalInvoiceValue: Number(shipment.totalInvoiceValue) || 0,
@@ -434,11 +473,15 @@ const AutoCalculation = () => {
       return;
     }
 
-    const confirmUpdate = confirm(
-      `Are you sure you want to recalculate ${displayedShipments.length} shipment(s) using bulk upload route?\n\n` +
-        `Service: ${newService === "All" ? "Keep existing services" : newService}\n` +
-        `Calculation will stop if any shipment fails.`,
-    );
+    const confirmUpdate = await showConfirmModal({
+      title: "Confirm Recalculation",
+      message: "This will recalculate and update all displayed shipments. The action cannot be undone.",
+      meta: [
+        `${displayedShipments.length} shipment${displayedShipments.length !== 1 ? "s" : ""}`,
+        `Service: ${newService === "All" ? "Keep existing" : newService}`,
+      ],
+      confirmLabel: "Proceed",
+    });
 
     if (!confirmUpdate) return;
 
@@ -478,13 +521,17 @@ const AutoCalculation = () => {
 
       // Show warning if some failed
       if (failedCalculations.length > 0) {
-        alert(
-          `⚠️ ${failedCalculations.length} shipment(s) failed calculation:\n` +
-            failedCalculations
-              .map((f) => `• ${f.awbNo}: ${f.error}`)
-              .join("\n") +
-            `\n\nContinue with ${successfulCalculations.length} successful calculations?`,
-        );
+        showWarningModal({
+          title: "Partial Calculation Result",
+          message: `${successfulCalculations.length} of ${calculatedResults.length} shipments calculated successfully.`,
+          failedItems: failedCalculations.map((f) => ({ awbNo: f.awbNo, error: f.error })),
+          okItems: successfulCalculations.map((s) => ({
+            awbNo: s.awbNo,
+            service: s.newService,
+            grandTotal: s.grandTotal,
+          })),
+          meta: [`${failedCalculations.length} failed`, `${successfulCalculations.length} OK`],
+        });
       }
 
       // STEP 2: Update successful shipments in database
@@ -587,23 +634,34 @@ const AutoCalculation = () => {
       );
 
       if (calculated.error || !calculated.success) {
-        alert(`Test failed: ${calculated.error || "Unknown error"}`);
+        showInfoModal({
+          variant: "error",
+          title: "Test Failed",
+          message: calculated.error || "Unknown error",
+          meta: [testShipment.awbNo],
+        });
       } else {
-        alert(
-          `Test successful using bulk upload route!\n\n` +
-            `AWB: ${testShipment.awbNo}\n` +
-            `New Service: ${calculated.newService}\n` +
-            `Zone: ${calculated.zone}\n` +
-            `Chargeable Weight: ${testShipment.chargeableWt}\n` +
-            `New Basic: ₹${calculated.basicAmount}\n` +
-            `New GST: ₹${(calculated.sgst + calculated.cgst + calculated.igst).toFixed(2)}\n` +
-            `New Grand Total: ₹${calculated.grandTotal}\n\n` +
-            `Original Basic: ₹${testShipment.basicAmt || 0}\n` +
-            `Original Total: ₹${testShipment.totalAmt || 0}`,
-        );
+        showInfoModal({
+          title: "Test Successful",
+          message: "Rate calculated via bulk upload route.",
+          meta: [testShipment.awbNo, calculated.newService],
+          rows: [
+            { label: "Zone", value: calculated.zone || "—" },
+            { label: "Chargeable Wt", value: testShipment.chargeableWt },
+            { label: "New Basic", value: `₹${calculated.basicAmount}` },
+            { label: "New GST", value: `₹${(calculated.sgst + calculated.cgst + calculated.igst).toFixed(2)}` },
+            { label: "New Grand Total", value: `₹${calculated.grandTotal}` },
+            { label: "Original Basic", value: `₹${testShipment.basicAmt || 0}` },
+            { label: "Original Total", value: `₹${testShipment.totalAmt || 0}` },
+          ],
+        });
       }
     } catch (error) {
-      alert(`Test failed: ${error.message}`);
+      showInfoModal({
+        title: "Test Failed",
+        message: error.message,
+        meta: [testShipment.awbNo],
+      });
     }
   };
 
@@ -623,6 +681,19 @@ const AutoCalculation = () => {
 
   return (
     <div className="flex flex-col gap-3">
+      {/* ── Themed modal (replaces browser alert/confirm) ── */}
+      <AutoCalcModal
+        isOpen={modal.open}
+        onClose={handleModalClose}
+        onConfirm={handleModalConfirm}
+        variant={modal.variant || "confirm"}
+        title={modal.title}
+        message={modal.message}
+        rows={modal.rows}
+        failedItems={modal.failedItems}
+        okItems={modal.okItems}
+        meta={modal.meta}
+      />
       <CodeList
         data={codeList}
         handleAction={(item) => {
