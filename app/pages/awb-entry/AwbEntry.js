@@ -595,7 +595,7 @@ function AwbEntry() {
             awbNo: response.data?.awbNo || payload?.awbNo,
             accountCode,
             customer,
-            action: "Shipment Created",
+            action: "Shipment created on post",
             actionUser: user?.userId,
             department: "Booking",
           });
@@ -661,7 +661,11 @@ function AwbEntry() {
             awbNo,
             accountCode,
             customer,
-            action: "Shipment Modified",
+            action: isHold && !fetchedAwbData?.isHold
+              ? "Shipment put on hold"
+              : !isHold && fetchedAwbData?.isHold
+                ? "Shipment put on Unhold"
+                : "Shipment Modified",
             actionUser: user?.userId,
             department: "Booking",
           });
