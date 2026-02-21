@@ -9,7 +9,7 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import NotificationFlag from "@/app/components/Notificationflag";
-import { X, AlertTriangle } from "lucide-react";
+import { Cross, X, AlertTriangle } from "lucide-react";
 
 // List of common Indian zip code prefixes (first 2 digits) for accurate validation
 const INDIAN_ZIP_PREFIXES = [
@@ -112,12 +112,11 @@ const isIndianZipCode = (zipCode) => {
   return INDIAN_ZIP_PREFIXES.includes(prefix);
 };
 
-// Comprehensive consignee zip code validation
-const validateConsigneeZipCode = (zipCode) => {
+const validateReceiverZipCode = (zipCode) => {
   if (!zipCode || zipCode.toString().trim() === "") {
     return {
       isValid: false,
-      message: "❌ Consignee zip code is required",
+      message: "❌ Receiver zip code is required",
     };
   }
 
@@ -127,7 +126,7 @@ const validateConsigneeZipCode = (zipCode) => {
   if (isIndianZipCode(zipStr)) {
     return {
       isValid: false,
-      message: `🚫 INDIAN ZIP CODE DETECTED! We only ship internationally. Indian pincode "${zipStr}" is NOT allowed for consignee address.`,
+      message: `🚫 INDIAN ZIP CODE DETECTED! We only ship internationally. Indian pincode "${zipStr}" is NOT allowed for receiver address.`,
     };
   }
 
@@ -188,7 +187,7 @@ const validateConsigneeZipCode = (zipCode) => {
   };
 };
 
-function ManualAutoAWB() {
+function ManualAWB() {
   const { register, setValue, watch, handleSubmit } = useForm();
   const { server } = useContext(GlobalContext);
   const [isChecked, setChecked] = useState(false);
@@ -217,7 +216,7 @@ function ManualAutoAWB() {
 
   const flightDate = watch("flightDate");
 
-  // Columns with zip code validation column
+  // Columns based on Excel data + essential fields
   const columns = useMemo(
     () => [
       { key: "awbNo", label: "AWB No" },
@@ -234,12 +233,12 @@ function ManualAutoAWB() {
       { key: "totalInvoiceValue", label: "Invoice Value" },
       { key: "currency", label: "Currency" },
       { key: "contentDisplay", label: "Content" },
-      { key: "consigneeFullName", label: "Consignee Name" },
-      { key: "consigneePhoneNumber", label: "Consignee Phone" },
-      { key: "consigneeEmail", label: "Consignee Email" },
-      { key: "consigneeCity", label: "Consignee City" },
-      { key: "consigneeState", label: "Consignee State" },
-      { key: "consigneePincode", label: "Consignee Pincode (International)" },
+      { key: "receiverFullName", label: "Receiver Name" },
+      { key: "receiverPhoneNumber", label: "Receiver Phone" },
+      { key: "receiverEmail", label: "Receiver Email" },
+      { key: "receiverCity", label: "Receiver City" },
+      { key: "receiverState", label: "Receiver State" },
+      { key: "receiverPincode", label: "Receiver Pincode (International)" },
       { key: "shipperFullName", label: "Shipper Name" },
       { key: "shipperPhoneNumber", label: "Shipper Phone" },
       { key: "shipperKycType", label: "Shipper KYC Type" },
@@ -251,7 +250,7 @@ function ManualAutoAWB() {
         key: "zipValidation",
         label: "Zip Code Status",
         render: (row) => {
-          const validation = validateConsigneeZipCode(row.consigneePincode);
+          const validation = validateReceiverZipCode(row.receiverPincode);
           if (!validation.isValid) {
             return (
               <span
@@ -281,7 +280,7 @@ function ManualAutoAWB() {
     return Math.round((volume / 5000) * 100) / 100;
   };
 
-  // Transform Excel row to Shipment JSON
+  // Transform Excel row to Shipment JSON (WITH AWB from Excel)
   const transformExcelToShipment = (excelRow, index) => {
     const timestamp = Date.now() + index;
 
@@ -307,6 +306,7 @@ function ManualAutoAWB() {
     const quantities = parseCSV(excelRow.Quantity);
     const rates = parseCSV(excelRow.Rate);
 
+    // CRITICAL: Check if dimensions are provided
     const hasDimensions =
       lengths.some((v) => Number(v) > 0) &&
       breadths.some((v) => Number(v) > 0) &&
@@ -327,6 +327,8 @@ function ManualAutoAWB() {
       const breadth = Number(breadths[0] || 0);
       const height = Number(heights[0] || 0);
       const weight = Number(weights[0] || 0);
+
+      // Only calculate volume weight if dimensions exist
       const volumeWeight = hasDimensions
         ? calculateVolumeWeight(length, breadth, height)
         : 0;
@@ -348,6 +350,8 @@ function ManualAutoAWB() {
         const breadth = Number(breadths[i] || breadths[0] || 0);
         const height = Number(heights[i] || heights[0] || 0);
         const weight = Number(weights[i] || weights[0] || 0);
+
+        // Only calculate volume weight if dimensions exist
         const volumeWeight = hasDimensions
           ? calculateVolumeWeight(length, breadth, height)
           : 0;
@@ -364,26 +368,88 @@ function ManualAutoAWB() {
       }
     }
 
-    // Get consignee zip code from Excel
-    const consigneeZipcode = excelRow.ConsigneeZipcode?.toString().trim() || "";
+    // Create shipmentAndPackageDetails with items mapped to boxes
+    const shipmentAndPackageDetails = {};
 
-    // Validate consignee zip code is NOT Indian
-    const zipValidation = validateConsigneeZipCode(consigneeZipcode);
+    const maxItems = Math.max(
+      contents.length,
+      hsnCodes.length,
+      quantities.length,
+      rates.length,
+      1,
+    );
 
-    if (!zipValidation.isValid) {
-      return {
-        error: true,
-        validationErrors: [
+    // Map items to boxes
+    if (maxItems === boxes.length && maxItems > 1) {
+      for (let i = 0; i < maxItems; i++) {
+        const quantity = Number(quantities[i] || quantities[0] || 1);
+        const rate = Number(rates[i] || rates[0] || 0);
+        const amount = (quantity * rate).toFixed(2);
+
+        shipmentAndPackageDetails[i + 1] = [
           {
-            field: "ConsigneeZipcode",
-            value: consigneeZipcode,
-            message: zipValidation.message,
-            rowIndex: index + 2, // +2 because Excel rows start at 1 and header is row 1
+            id: `${timestamp}${i}`,
+            context: contents[i] || contents[0] || "",
+            sku: hsnCodes[i] || hsnCodes[0] || "",
+            hsnNo: hsnCodes[i] || hsnCodes[0] || "",
+            qty: quantity.toString(),
+            rate: rate.toString(),
+            amount: amount,
           },
-        ],
-        rawData: excelRow,
-      };
+        ];
+      }
+    } else if (maxItems > boxes.length && boxes.length > 1) {
+      const itemsPerBox = Math.ceil(maxItems / boxes.length);
+      for (let boxIdx = 0; boxIdx < boxes.length; boxIdx++) {
+        const boxItems = [];
+        const startIdx = boxIdx * itemsPerBox;
+        const endIdx = Math.min(startIdx + itemsPerBox, maxItems);
+
+        for (let i = startIdx; i < endIdx; i++) {
+          const quantity = Number(quantities[i] || quantities[0] || 1);
+          const rate = Number(rates[i] || rates[0] || 0);
+          const amount = (quantity * rate).toFixed(2);
+
+          boxItems.push({
+            id: `${timestamp}${i}`,
+            context: contents[i] || contents[0] || "",
+            sku: hsnCodes[i] || hsnCodes[0] || "",
+            hsnNo: hsnCodes[i] || hsnCodes[0] || "",
+            qty: quantity.toString(),
+            rate: rate.toString(),
+            amount: amount,
+          });
+        }
+        if (boxItems.length > 0) {
+          shipmentAndPackageDetails[boxIdx + 1] = boxItems;
+        }
+      }
+    } else {
+      const packageItems = [];
+      for (let i = 0; i < maxItems; i++) {
+        const quantity = Number(quantities[i] || quantities[0] || 1);
+        const rate = Number(rates[i] || rates[0] || 0);
+        const amount = (quantity * rate).toFixed(2);
+
+        packageItems.push({
+          id: `${timestamp}${i}`,
+          context: contents[i] || contents[0] || "",
+          sku: hsnCodes[i] || hsnCodes[0] || "",
+          hsnNo: hsnCodes[i] || hsnCodes[0] || "",
+          qty: quantity.toString(),
+          rate: rate.toString(),
+          amount: amount,
+        });
+      }
+      shipmentAndPackageDetails[1] = packageItems;
     }
+
+    let totalInvoiceValue = 0;
+    Object.values(shipmentAndPackageDetails).forEach((boxItems) => {
+      boxItems.forEach((item) => {
+        totalInvoiceValue += parseFloat(item.amount);
+      });
+    });
 
     const totalActualWt = boxes.reduce((sum, box) => sum + box.actualWt, 0);
     const totalVolWt = hasDimensions
@@ -394,12 +460,37 @@ function ManualAutoAWB() {
       hasDimensions ? Math.max(totalActualWt, totalVolWt) : totalActualWt,
     );
 
-    // Create shipment object
+    const firstBoxItems =
+      shipmentAndPackageDetails[1] ||
+      Object.values(shipmentAndPackageDetails)[0] ||
+      [];
+    const contentArray =
+      firstBoxItems.length > 0 ? [firstBoxItems[0].context] : [];
+
+    const receiverZipcode = excelRow.ConsigneeZipcode?.toString().trim() || "";
+    const zipValidation = validateReceiverZipCode(receiverZipcode);
+
+    if (!zipValidation.isValid) {
+      return {
+        error: true,
+        validationErrors: [
+          {
+            field: "ConsigneeZipcode",
+            value: receiverZipcode,
+            message: zipValidation.message,
+            rowIndex: index + 2,
+          },
+        ],
+        rawData: excelRow,
+      };
+    }
+
     const shipment = {
       awbNo: excelRow.AWBNo?.toString().trim() || "",
       accountCode: excelRow.AccountCode?.toString().trim() || "DEFAULT",
       status: "Shipment Created!",
       date: new Date(),
+      excelRowNumber: index + 2, // Store original Excel row number (1-based + header)
       sector: (excelRow.Sector?.toString().trim() || "").toUpperCase(),
       origin: excelRow.Origin?.toString().trim() || "",
       destination: (
@@ -410,15 +501,21 @@ function ManualAutoAWB() {
       forwarder: "",
       goodstype: excelRow.GoodsType?.toString().trim() || "",
       payment: "Credit",
+
       boxes: boxes,
+
       chargeableWt: chargeableWt,
       totalActualWt: totalActualWt,
       totalVolWt: totalVolWt,
       pcs: totalPcs,
-      totalInvoiceValue: 0,
+
+      totalInvoiceValue: totalInvoiceValue,
       currency: excelRow.InvoiceCurrency?.toString().trim() || "INR",
       currencys: excelRow.InvoiceCurrency?.toString().trim() || "INR",
-      content: contents.length > 0 ? [contents[0]] : [],
+      content: contentArray,
+
+      shipmentAndPackageDetails: shipmentAndPackageDetails,
+
       operationRemark: excelRow.OperationRemark?.toString().trim() || "",
       automation: false,
       handling: false,
@@ -457,20 +554,21 @@ function ManualAutoAWB() {
       network: "",
       networkName: "",
       obc: "",
-      service: (excelRow.ServiceName?.toString().trim() || "").toUpperCase(),
+      service: (excelRow.Service?.toString().trim() || "").toUpperCase(),
       localMF: "",
-      consigneeFullName: excelRow.ConsigneeName?.toString().trim() || "",
-      consigneePhoneNumber:
-        excelRow.ConsigneeTelephone?.toString().trim() || "",
-      consigneeEmail: excelRow.ConsigneeEmailId?.toString().trim() || "",
-      consigneeAddressLine1:
+
+      receiverFullName: excelRow.ConsigneeName?.toString().trim() || "",
+      receiverPhoneNumber: excelRow.ConsigneeTelephone?.toString().trim() || "",
+      receiverEmail: excelRow.ConsigneeEmailId?.toString().trim() || "",
+      receiverAddressLine1:
         excelRow.ConsigneeAddressLine1?.toString().trim() || "",
-      consigneeAddressLine2:
+      receiverAddressLine2:
         excelRow.ConsigneeAddressLine2?.toString().trim() || "",
-      consigneeCity: excelRow.ConsigneeCity?.toString().trim() || "",
-      consigneeState: excelRow.ConsigneeState?.toString().trim() || "",
-      consigneeCountry: "",
-      consigneePincode: consigneeZipcode,
+      receiverCity: excelRow.ConsigneeCity?.toString().trim() || "",
+      receiverState: excelRow.ConsigneeState?.toString().trim() || "",
+      receiverCountry: (excelRow.Destination?.toString().trim() || "").toUpperCase(),
+      receiverPincode: receiverZipcode,
+
       shipperFullName: excelRow.ConsignorName?.toString().trim() || "",
       shipperPhoneNumber: excelRow.ConsignorTelephone?.toString().trim() || "",
       shipperEmail: "",
@@ -480,10 +578,11 @@ function ManualAutoAWB() {
         excelRow.ConsignorAddressLine2?.toString().trim() || "",
       shipperCity: excelRow.ConsignorCity?.toString().trim() || "",
       shipperState: excelRow.ConsignorState?.toString().trim() || "",
-      shipperCountry: "",
+      shipperCountry: "INDIA",
       shipperPincode: excelRow.ConsignorPincode?.toString().trim() || "",
       shipperKycType: excelRow.ConsignorKycType?.toString().trim() || "",
       shipperKycNumber: excelRow.ConsignorKycNo?.toString().trim() || "",
+
       coLoader: "",
       coLoaderNumber: 0,
       insertUser: "11111111",
@@ -502,14 +601,14 @@ function ManualAutoAWB() {
       mhbsNumber: "",
       exportThroughEcommerce: false,
       meisScheme: false,
-      shipmentType: "Non-Document",
+      shipmentType: excelRow.ShipmentType || "Non-Document",
+
       createdAt: new Date(),
       updatedAt: new Date(),
       __v: 0,
     };
 
-    // Add display fields for table
-    shipment.contentDisplay = contents.length > 0 ? contents[0] : "";
+    shipment.contentDisplay = contentArray.length > 0 ? contentArray[0] : "";
     shipment.isValid = true;
     shipment.zipValidationStatus = zipValidation;
 
@@ -540,12 +639,10 @@ function ManualAutoAWB() {
           const worksheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-          // Check for zip code validation errors immediately - CHECK EVERY ROW
           const validationErrorsFound = [];
-
           jsonData.forEach((row, index) => {
             const zipcode = row.ConsigneeZipcode?.toString().trim() || "";
-            const validation = validateConsigneeZipCode(zipcode);
+            const validation = validateReceiverZipCode(zipcode);
             if (!validation.isValid) {
               validationErrorsFound.push({
                 row: index + 2,
@@ -558,7 +655,6 @@ function ManualAutoAWB() {
 
           setValidationErrors(validationErrorsFound);
 
-          // Validate sector-destination-service combinations
           try {
             setLoading(true);
             const sectorDestServiceResponse = await axios.post(
@@ -571,7 +667,6 @@ function ManualAutoAWB() {
                 sectorDestServiceResponse.data.validationErrors || [];
               setSectorDestinationServiceErrors(sdsErrors);
 
-              // Show error notification
               let errorSummary = `🚫 SECTOR-DESTINATION-SERVICE MISMATCH (${sdsErrors.length} issues):\n`;
               errorSummary += sdsErrors
                 .slice(0, 5)
@@ -606,25 +701,21 @@ function ManualAutoAWB() {
             setLoading(false);
           }
 
-          // Show zip code validation results
           if (validationErrorsFound.length > 0) {
             const indianZipErrors = validationErrorsFound.filter((err) =>
               err.message.includes("INDIAN ZIP CODE"),
             );
-
             const otherErrors = validationErrorsFound.filter(
               (err) => !err.message.includes("INDIAN ZIP CODE"),
             );
 
             let errorSummary = "";
-
             if (indianZipErrors.length > 0) {
               errorSummary += `🚫 INDIAN ZIP CODES DETECTED (${indianZipErrors.length} shipments):\n`;
               errorSummary += indianZipErrors
                 .slice(0, 5)
                 .map((err) => `   • Row ${err.row}: "${err.zipcode}"`)
                 .join("\n");
-
               if (indianZipErrors.length > 5) {
                 errorSummary += `\n   ...and ${indianZipErrors.length - 5} more Indian zip codes`;
               }
@@ -640,7 +731,6 @@ function ManualAutoAWB() {
                     `   • Row ${err.row}: "${err.zipcode}" - ${err.message}`,
                 )
                 .join("\n");
-
               if (otherErrors.length > 3) {
                 errorSummary += `\n   ...and ${otherErrors.length - 3} more issues`;
               }
@@ -648,12 +738,12 @@ function ManualAutoAWB() {
 
             showNotification(
               "error",
-              `❌ VALIDATION FAILED!\n\n${errorSummary}\n\n⚠️ IMPORTANT: We only ship internationally!\nConsignee zip codes MUST be from: UK, USA, Canada, Australia, or Europe.\nIndian pincodes are NOT allowed.`,
+              `❌ VALIDATION FAILED!\n\n${errorSummary}\n\n⚠️ IMPORTANT: We only ship internationally!\nReceiver zip codes MUST be from: UK, USA, Canada, Australia, or Europe.\nIndian pincodes are NOT allowed.`,
             );
           } else if (sectorDestinationServiceErrors.length === 0) {
             showNotification(
               "success",
-              `✅ Excel file loaded successfully!\n📦 ${jsonData.length} shipments found\n🌍 All consignee zip codes are valid international codes\n✓ All sector-destination-service combinations verified`,
+              `✅ Excel file loaded successfully!\n📦 ${jsonData.length} shipments found\n🌍 All receiver zip codes are valid international codes\n✓ All sector-destination-service combinations verified`,
             );
           }
 
@@ -671,7 +761,6 @@ function ManualAutoAWB() {
     }
   };
 
-  // Handle Show button
   const handleShow = async () => {
     if (!flightDate) {
       showNotification("error", "Please enter Flight Date");
@@ -683,7 +772,6 @@ function ManualAutoAWB() {
       return;
     }
 
-    // CRITICAL: Block if there are ANY zip code validation errors
     if (validationErrors.length > 0) {
       const indianZipCount = validationErrors.filter(
         (err) => err.isIndianZip,
@@ -693,23 +781,22 @@ function ManualAutoAWB() {
       showNotification(
         "error",
         `🚫 CANNOT PROCEED - INVALID ZIP CODES DETECTED!\n\n` +
-          `❌ Total errors: ${validationErrors.length}\n` +
-          (indianZipCount > 0
-            ? `   • Indian pincodes: ${indianZipCount}\n`
-            : "") +
-          (otherErrorCount > 0
-            ? `   • Other invalid formats: ${otherErrorCount}\n`
-            : "") +
-          `\n⚠️ ACTION REQUIRED:\n` +
-          `1. Fix the invalid zip codes in your Excel file\n` +
-          `2. Remove all Indian pincodes from ConsigneeZipcode column\n` +
-          `3. Re-upload the corrected file\n\n` +
-          `✓ We only accept international zip codes (UK, USA, Canada, Australia, Europe)`,
+        `❌ Total errors: ${validationErrors.length}\n` +
+        (indianZipCount > 0
+          ? `   • Indian pincodes: ${indianZipCount}\n`
+          : "") +
+        (otherErrorCount > 0
+          ? `   • Other invalid formats: ${otherErrorCount}\n`
+          : "") +
+        `\n⚠️ ACTION REQUIRED:\n` +
+        `1. Fix the invalid zip codes in your Excel file\n` +
+        `2. Remove all Indian pincodes from ConsigneeZipcode column\n` +
+        `3. Re-upload the corrected file\n\n` +
+        `✓ We only accept international zip codes (UK, USA, Canada, Australia, Europe)`,
       );
       return;
     }
 
-    // CRITICAL: Block if there are sector-destination-service errors
     if (sectorDestinationServiceErrors.length > 0) {
       let errorSummary = `🚫 SECTOR-DESTINATION-SERVICE MISMATCH!\n\n`;
       errorSummary += `❌ ${sectorDestinationServiceErrors.length} invalid combinations found:\n\n`;
@@ -727,9 +814,7 @@ function ManualAutoAWB() {
       }
 
       errorSummary += `⚠️ ACTION REQUIRED:\n`;
-      errorSummary += `1. These sector-destination-service combinations do not exist in your zone matrix\n`;
-      errorSummary += `2. Either fix the Sector/Destination/Service values in your Excel\n`;
-      errorSummary += `3. Or add these combinations to your zone matrix first\n`;
+      errorSummary += `2. fix the Sector/Destination/Service values in your Excel\n`;
       errorSummary += `4. Re-upload the corrected file`;
 
       showNotification("error", errorSummary);
@@ -739,16 +824,14 @@ function ManualAutoAWB() {
     try {
       setLoading(true);
 
-      // Transform Excel data
       const transformedResults = excelData.map((row, index) => {
         return transformExcelToShipment(row, index);
       });
 
-      // Separate valid shipments and validation errors
       const validShipments = [];
       const allValidationErrors = [];
 
-      transformedResults.forEach((result, index) => {
+      transformedResults.forEach((result) => {
         if (result.error) {
           allValidationErrors.push(...result.validationErrors);
         } else if (result.isValid) {
@@ -756,18 +839,15 @@ function ManualAutoAWB() {
         }
       });
 
-      // Show validation errors summary
       if (allValidationErrors.length > 0) {
         const indianZipErrors = allValidationErrors.filter((err) =>
           err.message.includes("INDIAN ZIP CODE"),
         );
-
         const otherErrors = allValidationErrors.filter(
           (err) => !err.message.includes("INDIAN ZIP CODE"),
         );
 
         const errorMessages = [];
-
         if (indianZipErrors.length > 0) {
           const indianErrorSummary = indianZipErrors
             .slice(0, 10)
@@ -775,12 +855,10 @@ function ManualAutoAWB() {
               (err) => `Row ${err.rowIndex}: "${err.value}" - ${err.message}`,
             )
             .join("\n");
-
           errorMessages.push(
             `Indian Zip Codes Found (${indianZipErrors.length}):\n${indianErrorSummary}`,
           );
         }
-
         if (otherErrors.length > 0) {
           const otherErrorSummary = otherErrors
             .slice(0, 10)
@@ -788,43 +866,38 @@ function ManualAutoAWB() {
               (err) => `Row ${err.rowIndex}: "${err.value}" - ${err.message}`,
             )
             .join("\n");
-
           errorMessages.push(
             `Other Zip Code Errors (${otherErrors.length}):\n${otherErrorSummary}`,
           );
         }
 
         let errorSummary = errorMessages.join("\n\n");
-
         if (allValidationErrors.length > 10) {
           errorSummary += `\n\n...and ${allValidationErrors.length - 10} more errors`;
         }
 
         showNotification(
           "error",
-          `❌ CRITICAL ERROR: ${errorSummary}\n\n🚫 BLOCKED: Only ${validShipments.length} valid international shipments will be processed.\n\n⚠️ REMINDER: We ship ONLY to international destinations!\nAccepted countries: UK, USA, Canada, Australia, Europe\nIndian pincodes are STRICTLY NOT ALLOWED for consignee addresses.`,
+          `❌ CRITICAL ERROR: ${errorSummary}\n\n🚫 BLOCKED: Only ${validShipments.length} valid international shipments will be processed.\n\n⚠️ REMINDER: We ship ONLY to international destinations!\nAccepted countries: UK, USA, Canada, Australia, Europe\nIndian pincodes are STRICTLY NOT ALLOWED for receiver addresses.`,
         );
       }
 
-      console.log("Valid shipments:", validShipments.length);
       setRowData(validShipments);
 
       if (validShipments.length === 0) {
         showNotification(
           "error",
-          `❌ NO VALID SHIPMENTS FOUND!\n\nAll consignee zip codes are either:\n• Indian pincodes (NOT allowed)\n• Invalid international formats\n\n🌍 REQUIRED: Valid international zip codes from:\n   ✓ UK (e.g., SW1A 1AA)\n   ✓ USA (e.g., 90210)\n   ✓ Canada (e.g., A1A 1A1)\n   ✓ Australia (e.g., 2000)\n   ✓ Europe (e.g., 75001)\n\n🚫 Indian pincodes (6 digits) are STRICTLY PROHIBITED.`,
+          `❌ NO VALID SHIPMENTS FOUND!\n\nAll receiver zip codes are either:\n• Indian pincodes (NOT allowed)\n• Invalid international formats\n\n🌍 REQUIRED: Valid international zip codes from:\n   ✓ UK (e.g., SW1A 1AA)\n   ✓ USA (e.g., 90210)\n   ✓ Canada (e.g., A1A 1A1)\n   ✓ Australia (e.g., 2000)\n   ✓ Europe (e.g., 75001)\n\n🚫 Indian pincodes (6 digits) are STRICTLY PROHIBITED.`,
         );
-        setRowData([]);
-        setAwbInfo(null);
       } else {
         showNotification(
           "success",
           `✅ Data loaded successfully!\n📦 Valid international shipments: ${validShipments.length}\n` +
-            (allValidationErrors.length > 0
-              ? `⚠️ Filtered out: ${allValidationErrors.length} invalid shipments\n`
-              : "") +
-            `🌍 All consignee zip codes are valid international codes\n` +
-            `✓ All sector-destination-service combinations verified`,
+          (allValidationErrors.length > 0
+            ? `⚠️ Filtered out: ${allValidationErrors.length} invalid shipments\n`
+            : "") +
+          `🌍 All receiver zip codes are valid international codes\n` +
+          `✓ All sector-destination-service combinations verified`,
         );
       }
     } catch (error) {
@@ -832,29 +905,27 @@ function ManualAutoAWB() {
       showNotification(
         "error",
         error.response?.data?.message ||
-          "Error processing data. Please try again.",
+        "Error processing data. Please try again.",
       );
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle Upload button
   const handleUpload = async () => {
     if (rowData.length === 0) {
       showNotification("error", "No data to upload. Please click Show first.");
       return;
     }
 
-    // CRITICAL: Triple-check for any invalid zip codes before uploading
     const invalidShipments = [];
-    rowData.forEach((row, index) => {
-      const validation = validateConsigneeZipCode(row.consigneePincode);
+    rowData.forEach((row) => {
+      const validation = validateReceiverZipCode(row.receiverPincode);
       if (!validation.isValid) {
         invalidShipments.push({
-          row: index + 1,
+          row: row.excelRowNumber,
           awbNo: row.awbNo,
-          zipcode: row.consigneePincode,
+          zipcode: row.receiverPincode,
           message: validation.message,
           isIndianZip: validation.message.includes("INDIAN ZIP CODE"),
         });
@@ -868,14 +939,12 @@ function ManualAutoAWB() {
       );
 
       let errorSummary = "";
-
       if (indianZipShipments.length > 0) {
         errorSummary += `🚫 INDIAN PINCODES (${indianZipShipments.length} shipments):\n`;
         errorSummary += indianZipShipments
           .slice(0, 5)
           .map((err) => `   • AWB ${err.awbNo}: "${err.zipcode}"`)
           .join("\n");
-
         if (indianZipShipments.length > 5) {
           errorSummary += `\n   ...and ${indianZipShipments.length - 5} more Indian zip codes`;
         }
@@ -888,7 +957,6 @@ function ManualAutoAWB() {
           .slice(0, 3)
           .map((err) => `   • AWB ${err.awbNo}: "${err.zipcode}"`)
           .join("\n");
-
         if (otherInvalidShipments.length > 3) {
           errorSummary += `\n   ...and ${otherInvalidShipments.length - 3} more`;
         }
@@ -897,32 +965,27 @@ function ManualAutoAWB() {
       showNotification(
         "error",
         `❌ UPLOAD BLOCKED - INVALID ZIP CODES!\n\n` +
-          `${errorSummary}\n\n` +
-          `🚫 CRITICAL: These appear to be INDIAN PINCODES or invalid formats.\n\n` +
-          `⚠️ UPLOAD COMPLETELY BLOCKED!\n` +
-          `You CANNOT upload until these are fixed:\n` +
-          `1. Go back to your Excel file\n` +
-          `2. Fix the ConsigneeZipcode column for the rows listed above\n` +
-          `3. Replace Indian pincodes with valid international zip codes\n` +
-          `4. Re-upload the corrected file\n\n` +
-          `✓ Accepted: UK, USA, Canada, Australia, Europe\n` +
-          `✗ NOT Accepted: Indian pincodes (6-digit codes like 110001, 400001, etc.)`,
+        `${errorSummary}\n\n` +
+        `🚫 CRITICAL: These appear to be INDIAN PINCODES or invalid formats.\n\n` +
+        `⚠️ UPLOAD COMPLETELY BLOCKED!\n` +
+        `You CANNOT upload until these are fixed:\n` +
+        `1. Go back to your Excel file\n` +
+        `2. Fix the ConsigneeZipcode column for the rows listed above\n` +
+        `3. Replace Indian pincodes with valid international zip codes\n` +
+        `4. Re-upload the corrected file\n\n` +
+        `✓ Accepted: UK, USA, Canada, Australia, Europe\n` +
+        `✗ NOT Accepted: Indian pincodes (6-digit codes like 110001, 400001, etc.)`,
       );
       return;
     }
 
     try {
       setLoading(true);
-
       const uploadData = {
         shipments: rowData,
         flightDate: flightDate,
         csbChecked: isChecked,
       };
-
-      console.log("Uploading shipments:", {
-        totalShipments: rowData.length,
-      });
 
       const response = await axios.post(
         `${server}/bulk-upload/manual-awb`,
@@ -933,12 +996,11 @@ function ManualAutoAWB() {
         showNotification(
           "success",
           `🎉 Upload successful!\n` +
-            `✓ Uploaded: ${rowData.length} shipments\n` +
-            `🌍 All shipments have valid international consignee zip codes.\n` +
-            `✓ All sector-destination-service combinations verified`,
+          `✓ Uploaded: ${rowData.length} shipments\n` +
+          `🌍 All shipments have valid international receiver zip codes.\n` +
+          `✓ All sector-destination-service combinations verified`,
         );
 
-        // Reset form
         setRowData([]);
         setExcelData([]);
         setFileName("");
@@ -958,7 +1020,7 @@ function ManualAutoAWB() {
       showNotification(
         "error",
         error.response?.data?.message ||
-          "Error uploading data. Please try again.",
+        "Error uploading data. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -976,7 +1038,6 @@ function ManualAutoAWB() {
     setValue("flightDate", "");
     setChecked(false);
     setLastUploadData(null);
-
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -1032,7 +1093,6 @@ function ManualAutoAWB() {
               style={{ display: "none" }}
             />
           </div>
-
           <div className="flex gap-2">
             <OutlinedButtonRed
               type="button"
@@ -1076,7 +1136,6 @@ function ManualAutoAWB() {
         </div>
       </form>
 
-      {/* Validation Error Display */}
       {validationErrors.length > 0 && (
         <div
           className="rounded-md p-4 mb-2 border-2"
@@ -1091,13 +1150,13 @@ function ManualAutoAWB() {
                 className="font-bold text-lg mb-2 flex items-center"
                 style={{ color: "#991B1B" }}
               >
-                <X className="mr-2" size={24} /> INDIAN ZIP CODES DETECTED IN
-                CONSIGNEE - {validationErrors.length} Shipments Blocked
+                <X className="mr-2" size={24} /> INVALID ZIP CODES -{" "}
+                {validationErrors.length} Shipments Blocked
               </h3>
               <div className="bg-white rounded p-3 mb-3 border border-red-300">
                 <p className="text-sm mb-2" style={{ color: "#DC2626" }}>
                   Indian pincodes (6-digit codes like 110001, 400001, etc.) are{" "}
-                  <strong>NOT ALLOWED</strong> for consignee addresses.
+                  <strong>NOT ALLOWED</strong> for receiver addresses.
                 </p>
               </div>
               <span
@@ -1107,7 +1166,12 @@ function ManualAutoAWB() {
                 ⚠️ Action Required: Fix these {validationErrors.length}{" "}
                 shipments in your Excel file:
               </span>
-              <span className="text-xs ml-1" style={{ color: "#DC2626" }}>
+              <div className="mt-2 text-xs font-mono max-h-32 overflow-y-auto" style={{ color: "#991B1B" }}>
+                {validationErrors.map((err, idx) => (
+                  <div key={idx}>• Row {err.row}: "{err.zipcode}" - {err.message}</div>
+                ))}
+              </div>
+              <span className="text-xs mt-2 block" style={{ color: "#DC2626" }}>
                 These shipments will be automatically filtered out and NOT
                 processed.
               </span>
@@ -1116,7 +1180,6 @@ function ManualAutoAWB() {
         </div>
       )}
 
-      {/* Sector-Destination-Service Errors Display */}
       {sectorDestinationServiceErrors.length > 0 && (
         <div
           className="rounded-md p-4 mb-2 border-2"
@@ -1138,8 +1201,7 @@ function ManualAutoAWB() {
               <div className="bg-white rounded p-3 mb-3 border border-amber-300">
                 <p className="text-sm mb-2" style={{ color: "#F59E0B" }}>
                   The following sector-destination-service combinations{" "}
-                  <strong>do not exist or currently not active</strong> in zone
-                  matrix.
+                  <strong>do not exist or currently not active</strong> in zone matrix.
                 </p>
               </div>
               <div className="space-y-2">
@@ -1178,7 +1240,9 @@ function ManualAutoAWB() {
                     Verify sector-destination-service combinations in your Excel
                     file
                   </li>
-                  <li>Update the Excel data to match zone</li>
+                  <li>
+                    Update the Excel data to match zone
+                  </li>
                 </ul>
               </div>
             </div>
@@ -1196,4 +1260,4 @@ function ManualAutoAWB() {
   );
 }
 
-export default ManualAutoAWB;
+export default ManualAWB;
