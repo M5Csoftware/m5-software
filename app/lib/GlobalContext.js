@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useRef, useState } from "react";
 
+import { defaultEventCodes } from "./eventCodes";
 export const GlobalContext = createContext(); // Create the context
 
 export const GlobalProvider = ({ children }) => {
@@ -9,7 +10,7 @@ export const GlobalProvider = ({ children }) => {
   const [currentTab, setCurrentTab] = useState(null);
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
-  const [eventCode, setEventCode] = useState([]);
+  const [eventCode, setEventCode] = useState(defaultEventCodes);
   const [cities, setCities] = useState([]);
   const [sectors, setSectors] = useState([]);
   const [accounts, setAccounts] = useState([]);
