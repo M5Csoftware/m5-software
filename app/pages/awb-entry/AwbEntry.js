@@ -148,8 +148,8 @@ function AwbEntry() {
   const chargeableWt = useWatch({ control, name: "chargeableWt" });
   const invoiceValue = useWatch({ control, name: "invoiceValue" });
 
-  //holdreason dynamic rendering
-  const [holdReason, setHoldReason] = useState(" ");
+  //holdreason dynamic rendering - FIXED
+  const [holdReason, setHoldReason] = useState("");
   const grandTotal = watch("grandTotal");
   const actualWtValue = watch("actualWt");
   const [holdEdit, setHoldEdit] = useState(false);
@@ -168,6 +168,60 @@ function AwbEntry() {
   const [networkType, setNetworkType] = useState("");
   const [awbLoading, setAwbLoading] = useState(false);
   const consigneeZipcode = useWatch({ control, name: "consignee-zipcode" });
+
+  // FIXED: Enhanced hold logic - Only set holdEdit for auto-hold from credit check, not for manual hold
+  useEffect(() => {
+    // Only run credit check for new shipments or when amount changes in edit mode
+    if (!account || !grandTotal || Number(grandTotal) === 0) {
+      return;
+    }
+
+    const availableBalance = account.leftOverBalance || 0;
+    const creditLimit = account.creditLimit || 0;
+    const totalAvailable = availableBalance + creditLimit;
+    
+    // Check if credit limit is exceeded
+    const creditExceeded = Number(grandTotal) > totalAvailable;
+    
+    if (creditExceeded) {
+      // Auto-hold due to credit limit
+      setHoldReason("Credit Limit Exceeded");
+      setIsHold(true);
+      setHoldEdit(true); // Only lock when credit limit exceeded
+      setValue("isHold", true);
+      setValue("holdReason", "Credit Limit Exceeded");
+      console.log("Credit Limit Exceeded - Auto Hold");
+      showNotification("error", "Credit Limit Exceeded");
+    } else {
+      // Credit is sufficient - but don't change manual hold status
+      // Only clear holdEdit if it was set by credit check
+      if (holdEdit) {
+        setHoldEdit(false);
+      }
+      console.log("Credit OK");
+    }
+  }, [grandTotal, account]);
+
+  // FIXED: Initialize hold state from fetched data
+  useEffect(() => {
+    if (fetchedAwbData && Object.keys(fetchedAwbData).length > 0) {
+      // Set hold state from fetched data
+      setIsHold(fetchedAwbData.isHold || false);
+      setHoldReason(fetchedAwbData.holdReason || "");
+      setValue("isHold", fetchedAwbData.isHold || false);
+      setValue("holdReason", fetchedAwbData.holdReason || "");
+      setValue("otherHoldReason", fetchedAwbData.otherHoldReason || "");
+      
+      // Don't set holdEdit for existing holds - allow modification
+      setHoldEdit(false);
+      
+      console.log("Loaded hold data:", {
+        isHold: fetchedAwbData.isHold,
+        holdReason: fetchedAwbData.holdReason,
+        otherHoldReason: fetchedAwbData.otherHoldReason
+      });
+    }
+  }, [fetchedAwbData, setValue]);
 
   // Function to check zone status
   const checkZoneStatus = async (destination, service) => {
@@ -462,6 +516,12 @@ function AwbEntry() {
       }
     } else if (actual > 0) {
       // If only actual weight exists, use it
+      setValue("chargeableWt", actual < 1 ? actual.toFixed(2) : Math.ceil(actual));
+    } else {
+      setValue("chargeableWt", "0.00");
+    }
+  }, [actualWt, volWt, volDisc, setValue]); 
+
       setValue(
         "chargeableWt",
         actual < 1 ? actual.toFixed(2) : Math.ceil(actual),
@@ -508,7 +568,16 @@ function AwbEntry() {
     const accountCode = code;
     const insertUser = user?.userId;
     const updateUser = user?.userId;
-    const payload = { accountCode, ...fillterData };
+    
+    // FIXED: Ensure hold reason is properly set in payload
+    const payload = { 
+      accountCode, 
+      ...fillterData,
+      isHold: isHold,
+      holdReason: holdReason || fillterData.holdReason || "",
+      otherHoldReason: fillterData.otherHoldReason || ""
+    };
+    
     console.log("payload: ", payload, newShipment);
 
     // small helper to safely fetch customer name
@@ -989,14 +1058,14 @@ function AwbEntry() {
           .trim() || "";
 
       const applicableSet = new Set(
-        applicableList.map((a) => normalizeService(a.service)),
-      );
+        applicableList.map((a) => normalizeService(a.service))
+
 
       const commonServices = filteredServices.filter((f) =>
         Array.from(applicableSet).some(
           (service) =>
             normalizeService(f.service).includes(service) ||
-            service.includes(normalizeService(f.service)),
+            service.includes(normalizeService(f.service))
         ),
       );
 
@@ -1526,7 +1595,7 @@ function AwbEntry() {
     setTotalKg(0.0);
     setInvoiceTotalValue(0.0);
     setInvContent([]);
-    setHoldReason(" ");
+    setHoldReason("");
     setHoldEdit(false);
     setFocUnlocked(false);
     setPrevPayment("Credit");
@@ -1867,38 +1936,12 @@ function AwbEntry() {
       setHoldEdit(false);
       setIsHold(false);
       setHoldReason("");
-      setValue("isHold", false);
-      return;
+      setValue("holdReason", "");
+      setValue("otherHoldReason", "");
+      setInvContent([]);
+      console.log("No AWB data found - new shipment");
     }
-
-    if (
-      creditLimit === 0 ||
-      (creditLimit === "" && availableBalance > grandTotal)
-    ) {
-      shouldHold = false;
-    } else if (creditLimit > grandTotal) {
-      shouldHold = false;
-    } else {
-      shouldHold = true;
-    }
-
-    if (shouldHold) {
-      setHoldReason("Credit Limit Exceeded");
-      setIsHold(true);
-      setHoldEdit(true);
-      setValue("isHold", true);
-      console.log("Credit Limit Exceeded - Auto Hold");
-      showNotification("error", "Credit Limit Exceeded");
-    } else {
-      // If hold is manually checked or other reasons selected, keep it
-      if (!isHold) {
-        setHoldEdit(false);
-        setValue("isHold", false);
-        setHoldReason(" ");
-        console.log("Credit OK - No Hold");
-      }
-    }
-  }, [grandTotal, actualWtValue, account]);
+  }, [fetchedAwbData, setValue]);
 
   //for alerts
   useEffect(() => {
@@ -3098,7 +3141,7 @@ function AwbEntry() {
                     setValue={setValue}
                     resetFactor={refreshKey}
                     flip={true}
-                    disabled={isEdit || holdEdit}
+                    disabled={isEdit || holdEdit} // FIXED: Only disable when credit limit exceeded, not for all holds
                   />
                   <LabeledDropdown
                     options={[
@@ -3153,10 +3196,8 @@ function AwbEntry() {
                     resetFactor={refreshKey}
                     title={`Hold Reason`}
                     value={`holdReason`}
-                    defaultValue={
-                      holdReason || fetchedAwbData.holdReason || " "
-                    }
-                    disabled={isEdit || holdEdit}
+                    defaultValue={holdReason || fetchedAwbData.holdReason || ""}
+                    disabled={isEdit || holdEdit} // FIXED: Only disable when credit limit exceeded
                   />
                   <InputBox
                     placeholder="Other Reason"
