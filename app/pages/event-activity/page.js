@@ -1,6 +1,6 @@
 "use client";
 import { RadioButtonLarge } from "@/app/components/RadioButton";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import Heading from "@/app/components/Heading";
 import InputBox, { DateInputBox } from "@/app/components/InputBox";
@@ -14,6 +14,8 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import { useAuth } from "@/app/Context/AuthContext";
 import CodeList from "@/app/components/CodeList";
 import NotificationFlag from "@/app/components/Notificationflag";
+import { sendNotification } from "@/app/lib/sendNotifications";
+import { LabeledDropdown } from "@/app/components/Dropdown";
 
 function EventActivity() {
   const { register, setValue, handleSubmit, reset, watch } = useForm();
@@ -294,6 +296,8 @@ function EventActivity() {
     const now = new Date();
     const newEvents = itemsToUpdate.map((item) => ({
       awbNo: item.awbNo,
+      accountCode: item.accountCode || "",
+      customerName: item.receiverFullName || item.customerName || "",
       eventDate: data.statusDate,
       eventTime: data["time(Use 24 hr Format)"],
       eventCode: data.eventCode,
@@ -347,6 +351,7 @@ function EventActivity() {
         // Map data to match your table structure
         const shipments = jsonData.map((row) => ({
           awbNo: row["AWB No"] || "",
+          accountCode: row["Account Code"] || row["Customer Code"] || "",
           createdAt: normalizeDate(row["Shipment Date"] || ""),
           sector: row["Sector"] || "",
           destination: row["Destination"] || "",
@@ -474,6 +479,21 @@ function EventActivity() {
       console.log(eventData);
       await createEventActivity(eventData);
 
+      // Send notifications for each event
+      for (const event of eventData) {
+        if (event.accountCode) {
+          await sendNotification({
+            accountCode: event.accountCode,
+            name: event.customerName,
+            awbNo: event.awbNo,
+            event: "Shipment Status", // Standardized name for preferences check
+            description: `${event.awbNo} - ${event.eventCode}`,
+            message: `${event.awbNo} ~ ${event.status}`,
+            priority: "medium",
+          });
+        }
+      }
+
       // Reset additional UI state
       setResetForm((prev) => !prev);
       setRowData([]);
@@ -491,9 +511,9 @@ function EventActivity() {
   // Create sample CSV data
   const downloadSampleCSV = () => {
     const csvData = [
-      ["AWB No", "Shipment Date", "Sector", "Destination", "Consignee Name"],
-      ["1234567890", "2025-03-16", "NYC-DEL", "New Delhi", "John Doe"],
-      ["9876543210", "2025-03-14", "LAX-LHR", "London", "Alice Smith"],
+      ["AWB No", "Account Code", "Shipment Date", "Sector", "Destination", "Consignee Name"],
+      ["1234567890", "A1001", "2025-03-16", "NYC-DEL", "New Delhi", "John Doe"],
+      ["9876543210", "A1002", "2025-03-14", "LAX-LHR", "London", "Alice Smith"],
     ];
 
     const csvContent = csvData.map((row) => row.join(",")).join("\n");
@@ -537,24 +557,49 @@ function EventActivity() {
 
   // Watch eventCode field
   const eventCodeValue = watch("eventCode");
+  const statusValue = watch("status");
 
+  // Filter statuses based on Event Code
+  const filteredStatuses = useMemo(() => {
+    if (!eventCodeValue) return eventCode.map((item) => item.name);
+
+    return eventCode
+      .filter((item) =>
+        item.code.toLowerCase().startsWith(eventCodeValue.toLowerCase())
+      )
+      .map((item) => item.name);
+  }, [eventCodeValue, eventCode]);
+
+  // Sync Event Status state when Event Code changes (internal state only)
   useEffect(() => {
-    if (!eventCodeValue) return; // don't run if empty
+    if (!eventCodeValue) return;
 
     const handler = setTimeout(() => {
-      // Find matching event by code
       const matchedEvent = eventCode.find(
         (item) => item.code.toLowerCase() === eventCodeValue.toLowerCase()
       );
 
       if (matchedEvent) {
         setEventStatus(matchedEvent.name);
-        setValue("status", matchedEvent.name); // Auto-fill Status
+        // Removed: setValue("status", matchedEvent.name);
       }
-    }, 400); // 400ms debounce
+    }, 400);
 
-    return () => clearTimeout(handler); // cleanup on value change
+    return () => clearTimeout(handler);
   }, [eventCodeValue, eventCode]);
+
+  // Sync Event Code when Status changes
+  const handleStatusChange = (selectedStatus) => {
+    if (!selectedStatus) return;
+
+    const matchedEvent = eventCode.find(
+      (item) => item.name.toLowerCase() === selectedStatus.toLowerCase()
+    );
+
+    if (matchedEvent) {
+      setValue("eventCode", matchedEvent.code);
+    }
+  };
 
   return (
     <form className="flex flex-col gap-9" onSubmit={handleSubmit(onSubmit)}>
@@ -574,7 +619,7 @@ function EventActivity() {
         {eventCode && eventCode.length > 0 && (
           <div className="my-4">
             <CodeList
-              handleAction={() => {}}
+              handleAction={() => { }}
               data={eventCode} // assuming eventCode = [{ code: 'EV001', name: 'Delivered' }, ...]
               columns={[
                 { key: "code", label: "Event Code" },
@@ -614,15 +659,14 @@ function EventActivity() {
         <div className="flex flex-col gap-6">
           <div className="flex flex-col gap-3">
             <RedLabelHeading
-              label={`Search ${
-                demoRadio === "AWB Wise"
-                  ? "Airwaybills"
-                  : demoRadio === "Run Wise"
+              label={`Search ${demoRadio === "AWB Wise"
+                ? "Airwaybills"
+                : demoRadio === "Run Wise"
                   ? "Runs"
                   : demoRadio === "Club No"
-                  ? "Clubbing Numbers"
-                  : "Excel File"
-              }`}
+                    ? "Clubbing Numbers"
+                    : "Excel File"
+                }`}
             />
 
             {/* Search Input and Button */}
@@ -669,8 +713,8 @@ function EventActivity() {
                         demoRadio === "AWB Wise"
                           ? "Airwaybill Number"
                           : demoRadio === "Club No"
-                          ? "Clubbing Number"
-                          : "Run Number"
+                            ? "Clubbing Number"
+                            : "Run Number"
                       }
                       register={register}
                       setValue={setValue}
@@ -678,8 +722,8 @@ function EventActivity() {
                         demoRadio === "AWB Wise"
                           ? "airwaybillNumber"
                           : demoRadio === "Club No"
-                          ? "clubbingNumber"
-                          : "runNumber"
+                            ? "clubbingNumber"
+                            : "runNumber"
                       }
                     />
                     <div className="min-w-[120px]">
@@ -748,20 +792,25 @@ function EventActivity() {
                   register={register}
                   setValue={setValue}
                   value="eventCode"
+                  initialValue={eventCodeValue}
                   required={true}
                   resetFactor={resetForm}
                 />
               </div>
 
-              <InputBox
-                placeholder="Status"
-                register={register}
-                setValue={setValue}
-                value="status"
-                required={true}
-                resetFactor={resetForm}
-                initialValue={eventStatus}
-              />
+              <div className="w-full">
+                <LabeledDropdown
+                  title="Status"
+                  options={filteredStatuses}
+                  value="status"
+                  register={register}
+                  setValue={setValue}
+                  selectedValue={statusValue}
+                  onChange={handleStatusChange}
+                  resetFactor={resetForm}
+                  required={true}
+                />
+              </div>
 
               <div className="w-[350px]">
                 <InputBox

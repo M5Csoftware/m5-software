@@ -10,6 +10,7 @@ import { TableWithSorting } from "@/app/components/Table";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import axios from "axios";
 import NotificationFlag from "@/app/components/Notificationflag";
+import { sendNotification } from "@/app/lib/sendNotifications";
 
 const RateHike = () => {
   const { register, setValue, watch, reset } = useForm({
@@ -436,8 +437,7 @@ const RateHike = () => {
     if (!hikeValue || parseFloat(hikeValue) <= 0) {
       showNotification(
         "error",
-        `Please enter a valid ${
-          demoRadio === "percentageInput" ? "percentage" : "flat"
+        `Please enter a valid ${demoRadio === "percentageInput" ? "percentage" : "flat"
         } hike value`
       );
       return;
@@ -471,8 +471,7 @@ const RateHike = () => {
 
       showNotification(
         "success",
-        `Rate hike of ${hikeValue}${
-          demoRadio === "percentageInput" ? "%" : ""
+        `Rate hike of ${hikeValue}${demoRadio === "percentageInput" ? "%" : ""
         } calculated successfully. Toggle between Original/Hiked rates above.`
       );
     } catch (error) {
@@ -508,6 +507,33 @@ const RateHike = () => {
       return;
     }
 
+    // Identify affected customers for notification
+    let affectedCustomersCount = 0;
+    let affectedAccounts = [];
+
+    try {
+      setIsLoading(true);
+      // Fetch all tariffs to find which customers use this rateTariff and service
+      const res = await axios.get(`${server}/shipper-tariff`);
+      const allTariffs = res.data || [];
+
+      const filteredTariffs = allTariffs.filter(t =>
+        t.rateTariff === selectedRateTariff &&
+        t.service === selectedService
+      );
+
+      // Unique customers using this tariff/service
+      const uniqueCustomerNames = [...new Set(filteredTariffs.map(t => t.customer))];
+
+      // Match with accounts to get names and account codes
+      affectedAccounts = accounts.filter(acc => uniqueCustomerNames.includes(acc.name));
+      affectedCustomersCount = affectedAccounts.length;
+    } catch (error) {
+      console.error("Error identifying affected customers:", error);
+    } finally {
+      setIsLoading(false);
+    }
+
     // Prepare the data for confirmation
     const saveData = {
       hikeType: demoRadio === "percentageInput" ? "Percentage" : "Flat",
@@ -517,6 +543,8 @@ const RateHike = () => {
       customer: customerCode || "N/A",
       service: selectedService || "N/A",
       rateTariff: selectedRateTariff || "N/A",
+      affectedCustomers: affectedAccounts,
+      affectedCustomersCount,
     };
 
     setPendingSaveData(saveData);
@@ -568,6 +596,23 @@ const RateHike = () => {
           "success",
           `Successfully saved ${res.data.modifiedCount} rate sheets to database`
         );
+
+        // Send notifications to all affected customers
+        if (pendingSaveData?.affectedCustomers?.length > 0) {
+          const hikeDesc = `${pendingSaveData.hikeValue}${pendingSaveData.hikeType === "Percentage" ? "%" : ""}`;
+
+          for (const customer of pendingSaveData.affectedCustomers) {
+            await sendNotification({
+              accountCode: customer.accountCode,
+              name: customer.name,
+              event: "Rate Hike Applied",
+              description: `Tariff: ${pendingSaveData.rateTariff}, Service: ${pendingSaveData.service}`,
+              message: `A ${pendingSaveData.hikeType.toLowerCase()} hike of ${hikeDesc} has been applied to ${pendingSaveData.service} under tariff ${pendingSaveData.rateTariff}.`,
+              priority: "medium",
+            });
+          }
+          console.log(`✅ Sent notifications to ${pendingSaveData.affectedCustomers.length} customers`);
+        }
       } else {
         showNotification(
           "warning",
@@ -675,14 +720,15 @@ const RateHike = () => {
         title="Confirm Save Tariff"
         message={
           pendingSaveData
-            ? `Are you sure you want to save the tariff with ${pendingSaveData.hikeType.toLowerCase()} hike of ${
-                pendingSaveData.hikeValue
-              }${pendingSaveData.hikeType === "Percentage" ? "%" : ""}?
+            ? `Are you sure you want to save the tariff with ${pendingSaveData.hikeType.toLowerCase()} hike of ${pendingSaveData.hikeValue
+            }${pendingSaveData.hikeType === "Percentage" ? "%" : ""}?
           
           This will update ${pendingSaveData.affectedRows} rate sheets for:
           • Customer: ${pendingSaveData.customer}
           • Service: ${pendingSaveData.service}
           • Rate Tariff: ${pendingSaveData.rateTariff}
+          
+          Notifications will be sent to ${pendingSaveData.affectedCustomersCount} customers using this service and tariff.
           
           This action cannot be undone.`
             : ""
@@ -770,22 +816,20 @@ const RateHike = () => {
               <div className="flex gap-2">
                 <button
                   onClick={handleShowOriginal}
-                  className={`px-3 py-1 rounded text-sm ${
-                    !showHikedRates
-                      ? "bg-white text-red border-[1px] rounded-md font-semibold tracking-wide text-xs border-red"
-                      : "bg-white text-red border-[1px] rounded-md font-semibold tracking-wide text-xs border-red opacity-70"
-                  }`}
+                  className={`px-3 py-1 rounded text-sm ${!showHikedRates
+                    ? "bg-white text-red border-[1px] rounded-md font-semibold tracking-wide text-xs border-red"
+                    : "bg-white text-red border-[1px] rounded-md font-semibold tracking-wide text-xs border-red opacity-70"
+                    }`}
                   type="button"
                 >
                   Original Rates
                 </button>
                 <button
                   onClick={handleShowHiked}
-                  className={`px-3 py-1 rounded text-sm ${
-                    showHikedRates
-                      ? "bg-red text-white font-semibold text-xs rounded-md tracking-wide"
-                      : "bg-red text-white font-semibold text-xs rounded-md tracking-wide opacity-70"
-                  }`}
+                  className={`px-3 py-1 rounded text-sm ${showHikedRates
+                    ? "bg-red text-white font-semibold text-xs rounded-md tracking-wide"
+                    : "bg-red text-white font-semibold text-xs rounded-md tracking-wide opacity-70"
+                    }`}
                   type="button"
                 >
                   Hiked Rates

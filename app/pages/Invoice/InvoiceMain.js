@@ -19,6 +19,7 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import InvoicePDFDownloader from "./InvoicePdf";
 import InvoiceTemplate from "./InvoicePdf";
 import NotificationFlag from "@/app/components/Notificationflag";
+import { sendNotification } from "@/app/lib/sendNotifications";
 
 const InvoiceMain = ({ fYear }) => {
   const { register, setValue, watch } = useForm();
@@ -92,8 +93,8 @@ const InvoiceMain = ({ fYear }) => {
           branchesData.length > 0
             ? branchesData
             : [...new Set(invoicesData.map((inv) => inv.branch))].filter(
-                Boolean
-              );
+              Boolean
+            );
 
         console.log("✅ Branches detected:", uniqueBranches);
         setBranchFilterOptions(uniqueBranches);
@@ -154,8 +155,8 @@ const InvoiceMain = ({ fYear }) => {
           branchesData.length > 0
             ? branchesData
             : [...new Set(invoicesData.map((inv) => inv.branch))].filter(
-                Boolean
-              );
+              Boolean
+            );
 
         console.log("✅ Branches detected:", uniqueBranches);
         setBranchFilterOptions(uniqueBranches);
@@ -455,6 +456,17 @@ const InvoiceMain = ({ fYear }) => {
 
       console.log("✅ Saved Invoice:", data);
       showNotification("success", "Invoice saved successfully!");
+
+      // Send notification to customer
+      await sendNotification({
+        accountCode: payload.customer.accountCode,
+        name: payload.customer.name,
+        invoiceNo: payload.invoiceNumber,
+        event: "Invoice Generated",
+        description: `Invoice ${payload.invoiceNumber} generated`,
+        message: `An invoice ${payload.invoiceNumber} for ${payload.invoiceSummary.grandTotal.toFixed(2)} has been generated.`,
+        priority: "medium",
+      });
     } catch (err) {
       console.error("❌ Error saving invoice:", err);
       showNotification("error", "Error saving invoice");
@@ -602,7 +614,7 @@ const InvoiceMain = ({ fYear }) => {
       setValue(
         "address",
         cust.address ||
-          [cust.address1, cust.address2].filter(Boolean).join(", ")
+        [cust.address1, cust.address2].filter(Boolean).join(", ")
       );
 
       if (data) {
@@ -1017,7 +1029,7 @@ const InvoiceMain = ({ fYear }) => {
               invoiceNumber={watch("invoiceNumber")}
             />
           </div>
-          <div>  
+          <div>
             <SimpleButton
               name="Create Bill"
               onClick={handleSaveInvoice}
