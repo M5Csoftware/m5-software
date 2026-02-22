@@ -1,3 +1,4 @@
+"use client";
 import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { LabeledDropdown } from "@/app/components/Dropdown";
 import Heading, { RedLabelHeading } from "@/app/components/Heading";
@@ -624,11 +625,10 @@ const RateCalculator = () => {
             {calculatedRates.map((service, idx) => (
               <div
                 key={idx}
-                className={`bg-white border p-4 rounded-[10px] ${
-                  selectedServiceLocal === service?.service
+                className={`bg-white border p-4 rounded-[10px] ${selectedServiceLocal === service?.service
                     ? "border-[#EA2147] shadow-lg"
                     : "border-[#E2E8F0]"
-                }`}
+                  }`}
               >
                 {/* Header Section */}
                 <div className="flex justify-between items-start mb-4">

@@ -12,13 +12,13 @@ function BulkUpload() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleDownloadTemplate = () => {
-  const link = document.createElement("a");
-  link.href = demoRadio === "Auto AWB No" ? "/auto-awb-bulkUpload.xlsx" : "/shipment_full_sample.xlsx"; 
-  link.setAttribute("download", demoRadio === "Auto AWB No" ? "auto-awb-bulkUpload.xlsx" : "shipment_full_sample.xlsx");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+    const link = document.createElement("a");
+    link.href = demoRadio === "Auto AWB No" ? "/auto-awb-bulkUpload.xlsx" : "/shipment_full_sample.xlsx";
+    link.setAttribute("download", demoRadio === "Auto AWB No" ? "auto-awb-bulkUpload.xlsx" : "shipment_full_sample.xlsx");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // 🔄 Refresh (keep tab, clear child + parent form)
   const handleRefresh = () => {
@@ -32,7 +32,7 @@ function BulkUpload() {
       <Heading
         title="Bulk Upload"
         bulkUploadBtn="hidden"
-        downloadBtn= {true}
+        downloadBtn={true}
         codeListBtn={true}
         fullscreenBtn={false}
         onRefresh={handleRefresh}
