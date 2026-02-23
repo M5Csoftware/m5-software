@@ -706,7 +706,7 @@ const AutoCalculation = () => {
         name={`Customer Code List`}
       />
       <Heading
-        title={`Auto Calculation (Using Bulk Upload Route)`}
+        title={`Auto Calculation`}
         bulkUploadBtn="hidden"
         onRefresh={handleRefresh}
       />
@@ -797,14 +797,15 @@ const AutoCalculation = () => {
               Service "{watch("service")}" selected for recalculation
             </div>
           )}
-          <div className="text-gray-600 text-xs mt-1">
+          {/* <div className="text-gray-600 text-xs mt-1">
             Using bulk upload route for rate calculation
-          </div>
+          </div> */}
         </div>
       )}
 
       <div className="flex justify-end gap-3">
-        <div>
+        {/* To test one entry */}
+        {/* <div>
           <button
             onClick={testCalculation}
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm"
@@ -816,7 +817,8 @@ const AutoCalculation = () => {
           >
             Test Calculation (Bulk Route)
           </button>
-        </div>
+        </div> */}
+
         <div>
           <SimpleButton
             name={isLoading ? "Calculating..." : `Auto Calculate & Update`}
