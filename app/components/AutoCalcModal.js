@@ -43,6 +43,12 @@ const VARIANTS = {
         iconColor: "text-[#EA1B40]",
         title: "Error",
     },
+    success: {
+        icon: Zap,
+        iconBg: "bg-green-100",
+        iconColor: "text-green-600",
+        title: "Calculation Success",
+    },
 };
 
 export const AutoCalcModal = ({
@@ -59,7 +65,7 @@ export const AutoCalcModal = ({
     confirmLabel = "Proceed",
     cancelLabel = "Cancel",
 }) => {
-    const [activeTab, setActiveTab] = useState("failed"); // "failed" | "ok"
+    const [activeTab, setActiveTab] = useState(variant === "warning" ? "failed" : "ok");
 
     if (!isOpen) return null;
 
@@ -68,6 +74,7 @@ export const AutoCalcModal = ({
     const modalTitle = title || v.title;
     const isConfirm = variant === "confirm";
     const isWarning = variant === "warning";
+    const isSuccess = variant === "success";
 
     return (
         <div
@@ -77,14 +84,14 @@ export const AutoCalcModal = ({
             <div
                 className="bg-white rounded-2xl w-full shadow-2xl flex flex-col overflow-hidden"
                 style={{
-                    maxWidth: isWarning ? "680px" : "520px",
+                    maxWidth: (isWarning || isSuccess) ? "680px" : "520px",
                     animation: "acModalIn 0.22s cubic-bezier(.4,0,.2,1)",
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* ─────────── HEADER ─────────── */}
                 <div className="px-7 pt-6 pb-5 border-b border-gray-100 flex items-start gap-4">
-                    <div className={`${v.iconBg} rounded-xl p-3 flex-shrink-0`}>
+                    <div className={`${v.iconBg} rounded-xl p-3 flex-shrink-0 transition-transform duration-300 hover:scale-110`}>
                         <Icon className={`${v.iconColor} w-6 h-6`} strokeWidth={2} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -121,58 +128,60 @@ export const AutoCalcModal = ({
 
                     {/* ── TABBED view for warning variant ── */}
                     {isWarning && (
-                        <>
-                            {/* Tab bar */}
-                            <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-                                <button
-                                    onClick={() => setActiveTab("failed")}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${activeTab === "failed"
-                                            ? "bg-white text-[#EA1B40] shadow-sm"
-                                            : "text-gray-500 hover:text-gray-700"
-                                        }`}
-                                >
-                                    <XCircle size={15} />
-                                    Failed
-                                    {failedItems && failedItems.length > 0 && (
-                                        <span
-                                            className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${activeTab === "failed"
-                                                    ? "bg-[#EA1B40] text-white"
-                                                    : "bg-gray-300 text-gray-700"
-                                                }`}
-                                        >
-                                            {failedItems.length}
-                                        </span>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab("ok")}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${activeTab === "ok"
-                                            ? "bg-white text-green-600 shadow-sm"
-                                            : "text-gray-500 hover:text-gray-700"
-                                        }`}
-                                >
-                                    <CheckCheck size={15} />
-                                    OK
-                                    {okItems && okItems.length > 0 && (
-                                        <span
-                                            className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${activeTab === "ok"
-                                                    ? "bg-green-600 text-white"
-                                                    : "bg-gray-300 text-gray-700"
-                                                }`}
-                                        >
-                                            {okItems.length}
-                                        </span>
-                                    )}
-                                </button>
-                            </div>
+                        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+                            <button
+                                onClick={() => setActiveTab("failed")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${activeTab === "failed"
+                                    ? "bg-white text-[#EA1B40] shadow-sm"
+                                    : "text-gray-500 hover:text-gray-700"
+                                    }`}
+                            >
+                                <XCircle size={15} />
+                                Failed
+                                {failedItems && failedItems.length > 0 && (
+                                    <span
+                                        className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${activeTab === "failed"
+                                            ? "bg-[#EA1B40] text-white"
+                                            : "bg-gray-300 text-gray-700"
+                                            }`}
+                                    >
+                                        {failedItems.length}
+                                    </span>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => setActiveTab("ok")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-all ${activeTab === "ok"
+                                    ? "bg-white text-green-600 shadow-sm"
+                                    : "text-gray-500 hover:text-gray-700"
+                                    }`}
+                            >
+                                <CheckCheck size={15} />
+                                OK
+                                {okItems && okItems.length > 0 && (
+                                    <span
+                                        className={`ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${activeTab === "ok"
+                                            ? "bg-green-600 text-white"
+                                            : "bg-gray-300 text-gray-700"
+                                            }`}
+                                    >
+                                        {okItems.length}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+                    )}
 
-                            {/* Failed tab content */}
-                            {activeTab === "failed" && (
+                    {/* Content Area */}
+                    {(isWarning || isSuccess) && (
+                        <div className="flex flex-col gap-4">
+                            {/* Failed tab content (only in warning and if failed) */}
+                            {isWarning && activeTab === "failed" && (
                                 <div className="rounded-xl border border-red-100 overflow-hidden">
                                     <div className="px-4 py-2.5 bg-rose-50 border-b border-red-100 flex items-center gap-2">
                                         <XCircle size={14} className="text-[#EA1B40]" />
                                         <span className="text-xs font-semibold text-[#EA1B40] uppercase tracking-wide">
-                                            {failedItems?.length ?? 0} shipment{failedItems?.length !== 1 ? "s" : ""} failed calculation
+                                            {failedItems?.length ?? 0} shipment{failedItems?.length !== 1 ? "s" : ""} failed
                                         </span>
                                     </div>
                                     <div
@@ -202,45 +211,49 @@ export const AutoCalcModal = ({
                                 </div>
                             )}
 
-                            {/* OK tab content */}
-                            {activeTab === "ok" && (
-                                <div className="rounded-xl border border-green-100 overflow-hidden">
+                            {/* OK Items List (in Success variant or OK tab of warning) */}
+                            {((isSuccess) || (isWarning && activeTab === "ok")) && (
+                                <div className="rounded-xl border border-green-100 overflow-hidden shadow-sm">
                                     <div className="px-4 py-2.5 bg-green-50 border-b border-green-100 flex items-center gap-2">
-                                        <CheckCircle2 size={14} className="text-green-600" />
+                                        <CheckCheck size={14} className="text-green-600" />
                                         <span className="text-xs font-semibold text-green-700 uppercase tracking-wide">
                                             {okItems?.length ?? 0} shipment{okItems?.length !== 1 ? "s" : ""} calculated successfully
                                         </span>
                                     </div>
                                     <div
                                         className="divide-y divide-gray-100 overflow-y-auto"
-                                        style={{ maxHeight: "280px" }}
+                                        style={{ maxHeight: isSuccess ? "400px" : "280px" }}
                                     >
                                         {(!okItems || okItems.length === 0) ? (
                                             <div className="px-4 py-8 text-center text-gray-400 text-sm">No successful shipments</div>
                                         ) : (
-                                            okItems.map((item, i) => (
-                                                <div key={i} className="px-4 py-3 flex gap-3 items-center hover:bg-gray-50 transition-colors">
-                                                    <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
-                                                    <div className="flex flex-col gap-0.5 min-w-0">
-                                                        <span className="font-mono text-xs font-bold text-gray-800">
-                                                            {item.awbNo}
-                                                        </span>
-                                                        {item.service && (
-                                                            <span className="text-xs text-gray-400">{item.service}</span>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 divide-x divide-y divide-gray-50">
+                                                {okItems.map((item, i) => (
+                                                    <div key={i} className="px-4 py-3 flex gap-3 items-center hover:bg-green-50/30 transition-colors">
+                                                        <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                                                            <CheckCheck size={12} className="text-green-600" />
+                                                        </div>
+                                                        <div className="flex flex-col gap-0.5 min-w-0">
+                                                            <span className="font-mono text-xs font-bold text-gray-800 truncate">
+                                                                {item.awbNo}
+                                                            </span>
+                                                            {item.service && (
+                                                                <span className="text-[10px] text-gray-400 truncate">{item.service}</span>
+                                                            )}
+                                                        </div>
+                                                        {item.grandTotal !== undefined && (
+                                                            <span className="ml-auto text-xs font-semibold text-green-700">
+                                                                ₹{Number(item.grandTotal).toFixed(2)}
+                                                            </span>
                                                         )}
                                                     </div>
-                                                    {item.grandTotal !== undefined && (
-                                                        <span className="ml-auto text-xs font-semibold text-green-700">
-                                                            ₹{Number(item.grandTotal).toFixed(2)}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ))
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
                                 </div>
                             )}
-                        </>
+                        </div>
                     )}
 
                     {/* ── Key–value rows (info / error variant) ── */}
@@ -275,7 +288,10 @@ export const AutoCalcModal = ({
                     )}
                     <button
                         onClick={isConfirm ? onConfirm : onClose}
-                        className="px-6 py-2.5 rounded-xl bg-[#EA1B40] hover:bg-[#c91535] text-white text-sm font-semibold transition-colors shadow-sm"
+                        className={`px-6 py-2.5 rounded-xl text-white text-sm font-semibold transition-all shadow-sm active:scale-95 ${isSuccess
+                            ? "bg-green-600 hover:bg-green-700 font-bold"
+                            : "bg-[#EA1B40] hover:bg-[#c91535]"
+                            }`}
                     >
                         {isConfirm ? confirmLabel : "Close"}
                     </button>

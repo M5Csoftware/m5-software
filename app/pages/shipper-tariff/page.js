@@ -39,7 +39,6 @@ const ShipperTariff = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const { sectors, server } = useContext(GlobalContext);
 
-  const [resetFlag, setResetFlag] = useState(false);
 
   const [notification, setNotification] = useState({
     type: "success",
@@ -71,7 +70,7 @@ const ShipperTariff = () => {
 
   const formatDisplayDate = (dateString) => {
     if (!dateString) return "";
-    
+
     try {
       // Handle different date formats
       if (typeof dateString === 'string') {
@@ -79,12 +78,12 @@ const ShipperTariff = () => {
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
           return dateString;
         }
-        
+
         // If it's in ISO format with time
         if (dateString.includes('T')) {
           return dateString.split('T')[0];
         }
-        
+
         // Try to parse it
         const date = new Date(dateString);
         if (!isNaN(date.getTime())) {
@@ -94,7 +93,7 @@ const ShipperTariff = () => {
           return `${year}-${month}-${day}`;
         }
       }
-      
+
       return dateString;
     } catch (error) {
       console.error("Error formatting date:", error, dateString);
@@ -111,9 +110,8 @@ const ShipperTariff = () => {
       const customerOptions = customerData
         .filter((item) => item.name?.trim())
         .map((item) => ({
-          label: `${item.name.trim()}${
-            item.accountCode ? ` (${item.accountCode})` : ""
-          }`,
+          label: `${item.name.trim()}${item.accountCode ? ` (${item.accountCode})` : ""
+            }`,
           value: item.name.trim(),
           accountCode: item.accountCode || "",
         }));
@@ -161,25 +159,25 @@ const ShipperTariff = () => {
       const response = await axios.get(
         `${server}/shipper-tariff/get-zones?sector=${encodeURIComponent(sector)}`
       );
-      
+
       console.log("✅ Zones response:", response.data);
-      
+
       // Transform the response data to match your UI needs
       const services = response.data?.services || [];
       const zoneMatrices = response.data?.zoneMatrix || [];
-      
+
       console.log("📋 Services found:", services);
       console.log("📋 Zone Matrices found:", zoneMatrices);
-      
+
       setServiceOptions(services);
       setzoneMatrixOptions(zoneMatrices);
-      
+
     } catch (error) {
       console.error("❌ Error fetching zones data:", error);
       console.error("Error details:", error.response?.data || error.message);
       setServiceOptions([]);
       setzoneMatrixOptions([]);
-      
+
       // Show notification to user
       showNotification("error", "Failed to load services and zones. Please try again.");
     }
@@ -200,14 +198,14 @@ const ShipperTariff = () => {
       }
 
       const response = await axios.get(url);
-      
+
       // Transform the dates in the response
       const formattedData = response.data.map(item => ({
         ...item,
         fromDate: formatDisplayDate(item.fromDate),
         toDate: formatDisplayDate(item.toDate)
       }));
-      
+
       setRowData(formattedData || []);
     } catch (error) {
       console.error("Error fetching applicable rates:", error);
@@ -237,7 +235,6 @@ const ShipperTariff = () => {
 
   useEffect(() => {
     if (selectedSector) {
-      setResetFlag(!resetFlag);
       setValue("service", "");
       setValue("zoneMatrix", "");
       setValue("rateTariff", "");
@@ -374,7 +371,7 @@ const ShipperTariff = () => {
       setServiceOptions([]);
       setzoneMatrixOptions([]);
       setSelectedRateTariff("");
-      setResetFlag(!resetFlag);
+      reset(); // Clear React Hook Form state
       console.log("Data saved successfully!");
       showNotification("success", "shipper tariff data added successfully!");
     } catch (error) {
@@ -508,8 +505,9 @@ const ShipperTariff = () => {
 
   //handle refresh btn
   const handleRefresh = () => {
-    setResetFlag(!resetFlag);
+    reset(); // Reset form values
     setSelectedRateTariff("");
+    setRowData([]); // Clear table data on refresh? (Optional, based on requirement, but usually refresh means start over)
   };
 
   return (
@@ -548,7 +546,7 @@ const ShipperTariff = () => {
               setValue={setValue}
               value={`sector`}
               title="Sector"
-              resetFactor={resetFlag}
+              selectedValue={watch("sector")}
               trigger={trigger}
               error={errors.sector}
               validation={{
@@ -563,6 +561,7 @@ const ShipperTariff = () => {
               setValue={setValue}
               value={"client"}
               title="Client"
+              selectedValue={watch("client")}
               error={errors.client}
               validation={{
                 required: "Client is required",
@@ -573,7 +572,6 @@ const ShipperTariff = () => {
               }}
               trigger={trigger}
               defaultValue={formValues.client}
-              resetFactor={resetFlag}
             />
             <LabeledDropdown
               options={serviceOptions}
@@ -581,14 +579,14 @@ const ShipperTariff = () => {
               setValue={setValue}
               value={"service"}
               title="Service"
+              selectedValue={watch("service")}
               error={errors.service}
               validation={{
                 required: "Service is required",
                 minLength: { value: 1, message: "Service is required" },
               }}
               trigger={trigger}
-              resetFactor={resetFlag}
-              defaultValue={formValues.network}
+              defaultValue={formValues.service}
             />
           </div>
 
@@ -599,14 +597,14 @@ const ShipperTariff = () => {
               setValue={setValue}
               value={`zoneMatrix`}
               title="Zone Matrix"
+              selectedValue={watch("zoneMatrix")}
               error={errors.zoneMatrix}
               validation={{
                 required: "Zone Matrix is required",
                 minLength: { value: 1, message: "Zone Matrix is required" },
               }}
               trigger={trigger}
-              resetFactor={resetFlag}
-              defaultValue={formValues.service}
+              defaultValue={formValues.zoneMatrix}
             />
             <LabeledDropdown
               options={networkOptions.map((network) => network.name)}
@@ -614,14 +612,14 @@ const ShipperTariff = () => {
               setValue={setValue}
               value={`network`}
               title="Network"
+              selectedValue={watch("network")}
               error={errors.network}
               validation={{
                 required: "Network is required",
                 minLength: { value: 1, message: "Network is required" },
               }}
               trigger={trigger}
-              defaultValue={formValues.zoneMatrix}
-              resetFactor={resetFlag}
+              defaultValue={formValues.network}
             />
             <LabeledDropdown
               options={rateTariffOptions}
@@ -632,6 +630,7 @@ const ShipperTariff = () => {
               }}
               title="Rate Tariff"
               value="rateTariff"
+              selectedValue={watch("rateTariff")}
             />
           </div>
 
@@ -642,6 +641,7 @@ const ShipperTariff = () => {
               setValue={setValue}
               value={"mode"}
               title="Mode"
+              selectedValue={watch("mode")}
               error={errors.mode}
               validation={{
                 required: "Mode is required",
@@ -649,7 +649,6 @@ const ShipperTariff = () => {
               }}
               trigger={trigger}
               defaultValue={formValues.mode}
-              resetFactor={resetFlag}
             />
             <DateInputBox
               register={register}
@@ -660,7 +659,6 @@ const ShipperTariff = () => {
               validation={{ required: "From date is required" }}
               trigger={trigger}
               initialValue={formValues.from}
-              resetFactor={resetFlag}
             />
             <DateInputBox
               register={register}
@@ -671,7 +669,6 @@ const ShipperTariff = () => {
               validation={{ required: "To date is required" }}
               trigger={trigger}
               initialValue={formValues.to}
-              resetFactor={resetFlag}
             />
           </div>
         </div>
