@@ -75,6 +75,7 @@ function Sidebar() {
         "KYC Verification",
         "API Management",
         "Service Master",
+        "Customer Discount",
       ],
     },
     {

@@ -79,6 +79,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-KYC Verification": false,
     "permission-API Management": false,
     "permission-Service Master": false,
+    "permission-Customer Discount": false,
 
     "title-Booking": false,
     "permission-Booking Deletion": false,
@@ -247,6 +248,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-KYC Verification",
       "permission-API Management",
       "permission-Service Master",
+      "permission-Customer Discount",
     ],
 
     "title-Booking": [

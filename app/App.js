@@ -211,6 +211,7 @@ const dynamicPages = {
   129: dynamic(() => import("./pages/labels/lhr-fedex/page"), { ssr: false }),
   130: dynamic(() => import("./pages/entity-manager/ServiceMaster"), { ssr: false }),
   131: dynamic(() => import("./pages/rate-calculator/page"), { ssr: false }),
+  132: dynamic(() => import("./pages/customer-discount/page"), { ssr: false }),
 };
 
 const App = () => {
@@ -377,6 +378,7 @@ const App = () => {
     "LHR FEDEX": 129,
     "Service Master": 130,
     "Rate Calculator": 131,
+    "Customer Discount": 132,
   };
 
   // Update view and track mounted tabs when currentTab changes
