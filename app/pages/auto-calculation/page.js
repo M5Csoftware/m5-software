@@ -60,6 +60,10 @@ const AutoCalculation = () => {
   const showWarningModal = ({ title, message, failedItems, okItems, meta }) =>
     setModal({ open: true, variant: "warning", title, message, failedItems, okItems, meta });
 
+  /** Show a themed success modal (processed shipments list) */
+  const showSuccessModal = ({ title, message, okItems, meta }) =>
+    setModal({ open: true, variant: "success", title, message, okItems, meta });
+
   const handleModalConfirm = () => {
     closeModal();
     if (modalConfirmRef.current) {
@@ -592,12 +596,25 @@ const AutoCalculation = () => {
         await fetchAllShipments(selectedAccount);
       }
 
-      // Show appropriate notification
+      // Show appropriate notification / modal
       if (updatedCount > 0) {
-        showNotification(
-          "success",
-          `Successfully updated ${updatedCount} shipments using bulk upload route. New total: ₹${totalNewGrandTotal.toFixed(2)}`,
-        );
+        if (failedCalculations.length === 0) {
+          showSuccessModal({
+            title: "Calculation Completed",
+            message: `Successfully calculated and updated ${updatedCount} shipments.`,
+            okItems: successfulCalculations.map((s) => ({
+              awbNo: s.awbNo,
+              service: s.newService,
+              grandTotal: s.grandTotal,
+            })),
+            meta: [`${updatedCount} Updated`, `Total: ₹${totalNewGrandTotal.toFixed(2)}`],
+          });
+        } else {
+          showNotification(
+            "success",
+            `Successfully updated ${updatedCount} shipments using bulk upload route. New total: ₹${totalNewGrandTotal.toFixed(2)}`,
+          );
+        }
       } else {
         showNotification(
           "warning",
