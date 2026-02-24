@@ -224,6 +224,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-Rep-Booking Report": false,
     "permission-Airwaybill Log": false,
     "permission-Booking With Sale": false,
+    "permission-New Booking Report": false,
   };
 
   const [checkboxStates, setCheckboxStates] = useState(defaultCheckboxState);
@@ -396,6 +397,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-Rep-Booking Report",
       "permission-Airwaybill Log",
       "permission-Booking With Sale",
+      "permission-New Booking Report",
     ],
   };
 

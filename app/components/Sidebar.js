@@ -196,7 +196,7 @@ function Sidebar() {
     },
     {
       name: "Reports",
-      subfolders: ["Booking Report", "Airwaybill Log", "Booking With Sale"],
+      subfolders: ["Booking Report", "Airwaybill Log", "Booking With Sale", "New Booking Report"],
     },
   ];
 
