@@ -486,7 +486,7 @@ function ManualAWB() {
     }
 
     const shipment = {
-      awbNo: excelRow.AWBNo?.toString().trim() || "",
+      awbNo: (excelRow.AwbNo || excelRow.AWBNo || excelRow["AWB No"] || excelRow.awbNo || excelRow["AWB Number"] || "")?.toString().trim(),
       accountCode: excelRow.AccountCode?.toString().trim() || "DEFAULT",
       status: "Shipment Created!",
       date: new Date(),
@@ -554,7 +554,7 @@ function ManualAWB() {
       network: "",
       networkName: "",
       obc: "",
-      service: (excelRow.Service?.toString().trim() || "").toUpperCase(),
+      service: (excelRow.ServiceName?.toString().trim() || "").toUpperCase(),
       localMF: "",
 
       receiverFullName: excelRow.ConsigneeName?.toString().trim() || "",
@@ -566,7 +566,7 @@ function ManualAWB() {
         excelRow.ConsigneeAddressLine2?.toString().trim() || "",
       receiverCity: excelRow.ConsigneeCity?.toString().trim() || "",
       receiverState: excelRow.ConsigneeState?.toString().trim() || "",
-      receiverCountry: (excelRow.Destination?.toString().trim() || "").toUpperCase(),
+      receiverCountry: "",
       receiverPincode: receiverZipcode,
 
       shipperFullName: excelRow.ConsignorName?.toString().trim() || "",
@@ -578,7 +578,7 @@ function ManualAWB() {
         excelRow.ConsignorAddressLine2?.toString().trim() || "",
       shipperCity: excelRow.ConsignorCity?.toString().trim() || "",
       shipperState: excelRow.ConsignorState?.toString().trim() || "",
-      shipperCountry: "INDIA",
+      shipperCountry: "",
       shipperPincode: excelRow.ConsignorPincode?.toString().trim() || "",
       shipperKycType: excelRow.ConsignorKycType?.toString().trim() || "",
       shipperKycNumber: excelRow.ConsignorKycNo?.toString().trim() || "",
@@ -601,7 +601,7 @@ function ManualAWB() {
       mhbsNumber: "",
       exportThroughEcommerce: false,
       meisScheme: false,
-      shipmentType: excelRow.ShipmentType || "Non-Document",
+      shipmentType: "Non-Document",
 
       createdAt: new Date(),
       updatedAt: new Date(),

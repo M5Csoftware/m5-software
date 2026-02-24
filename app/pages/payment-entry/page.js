@@ -16,7 +16,7 @@ import { SearchInputBox } from "@/app/components/InputBox";
 import PaymentReport from "@/app/components/payment-report/PaymentReport";
 import NotificationFlag from "@/app/components/Notificationflag";
 
-function PaymentEntry({}) {
+function PaymentEntry({ }) {
   const getTodayDDMMYYYY = () => {
     const d = new Date();
     const day = String(d.getDate()).padStart(2, "0");
@@ -31,9 +31,9 @@ function PaymentEntry({}) {
         date: getTodayDDMMYYYY(),
       },
     });
-  const { accounts, braches, server, refetch, setRefetch } =
+  const { server, refetch, setRefetch, toggleCodeList, setToggleCodeList } =
     useContext(GlobalContext);
-  const { toggleCodeList, setToggleCodeList } = useContext(GlobalContext);
+  const [fetchedCustomer, setFetchedCustomer] = useState(null);
   const [customerName, setCustomerName] = useState("");
   const [branchName, setBranchName] = useState("");
   const [branchCode, setBranchCode] = useState("");
@@ -51,6 +51,7 @@ function PaymentEntry({}) {
 
   const verifyRemarkValue = watch("verifyRemarks");
   const receiptType = watch("receiptType");
+  const accountCodeValue = useWatch({ control, name: "accountCode" });
 
   const amountValue = useWatch({ control, name: "amount" });
   const chequeNoValue = useWatch({ control, name: "chequeNo" });
@@ -143,12 +144,15 @@ function PaymentEntry({}) {
   };
 
   const onSubmit = async (data) => {
-    const matchedAccount = accounts.find(
-      (account) =>
-        account.accountCode.toUpperCase() === data.accountCode?.toUpperCase()
-    );
+    if (!fetchedCustomer) {
+      showNotification(
+        "error",
+        "Please enter a valid account code first."
+      );
+      return;
+    }
 
-    if (!matchedAccount || matchedAccount.modeType !== "normal") {
+    if ((fetchedCustomer.modeType || "").trim().toLowerCase() !== "normal") {
       showNotification(
         "error",
         "Payment entry allowed only for normal customers."
@@ -173,12 +177,11 @@ function PaymentEntry({}) {
       const user = JSON.parse(localStorage.getItem("user"));
       const entryUser = user?.userId || user?.username || "Unknown";
 
-      // ✅ Include branchName from the matched account
       const res = await axios.post(`${server}/payment-entry`, {
         ...data,
-        customerName: matchedAccount.name, // ✅ Ensure customerName is sent
-        branchName: matchedAccount.companyName, // ✅ Explicitly send branchName
-        branchCode: matchedAccount.branch, // ✅ Ensure branchCode is sent
+        customerName: fetchedCustomer.name,
+        branchName: fetchedCustomer.companyName,
+        branchCode: fetchedCustomer.branch,
         entryUser,
       });
 
@@ -186,7 +189,7 @@ function PaymentEntry({}) {
         (leftOverBalance || 0) - Number(data.amount);
       const ledgerPayload = {
         accountCode: data.accountCode,
-        customer: matchedAccount.name, // ✅ Use matched account name
+        customer: fetchedCustomer.name,
         openingBalance,
         date: data.date,
         payment: data.mode,
@@ -307,51 +310,66 @@ function PaymentEntry({}) {
     }
   };
 
-  // Update your existing useEffect to call fetchCustomerTotals
+  // Fetch customer details directly from API when account code changes
   useEffect(() => {
-    const accountCode = watch("accountCode")?.toUpperCase();
-    const matchedAccount = accounts.find(
-      (account) => account.accountCode.toUpperCase() === accountCode
-    );
+    const accountCode = accountCodeValue?.toUpperCase()?.trim();
 
-    if (matchedAccount) {
-      if ((matchedAccount.modeType || "").trim().toLowerCase() !== "normal") {
-        showNotification(
-          "error",
-          "Payment entry is only allowed for normal customers."
-        );
-        setCustomerName("");
-        setBranchCode("");
-        setBranchName("");
-        setOpeningBalance("");
-        setLeftOverBalance("");
-        setValue("accountCode", "");
-        return;
-      }
-
-      setCustomerName(matchedAccount.name);
-      setBranchCode(matchedAccount.branch);
-      setBranchName(matchedAccount.companyName);
-      setValue("branchName", matchedAccount.companyName);
-      setOpeningBalance(matchedAccount.openingBalance);
-      setLeftOverBalance(matchedAccount.leftOverBalance);
-
-      // ✅ Fetch totals when account code is entered
-      fetchCustomerTotals(accountCode);
-    } else {
-      setCustomerName(null);
-      setBranchCode(null);
-      setBranchName(null);
-      setOpeningBalance(null);
-      setLeftOverBalance(null);
+    if (!accountCode || accountCode.length < 2) {
+      setFetchedCustomer(null);
+      setCustomerName("");
+      setBranchCode("");
+      setBranchName("");
+      setOpeningBalance("");
+      setLeftOverBalance("");
       setTotals({
         totalSales: "",
         totalReceipt: "",
         totalDebit: "",
         totalCredit: "",
       });
+      return;
     }
-  }, [watch("accountCode"), accounts, setValue]);
+
+    const fetchCustomer = async () => {
+      try {
+        const res = await axios.get(
+          `${server}/customer-account?accountCode=${accountCode}`
+        );
+        const customer = res.data;
+
+        if (customer && customer.accountCode) {
+          setFetchedCustomer(customer);
+          setCustomerName(customer.name);
+          setBranchCode(customer.branch);
+          setBranchName(customer.companyName);
+          setValue("branchName", customer.companyName);
+          setOpeningBalance(customer.openingBalance);
+          setLeftOverBalance(customer.leftOverBalance);
+
+          // Fetch totals when account code is entered
+          fetchCustomerTotals(accountCode);
+        }
+      } catch (error) {
+        // 404 = customer not found, clear fields
+        setFetchedCustomer(null);
+        setCustomerName("");
+        setBranchCode("");
+        setBranchName("");
+        setOpeningBalance("");
+        setLeftOverBalance("");
+        setTotals({
+          totalSales: "",
+          totalReceipt: "",
+          totalDebit: "",
+          totalCredit: "",
+        });
+      }
+    };
+
+    // Debounce the API call slightly to avoid too many requests while typing
+    const timer = setTimeout(fetchCustomer, 300);
+    return () => clearTimeout(timer);
+  }, [accountCodeValue, server, setValue]);
 
   const handleRefresh = async () => {
     // reset form fields using react-hook-form reset()
@@ -445,11 +463,10 @@ function PaymentEntry({}) {
   }, [setToggleCodeList]);
 
   useEffect(() => {
-    const code = watch("accountCode");
-    if (code) {
-      setValue("accountCode", code.toUpperCase(), { shouldValidate: true });
+    if (accountCodeValue) {
+      setValue("accountCode", accountCodeValue.toUpperCase(), { shouldValidate: true });
     }
-  }, [watch("accountCode"), setValue]);
+  }, [accountCodeValue, setValue]);
 
   return (
     <>
