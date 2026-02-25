@@ -15,9 +15,8 @@ import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { SearchInputBox } from "@/app/components/InputBox";
 import NotificationFlag from "@/app/components/Notificationflag";
 import CreditLimitReport from "@/app/components/credit-limit-report/CreditLimitReport";
-import { set } from "mongoose";
 
-function CreditLimitTemp({}) {
+function CreditLimitTemp({ }) {
   const getTodayDDMMYYYY = () => {
     const d = new Date();
     return `${String(d.getDate()).padStart(2, "0")}/${String(
@@ -41,6 +40,16 @@ function CreditLimitTemp({}) {
   const [leftOverBalance, setLeftOverBalance] = useState(0);
   const [PaymentReset, setPaymentReset] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [fetchedCustomer, setFetchedCustomer] = useState(null);
+  const [totals, setTotals] = useState({
+    totalSales: 0,
+    totalReceipt: 0,
+    totalDebit: 0,
+    totalCredit: 0,
+    totalBalance: 0,
+  });
+
+  const customerCodeValue = useWatch({ control, name: "customerCode" });
 
   const receiptType = watch("receiptType");
 
@@ -74,28 +83,93 @@ function CreditLimitTemp({}) {
         `${server}/credit-limit-temp?customerCode=${code}`
       );
       const summary = res.data.summary || {};
-      setValue("totalSales", summary.totalSales?.toFixed(2) || 0);
-      setValue("totalReceipt", summary.totalReceipt?.toFixed(2) || 0);
-      setValue("totalDebit", summary.totalDebit?.toFixed(2) || 0);
-      setValue("totalCredit", summary.totalCredit?.toFixed(2) || 0);
-      setValue("totalBalance", summary.totalBalance?.toFixed(2) || 0);
+      setTotals({
+        totalSales: summary.totalSales?.toFixed(2) || 0,
+        totalReceipt: summary.totalReceipt?.toFixed(2) || 0,
+        totalDebit: summary.totalDebit?.toFixed(2) || 0,
+        totalCredit: summary.totalCredit?.toFixed(2) || 0,
+        totalBalance: summary.totalBalance?.toFixed(2) || 0,
+      });
+      setLeftOverBalance(summary.totalBalance || 0);
     } catch (err) {
       console.error("Error fetching totals:", err);
+      setTotals({
+        totalSales: 0,
+        totalReceipt: 0,
+        totalDebit: 0,
+        totalCredit: 0,
+        totalBalance: 0,
+      });
     }
   };
 
   useEffect(() => {
-    const customerCode = watch("customerCode")?.toUpperCase();
-    const matchedAccount = accounts.find(
-      (a) => a.accountCode.toUpperCase() === customerCode
-    );
-    if (matchedAccount && matchedAccount.modeType?.toLowerCase() === "temp") {
-      setCustomerName(matchedAccount.name);
-      setBranchCode(matchedAccount.branch);
-      setBranchName(matchedAccount.companyName);
-      fetchCustomerTotals(customerCode);
+    const customerCode = customerCodeValue?.toUpperCase()?.trim();
+
+    if (!customerCode || customerCode.length < 2) {
+      setFetchedCustomer(null);
+      setCustomerName("");
+      setBranchCode("");
+      setBranchName("");
+      setOpeningBalance("");
+      setLeftOverBalance(0);
+      setTotals({
+        totalSales: 0,
+        totalReceipt: 0,
+        totalDebit: 0,
+        totalCredit: 0,
+        totalBalance: 0,
+      });
+      return;
     }
-  }, [watch("customerCode"), accounts]);
+
+    const fetchCustomer = async () => {
+      try {
+        const res = await axios.get(
+          `${server}/customer-account?accountCode=${customerCode}`
+        );
+        const customer = res.data;
+
+        if (customer && customer.accountCode) {
+          if ((customer.modeType || "").trim().toLowerCase() !== "temp") {
+            showNotification(
+              "error",
+              "Only TEMP customers can have Credit Limit Temp entries."
+            );
+            return;
+          }
+
+          setFetchedCustomer(customer);
+          setCustomerName(customer.name);
+          setBranchCode(customer.branch);
+          setBranchName(customer.companyName);
+          setValue("branchName", customer.companyName);
+          setOpeningBalance(customer.openingBalance);
+          setLeftOverBalance(customer.leftOverBalance);
+
+          fetchCustomerTotals(customerCode);
+        }
+      } catch (error) {
+        console.error("Error fetching customer:", error);
+        setFetchedCustomer(null);
+        setCustomerName("");
+        setBranchCode("");
+        setBranchName("");
+        setOpeningBalance("");
+        setLeftOverBalance(0);
+        setTotals({
+          totalSales: 0,
+          totalReceipt: 0,
+          totalDebit: 0,
+          totalCredit: 0,
+          totalBalance: 0,
+        });
+      }
+    };
+
+    const timer = setTimeout(fetchCustomer, 300);
+    return () => clearTimeout(timer);
+  }, [customerCodeValue, server, setValue]);
 
   const handleModify = async () => {
     const data = getValues();
@@ -270,25 +344,24 @@ function CreditLimitTemp({}) {
       // Set summary
       const summary = res.data.summary;
       if (summary) {
-        setValue("totalSales", (summary.totalSales || 0).toFixed(2));
-        setValue("totalReceipt", (summary.totalReceipt || 0).toFixed(2));
-        setValue("totalDebit", (summary.totalDebit || 0).toFixed(2)); // ✅ Added
-        setValue("totalCredit", (summary.totalCredit || 0).toFixed(2)); // ✅ Added
-        setValue("totalBalance", (summary.totalBalance || 0).toFixed(2));
+        setTotals({
+          totalSales: (summary.totalSales || 0).toFixed(2),
+          totalReceipt: (summary.totalReceipt || 0).toFixed(2),
+          totalDebit: (summary.totalDebit || 0).toFixed(2),
+          totalCredit: (summary.totalCredit || 0).toFixed(2),
+          totalBalance: (summary.totalBalance || 0).toFixed(2),
+        });
         setLeftOverBalance(summary.totalBalance || 0);
       }
 
       const record = res.data.record;
       if (record) {
-        setValue("date", record.date); // already DD/MM/YYYY
-
         setValue("customerCode", record.customerCode);
         setValue("customerName", record.customerName);
         setValue("branchCode", record.branchCode);
-        setValue("branchName", record.branchName); // ✅ Set form value
+        setValue("branchName", record.branchName);
         setValue("amount", record.amount);
         setValue("mode", record.mode);
-        setValue("chequeNo", record.chequeNo);
         setValue("bankName", record.bankName);
         setValue("receiptType", record.receiptType);
         setValue("debitAmount", record.debitAmount);
@@ -296,13 +369,13 @@ function CreditLimitTemp({}) {
         setValue("debitNo", record.debitNo);
         setValue("creditNo", record.creditNo);
         setValue("receiptNo", record.receiptNo);
-        setValue("date", formattedDate);
+        setValue("date", record.date);
         setValue("remarks", record.remarks);
         setValue("verifyRemarks", record.verifyRemarks ?? "");
 
         setCustomerName(record.customerName);
         setBranchCode(record.branchCode);
-        setBranchName(record.branchName); // ✅ Set state value
+        setBranchName(record.branchName);
         setOpeningBalance(record.openingBalance);
         setLeftOverBalance(record.closingBalance);
 
@@ -315,51 +388,6 @@ function CreditLimitTemp({}) {
     }
   };
 
-  useEffect(() => {
-    const customerCode = watch("customerCode")?.toUpperCase();
-    const matchedAccount = accounts.find(
-      (account) => account.accountCode.toUpperCase() === customerCode
-    );
-
-    if (matchedAccount) {
-      console.log("Matched account:", matchedAccount);
-      console.log("modeType raw:", matchedAccount.modeType);
-
-      // ✅ Allow only temp customers here
-      if ((matchedAccount.modeType || "").trim().toLowerCase() !== "temp") {
-        showNotification(
-          "error",
-          "Only TEMP customers can have Credit Limit Temp entries."
-        );
-
-        // reset fields
-        setCustomerName("");
-        setBranchCode("");
-        setBranchName("");
-        setOpeningBalance("");
-        setLeftOverBalance("");
-        setValue("customerCode", "");
-        return;
-      }
-
-      // ✅ If modeType = temp, set values
-      setCustomerName(matchedAccount.name);
-      setBranchCode(matchedAccount.branch);
-      setBranchName(matchedAccount.companyName); // ✅ FIXED: Use companyName, not branchName
-      setValue("branchName", matchedAccount.companyName); // ✅ Also set form value
-      setOpeningBalance(matchedAccount.openingBalance);
-      setLeftOverBalance(matchedAccount.leftOverBalance);
-
-      // ✅ Fetch totals when customer code is entered
-      fetchCustomerTotals(customerCode);
-    } else {
-      setCustomerName(null);
-      setBranchCode(null);
-      setBranchName(null);
-      setOpeningBalance(null);
-      setLeftOverBalance(null);
-    }
-  }, [watch("customerCode"), accounts, setValue]);
 
   const handleRefresh = async () => {
     reset({
@@ -386,12 +414,14 @@ function CreditLimitTemp({}) {
     setBranchName("");
     setBranchCode("");
     setOpeningBalance("");
-    setLeftOverBalance("");
-    setValue("totalSales", "");
-    setValue("totalReceipt", "");
-    setValue("totalDebit", "");
-    setValue("totalCredit", "");
-    setValue("totalBalance", "");
+    setLeftOverBalance(0);
+    setTotals({
+      totalSales: 0,
+      totalReceipt: 0,
+      totalDebit: 0,
+      totalCredit: 0,
+      totalBalance: 0,
+    });
     try {
       const res = await axios.get(`${server}/credit-limit-temp/next-receipt`);
       setValue("receiptNo", res.data.nextReceipt);
@@ -682,6 +712,7 @@ function CreditLimitTemp({}) {
                   setValue={setValue}
                   resetFactor={PaymentReset}
                   value="totalSales"
+                  inputValue={totals.totalSales}
                 />
                 <DummyInputBoxWithLabelDarkGray
                   watch={watch}
@@ -690,6 +721,7 @@ function CreditLimitTemp({}) {
                   setValue={setValue}
                   resetFactor={PaymentReset}
                   value="totalReceipt"
+                  inputValue={totals.totalReceipt}
                 />
                 <DummyInputBoxWithLabelDarkGray
                   watch={watch}
@@ -698,6 +730,7 @@ function CreditLimitTemp({}) {
                   setValue={setValue}
                   resetFactor={PaymentReset}
                   value="totalDebit"
+                  inputValue={totals.totalDebit}
                 />
                 <DummyInputBoxWithLabelDarkGray
                   watch={watch}
@@ -706,6 +739,7 @@ function CreditLimitTemp({}) {
                   setValue={setValue}
                   resetFactor={PaymentReset}
                   value="totalCredit"
+                  inputValue={totals.totalCredit}
                 />
                 <DummyInputBoxWithLabelDarkGray
                   watch={watch}
@@ -714,7 +748,7 @@ function CreditLimitTemp({}) {
                   setValue={setValue}
                   resetFactor={PaymentReset}
                   value="totalBalance"
-                  inputValue={leftOverBalance}
+                  inputValue={totals.totalBalance}
                 />
                 <div className="flex justify-center items-center w-full">
                   <div className="text-sm tracking-wide text-[#14532d] bg-[#dcfce7]  text-center py-1 px-6 rounded w-full">
