@@ -15,7 +15,7 @@ const CustomerDetails = ({
 }) => {
   const [branchName, setBranchName] = useState("");
   const [allBranches, setAllBranches] = useState([]);
-  const { branches, server } = useContext(GlobalContext);
+  const { server } = useContext(GlobalContext);
 
   // Watch the branch field for changes
   const selectedBranch = watch("branch");
@@ -41,25 +41,25 @@ const CustomerDetails = ({
 
   // Update branch name when selected branch changes
   useEffect(() => {
-    if (selectedBranch && allBranches.length > 0) {
-      console.log("=== Branch Selected ===");
-      console.log("Selected branch code:", selectedBranch);
+    const codeToFind = selectedBranch || customerData?.branch;
 
-      // Find the branch with matching code
-      const branch = allBranches.find((b) => b.code === selectedBranch);
+    if (codeToFind && allBranches.length > 0) {
+      console.log("=== Branch Selected ===");
+      console.log("Selected branch code:", codeToFind);
+
+      const branch = allBranches.find((b) => b.code === codeToFind);
 
       if (branch) {
         console.log("Branch found:", branch);
-        console.log("Company name:", branch.companyName);
         setBranchName(branch.companyName);
         setValue("branchName", branch.companyName);
       } else {
-        console.log("Branch not found for code:", selectedBranch);
+        console.log("Branch not found for code:", codeToFind);
         setBranchName("");
         setValue("branchName", "");
       }
     }
-  }, [selectedBranch, allBranches, setValue]);
+  }, [selectedBranch, allBranches, setValue]); // allBranches in deps ensures it runs after fetch
 
   // Set initial values from customerData
   useEffect(() => {
@@ -77,7 +77,7 @@ const CustomerDetails = ({
             <h2 className="text-red font-semibold text-base">Branch Details</h2>
             <div className="flex flex-col gap-4">
               <LabeledDropdown
-                options={branches.map((branch) => branch.code)}
+                options={allBranches.map((branch) => branch.code)} // ← changed from branches to allBranches
                 title="Select Branch"
                 register={register}
                 setValue={setValue}
