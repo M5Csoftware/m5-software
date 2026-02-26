@@ -80,6 +80,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-API Management": false,
     "permission-Service Master": false,
     "permission-Customer Discount": false,
+    "permission-Delete Shipment": false,
 
     "title-Booking": false,
     "permission-Booking Deletion": false,
@@ -250,6 +251,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-API Management",
       "permission-Service Master",
       "permission-Customer Discount",
+      "permission-Delete Shipment",
     ],
 
     "title-Booking": [
