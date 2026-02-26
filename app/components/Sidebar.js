@@ -76,6 +76,7 @@ function Sidebar() {
         "API Management",
         "Service Master",
         "Customer Discount",
+        "Delete Shipment",
       ],
     },
     {
