@@ -170,8 +170,14 @@ function AwbEntry() {
   const consigneeZipcode = useWatch({ control, name: "consignee-zipcode" });
 
   // FIXED: Enhanced hold logic - Only set holdEdit for auto-hold from credit check, not for manual hold
+  // AFTER — skip credit check entirely for existing shipments
   useEffect(() => {
-    // Only run credit check for new shipments or when amount changes in edit mode
+    // ✅ Never auto-hold an existing shipment based on current balance.
+    // The saved isHold/holdReason from DB is the source of truth.
+    if (newShipment === "old") {
+      return;
+    }
+
     if (!account || !grandTotal || Number(grandTotal) === 0) {
       return;
     }
@@ -179,28 +185,23 @@ function AwbEntry() {
     const availableBalance = account.leftOverBalance || 0;
     const creditLimit = account.creditLimit || 0;
     const totalAvailable = availableBalance + creditLimit;
-
-    // Check if credit limit is exceeded
     const creditExceeded = Number(grandTotal) > totalAvailable;
 
     if (creditExceeded) {
-      // Auto-hold due to credit limit
       setHoldReason("Credit Limit Exceeded");
       setIsHold(true);
-      setHoldEdit(true); // Only lock when credit limit exceeded
+      setHoldEdit(true);
       setValue("isHold", true);
       setValue("holdReason", "Credit Limit Exceeded");
       console.log("Credit Limit Exceeded - Auto Hold");
       showNotification("error", "Credit Limit Exceeded");
     } else {
-      // Credit is sufficient - but don't change manual hold status
-      // Only clear holdEdit if it was set by credit check
       if (holdEdit) {
         setHoldEdit(false);
       }
       console.log("Credit OK");
     }
-  }, [grandTotal, account]);
+  }, [grandTotal, account, newShipment]); // ✅ added newShipment to deps
 
   // FIXED: Initialize hold state from fetched data
   useEffect(() => {
@@ -218,7 +219,7 @@ function AwbEntry() {
       console.log("Loaded hold data:", {
         isHold: fetchedAwbData.isHold,
         holdReason: fetchedAwbData.holdReason,
-        otherHoldReason: fetchedAwbData.otherHoldReason
+        otherHoldReason: fetchedAwbData.otherHoldReason,
       });
     }
   }, [fetchedAwbData, setValue]);
@@ -263,10 +264,12 @@ function AwbEntry() {
   const handleZoneAlertConfirm = () => {
     const currentRemark = watch("operationRemark") || "";
     const newRemark = currentRemark
-      ? `${currentRemark}. ${zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
-      } area confirmed (Zone ${zoneAlertData.zone})`
-      : `${zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
-      } area confirmed (Zone ${zoneAlertData.zone})`;
+      ? `${currentRemark}. ${
+          zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
+        } area confirmed (Zone ${zoneAlertData.zone})`
+      : `${
+          zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
+        } area confirmed (Zone ${zoneAlertData.zone})`;
 
     setValue("operationRemark", newRemark);
     setZoneAlertData({ ...zoneAlertData, isOpen: false });
@@ -274,7 +277,8 @@ function AwbEntry() {
 
     showNotification(
       "warning",
-      `${zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
+      `${
+        zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
       } area confirmed. Remark updated.`,
     );
   };
@@ -290,7 +294,8 @@ function AwbEntry() {
 
     showNotification(
       "info",
-      `Destination cleared. ${zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
+      `Destination cleared. ${
+        zoneAlertData.zoneType === "remote" ? "Remote" : "Unserviceable"
       } area not selected.`,
     );
   };
@@ -406,8 +411,9 @@ function AwbEntry() {
         if (avgPerBox > serviceData.boxLimit) {
           errors.push({
             field: "actualWt",
-            msg: `Average per box: ${avgPerBox.toFixed(2)}kg exceeds limit of ${serviceData.boxLimit
-              }kg per AWB`,
+            msg: `Average per box: ${avgPerBox.toFixed(2)}kg exceeds limit of ${
+              serviceData.boxLimit
+            }kg per AWB`,
           });
         }
       }
@@ -511,7 +517,10 @@ function AwbEntry() {
       }
     } else if (actual > 0) {
       // If only actual weight exists, use it
-      setValue("chargeableWt", actual < 1 ? actual.toFixed(2) : Math.ceil(actual));
+      setValue(
+        "chargeableWt",
+        actual < 1 ? actual.toFixed(2) : Math.ceil(actual),
+      );
     } else {
       setValue("chargeableWt", "0.00");
     }
@@ -541,8 +550,8 @@ function AwbEntry() {
     if (serviceValidation.warnings?.length > 0) {
       const shouldProceed = window.confirm(
         `Service has ${serviceValidation.warnings.length} warnings:\n` +
-        serviceValidation.warnings.join("\n") +
-        "\n\nDo you want to proceed?",
+          serviceValidation.warnings.join("\n") +
+          "\n\nDo you want to proceed?",
       );
 
       if (!shouldProceed) {
@@ -561,7 +570,7 @@ function AwbEntry() {
       ...fillterData,
       isHold: isHold,
       holdReason: holdReason || fillterData.holdReason || "",
-      otherHoldReason: fillterData.otherHoldReason || ""
+      otherHoldReason: fillterData.otherHoldReason || "",
     };
 
     console.log("payload: ", payload, newShipment);
@@ -661,11 +670,12 @@ function AwbEntry() {
             awbNo,
             accountCode,
             customer,
-            action: isHold && !fetchedAwbData?.isHold
-              ? "Shipment put on hold"
-              : !isHold && fetchedAwbData?.isHold
-                ? "Shipment put on Unhold"
-                : "Shipment Modified",
+            action:
+              isHold && !fetchedAwbData?.isHold
+                ? "Shipment put on hold"
+                : !isHold && fetchedAwbData?.isHold
+                  ? "Shipment put on Unhold"
+                  : "Shipment Modified",
             actionUser: user?.userId,
             department: "Booking",
           });
@@ -1048,14 +1058,14 @@ function AwbEntry() {
           .trim() || "";
 
       const applicableSet = new Set(
-        applicableList.map((a) => normalizeService(a.service))
+        applicableList.map((a) => normalizeService(a.service)),
       );
 
       const commonServices = filteredServices.filter((f) =>
         Array.from(applicableSet).some(
           (service) =>
             normalizeService(f.service).includes(service) ||
-            service.includes(normalizeService(f.service))
+            service.includes(normalizeService(f.service)),
         ),
       );
 
@@ -1302,8 +1312,8 @@ function AwbEntry() {
 
       const rate =
         amountDetails.rate !== undefined &&
-          amountDetails.rate !== null &&
-          Number(amountDetails.rate) > 0
+        amountDetails.rate !== null &&
+        Number(amountDetails.rate) > 0
           ? Number(amountDetails.rate)
           : 0;
 
@@ -1432,12 +1442,12 @@ function AwbEntry() {
 
       const updatedGrandTotal = round(
         baseGrandTotal +
-        taxableAdjustment +
-        adjSgst +
-        adjCgst +
-        adjIgst -
-        Number(cashRecvAmount) -
-        Number(discount),
+          taxableAdjustment +
+          adjSgst +
+          adjCgst +
+          adjIgst -
+          Number(cashRecvAmount) -
+          Number(discount),
       );
 
       isUpdatingRef.current = true;
@@ -1914,24 +1924,18 @@ function AwbEntry() {
   }, [fetchedAwbData, setValue]);
 
   // Enhanced hold logic - FIXED: Only disable "Other Reason" for Credit Limit Exceeded
+  // AFTER — only clear invContent, don't touch hold state
   useEffect(() => {
-    const availableBalance = account?.leftOverBalance
-      ? -account.leftOverBalance
-      : 0;
-
-    const creditLimit = account?.creditLimit;
-    let shouldHold = false;
-
     if (!grandTotal || Number(grandTotal) === 0) {
-      setHoldEdit(false);
-      setIsHold(false);
-      setHoldReason("");
-      setValue("holdReason", "");
-      setValue("otherHoldReason", "");
-      setInvContent([]);
+      // ✅ Only reset holdEdit and invContent for new shipments
+      // Hold state is managed by the fetchedAwbData population effect above
+      if (newShipment !== "old") {
+        setHoldEdit(false);
+        setInvContent([]);
+      }
       console.log("No AWB data found - new shipment");
     }
-  }, [fetchedAwbData, setValue]);
+  }, [fetchedAwbData, setValue, grandTotal, newShipment]);
 
   //for alerts
   useEffect(() => {
@@ -2204,8 +2208,9 @@ function AwbEntry() {
             // Show alert modal
             setZoneAlertData({
               isOpen: true,
-              message: `The selected destination "${destinationValue}" is in a ${isRemote ? "remote" : "unserviceable"
-                } zone (Zone ${zoneNumber}). Are you sure you want to continue?`,
+              message: `The selected destination "${destinationValue}" is in a ${
+                isRemote ? "remote" : "unserviceable"
+              } zone (Zone ${zoneNumber}). Are you sure you want to continue?`,
               zoneType: isRemote ? "remote" : "unserviceable",
               destination: destinationValue,
               zone: zoneNumber,
@@ -2338,17 +2343,19 @@ function AwbEntry() {
 
               <div className="mb-4">
                 <div
-                  className={`p-3 rounded-lg mb-3 ${zoneAlertData.zoneType === "remote"
-                    ? "bg-yellow-50 border border-yellow-200"
-                    : "bg-red-50 border border-red-200"
-                    }`}
+                  className={`p-3 rounded-lg mb-3 ${
+                    zoneAlertData.zoneType === "remote"
+                      ? "bg-yellow-50 border border-yellow-200"
+                      : "bg-red-50 border border-red-200"
+                  }`}
                 >
                   <div className="flex items-center">
                     <svg
-                      className={`w-5 h-5 mr-2 ${zoneAlertData.zoneType === "remote"
-                        ? "text-yellow-500"
-                        : "text-red-500"
-                        }`}
+                      className={`w-5 h-5 mr-2 ${
+                        zoneAlertData.zoneType === "remote"
+                          ? "text-yellow-500"
+                          : "text-red-500"
+                      }`}
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -2359,10 +2366,11 @@ function AwbEntry() {
                       />
                     </svg>
                     <span
-                      className={`font-medium ${zoneAlertData.zoneType === "remote"
-                        ? "text-yellow-800"
-                        : "text-red-800"
-                        }`}
+                      className={`font-medium ${
+                        zoneAlertData.zoneType === "remote"
+                          ? "text-yellow-800"
+                          : "text-red-800"
+                      }`}
                     >
                       {zoneAlertData.zoneType === "remote"
                         ? "Remote Zone Detected"
@@ -2395,10 +2403,11 @@ function AwbEntry() {
                 <button
                   type="button"
                   onClick={handleZoneAlertConfirm}
-                  className={`px-4 py-2 text-sm font-medium text-white ${zoneAlertData.zoneType === "remote"
-                    ? "bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500"
-                    : "bg-red-600 hover:bg-red-700 focus:ring-red-500"
-                    } border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2`}
+                  className={`px-4 py-2 text-sm font-medium text-white ${
+                    zoneAlertData.zoneType === "remote"
+                      ? "bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500"
+                      : "bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                  } border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2`}
                 >
                   Continue
                 </button>
@@ -2519,10 +2528,11 @@ function AwbEntry() {
                     />
                     {isRemoteOrUnserviceable && (
                       <div
-                        className={`flex items-center px-3 py-2 rounded ${zoneAlertData.zoneType === "remote"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-red-100 text-red-800"
-                          }`}
+                        className={`flex items-center px-3 py-2 rounded ${
+                          zoneAlertData.zoneType === "remote"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
                       >
                         <svg
                           className="w-5 h-5 mr-2"
@@ -2900,17 +2910,18 @@ function AwbEntry() {
                     register={register}
                     setValue={setValue}
                     resetFactor={refreshKey}
-                    title={`Service ${serviceValidation?.serviceDetails?.softwareStatus ===
+                    title={`Service ${
+                      serviceValidation?.serviceDetails?.softwareStatus ===
                       "In-Active"
-                      ? "⚠️"
-                      : ""
-                      }`}
+                        ? "⚠️"
+                        : ""
+                    }`}
                     value={`service`}
                     defaultValue={fetchedAwbData.service || ""}
                     disabled={isEdit || pendingZoneUpdate}
                     className={
                       serviceValidation?.serviceDetails?.softwareStatus ===
-                        "In-Active"
+                      "In-Active"
                         ? "border-yellow-500"
                         : ""
                     }
