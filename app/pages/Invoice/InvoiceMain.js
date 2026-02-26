@@ -20,11 +20,14 @@ import InvoicePDFDownloader from "./InvoicePdf";
 import InvoiceTemplate from "./InvoicePdf";
 import NotificationFlag from "@/app/components/Notificationflag";
 import { sendNotification } from "@/app/lib/sendNotifications";
+import { useAuth } from "@/app/Context/AuthContext";
+import pushAWBLog from "@/app/lib/pushAWBLog";
 
 const InvoiceMain = ({ fYear }) => {
   const { register, setValue, watch } = useForm();
   const [rowData, setRowData] = useState([]);
   const { server } = useContext(GlobalContext);
+  const { user } = useAuth(); // Get current user
   const branch = watch("branch");
   const code = watch("code");
   const [shipments, setShipments] = useState([]);
@@ -70,68 +73,6 @@ const InvoiceMain = ({ fYear }) => {
 
     fetchBranches();
   }, [server]);
-
-  useEffect(() => {
-    if (!server) return;
-
-    const fetchAllInvoices = async () => {
-      try {
-        const res = await fetch(`${server}/billing-invoice/invoice`);
-        if (!res.ok) throw new Error("Failed to fetch invoices");
-        const result = await res.json();
-
-        console.log("📦 Raw invoices response:", result);
-
-        // ✅ Handle both response formats
-        const invoicesData = result.invoices || result.data || result || [];
-        const branchesData = result.branches || [];
-
-        setAllInvoices(invoicesData);
-
-        // ✅ Use unique branches from backend, or extract from invoices
-        const uniqueBranches =
-          branchesData.length > 0
-            ? branchesData
-            : [...new Set(invoicesData.map((inv) => inv.branch))].filter(
-              Boolean
-            );
-
-        console.log("✅ Branches detected:", uniqueBranches);
-        setBranchFilterOptions(uniqueBranches);
-      } catch (err) {
-        console.error("Error fetching invoices:", err);
-        setAllInvoices([]);
-        setBranchFilterOptions([]);
-      }
-    };
-
-    fetchAllInvoices();
-  }, [server]);
-
-  useEffect(() => {
-    const selectedBranch = watch("branchFilter");
-
-    if (!selectedBranch) {
-      setInvoiceNumberOptions([]);
-      setValue("invoiceNumberFilter", ""); // Clear invoice number
-      return;
-    }
-
-    console.log("🔍 Selected branch:", selectedBranch);
-    console.log("📜 All invoices:", allInvoices);
-
-    // ✅ Filter invoices by selected branch
-    const filtered = allInvoices.filter(
-      (inv) => String(inv.branch).trim() === String(selectedBranch).trim()
-    );
-
-    // ✅ Extract invoice numbers
-    const invoiceNos = filtered.map((inv) => inv.invoiceNumber).filter(Boolean); // Remove null/undefined values
-
-    console.log("✅ Filtered invoice numbers:", invoiceNos);
-
-    setInvoiceNumberOptions(invoiceNos);
-  }, [watch("branchFilter"), allInvoices, setValue]);
 
   useEffect(() => {
     if (!server) return;
@@ -455,6 +396,29 @@ const InvoiceMain = ({ fYear }) => {
       }
 
       console.log("✅ Saved Invoice:", data);
+      
+      // ✅ Log "Invoice Generated" for each AWB in the invoice
+      if (user?.userId) {
+        for (const shipment of shipmentsPayload) {
+          await pushAWBLog({
+            awbNo: shipment.awbNo,
+            accountCode: formData.code,
+            customer: formData.codeName,
+            action: "Invoice Generated",
+            actionUser: user?.userId,
+            department: "Billing",
+            details: {
+              invoiceNumber: formData.invoiceNumber,
+              invoiceDate: formData.invoiceDate,
+              billedAmount: invoiceSummary.grandTotal,
+              fromDate: formData.from,
+              toDate: formData.to,
+              branch: formData.branch,
+            }
+          });
+        }
+      }
+      
       showNotification("success", "Invoice saved successfully!");
 
       // Send notification to customer
@@ -554,6 +518,7 @@ const InvoiceMain = ({ fYear }) => {
         });
 
         setRowData(rows);
+        setIsExistingInvoice(false); // Reset flag for new invoice
       } else {
         showNotification(
           "error",
@@ -746,6 +711,7 @@ const InvoiceMain = ({ fYear }) => {
       );
     }
   };
+
   const handleRemoveInvoice = async () => {
     const invoiceNumber = watch("invoiceNumber");
 
@@ -763,6 +729,24 @@ const InvoiceMain = ({ fYear }) => {
       );
 
       if (!res.ok) throw new Error("Delete failed");
+
+      // ✅ Log invoice removal for each AWB in the invoice
+      if (user?.userId && rowData.length > 0) {
+        for (const row of rowData) {
+          await pushAWBLog({
+            awbNo: row.awbNo,
+            accountCode: watch("code"),
+            customer: watch("codeName"),
+            action: "Invoice Removed",
+            actionUser: user?.userId,
+            department: "Billing",
+            details: {
+              invoiceNumber: invoiceNumber,
+              removedAt: new Date().toISOString(),
+            }
+          });
+        }
+      }
 
       showNotification("success", "Invoice removed.");
 

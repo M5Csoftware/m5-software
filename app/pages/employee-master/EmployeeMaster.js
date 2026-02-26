@@ -79,6 +79,8 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-KYC Verification": false,
     "permission-API Management": false,
     "permission-Service Master": false,
+    "permission-Customer Discount": false,
+    "permission-Delete Shipment": false,
 
     "title-Booking": false,
     "permission-Booking Deletion": false,
@@ -223,6 +225,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-Rep-Booking Report": false,
     "permission-Airwaybill Log": false,
     "permission-Booking With Sale": false,
+    "permission-New Booking Report": false,
   };
 
   const [checkboxStates, setCheckboxStates] = useState(defaultCheckboxState);
@@ -247,6 +250,8 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-KYC Verification",
       "permission-API Management",
       "permission-Service Master",
+      "permission-Customer Discount",
+      "permission-Delete Shipment",
     ],
 
     "title-Booking": [
@@ -394,6 +399,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-Rep-Booking Report",
       "permission-Airwaybill Log",
       "permission-Booking With Sale",
+      "permission-New Booking Report",
     ],
   };
 

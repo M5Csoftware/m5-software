@@ -75,6 +75,8 @@ function Sidebar() {
         "KYC Verification",
         "API Management",
         "Service Master",
+        "Customer Discount",
+        "Delete Shipment",
       ],
     },
     {
@@ -195,7 +197,7 @@ function Sidebar() {
     },
     {
       name: "Reports",
-      subfolders: ["Booking Report", "Airwaybill Log", "Booking With Sale"],
+      subfolders: ["Booking Report", "Airwaybill Log", "Booking With Sale", "New Booking Report"],
     },
   ];
 

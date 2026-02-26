@@ -85,6 +85,7 @@ export default function TicketDashboard() {
     { key: "subCategory", label: "Sub Category" },
     { key: "assignTo", label: "Assigned To" },
     { key: "remarks", label: "Remarks" },
+    { key: "priorityStatus", label: "Priority" },
     { key: "status", label: "Status" },
     // { key: "lateUpdated", label: "Last Updated" },
     { key: "view", label: "View" },
@@ -115,6 +116,7 @@ export default function TicketDashboard() {
           category: ticket.category || "",
           subCategory: ticket.subCategory || "",
           remarks: ticket.remarks || "",
+          priorityStatus: ticket.priorityStatus || "",
           status: ticket.status || "",
           lateUpdated: ticket.lateUpdated || "",
           assignTo: ticket.assignTo || "",
@@ -153,8 +155,7 @@ export default function TicketDashboard() {
 
       showNotification(
         "success",
-        `${mappedData.length} ${
-          type === "portal" ? "Portal" : "Registered"
+        `${mappedData.length} ${type === "portal" ? "Portal" : "Registered"
         } ticket${mappedData.length > 1 ? "s" : ""} found`
       );
     } catch (err) {
@@ -255,6 +256,7 @@ export default function TicketDashboard() {
           category: ticket.category || "",
           subCategory: ticket.subCategory || "",
           remarks: ticket.remarks || "",
+          priorityStatus: ticket.priorityStatus || "",
           status: ticket.status || "",
           lateUpdated: ticket.lateUpdated || "",
           assignTo: ticket.assignTo || "",
@@ -295,8 +297,7 @@ export default function TicketDashboard() {
       setValue("name", "");
       showNotification(
         "success",
-        `${mappedData.length} ${
-          type === "portal" ? "Portal" : "Registered"
+        `${mappedData.length} ${type === "portal" ? "Portal" : "Registered"
         } ticket${mappedData.length > 1 ? "s" : ""} found`
       );
     } catch (err) {
@@ -304,6 +305,7 @@ export default function TicketDashboard() {
       showNotification("error", "Failed to fetch tickets");
     }
   };
+
 
   useEffect(() => {
     async function fetchEmployees() {
@@ -321,7 +323,7 @@ export default function TicketDashboard() {
     if (demoRadio === "registered") {
       fetchComplaints({ assignTo: empName });
     } else {
-      fetchComplaints({ assignedUser: empName }); // ✅ change to assignedUser
+      fetchComplaints({ assignedUser: empName });
     }
   };
 
