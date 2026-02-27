@@ -2,7 +2,7 @@
 import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { LabeledDropdown } from "@/app/components/Dropdown";
 import Heading, { RedLabelHeading } from "@/app/components/Heading";
-import InputBox from "@/app/components/InputBox";
+import InputBox, { DateInputBox } from "@/app/components/InputBox";
 import { TableWithSorting } from "@/app/components/Table";
 import { useSearchParams } from "next/navigation";
 import React, { useContext, useEffect, useState } from "react";
@@ -157,6 +157,7 @@ const RegisteredTicketDetails = () => {
   const handleRefresh = () => {
     reset();
     setResetFactor((prev) => prev + 1);
+    setValue("estimatedResolutionDate", "");
   };
 
   const ticketColumns = [
@@ -224,6 +225,7 @@ const RegisteredTicketDetails = () => {
       assignTo: getValues("reassignTo"), // update assigned user
       remarks: getValues("updateTicket"), // ✅ save current remarks
       actionUser: updatedBy,
+      estimatedResolutionDate: getValues("estimatedResolutionDate"),
     };
 
     try {
@@ -263,6 +265,7 @@ const RegisteredTicketDetails = () => {
       assignTo: ticket.assignTo,
       remarks: getValues("updateTicket"), // save current remarks
       actionUser: updatedBy,
+      estimatedResolutionDate: getValues("estimatedResolutionDate"),
     };
 
     try {
@@ -387,6 +390,14 @@ const RegisteredTicketDetails = () => {
           register={register}
           value={"reassignTo"}
           title={`Re-assign To`}
+          resetFactor={resetFactor}
+          disabled={resolved}
+        />
+        <DateInputBox
+          setValue={setValue}
+          register={register}
+          value={"estimatedResolutionDate"}
+          placeholder={`Est. Resolution Date`}
           resetFactor={resetFactor}
           disabled={resolved}
         />
