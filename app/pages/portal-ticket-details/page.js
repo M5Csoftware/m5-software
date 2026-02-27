@@ -2,7 +2,7 @@
 import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { LabeledDropdown } from "@/app/components/Dropdown";
 import Heading, { RedLabelHeading } from "@/app/components/Heading";
-import InputBox from "@/app/components/InputBox";
+import InputBox, { DateInputBox } from "@/app/components/InputBox";
 import { TableWithSorting } from "@/app/components/Table";
 import { useSearchParams } from "next/navigation";
 import React, { useContext, useEffect, useState } from "react";
@@ -146,12 +146,14 @@ const PortalTicketDetails = () => {
     setValue("priorityStatus", "");
     setValue("status", "");
     setValue("reassignTo", defaultEmp || "");
+    setValue("estimatedResolutionDate", "");
   };
 
   const handleResolveTicket = async () => {
     const remarks = getValues("updateTicket");
     const reassignTo = getValues("reassignTo");
     const priorityStatus = getValues("priorityStatus");
+    const estimatedResolutionDate = getValues("estimatedResolutionDate");
 
     if (!remarks) {
       showNotification("error", "Remarks are required!");
@@ -172,6 +174,7 @@ const PortalTicketDetails = () => {
           priorityStatus,
           assignedTo: reassignTo,
           resolve: true,
+          estimatedResolutionDate,
         }),
       });
 
@@ -195,6 +198,7 @@ const PortalTicketDetails = () => {
     const status = getValues("status");
     const reassignTo = getValues("reassignTo");
     const priorityStatus = getValues("priorityStatus");
+    const estimatedResolutionDate = getValues("estimatedResolutionDate");
 
     if (!remarks || !status) {
       showNotification("error", "Remarks and status are required!");
@@ -214,6 +218,7 @@ const PortalTicketDetails = () => {
           updatedBy,
           priorityStatus,
           assignedTo: reassignTo,
+          estimatedResolutionDate,
         }),
       });
 
@@ -369,6 +374,14 @@ const PortalTicketDetails = () => {
           register={register}
           value={"reassignTo"}
           title={`Re-assign To`}
+          resetFactor={resetFactor}
+          disabled={resolved}
+        />
+        <DateInputBox
+          setValue={setValue}
+          register={register}
+          value={"estimatedResolutionDate"}
+          placeholder={`Est. Resolution Date`}
           resetFactor={resetFactor}
           disabled={resolved}
         />
