@@ -140,6 +140,19 @@ function AwbEntry() {
     setNotification({ type, message, visible: true });
   };
 
+  const formatDate = (date) => {
+    if (!date) return "";
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return "";
+    return (
+      dateObj.getDate().toString().padStart(2, "0") +
+      "/" +
+      (dateObj.getMonth() + 1).toString().padStart(2, "0") +
+      "/" +
+      dateObj.getFullYear()
+    );
+  };
+
   // Watching input values
   const awbNo = watch("awbNo");
   const pcs = useWatch({ control, name: "pcs" });
@@ -537,6 +550,15 @@ function AwbEntry() {
 
   //handle awbEntry all Operations
   const handleAWBEntry = async (data) => {
+    // Check if shipment is already assigned to a run
+    if (fetchedAwbData?.runNo) {
+      showNotification(
+        "error",
+        `Shipment is already assigned to Run No: ${fetchedAwbData.runNo}. Modification not allowed.`,
+      );
+      return;
+    }
+
     // Check service validation before submission
     if (selectedService && serviceValidation && !serviceValidation.valid) {
       showNotification(
@@ -1486,23 +1508,10 @@ function AwbEntry() {
 
   //handle date formatting
   useEffect(() => {
-    const formatDate = (date) => {
-      const formattedDate =
-        date.getDate().toString().padStart(2, "0") +
-        "/" +
-        (date.getMonth() + 1).toString().padStart(2, "0") +
-        "/" +
-        date.getFullYear().toString();
-
-      return formattedDate;
-    };
-
     if (fetchedAwbData?.createdAt) {
-      const dateObj = new Date(fetchedAwbData.createdAt);
-      setDate(formatDate(dateObj));
+      setDate(formatDate(fetchedAwbData.createdAt));
     } else {
-      const today = new Date();
-      setDate(formatDate(today));
+      setDate(formatDate(new Date()));
     }
   }, [fetchedAwbData]);
 
@@ -1872,7 +1881,10 @@ function AwbEntry() {
       setValue("flight", fetchedAwbData.flight || "");
       setValue("obc", fetchedAwbData.obc || "");
       setValue("alMawb", fetchedAwbData.alMawb || "");
-      setValue("runDate", fetchedAwbData.runDate || "");
+      setValue(
+        "runDate",
+        fetchedAwbData.runDate ? formatDate(fetchedAwbData.runDate) : "",
+      );
 
       // Amount details
       setValue("basicAmount", fetchedAwbData.basicAmt || 0);
@@ -3558,10 +3570,16 @@ function AwbEntry() {
                   disabled={
                     newShipment == "new" ||
                     newShipment == null ||
-                    fetchedAwbData?.billingLocked
+                    fetchedAwbData?.billingLocked ||
+                    !!fetchedAwbData?.runNo
                   }
                   type="submit"
                   label={`Modify`}
+                  tooltip={
+                    fetchedAwbData?.runNo
+                      ? `Modification not allowed as shipment is assigned to Run No: ${fetchedAwbData.runNo}`
+                      : ""
+                  }
                 />
                 <OutlinedButtonRed
                   onClick={() => setBtnAction("save")}
@@ -3572,7 +3590,8 @@ function AwbEntry() {
                     isSubmitting ||
                     fetchedAwbData?.billingLocked ||
                     !serviceValidation.valid ||
-                    pendingZoneUpdate
+                    pendingZoneUpdate ||
+                    !!fetchedAwbData?.runNo
                   }
                   label={
                     isSubmitting
@@ -3580,6 +3599,11 @@ function AwbEntry() {
                         ? "Updating"
                         : "Saving"
                       : "Save"
+                  }
+                  tooltip={
+                    fetchedAwbData?.runNo
+                      ? `Saving not allowed as shipment is assigned to Run No: ${fetchedAwbData.runNo}`
+                      : ""
                   }
                 />
               </div>
@@ -3590,9 +3614,18 @@ function AwbEntry() {
                     setBtnAction("delete");
                   }}
                   type="submit"
-                  disabled={newShipment == "new" || newShipment == null}
+                  disabled={
+                    newShipment == "new" ||
+                    newShipment == null ||
+                    !!fetchedAwbData?.runNo
+                  }
                   label={`Delete`}
                   perm="Booking Deletion"
+                  tooltip={
+                    fetchedAwbData?.runNo
+                      ? `Deletion not allowed as shipment is assigned to Run No: ${fetchedAwbData.runNo}`
+                      : ""
+                  }
                 />
                 <OutlinedButtonRed label={`Refresh`} onClick={handleRefresh} />
               </div>
