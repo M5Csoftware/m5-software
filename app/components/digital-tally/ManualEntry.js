@@ -20,6 +20,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
   const { server } = useContext(GlobalContext);
   const { user } = useAuth();
   const [hubList, setHubList] = useState([]);
+  const [resetTally, setResetTally] = useState(false);
 
   useEffect(() => {
     const now = new Date();
@@ -135,7 +136,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
     const fetchCustomerDetails = async () => {
       try {
         const res = await axios.get(
-          `${server}/customer-account?accountCode=${code}`
+          `${server}/customer-account?accountCode=${code}`,
         );
         const data = res.data;
 
@@ -185,7 +186,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
 
       const res = await axios.post(
         `${server}/digital-tally/send-email`,
-        payload
+        payload,
       );
 
       if (res.data.success) {
@@ -201,7 +202,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
         "Error sending alert: " +
           (error.response?.data?.message ||
             error.response?.data?.error ||
-            error.message)
+            error.message),
       );
     }
   };
@@ -263,7 +264,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
 
       console.log(
         "📤 Final payload being sent:",
-        JSON.stringify(payload, null, 2)
+        JSON.stringify(payload, null, 2),
       );
 
       const token = localStorage.getItem("token");
@@ -275,15 +276,15 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (res.status === 200) {
         alert("Saved successfully!");
         console.log("✅ Server response:", res.data);
         setRowData([]);
-        // Clear form fields after save
-        setValue("cdNumber", "");
+        setResetTally(!resetTally);
+        // Clear form fields after save (except cdNumber)
         setValue("code", "");
         setValue("client", "");
         setValue("email", "");
@@ -301,7 +302,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
       console.error("❌ Error saving:", error);
       console.error("Error response:", error.response?.data);
       alert(
-        "Error saving data: " + (error.response?.data?.error || error.message)
+        "Error saving data: " + (error.response?.data?.error || error.message),
       );
     }
   };
@@ -337,12 +338,13 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
           setValue={(name, value) => {
             setValue(name, value);
             const hub = hubList.find(
-              (h) => h.name.toLowerCase() === value.toLowerCase()
+              (h) => h.name.toLowerCase() === value.toLowerCase(),
             );
             setValue("hubCode", hub ? hub.code : "");
           }}
           value="hubName"
           title="Select Hub"
+          selectedValue={watch("hubName") || ""}
         />
       </div>
       <div className="flex gap-6 w-full">
@@ -380,6 +382,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
                   message: "Minimum 2 characters required",
                 },
               }}
+              resetFactor={resetTally}
             />
             <InputBox
               placeholder="Service"
@@ -396,6 +399,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
                   message: "Minimum 2 characters required",
                 },
               }}
+              resetFactor={resetTally}
             />
           </div>
 
@@ -414,6 +418,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
                   required: "Actual weight is required",
                   min: { value: 1, message: "Weight must be at least 1" },
                 }}
+                resetFactor={resetTally}
               />
             </div>
             <InputBox
@@ -428,6 +433,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
                 required: "Volumetric weight is required",
                 min: { value: 1, message: "Vol. Weight must be at least 1" },
               }}
+              resetFactor={resetTally}
             />
           </div>
 
@@ -448,6 +454,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
                   setValue={setValue}
                   title={`Hold Reason`}
                   value={`holdReason`}
+                  selectedValue={watch("holdReason") || ""}
                 />
               </div>
             </div>
@@ -466,6 +473,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
                   message: "Minimum 2 characters required",
                 },
               }}
+              resetFactor={resetTally}
             />
           </div>
           <div>
@@ -489,6 +497,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
                   validation={{
                     required: "Code is required",
                   }}
+                  resetFactor={resetTally}
                 />
               </div>
               <DummyInputBoxWithLabelDarkGray
@@ -596,6 +605,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
           validation={{
             required: "Remarks are required",
           }}
+          resetFactor={resetTally}
         />
         <div>
           <SimpleButton name={"Save"} onClick={handleSave} />
