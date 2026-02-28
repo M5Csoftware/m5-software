@@ -195,10 +195,20 @@ function AwbEntry() {
       return;
     }
 
-    const availableBalance = account.leftOverBalance || 0;
+    const leftOverBalance = account.leftOverBalance || 0;
     const creditLimit = account.creditLimit || 0;
-    const totalAvailable = availableBalance + creditLimit;
-    const creditExceeded = Number(grandTotal) > totalAvailable;
+
+    // CONVENTION: leftOverBalance < 0 = customer HAS money (wallet credit)
+    //             leftOverBalance > 0 = customer is IN DEBT
+    // Available funds = absolute wallet value (only if negative) + credit limit
+    const walletFunds = leftOverBalance < 0 ? Math.abs(leftOverBalance) : 0;
+    const totalAvailable = walletFunds + creditLimit;
+
+    // If customer is already in debt, extra debt amount reduces available credit
+    const effectiveDebt = leftOverBalance > 0 ? leftOverBalance : 0;
+    const netAvailable = totalAvailable - effectiveDebt;
+
+    const creditExceeded = Number(grandTotal) > netAvailable;
 
     if (creditExceeded) {
       setHoldReason("Credit Limit Exceeded");
