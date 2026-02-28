@@ -2,7 +2,7 @@
 import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { LabeledDropdown } from "@/app/components/Dropdown";
 import Heading, { RedLabelHeading } from "@/app/components/Heading";
-import InputBox from "@/app/components/InputBox";
+import InputBox, { DateInputBox } from "@/app/components/InputBox";
 import { TableWithSorting } from "@/app/components/Table";
 import { useSearchParams } from "next/navigation";
 import React, { useContext, useEffect, useState } from "react";
@@ -47,14 +47,14 @@ const PortalTicketDetails = () => {
       if (!tabToClose) return;
 
       const newActiveTabs = activeTabs.filter(
-        (tab) => tab.subfolder !== currentTab
+        (tab) => tab.subfolder !== currentTab,
       );
 
       if (newActiveTabs.length === 0) {
         setCurrentTab(null);
       } else {
         const currentIndex = activeTabs.findIndex(
-          (tab) => tab.subfolder === currentTab
+          (tab) => tab.subfolder === currentTab,
         );
         const previousTab = newActiveTabs[currentIndex - 1] || newActiveTabs[0];
         setCurrentTab(previousTab.subfolder);
@@ -87,7 +87,7 @@ const PortalTicketDetails = () => {
         const data = await res.json();
 
         const namesWithId = data.dropdown.map(
-          (emp) => `${emp.id} - ${emp.name}`
+          (emp) => `${emp.id} - ${emp.name}`,
         );
 
         setCsEmployees(namesWithId);
@@ -107,7 +107,7 @@ const PortalTicketDetails = () => {
     const fetchTicket = async () => {
       try {
         const res = await fetch(
-          `${server}/ticket-dashboard/ticket-details?ticketId=${ticketId}`
+          `${server}/ticket-dashboard/ticket-details?ticketId=${ticketId}`,
         );
         const data = await res.json();
         setTicket(data.ticket);
@@ -124,14 +124,14 @@ const PortalTicketDetails = () => {
     if (!tabToClose) return;
 
     const newActiveTabs = activeTabs.filter(
-      (tab) => tab.subfolder !== currentTab
+      (tab) => tab.subfolder !== currentTab,
     );
 
     if (newActiveTabs.length === 0) {
       setCurrentTab(null);
     } else {
       const currentIndex = activeTabs.findIndex(
-        (tab) => tab.subfolder === currentTab
+        (tab) => tab.subfolder === currentTab,
       );
       const previousTab = newActiveTabs[currentIndex - 1] || newActiveTabs[0];
       setCurrentTab(previousTab.subfolder);
@@ -146,12 +146,23 @@ const PortalTicketDetails = () => {
     setValue("priorityStatus", "");
     setValue("status", "");
     setValue("reassignTo", defaultEmp || "");
+    setValue("estimatedResolutionDate", "");
+  };
+
+  const dmyToYmd = (d) => {
+    if (!d) return "";
+    const [dd, mm, yyyy] = d.split("/");
+    if (!dd || !mm || !yyyy) return "";
+    return `${yyyy}-${mm}-${dd}`;
   };
 
   const handleResolveTicket = async () => {
     const remarks = getValues("updateTicket");
     const reassignTo = getValues("reassignTo");
     const priorityStatus = getValues("priorityStatus");
+    const estimatedResolutionDate = dmyToYmd(
+      getValues("estimatedResolutionDate"),
+    );
 
     if (!remarks) {
       showNotification("error", "Remarks are required!");
@@ -172,6 +183,7 @@ const PortalTicketDetails = () => {
           priorityStatus,
           assignedTo: reassignTo,
           resolve: true,
+          estimatedResolutionDate,
         }),
       });
 
@@ -195,6 +207,9 @@ const PortalTicketDetails = () => {
     const status = getValues("status");
     const reassignTo = getValues("reassignTo");
     const priorityStatus = getValues("priorityStatus");
+    const estimatedResolutionDate = dmyToYmd(
+      getValues("estimatedResolutionDate"),
+    );
 
     if (!remarks || !status) {
       showNotification("error", "Remarks and status are required!");
@@ -214,6 +229,7 @@ const PortalTicketDetails = () => {
           updatedBy,
           priorityStatus,
           assignedTo: reassignTo,
+          estimatedResolutionDate,
         }),
       });
 
@@ -369,6 +385,14 @@ const PortalTicketDetails = () => {
           register={register}
           value={"reassignTo"}
           title={`Re-assign To`}
+          resetFactor={resetFactor}
+          disabled={resolved}
+        />
+        <DateInputBox
+          setValue={setValue}
+          register={register}
+          value={"estimatedResolutionDate"}
+          placeholder={`Est. Resolution Date`}
           resetFactor={resetFactor}
           disabled={resolved}
         />

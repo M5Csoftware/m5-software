@@ -2,7 +2,7 @@
 import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { LabeledDropdown } from "@/app/components/Dropdown";
 import Heading, { RedLabelHeading } from "@/app/components/Heading";
-import InputBox from "@/app/components/InputBox";
+import InputBox, { DateInputBox } from "@/app/components/InputBox";
 import { TableWithSorting } from "@/app/components/Table";
 import { useSearchParams } from "next/navigation";
 import React, { useContext, useEffect, useState } from "react";
@@ -38,14 +38,14 @@ const RegisteredTicketDetails = () => {
     if (!tabToClose) return;
 
     const newActiveTabs = activeTabs.filter(
-      (tab) => tab.subfolder !== currentTab
+      (tab) => tab.subfolder !== currentTab,
     );
 
     if (newActiveTabs.length === 0) {
       setCurrentTab(null);
     } else {
       const currentIndex = activeTabs.findIndex(
-        (tab) => tab.subfolder === currentTab
+        (tab) => tab.subfolder === currentTab,
       );
       const previousTab = newActiveTabs[currentIndex - 1] || newActiveTabs[0];
       setCurrentTab(previousTab.subfolder);
@@ -66,7 +66,7 @@ const RegisteredTicketDetails = () => {
       if (!tabToClose) return;
 
       const newActiveTabs = activeTabs.filter(
-        (tab) => tab.subfolder !== currentTab
+        (tab) => tab.subfolder !== currentTab,
       );
 
       // update currentTab
@@ -74,7 +74,7 @@ const RegisteredTicketDetails = () => {
         setCurrentTab(null);
       } else if (currentTab === tabToClose.subfolder) {
         const currentIndex = activeTabs.findIndex(
-          (tab) => tab.subfolder === currentTab
+          (tab) => tab.subfolder === currentTab,
         );
         const previousTab = newActiveTabs[currentIndex - 1] || newActiveTabs[0];
         setCurrentTab(previousTab.subfolder);
@@ -97,7 +97,7 @@ const RegisteredTicketDetails = () => {
         if (!data.error) {
           // map to "id - name" strings
           const namesWithId = data.dropdown.map(
-            (emp) => `${emp.id} - ${emp.name}`
+            (emp) => `${emp.id} - ${emp.name}`,
           );
           setCsEmployees(namesWithId);
         }
@@ -113,7 +113,7 @@ const RegisteredTicketDetails = () => {
     if (!complaintNo || !server) return;
     try {
       const res = await fetch(
-        `${server}/ticket-dashboard/complaint-details?complaintNo=${complaintNo}`
+        `${server}/ticket-dashboard/complaint-details?complaintNo=${complaintNo}`,
       );
       const data = await res.json();
       if (data.error) return;
@@ -143,7 +143,7 @@ const RegisteredTicketDetails = () => {
             assignedTo: h.assignTo,
             status: h.statusHistory || data.status,
           };
-        })
+        }),
       );
     } catch (err) {
       console.error(err);
@@ -157,6 +157,14 @@ const RegisteredTicketDetails = () => {
   const handleRefresh = () => {
     reset();
     setResetFactor((prev) => prev + 1);
+    setValue("estimatedResolutionDate", "");
+  };
+
+  const dmyToYmd = (d) => {
+    if (!d) return "";
+    const [dd, mm, yyyy] = d.split("/");
+    if (!dd || !mm || !yyyy) return "";
+    return `${yyyy}-${mm}-${dd}`;
   };
 
   const ticketColumns = [
@@ -186,7 +194,7 @@ const RegisteredTicketDetails = () => {
     if (!complaintNoParam || !server) return;
     try {
       const res = await fetch(
-        `${server}/ticket-dashboard/complaint-details?complaintNo=${complaintNoParam}`
+        `${server}/ticket-dashboard/complaint-details?complaintNo=${complaintNoParam}`,
       );
       const data = await res.json();
       if (data.error) return;
@@ -204,7 +212,7 @@ const RegisteredTicketDetails = () => {
             assignedTo: h.assignTo,
             status: h.statusHistory || data.status,
           };
-        })
+        }),
       );
     } catch (err) {
       console.error("Failed to fetch history:", err);
@@ -224,6 +232,7 @@ const RegisteredTicketDetails = () => {
       assignTo: getValues("reassignTo"), // update assigned user
       remarks: getValues("updateTicket"), // ✅ save current remarks
       actionUser: updatedBy,
+      estimatedResolutionDate: dmyToYmd(getValues("estimatedResolutionDate")),
     };
 
     try {
@@ -263,6 +272,7 @@ const RegisteredTicketDetails = () => {
       assignTo: ticket.assignTo,
       remarks: getValues("updateTicket"), // save current remarks
       actionUser: updatedBy,
+      estimatedResolutionDate: dmyToYmd(getValues("estimatedResolutionDate")),
     };
 
     try {
@@ -387,6 +397,14 @@ const RegisteredTicketDetails = () => {
           register={register}
           value={"reassignTo"}
           title={`Re-assign To`}
+          resetFactor={resetFactor}
+          disabled={resolved}
+        />
+        <DateInputBox
+          setValue={setValue}
+          register={register}
+          value={"estimatedResolutionDate"}
+          placeholder={`Est. Resolution Date`}
           resetFactor={resetFactor}
           disabled={resolved}
         />
