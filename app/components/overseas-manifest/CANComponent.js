@@ -101,7 +101,7 @@ const CANComponent = () => {
       "success",
       `Replaced "${oldValue}" with "${newValue}" in row ${
         location.rowIndex + 1
-      }, ${location.columnLabel}`
+      }, ${location.columnLabel}`,
     );
   };
 
@@ -163,14 +163,14 @@ const CANComponent = () => {
       } else {
         showNotification(
           "error",
-          response.data.message || "Failed to save data"
+          response.data.message || "Failed to save data",
         );
       }
     } catch (error) {
       console.error("Error saving data:", error);
       showNotification(
         "error",
-        error.response?.data?.message || "Failed to save data"
+        error.response?.data?.message || "Failed to save data",
       );
     } finally {
       setSaveLoading(false);
@@ -207,12 +207,12 @@ const CANComponent = () => {
         setRunInfo(response.data.runInfo);
         showNotification(
           "success",
-          `Found ${response.data.count} records for manifest`
+          `Found ${response.data.count} records for manifest`,
         );
       } else {
         showNotification(
           "error",
-          response.data.message || "No manifest data found"
+          response.data.message || "No manifest data found",
         );
         setManifestRows([]);
         setRunInfo(null);
@@ -221,7 +221,7 @@ const CANComponent = () => {
       console.error("Error fetching data:", error);
       showNotification(
         "error",
-        error.response?.data?.message || "Failed to fetch manifest data"
+        error.response?.data?.message || "Failed to fetch manifest data",
       );
       setManifestRows([]);
       setRunInfo(null);
@@ -266,12 +266,12 @@ const CANComponent = () => {
         setRunInfo(response.data.runInfo);
         showNotification(
           "success",
-          `Found ${finalInvoiceData.length} invoice items`
+          `Found ${finalInvoiceData.length} invoice items`,
         );
       } else {
         showNotification(
           "error",
-          response.data.message || "No invoice data found"
+          response.data.message || "No invoice data found",
         );
         setInvoiceRows([]);
         setInvoiceData(null);
@@ -280,7 +280,7 @@ const CANComponent = () => {
       console.error("Error fetching invoice data:", error);
       showNotification(
         "error",
-        error.response?.data?.message || "Failed to fetch invoice data"
+        error.response?.data?.message || "Failed to fetch invoice data",
       );
       setInvoiceRows([]);
       setInvoiceData(null);
@@ -294,7 +294,7 @@ const CANComponent = () => {
     if (manifestRows.length === 0) {
       showNotification(
         "error",
-        "No manifest data to generate PDF. Please load manifest data first."
+        "No manifest data to generate PDF. Please load manifest data first.",
       );
       return;
     }
@@ -326,7 +326,7 @@ const CANComponent = () => {
 
             const svg = document.createElementNS(
               "http://www.w3.org/2000/svg",
-              "svg"
+              "svg",
             );
             svg.setAttribute("id", `temp-barcode-${idx}`);
             svg.setAttribute("height", "25");
@@ -370,12 +370,12 @@ const CANComponent = () => {
           <td style="padding: 8px;">${row.recieverName || "N/A"}</td>
           <td style="padding: 8px; text-align: center;">${row.pcs || 0}</td>
           <td style="padding: 8px; text-align: right;">${parseFloat(
-            row.weight || 0
+            row.weight || 0,
           ).toFixed(2)}</td>
           <td style="padding: 8px;">${row.destination || "DDP"}</td>
           <td style="padding: 8px;">${row.description || ""}</td>
           <td style="padding: 8px; text-align: right;">${parseFloat(
-            row.finalValue || 0
+            row.finalValue || 0,
           ).toFixed(2)}</td>
         </tr>`;
       });
@@ -459,7 +459,7 @@ const CANComponent = () => {
     if (invoiceRows.length === 0 || !invoiceData) {
       showNotification(
         "error",
-        "No invoice data to generate PDF. Please load invoice data first."
+        "No invoice data to generate PDF. Please load invoice data first.",
       );
       return;
     }
@@ -547,19 +547,19 @@ const CANComponent = () => {
             <td style="vertical-align: top; padding: 4px; line-height: 1.2; text-align: center;">${
               showBoxNo ? item.boxNo : ""
             }</td>
-            <td style="border-left: 2px solid black; vertical-align: top; padding: 4px; line-height: 1.2; text-align: left;">${
+            <td style="border-left: 2px solid black; vertical-align: top; padding: 4px; padding-bottom: 8px; line-height: 1.2; text-align: left;">${
               item.description
             }</td>
-            <td style="border-left: 2px solid black; vertical-align: top; padding: 4px; line-height: 1.2; text-align: center;">${
+            <td style="border-left: 2px solid black; vertical-align: top; padding: 4px; padding-bottom: 8px; line-height: 1.2; text-align: center;">${
               item.hsn
             }</td>
-            <td style="border-left: 2px solid black; vertical-align: top; padding: 4px; line-height: 1.2; text-align: center;">${
+            <td style="border-left: 2px solid black; vertical-align: top; padding: 4px; padding-bottom: 8px; line-height: 1.2; text-align: center;">${
               item.quantity
             }</td>
-            <td style="border-left: 2px solid black; vertical-align: top; padding: 4px; line-height: 1.2; text-align: center;">${
+            <td style="border-left: 2px solid black; vertical-align: top; padding: 4px; padding-bottom: 8px; line-height: 1.2; text-align: center;">${
               item.rate
             }</td>
-            <td style="border-left: 2px solid black; vertical-align: top; padding: 4px; line-height: 1.2; text-align: center;">${
+            <td style="border-left: 2px solid black; vertical-align: top; padding: 4px; padding-bottom: 8px; line-height: 1.2; text-align: center;">${
               item.amount
             }</td>
           </tr>`;
@@ -686,7 +686,7 @@ const CANComponent = () => {
             pdfWidth,
             pdfHeight,
             undefined,
-            "FAST"
+            "FAST",
           );
         } else {
           const scale = pageHeight / pdfHeight;
@@ -701,7 +701,7 @@ const CANComponent = () => {
             scaledWidth,
             scaledHeight,
             undefined,
-            "FAST"
+            "FAST",
           );
         }
 
@@ -716,13 +716,13 @@ const CANComponent = () => {
 
       showNotification(
         "success",
-        `Invoice PDF generated with ${awbNumbers.length} page(s) - one per AWB`
+        `Invoice PDF generated with ${awbNumbers.length} page(s) - one per AWB`,
       );
     } catch (error) {
       console.error("Error generating invoice PDF:", error);
       showNotification(
         "error",
-        `Failed to generate invoice PDF: ${error.message}`
+        `Failed to generate invoice PDF: ${error.message}`,
       );
     } finally {
       setInvoicePdfLoading(false);
@@ -741,13 +741,13 @@ const CANComponent = () => {
 
     try {
       const doc = new jsPDF(
-        activeTable === "manifest" ? "landscape" : "portrait"
+        activeTable === "manifest" ? "landscape" : "portrait",
       );
       doc.setFontSize(16);
       doc.text(
         `${activeTable === "manifest" ? "CAN Manifest" : "CAN Invoice"} Report`,
         14,
-        15
+        15,
       );
 
       if (runInfo) {
@@ -760,7 +760,7 @@ const CANComponent = () => {
             runInfo.date ? new Date(runInfo.date).toLocaleDateString() : "N/A"
           }`,
           14,
-          40
+          40,
         );
         doc.text(`Total Records: ${rowsToUse.length}`, 200, 25);
       }
@@ -768,15 +768,15 @@ const CANComponent = () => {
       if (activeTable === "manifest") {
         const totalPcs = rowsToUse.reduce(
           (sum, row) => sum + (row.pcs || 0),
-          0
+          0,
         );
         const totalWeight = rowsToUse.reduce(
           (sum, row) => sum + parseFloat(row.weight || 0),
-          0
+          0,
         );
         const totalValue = rowsToUse.reduce(
           (sum, row) => sum + parseFloat(row.finalValue || 0),
-          0
+          0,
         );
 
         doc.setFontSize(10);
@@ -796,7 +796,7 @@ const CANComponent = () => {
           }
           const value = row[col.key];
           return value !== null && value !== undefined ? String(value) : "";
-        })
+        }),
       );
 
       autoTable(doc, {
@@ -815,12 +815,12 @@ const CANComponent = () => {
         doc.text(
           `Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
           14,
-          doc.internal.pageSize.height - 10
+          doc.internal.pageSize.height - 10,
         );
         doc.text(
           `Page ${i} of ${pageCount}`,
           doc.internal.pageSize.width - 30,
-          doc.internal.pageSize.height - 10
+          doc.internal.pageSize.height - 10,
         );
       }
 
@@ -861,7 +861,7 @@ const CANComponent = () => {
             }
             return `"${String(value).replace(/"/g, '""')}"`;
           })
-          .join(",")
+          .join(","),
       );
 
       const csvContent = [headers, ...csvRows].join("\n");
@@ -994,7 +994,7 @@ const CANComponent = () => {
       if (response.data.success) {
         showNotification(
           "success",
-          response.data.message || "File uploaded and processed successfully!"
+          response.data.message || "File uploaded and processed successfully!",
         );
         setShowUploadModal(false);
         setUploadFile(null);
@@ -1008,7 +1008,7 @@ const CANComponent = () => {
       console.error("Error uploading file:", error);
       showNotification(
         "error",
-        error.response?.data?.message || "Failed to upload file"
+        error.response?.data?.message || "Failed to upload file",
       );
     } finally {
       setUploadLoading(false);
@@ -1046,12 +1046,12 @@ const CANComponent = () => {
       if (error.response?.status === 404) {
         showNotification(
           "error",
-          "No weight values found. Please upload values first."
+          "No weight values found. Please upload values first.",
         );
       } else {
         showNotification(
           "error",
-          error.response?.data?.message || "Failed to download stored data"
+          error.response?.data?.message || "Failed to download stored data",
         );
       }
     } finally {
@@ -1099,7 +1099,7 @@ const CANComponent = () => {
       console.log("selectedAirport →", selectedAirport);
       console.log(
         "Final API URL →",
-        `${server}/overseas-manifest/can/run?runNo=${runNo}`
+        `${server}/overseas-manifest/can/run?runNo=${runNo}`,
       );
 
       // simple normalization
@@ -1131,7 +1131,7 @@ const CANComponent = () => {
 
       // 1. Fetch Bagging
       const bagRes = await fetch(
-        `${server}/overseas-manifest/can/run?runNo=${normalizedRunNo}`
+        `${server}/overseas-manifest/can/run?runNo=${normalizedRunNo}`,
       );
       const bagJson = await bagRes.json();
       console.log("BAG JSON →", bagJson);
@@ -1155,7 +1155,7 @@ const CANComponent = () => {
       for (const awb of awbList) {
         // Fetch Shipment
         const shipRes = await fetch(
-          `${server}/overseas-manifest/can/shipments?awb=${awb}`
+          `${server}/overseas-manifest/can/shipments?awb=${awb}`,
         );
         const shipJson = await shipRes.json();
         const shipment = shipJson.data;
@@ -1355,7 +1355,7 @@ const CANComponent = () => {
 
       // 5. Final wrap
       const finalXML = `<?xml version="1.0" encoding="iso-8859-1"?>\n<shipments>\n${shipmentsXML.join(
-        "\n"
+        "\n",
       )}\n</shipments>`;
 
       // Download file
