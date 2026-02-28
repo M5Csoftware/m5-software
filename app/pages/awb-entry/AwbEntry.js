@@ -2976,6 +2976,7 @@ function AwbEntry() {
                     setValue={setValue}
                     resetFactor={refreshKey}
                     value={`fwdNumber`}
+                    inputValue={fetchedAwbData?.forwardingNo || 0.0}
                   />
                   <div className="flex gap-2">
                     <LabeledDropdown
