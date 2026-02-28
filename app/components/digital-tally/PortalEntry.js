@@ -26,7 +26,6 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
   const [selectedBoxIndex, setSelectedBoxIndex] = useState(0);
   const [rowData, setRowData] = useState([]);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [selectedReason, setSelectedReason] = useState("");
   const { server } = useContext(GlobalContext);
   const [selectedTally, setSelectedTally] = useState(null);
   const [consigneeDetails, setConsigneeDetails] = useState("");
@@ -34,6 +33,7 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
   const [calculatedVolWeight, setCalculatedVolWeight] = useState("");
   const [mawbOptions, setMawbOptions] = useState([]);
   const [hubList, setHubList] = useState([]);
+  const [resetTally, setResetTally] = useState(false);
   const [notification, setNotification] = useState({
     type: "success",
     message: "",
@@ -547,8 +547,8 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         setRowData([]);
         setHoldReasons([]);
         setHold(false);
+        setResetTally(!resetTally);
         [
-          "manifestNumber",
           "mawbNumber",
           "actualWeight",
           "length",
@@ -556,6 +556,19 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
           "height",
           "volWeight",
           "remarks",
+          "code",
+          "client",
+          "email",
+          "phoneNumber",
+          "service",
+          "portalActualWeight",
+          "portalLength",
+          "portalBreadth",
+          "portalHeight",
+          "portalVolWeight",
+          "ConsigneeDetails",
+          "ConsignorDetails",
+          "selectedReason",
         ].forEach((field) => setValue(field, ""));
         setSelectedTally(null);
         setConsigneeDetails("");
@@ -688,6 +701,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
             }}
             value="hubName"
             title="Select Hub"
+            selectedValue={watch("hubName") || ""}
           />
         </div>
       </div>
@@ -720,6 +734,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 setValue={setValue}
                 value="mawbNumber"
                 title="HAWB Number"
+                selectedValue={watch("mawbNumber") || ""}
                 onChange={(value) => {
                   setValue("mawbNumber", value);
                   fetchPortalData(value);
@@ -743,6 +758,8 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                     message: "Minimum 3 characters required",
                   },
                 }}
+                disabled
+                resetFactor={resetTally}
               />
 
               <div className="flex justify-between gap-4 bg-white border rounded-lg">
@@ -819,6 +836,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                     message: "Weight must be at least 1",
                   },
                 }}
+                resetFactor={resetTally}
               />
 
               <InputBox
@@ -837,6 +855,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                     message: "Length must be at least 1",
                   },
                 }}
+                resetFactor={resetTally}
               />
 
               <InputBox
@@ -855,6 +874,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                     message: "Breadth must be at least 1",
                   },
                 }}
+                resetFactor={resetTally}
               />
 
               <InputBox
@@ -873,6 +893,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                     message: "Height must be at least 1",
                   },
                 }}
+                resetFactor={resetTally}
               />
 
               <DummyInputBoxWithLabelDarkGray
@@ -997,7 +1018,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 setValue={setValue}
                 value="selectedReason"
                 title="Hold Reason"
-                defaultValue={selectedReason}
+                selectedValue={watch("selectedReason") || ""}
                 resetFactor={false}
               />
 
@@ -1005,7 +1026,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 className="flex h-[40px] bg-gray-200 border border-gray-300 rounded items-center p-4 text-gray-600 cursor-pointer"
                 onClick={() => {
                   const currentReason = watch("selectedReason");
-                  setSelectedReason(currentReason);
                   console.log("Adding reason:", currentReason);
                   if (currentReason && !holdReasons.includes(currentReason)) {
                     const updated = [...holdReasons, currentReason];
