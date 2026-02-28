@@ -1,4 +1,4 @@
-'use client'
+"use client";
 import React, { useEffect } from "react";
 
 export function DummyInputBoxWithLabelLightGray({
@@ -7,7 +7,7 @@ export function DummyInputBoxWithLabelLightGray({
   setValue,
   value,
   inputValue = null,
-  reset = () => { },
+  reset = () => {},
   resetFactor = false,
   placeholder,
   className,
@@ -17,11 +17,17 @@ export function DummyInputBoxWithLabelLightGray({
     setValue(value, inputValue);
   }, [inputValue, value]);
 
+  useEffect(() => {
+    setValue(value, "");
+  }, [resetFactor]);
+
   return (
     <div className="relative ">
       <input
         {...register(value)}
-        className={`border border-[#979797] ${className ? className : "bg-white-smoke"} outline-none bg-transparent rounded-md h-8 px-4 py-2 text-sm  w-full`}
+        className={`border border-[#979797] ${
+          className ? className : "bg-white-smoke"
+        } outline-none bg-transparent rounded-md h-8 px-4 py-2 text-sm  w-full`}
         placeholder={placeholder}
         disabled={disabled}
       />
@@ -41,7 +47,7 @@ export function DummyInputBoxWithLabelTransparent({
   setValue,
   value,
   inputValue = null,
-  reset = () => { },
+  reset = () => {},
   resetFactor = false,
   placeholder,
   error,
@@ -49,6 +55,10 @@ export function DummyInputBoxWithLabelTransparent({
   useEffect(() => {
     setValue(value, inputValue);
   }, [inputValue]);
+
+  useEffect(() => {
+    setValue(value, "");
+  }, [resetFactor]);
 
   return (
     <div className="relative w-full ">
@@ -77,7 +87,7 @@ export function DummyInputBoxWithLabelDarkerGray({
   setValue,
   value,
   inputValue = null,
-  reset = () => { },
+  reset = () => {},
   resetFactor = false,
   placeholder,
   watch,
@@ -85,6 +95,10 @@ export function DummyInputBoxWithLabelDarkerGray({
   useEffect(() => {
     setValue(value, inputValue);
   }, [inputValue, value]);
+
+  useEffect(() => {
+    setValue(value, "");
+  }, [resetFactor]);
 
   return (
     <div className="relative w-full ">
@@ -95,10 +109,11 @@ export function DummyInputBoxWithLabelDarkerGray({
         disabled
       />
       <span
-        className={`absolute transition-all px-2 left-4 text-battleship-gray ${watch(value)
-          ? "-top-2 text-xs z-10 font-semibold bg-white"
-          : "top-1/2 -translate-y-1/2 z-10 text-sm"
-          }`}
+        className={`absolute transition-all px-2 left-4 text-battleship-gray ${
+          watch(value)
+            ? "-top-2 text-xs z-10 font-semibold bg-white"
+            : "top-1/2 -translate-y-1/2 z-10 text-sm"
+        }`}
       >
         {label}
       </span>
@@ -111,7 +126,7 @@ export function DummyInputBoxWithLabelDarkGray({
   setValue,
   value,
   inputValue = null,
-  reset = () => { },
+  reset = () => {},
   resetFactor = false,
   placeholder,
   error,
@@ -119,6 +134,10 @@ export function DummyInputBoxWithLabelDarkGray({
   useEffect(() => {
     setValue(value, inputValue);
   }, [inputValue]);
+
+  useEffect(() => {
+    setValue(value, "");
+  }, [resetFactor]);
 
   return (
     <div className="relative w-full ">
@@ -147,13 +166,17 @@ export function DummyInputBoxWithLabelDarkGrayAndRedText({
   setValue,
   value,
   inputValue = null,
-  reset = () => { },
+  reset = () => {},
   resetFactor = false,
   placeholder,
 }) {
   useEffect(() => {
     setValue(value, inputValue);
   }, [inputValue]);
+
+  useEffect(() => {
+    setValue(value, "");
+  }, [resetFactor]);
 
   return (
     <div className="relative w-full ">
@@ -179,7 +202,7 @@ export function DummyInputBoxWithLabelYellow({
   setValue,
   inputValue = null,
   value,
-  reset = () => { },
+  reset = () => {},
   resetFactor = false,
   placeholder,
 }) {
@@ -187,20 +210,26 @@ export function DummyInputBoxWithLabelYellow({
     setValue(value, inputValue);
   }, [inputValue]);
 
+  useEffect(() => {
+    setValue(value, "");
+  }, [resetFactor]);
+
   return (
     <div className="relative ">
       <input
         {...register(value)}
-        className={`border border-[#CFB400] bg-[#FFFF80] outline-none rounded-md h-8 px-4 py-2 text-eerie-black text-sm w-full ${value == "grandTotal" ? "font-bold" : ""
-          } `}
+        className={`border border-[#CFB400] bg-[#FFFF80] outline-none rounded-md h-8 px-4 py-2 text-eerie-black text-sm w-full ${
+          value == "grandTotal" ? "font-bold" : ""
+        } `}
         placeholder={placeholder}
         disabled
       />
       <span
-        className={`absolute transition-all px-2 left-4 first-line  bg-white -top-2 text-xs z-10 font-semibold rounded ${value == "grandTotal"
-          ? "font-semibold text-eerie-black"
-          : "text-battleship-gray"
-          } `}
+        className={`absolute transition-all px-2 left-4 first-line  bg-white -top-2 text-xs z-10 font-semibold rounded ${
+          value == "grandTotal"
+            ? "font-semibold text-eerie-black"
+            : "text-battleship-gray"
+        } `}
       >
         {label}
       </span>
@@ -214,7 +243,7 @@ export function DummyInputBoxDarkGray({
   setValue,
   inputValue = null,
   value,
-  reset = () => { },
+  reset = () => {},
   resetFactor = false,
   placeholder,
   disabled = true,
@@ -243,7 +272,7 @@ export function DummyInputBoxLightGray({
   setValue,
   inputValue = null,
   value,
-  reset = () => { },
+  reset = () => {},
   resetFactor = false,
   placeholder,
   className,
@@ -270,7 +299,7 @@ export function DummyInputBoxTransparent({
   setValue,
   inputValue = null,
   value,
-  reset = () => { },
+  reset = () => {},
   resetFactor = false,
   placeholder,
 }) {
@@ -296,7 +325,7 @@ export function DummyInputBoxYellow({
   setValue,
   value,
   inputValue = null,
-  reset = () => { },
+  reset = () => {},
   resetFactor = false,
   placeholder,
 }) {
@@ -304,7 +333,7 @@ export function DummyInputBoxYellow({
     setValue(value, inputValue);
   }, [inputValue]);
 
-  useEffect(() => { }, [resetFactor]);
+  useEffect(() => {}, [resetFactor]);
   return (
     <div className="relative ">
       <input
