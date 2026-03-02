@@ -169,6 +169,15 @@ function AwbEntry() {
   const volDisc = watch("volDisc");
   const holdReasonValue = watch("holdReason");
 
+  // FIXED: Automatically clear hold reasons when isHold is false
+  useEffect(() => {
+    if (!isHold) {
+      setHoldReason("");
+      setValue("holdReason", "");
+      setValue("otherHoldReason", "");
+    }
+  }, [isHold, setValue]);
+
   //payment type
   const [showFOCPasswordModal, setShowFOCPasswordModal] = useState(false);
   const [prevPayment, setPrevPayment] = useState(
@@ -596,13 +605,13 @@ function AwbEntry() {
     const insertUser = user?.userId;
     const updateUser = user?.userId;
 
-    // FIXED: Ensure hold reason is properly set in payload
+    // FIXED: Ensure hold reason is properly set in payload - cleared if not on hold
     const payload = {
       accountCode,
       ...fillterData,
       isHold: isHold,
-      holdReason: holdReason || fillterData.holdReason || "",
-      otherHoldReason: fillterData.otherHoldReason || "",
+      holdReason: isHold ? holdReason || fillterData.holdReason || "" : "",
+      otherHoldReason: isHold ? fillterData.otherHoldReason || "" : "",
     };
 
     console.log("payload: ", payload, newShipment);
@@ -1938,7 +1947,7 @@ function AwbEntry() {
       // New shipment - clear all fields
       setValue("customer", "");
       setValue("accountBalance", "");
-      setValue("volDisc", ""); // ✅ Clear volume discount for new shipment
+      setValue("volDisc", "");
       setIsHold(false);
       setInvContent([]);
       console.log("No AWB data found - new shipment");
@@ -2893,9 +2902,6 @@ function AwbEntry() {
                     value="consignee-emailID"
                     error={errors["consignee-emailID"]}
                     disabled={isEdit}
-                    validation={{
-                      required: "Email is required",
-                    }}
                     trigger={trigger}
                     initialValue={fetchedAwbData?.receiverEmail || ""}
                   />
