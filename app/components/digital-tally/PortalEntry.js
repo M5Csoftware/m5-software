@@ -1277,7 +1277,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
             <div className="flex justify-between items-center">
               <RedLabelHeading label={"Table"} />
             </div>
-            <div className="max-h-[220px] table-scrollbar overflow-auto border rounded-lg">
+            <div className="max-h-[220px] table-scrollbar overflow-auto border-battleship-gray border-[1px] rounded-lg">
               <TableWithCheckbox
                 register={register}
                 setValue={setValue}
