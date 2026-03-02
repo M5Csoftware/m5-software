@@ -46,7 +46,7 @@ const DigitalTally = () => {
     try {
       if (!accountCode) return "";
       const customerResponse = await axios.get(
-        `${server}/customer-account?accountCode=${accountCode}`
+        `${server}/customer-account?accountCode=${accountCode}`,
       );
       return customerResponse.data?.name || "";
     } catch (err) {
@@ -72,7 +72,7 @@ const DigitalTally = () => {
           console.error(
             "Failed to fetch entities:",
             response.status,
-            response.statusText
+            response.statusText,
           );
           // setData([]);
         }
@@ -109,7 +109,7 @@ const DigitalTally = () => {
 
       const response = await axios.post(
         `${server}/digital-tally`,
-        combinedData
+        combinedData,
       );
       if (!response || !response.data) return; // nothing to do
 
@@ -200,7 +200,7 @@ const DigitalTally = () => {
         showNotification("error", "Deletion failed");
         console.error(
           "Error during deletion:",
-          error.response?.data || error.message
+          error.response?.data || error.message,
         );
       } finally {
         setDataUpdate(!dataUpdate); // ✅ Refresh data after deletion

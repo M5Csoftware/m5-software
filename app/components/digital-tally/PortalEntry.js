@@ -6,7 +6,7 @@ import { DummyInputBoxWithLabelDarkGray } from "../DummyInputBox";
 import RedCheckbox from "../RedCheckBox";
 import { OutlinedButtonRed, SimpleButton } from "../Buttons";
 import axios from "axios";
-import { TableWithSorting } from "../Table";
+import { TableWithSorting, TableWithCheckbox } from "../Table";
 import { LabeledDropdown } from "../Dropdown";
 import Image from "next/image";
 import { GlobalContext } from "@/app/lib/GlobalContext";
@@ -39,6 +39,7 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
     message: "",
     visible: false,
   });
+  const [selectedItems, setSelectedItems] = useState([]);
 
   const showNotification = (type, message) => {
     setNotification({ type, message, visible: true });
@@ -103,14 +104,27 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
     }
   }, [manifestNumber, server]);
 
-  const fetchPortalData = async () => {
-    if (!mawbNumber) return;
+  const fetchPortalData = async (manualAwbNo) => {
+    const isManualSearch = !!manualAwbNo;
+    const awbToFetch = manualAwbNo || mawbNumber;
+    if (!awbToFetch) return;
 
     try {
       const res = await axios.get(
-        `${server}/portal/get-shipments?awbNo=${mawbNumber}`,
+        `${server}/portal/get-shipments?awbNo=${awbToFetch}`,
       );
       const data = res.data.shipment;
+
+      // If manual search, we only want the manifest number, not box details
+      if (isManualSearch) {
+        const foundManifestNo =
+          data.manifestNumber || data.manifestNo || data.manifest;
+        if (foundManifestNo) {
+          setValue("manifestNumber", foundManifestNo);
+        }
+        return;
+      }
+
       const boxes = data.boxes || [];
 
       console.log("Boxes data:", boxes);
@@ -129,20 +143,38 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
     }
   };
 
-  const fetchShipmentData = async () => {
-    if (!mawbNumber) return;
+  const fetchShipmentData = async (manualAwbNo) => {
+    const isManualSearch = !!manualAwbNo;
+    const awbToFetch = manualAwbNo || mawbNumber;
+    if (!awbToFetch) return;
 
     try {
       const res = await axios.get(
-        `${server}/portal/get-shipments?awbNo=${mawbNumber}`,
+        `${server}/portal/get-shipments?awbNo=${awbToFetch}`,
       );
 
       const data = res.data.shipment;
-
-      setSelectedTally(data);
       console.log("Shipment data:", data);
 
-      if (mawbNumber === data.awbNo) {
+      if (awbToFetch === data.awbNo) {
+        if (isManualSearch) {
+          const foundManifestNo =
+            data.manifestNumber || data.manifestNo || data.manifest;
+          if (foundManifestNo) {
+            setValue("manifestNumber", foundManifestNo);
+          }
+          return;
+        }
+
+        // Only set tally and populate other fields if NOT manual search
+        setSelectedTally(data);
+
+        const foundManifestNo =
+          data.manifestNumber || data.manifestNo || data.manifest;
+        if (foundManifestNo) {
+          setValue("manifestNumber", foundManifestNo);
+        }
+
         setValue("code", data.accountCode);
         setValue("client", data.receiverFullName);
         setValue("phoneNumber", data.receiverPhoneNumber);
@@ -335,6 +367,19 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
   }, [selectedBoxIndex, boxOptions]);
 
   const handleAddToTable = () => {
+    const hubName = watch("hubName");
+    const hubCode = watch("hubCode");
+
+    if (!hubName || !hubCode) {
+      showNotification("error", "Hub is strictly required!");
+      return;
+    }
+
+    if (!mawbNumber) {
+      showNotification("error", "AWB Number is required!");
+      return;
+    }
+
     const shouldHold = hold && holdReasons.length > 0;
     const status = shouldHold ? "Hold" : "Arrived at Origin Gateway Hub";
 
@@ -347,7 +392,66 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
       status: status,
       "Hold Reason": shouldHold ? holdReasons.join(", ") : "-",
     };
-    setRowData((prev) => [...prev, newRow]);
+
+    setRowData((prev) => {
+      const existingIndex = prev.findIndex((row) => row.awbNo === mawbNumber);
+      if (existingIndex !== -1) {
+        // Update existing row
+        const updatedData = [...prev];
+        updatedData[existingIndex] = newRow;
+        showNotification("success", `Updated entry for AWB: ${mawbNumber}`);
+        return updatedData;
+      }
+      // Add new row
+      return [...prev, newRow];
+    });
+
+    // Clear specified things on Add to Table
+    [
+      "mawbNumber",
+      "awbNo",
+      "actualWeight",
+      "length",
+      "breadth",
+      "height",
+      "volWeight",
+      "portalActualWeight",
+      "portalLength",
+      "portalBreadth",
+      "portalHeight",
+      "portalVolWeight",
+      "holdReason",
+      "selectedReason",
+      "service",
+      "code",
+      "client",
+      "email",
+      "phoneNumber",
+      "ConsigneeDetails",
+      "ConsignorDetails",
+    ].forEach((field) => setValue(field, ""));
+
+    setHold(false);
+    setHoldReasons([]);
+    setConsigneeDetails("");
+    setConsignorDetails("");
+    setSelectedTally(null);
+    setBoxOptions([]);
+    setSelectedBoxIndex(0);
+    setResetTally(!resetTally);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedItems.length === 0) return;
+
+    const selectedAwbs = new Set(selectedItems.map((item) => item.awbNo));
+
+    setRowData((prev) => prev.filter((row) => !selectedAwbs.has(row.awbNo)));
+    setSelectedItems([]); // Clear selection after delete
+    showNotification(
+      "success",
+      `Removed ${selectedAwbs.size} selected entries`,
+    );
   };
 
   const handleSendEmail = async () => {
@@ -556,7 +660,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
           "height",
           "volWeight",
           "remarks",
-          "code",
           "client",
           "email",
           "phoneNumber",
@@ -662,6 +765,31 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
       />
       <div className="flex w-full gap-4">
         <div className="flex gap-4 w-1/2">
+          <LabeledDropdown
+            options={hubList.map((hub) => hub.name)}
+            register={register}
+            setValue={(name, value) => {
+              setValue(name, value);
+              const hub = hubList.find(
+                (h) => h.name.toLowerCase() === value.toLowerCase(),
+              );
+              setValue("hubCode", hub ? hub.code : "");
+            }}
+            value="hubName"
+            title="Select Hub"
+            selectedValue={watch("hubName") || ""}
+          />
+          <DummyInputBoxWithLabelDarkGray
+            placeholder="Hub Code"
+            label="Location"
+            register={register}
+            setValue={setValue}
+            value="hubCode"
+            watch={watch}
+            disabled
+          />
+        </div>
+        <div className="flex gap-4 w-1/2">
           <DummyInputBoxWithLabelDarkGray
             placeholder="--/--/--"
             label={`Status Date`}
@@ -679,68 +807,74 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
             watch={watch}
           />
         </div>
-        <div className="flex gap-4 w-1/2">
-          <DummyInputBoxWithLabelDarkGray
-            placeholder="Hub Code"
-            label="Location"
-            register={register}
-            setValue={setValue}
-            value="hubCode"
-            watch={watch}
-            disabled
-          />
-          <LabeledDropdown
-            options={hubList.map((hub) => hub.name)}
-            register={register}
-            setValue={(name, value) => {
-              setValue(name, value);
-              const hub = hubList.find(
-                (h) => h.name.toLowerCase() === value.toLowerCase(),
-              );
-              setValue("hubCode", hub ? hub.code : "");
-            }}
-            value="hubName"
-            title="Select Hub"
-            selectedValue={watch("hubName") || ""}
-          />
-        </div>
       </div>
       <div className="flex gap-6 w-full">
         <div className="flex flex-col gap-3 w-1/2">
           <div className="flex gap-3 items-end">
             <div className="flex flex-col w-full gap-4">
               <RedLabelHeading label="Shipment Details" />
-              <InputBox
-                placeholder="Manifest Number"
-                register={register}
-                setValue={setValue}
-                value="manifestNumber"
-                error={errors.manifestNumber}
-                initialValue={selectedTally?.manifestNumber || ""}
-                trigger={trigger}
-                watch={watch}
-                validation={{
-                  required: "Manifest Number is required",
-                  minLength: {
-                    value: 2,
-                    message: "Minimum 2 characters required",
-                  },
-                }}
-              />
+              <div className="flex gap-3">
+                <div className="flex flex-col gap-3 w-1/2">
+                  <InputBox
+                    placeholder="Manifest Number"
+                    register={register}
+                    setValue={setValue}
+                    value="manifestNumber"
+                    error={errors.manifestNumber}
+                    initialValue={manifestNumber || ""}
+                    trigger={trigger}
+                    watch={watch}
+                    validation={{
+                      required: "Manifest Number is required",
+                      minLength: {
+                        value: 2,
+                        message: "Minimum 2 characters required",
+                      },
+                    }}
+                  />
 
-              <LabeledDropdown
-                options={mawbOptions}
-                register={register}
-                setValue={setValue}
-                value="mawbNumber"
-                title="HAWB Number"
-                selectedValue={watch("mawbNumber") || ""}
-                onChange={(value) => {
-                  setValue("mawbNumber", value);
-                  fetchPortalData(value);
-                  fetchShipmentData(value);
-                }}
-              />
+                  <LabeledDropdown
+                    options={mawbOptions}
+                    register={register}
+                    setValue={setValue}
+                    value="mawbNumber"
+                    title="HAWB Number"
+                    selectedValue={watch("mawbNumber") || ""}
+                    onChange={(value) => {
+                      setValue("mawbNumber", value);
+                      fetchPortalData(value);
+                      fetchShipmentData(value);
+                    }}
+                  />
+                </div>
+                <div className="flex flex-col p-2 items-start border-[1px] rounded-md bg-zinc-100 w-1/2">
+                  <div className="px-2">
+                    {" "}
+                    <RedLabelHeading label={`Search with Awb No`} />
+                  </div>
+                  <div className="w-full flex gap-2 px-2">
+                    <InputBox
+                      placeholder="Awb No"
+                      register={register}
+                      setValue={setValue}
+                      value="awbNo"
+                      initialValue={selectedTally?.awbNo || ""}
+                      trigger={trigger}
+                      watch={watch}
+                      resetFactor={resetTally}
+                    />
+                    <div>
+                      <OutlinedButtonRed
+                        label="Search"
+                        onClick={() => {
+                          fetchPortalData(watch("awbNo"));
+                          fetchShipmentData(watch("awbNo"));
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <InputBox
                 placeholder="Service"
@@ -957,7 +1091,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
           </div>
 
           <div className="flex flex-col gap-2">
-            <div className="flex gap-5">
+            <div className="flex items-center gap-5">
               <RedCheckbox
                 isChecked={hold}
                 setChecked={setHold}
@@ -966,61 +1100,62 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 setValue={setValue}
                 label="Hold"
               />
-
-              <LabeledDropdown
-                options={[
-                  "Actual Weight Mismatch",
-                  "Vol. Weight Mismatch",
-                  "Shipment & Packaging Issues",
-                  "Overweight Item - OW",
-                  "Damaged Packaging - DPKG",
-                  "Leaking Content - LEAK",
-                  "Prohibited Item - PROH",
-                  "Broken Content - BROK",
-                  "Packaging Not Secure - PNS",
-                  "Item Missing - MISI",
-                  "Address Issues",
-                  "Incomplete Address - INA",
-                  "Incorrect Address - ICA",
-                  "Address Change Requested - ADD",
-                  "Address Not Found - ANF",
-                  "Wrong Pincode - WPIN",
-                  "Transit & Hub Issues",
-                  "Routing Error - RERR",
-                  "Custom Hold - CSTM",
-                  "Verification & Compliance",
-                  "KYC Not Verified - KYC",
-                  "Invoice Missing - INV",
-                  "Content Declaration Needed - CDN",
-                  "Customs Docs Missing - CDM",
-                  "Prohibited Country - PRCN",
-                  "Policy & Restrictions",
-                  "Lithium Battery Hold - LITH",
-                  "Liquids Not Allowed - LIQ",
-                  "Jewellery Not Allowed - JEWL",
-                  "Jewellery Bill Required - JEWB",
-                  "Perishables Not Allowed - PERI",
-                  "Restricted Electronics - RELE",
-                  "Leather Item Restriction - LTHR",
-                  "Internal & Operational",
-                  "Account Deactivated - AC",
-                  "Payment Pending - PAY",
-                  "Duplicate Shipment - DUP",
-                  "Manual Inspection Required - MANI",
-                  "System Flagged Hold - SYSF",
-                  "Delivery Attempt & Customer Related",
-                  "No One Available - NOA",
-                  "Delivery Rescheduled - DRS",
-                  "Customer Requested Hold - CRH",
-                  "Wrong Contact Number - WCN",
-                ]}
-                register={register}
-                setValue={setValue}
-                value="selectedReason"
-                title="Hold Reason"
-                selectedValue={watch("selectedReason") || ""}
-                resetFactor={false}
-              />
+              <div className="w-full">
+                <LabeledDropdown
+                  options={[
+                    "Actual Weight Mismatch",
+                    "Vol. Weight Mismatch",
+                    "Shipment & Packaging Issues",
+                    "Overweight Item - OW",
+                    "Damaged Packaging - DPKG",
+                    "Leaking Content - LEAK",
+                    "Prohibited Item - PROH",
+                    "Broken Content - BROK",
+                    "Packaging Not Secure - PNS",
+                    "Item Missing - MISI",
+                    "Address Issues",
+                    "Incomplete Address - INA",
+                    "Incorrect Address - ICA",
+                    "Address Change Requested - ADD",
+                    "Address Not Found - ANF",
+                    "Wrong Pincode - WPIN",
+                    "Transit & Hub Issues",
+                    "Routing Error - RERR",
+                    "Custom Hold - CSTM",
+                    "Verification & Compliance",
+                    "KYC Not Verified - KYC",
+                    "Invoice Missing - INV",
+                    "Content Declaration Needed - CDN",
+                    "Customs Docs Missing - CDM",
+                    "Prohibited Country - PRCN",
+                    "Policy & Restrictions",
+                    "Lithium Battery Hold - LITH",
+                    "Liquids Not Allowed - LIQ",
+                    "Jewellery Not Allowed - JEWL",
+                    "Jewellery Bill Required - JEWB",
+                    "Perishables Not Allowed - PERI",
+                    "Restricted Electronics - RELE",
+                    "Leather Item Restriction - LTHR",
+                    "Internal & Operational",
+                    "Account Deactivated - AC",
+                    "Payment Pending - PAY",
+                    "Duplicate Shipment - DUP",
+                    "Manual Inspection Required - MANI",
+                    "System Flagged Hold - SYSF",
+                    "Delivery Attempt & Customer Related",
+                    "No One Available - NOA",
+                    "Delivery Rescheduled - DRS",
+                    "Customer Requested Hold - CRH",
+                    "Wrong Contact Number - WCN",
+                  ]}
+                  register={register}
+                  setValue={setValue}
+                  value="selectedReason"
+                  title="Hold Reason"
+                  selectedValue={watch("selectedReason") || ""}
+                  resetFactor={false}
+                />
+              </div>
 
               <div
                 className="flex h-[40px] bg-gray-200 border border-gray-300 rounded items-center p-4 text-gray-600 cursor-pointer"
@@ -1139,16 +1274,27 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
             </div>
           </div>
           <div className="flex flex-col gap-2 min-w-[590px]">
-            <RedLabelHeading label={"Table"} />
-            <div className="max-h-[300px] overflow-auto border rounded-lg">
-              <TableWithSorting
+            <div className="flex justify-between items-center">
+              <RedLabelHeading label={"Table"} />
+            </div>
+            <div className="max-h-[220px] table-scrollbar overflow-auto border-battleship-gray border-[1px] rounded-lg">
+              <TableWithCheckbox
                 register={register}
                 setValue={setValue}
                 name="bagging"
                 columns={columns}
                 rowData={rowData}
+                selectedItems={selectedItems}
+                setSelectedItems={setSelectedItems}
+                divClassName="border-none"
               />
             </div>
+            <SimpleButton
+              name="Delete Selected"
+              onClick={handleDeleteSelected}
+              disabled={selectedItems.length === 0}
+              className={``}
+            />
           </div>
 
           <div className="flex justify-between w-full">

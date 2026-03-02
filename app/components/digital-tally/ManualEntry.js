@@ -120,12 +120,20 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
 
     setRowData((prev) => [...prev, newRow]);
 
-    // Clear shipment fields only
-    setValue("mawbNumber", "");
-    setValue("actualWeight", "");
-    setValue("volWeight", "");
-    setValue("holdReason", "");
-    setValue("service", "");
+    // Clear specified things on Add to Table
+    [
+      "mawbNumber",
+      "actualWeight",
+      "volWeight",
+      "holdReason",
+      "service",
+      "code",
+      "client",
+      "email",
+      "phoneNumber",
+    ].forEach((field) => setValue(field, ""));
+
+    setHold(false);
   };
 
   const code = watch("code");

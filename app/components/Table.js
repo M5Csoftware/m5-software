@@ -30,7 +30,7 @@ export default function Table({
   useEffect(() => {
     if (editable && rowData) {
       const initialEditData = {};
-      rowData.forEach(row => {
+      rowData.forEach((row) => {
         initialEditData[row.id || row._id] = { ...row };
       });
       setEditedData(initialEditData);
@@ -40,7 +40,7 @@ export default function Table({
   // Handle checkbox selection
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      const allIds = rowData.map(row => row.id || row._id);
+      const allIds = rowData.map((row) => row.id || row._id);
       setLocalSelectedRows(allIds);
       if (onSelectionChange) {
         onSelectionChange(allIds);
@@ -55,9 +55,9 @@ export default function Table({
 
   const handleSelectRow = (rowId) => {
     const newSelection = localSelectedRows.includes(rowId)
-      ? localSelectedRows.filter(id => id !== rowId)
+      ? localSelectedRows.filter((id) => id !== rowId)
       : [...localSelectedRows, rowId];
-    
+
     setLocalSelectedRows(newSelection);
     if (onSelectionChange) {
       onSelectionChange(newSelection);
@@ -66,12 +66,12 @@ export default function Table({
 
   // Handle cell editing
   const handleCellEdit = (rowId, columnKey, value) => {
-    setEditedData(prev => ({
+    setEditedData((prev) => ({
       ...prev,
       [rowId]: {
         ...prev[rowId],
-        [columnKey]: value
-      }
+        [columnKey]: value,
+      },
     }));
   };
 
@@ -85,7 +85,9 @@ export default function Table({
 
   if (!rowData || rowData.length === 0) {
     return (
-      <div className={`${height ? height : "h-64"} w-full overflow-auto rounded-lg border border-battleship-gray text-xs`}>
+      <div
+        className={`${height ? height : "h-64"} w-full overflow-auto rounded-lg border border-battleship-gray text-xs`}
+      >
         <table className="w-full">
           <thead className="sticky top-0 bg-white border-b">
             <tr className="h-12">
@@ -126,8 +128,10 @@ export default function Table({
     );
   }
 
-  const allSelected = localSelectedRows.length === rowData.length && rowData.length > 0;
-  const someSelected = localSelectedRows.length > 0 && localSelectedRows.length < rowData.length;
+  const allSelected =
+    localSelectedRows.length === rowData.length && rowData.length > 0;
+  const someSelected =
+    localSelectedRows.length > 0 && localSelectedRows.length < rowData.length;
 
   return (
     <div className="h-64 w-full overflow-auto rounded-lg border border-battleship-gray text-xs">
@@ -139,7 +143,7 @@ export default function Table({
                 <input
                   type="checkbox"
                   checked={allSelected}
-                  ref={input => {
+                  ref={(input) => {
                     if (input) input.indeterminate = someSelected;
                   }}
                   onChange={handleSelectAll}
@@ -163,12 +167,12 @@ export default function Table({
           {rowData.map((item, index) => {
             const rowId = item.id || item._id || index;
             const isSelected = localSelectedRows.includes(rowId);
-            const currentRowData = editable ? (editedData[rowId] || item) : item;
+            const currentRowData = editable ? editedData[rowId] || item : item;
 
             return (
               <tr
                 key={rowId}
-                className={`border-b h-11 hover:bg-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}
+                className={`border-b h-11 hover:bg-gray-50 transition-colors ${isSelected ? "bg-blue-50" : ""}`}
               >
                 {selectable && (
                   <td className="px-4 py-2 w-12">
@@ -188,13 +192,17 @@ export default function Table({
                     {editable ? (
                       <input
                         type="text"
-                        value={currentRowData[column.key] || ''}
-                        onChange={(e) => handleCellEdit(rowId, column.key, e.target.value)}
+                        value={currentRowData[column.key] || ""}
+                        onChange={(e) =>
+                          handleCellEdit(rowId, column.key, e.target.value)
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
                       />
                     ) : (
                       <span>
-                        {currentRowData[column.key] !== null ? currentRowData[column.key] : "-"}
+                        {currentRowData[column.key] !== null
+                          ? currentRowData[column.key]
+                          : "-"}
                       </span>
                     )}
                   </td>
@@ -218,7 +226,7 @@ export default function Table({
 
       {selectable && (
         <div className="bg-gray-50 px-4 py-2 border-t border-gray-200 text-xs text-gray-600">
-          Showing {rowData.length} {rowData.length === 1 ? 'row' : 'rows'}
+          Showing {rowData.length} {rowData.length === 1 ? "row" : "rows"}
           {localSelectedRows.length > 0 && (
             <span className="ml-2 font-semibold">
               ({localSelectedRows.length} selected)
@@ -239,8 +247,9 @@ function TableHeader({ columns }) {
         {columns.map((column, index) => (
           <th
             key={column.key}
-            className={` ${index !== columns.length - 1 ? "border-r" : ""
-              } px-4 py-2  text-left cursor-pointer select-none`}
+            className={` ${
+              index !== columns.length - 1 ? "border-r" : ""
+            } px-4 py-2  text-left cursor-pointer select-none`}
           >
             <div className="flex items-center gap-2 text-nowrap">
               {column.label}
@@ -258,8 +267,9 @@ function TableRow({ rowData, columns }) {
       {columns.map((column, index) => (
         <td
           key={index}
-          className={`px-4 py-2 text-gray-600 ${index !== columns.length - 1 ? "border-r" : ""
-            }`}
+          className={`px-4 py-2 text-gray-600 ${
+            index !== columns.length - 1 ? "border-r" : ""
+          }`}
         >
           <span>
             {rowData[column.key] !== null ? rowData[column.key] : "-"}
@@ -311,9 +321,11 @@ export function TableWithSorting({
 
   return (
     <div
-      className={`${className} ${className ? "" : "h-64"
-        } overflow-x-auto  table-scrollbar rounded-lg border border-battleship-gray text-xs ${disabled ? "bg-white-smoke" : ""
-        }`}
+      className={`${className} ${
+        className ? "" : "h-64"
+      } overflow-x-auto  table-scrollbar rounded-lg border border-battleship-gray text-xs ${
+        disabled ? "bg-white-smoke" : ""
+      }`}
     >
       <table className="w-full">
         <TableHeaderWithSorting
@@ -353,17 +365,20 @@ function TableHeaderWithSorting({
           <th
             key={column.key}
             onClick={() => handleSort(column.key)}
-            className={`${index !== columns.length - 1 ? "border-r" : "border-r"
-              } px-4 py-2 text-center cursor-pointer select-none ${disabled ? "bg-white-smoke" : ""
-              }`}
+            className={`${
+              index !== columns.length - 1 ? "border-r" : "border-r"
+            } px-4 py-2 text-center cursor-pointer select-none ${
+              disabled ? "bg-white-smoke" : ""
+            }`}
           >
             <div className="flex items-center gap-2 text-nowrap">
               {column.label}
               <span className="text-xs text-gray-500 hover:text-black">
                 {sortKey === column.key && (
                   <div
-                    className={`${sortOrder === "asc" ? "rotate-180" : ""
-                      } w-4 h-4`}
+                    className={`${
+                      sortOrder === "asc" ? "rotate-180" : ""
+                    } w-4 h-4`}
                   >
                     <Image
                       src={`/arrow-sort-table.svg`}
@@ -388,8 +403,9 @@ function TableRowWithSorting({ rowData, columns, isTicketDashboard }) {
       {columns.map((column, index) => (
         <td
           key={index}
-          className={`px-4 py-2 text-eerie-black text-center whitespace-nowrap ${index !== columns.length - 1 ? "border-r" : "border-r"
-            }`}
+          className={`px-4 py-2 text-eerie-black text-center whitespace-nowrap ${
+            index !== columns.length - 1 ? "border-r" : "border-r"
+          }`}
         >
           <span>
             {column.key === "date"
@@ -401,10 +417,11 @@ function TableRowWithSorting({ rowData, columns, isTicketDashboard }) {
           <br />
           {isTicketDashboard && column.key === "ticketNo" && (
             <span
-              className={`${rowData[column.key].source == "Portal"
-                ? "bg-misty-rose border-red border text-red"
-                : "border bg-[#1BC0BA33] border-[#1BC0BA] text-[#1BC0BA]"
-                } px-2 py-0.5 rounded-2xl inline-block mt-1`}
+              className={`${
+                rowData[column.key].source == "Portal"
+                  ? "bg-misty-rose border-red border text-red"
+                  : "border bg-[#1BC0BA33] border-[#1BC0BA] text-[#1BC0BA]"
+              } px-2 py-0.5 rounded-2xl inline-block mt-1`}
             >
               {rowData[column.key].source}
             </span>
@@ -507,7 +524,7 @@ export function TableWithCheckboxEditDelete({
   handleDelete,
   handleEdit,
   originalIndex = 0,
-  className
+  className,
 }) {
   const [sortKey, setSortKey] = useState("awbNo");
   const [sortOrder, setSortOrder] = useState("asc");
@@ -618,7 +635,7 @@ export function TableWithCheckboxEditDelete({
           <tbody>
             {sortedData.map((item, index) => {
               const originalIndex = data.findIndex(
-                (dataItem) => dataItem === item
+                (dataItem) => dataItem === item,
               );
               return (
                 <TableRowWithSortingCheckbox
@@ -683,16 +700,18 @@ function TableHeaderWithSortingCheckbox({
           <th
             key={column.key}
             onClick={() => handleSort(column.key)}
-            className={`${index !== columns.length - 1 ? "border-r" : "border-r"
-              } px-4 py-2 text-center cursor-pointer select-none`}
+            className={`${
+              index !== columns.length - 1 ? "border-r" : "border-r"
+            } px-4 py-2 text-center cursor-pointer select-none`}
           >
             <div className="flex items-center justify-center gap-2 text-nowrap">
               {column.label}
               <span className="text-xs text-gray-500 hover:text-black">
                 {sortKey === column.key && (
                   <div
-                    className={`${sortOrder === "asc" ? "rotate-180" : ""
-                      } w-4 h-4 `}
+                    className={`${
+                      sortOrder === "asc" ? "rotate-180" : ""
+                    } w-4 h-4 `}
                   >
                     <Image
                       src={`/arrow-sort-table.svg`}
@@ -752,8 +771,9 @@ function TableRowWithSortingCheckbox({
       {columns.map((column, colIndex) => (
         <td
           key={colIndex}
-          className={`px-4 py-2 text-eerie-black text-center whitespace-nowrap ${colIndex !== columns.length - 1 ? "border-r" : "border-r"
-            }`}
+          className={`px-4 py-2 text-eerie-black text-center whitespace-nowrap ${
+            colIndex !== columns.length - 1 ? "border-r" : "border-r"
+          }`}
         >
           <span>
             {column.key === "date"
@@ -890,8 +910,9 @@ export function TableWithSortingAndCopy({
 
   return (
     <div
-      className={`${className} ${className ? "" : "h-64"
-        } overflow-x-auto table-scrollbar rounded-lg border border-battleship-gray text-xs`}
+      className={`${className} ${
+        className ? "" : "h-64"
+      } overflow-x-auto table-scrollbar rounded-lg border border-battleship-gray text-xs`}
     >
       <table className="w-full select-none">
         {/* Header */}
@@ -907,8 +928,9 @@ export function TableWithSortingAndCopy({
                   {col.label}
                   {sortKey === col.key && (
                     <span
-                      className={`inline-flex w-4 h-4 transition-transform ${sortOrder === "asc" ? "rotate-180" : ""
-                        }`}
+                      className={`inline-flex w-4 h-4 transition-transform ${
+                        sortOrder === "asc" ? "rotate-180" : ""
+                      }`}
                     >
                       <Image
                         src="/arrow-sort-table.svg"
@@ -931,10 +953,11 @@ export function TableWithSortingAndCopy({
               {columns.map((col, colIndex) => (
                 <td
                   key={colIndex}
-                  className={`px-2 py-1 border ${isCellSelected(rowIndex, colIndex)
-                    ? "bg-blue-200"
-                    : "bg-white"
-                    }`}
+                  className={`px-2 py-1 border ${
+                    isCellSelected(rowIndex, colIndex)
+                      ? "bg-blue-200"
+                      : "bg-white"
+                  }`}
                   onMouseDown={() => {
                     setIsSelecting(true);
                     setStartCell({ row: rowIndex, col: colIndex });
@@ -964,11 +987,12 @@ export function TableWithCheckbox({
   register,
   setValue,
   name,
+  divClassName,
   columns = [],
   rowData = [],
   originalIndex = 0,
   selectedItems = [],
-  setSelectedItems = () => { },
+  setSelectedItems = () => {},
   className,
 }) {
   const [sortKey, setSortKey] = useState("awbNo");
@@ -1039,7 +1063,9 @@ export function TableWithCheckbox({
   return (
     <div className={`${className ? className : "h-64"} flex flex-col`}>
       {/* Table Container */}
-      < div className="flex-1 overflow-x-auto table-scrollbar rounded-lg border border-battleship-gray text-xs" >
+      <div
+        className={`flex-1 overflow-x-auto table-scrollbar rounded-lg border border-battleship-gray  text-xs ${divClassName}`}
+      >
         <table className="w-full">
           <TableHeaderWithCheckbox
             columns={columns}
@@ -1052,7 +1078,7 @@ export function TableWithCheckbox({
           <tbody>
             {sortedData.map((item, index) => {
               const originalIndex = data.findIndex(
-                (dataItem) => dataItem === item
+                (dataItem) => dataItem === item,
               );
               return (
                 <TableRowWithCheckbox
@@ -1069,8 +1095,8 @@ export function TableWithCheckbox({
           </tbody>
         </table>
         <input type="hidden" {...register(`${name}Table`)} />
-      </div >
-    </div >
+      </div>
+    </div>
   );
 }
 
@@ -1101,16 +1127,18 @@ function TableHeaderWithCheckbox({
           <th
             key={column.key}
             onClick={() => handleSort(column.key)}
-            className={`${index !== columns.length - 1 ? "border-r" : ""
-              } px-4 py-2 text-center cursor-pointer select-none`}
+            className={`${
+              index !== columns.length - 1 ? "border-r" : ""
+            } px-4 py-2 text-center cursor-pointer select-none`}
           >
             <div className="flex items-center justify-center gap-2 text-nowrap">
               {column.label}
               <span className="text-xs text-gray-500 hover:text-black">
                 {sortKey === column.key && (
                   <div
-                    className={`${sortOrder === "asc" ? "rotate-180" : ""
-                      } w-4 h-4`}
+                    className={`${
+                      sortOrder === "asc" ? "rotate-180" : ""
+                    } w-4 h-4`}
                   >
                     <Image
                       src={`/arrow-sort-table.svg`}
@@ -1152,8 +1180,9 @@ function TableRowWithCheckbox({
       {columns.map((column, colIndex) => (
         <td
           key={colIndex}
-          className={`px-4 py-2 text-eerie-black text-center whitespace-nowrap ${colIndex !== columns.length - 1 ? "border-r" : ""
-            }`}
+          className={`px-4 py-2 text-eerie-black text-center whitespace-nowrap ${
+            colIndex !== columns.length - 1 ? "border-r" : ""
+          }`}
         >
           <span>
             {column.key === "date"
@@ -1195,8 +1224,9 @@ export function TableWithTotal({
               {columns.map((column, colIndex) => (
                 <td
                   key={colIndex}
-                  className={`px-4 py-2 text-center border-t ${colIndex !== columns.length - 1 ? "border-r" : ""
-                    }`}
+                  className={`px-4 py-2 text-center border-t ${
+                    colIndex !== columns.length - 1 ? "border-r" : ""
+                  }`}
                 >
                   {totalRow[column.key] || ""}
                 </td>
@@ -1217,8 +1247,9 @@ function TableHeaderWithTotal({ columns }) {
         {columns.map((column, index) => (
           <th
             key={column.key}
-            className={`px-4 py-2 text-center text-[14px] tracking-wide text-gray-600 font-medium ${index !== columns.length - 1 ? "border-b" : ""
-              }`}
+            className={`px-4 py-2 text-center text-[14px] tracking-wide text-gray-600 font-medium ${
+              index !== columns.length - 1 ? "border-b" : ""
+            }`}
           >
             {column.label}
           </th>
@@ -1234,8 +1265,9 @@ function TableRowWithTotal({ rowData, columns }) {
       {columns.map((column, index) => (
         <td
           key={index}
-          className={`px-4 py-3 text-gray-500 text-[15px] tracking-wider leading-relaxed font-sans text-center whitespace-nowrap ${index !== columns.length - 1 ? "border-b" : ""
-            }`}
+          className={`px-4 py-3 text-gray-500 text-[15px] tracking-wider leading-relaxed font-sans text-center whitespace-nowrap ${
+            index !== columns.length - 1 ? "border-b" : ""
+          }`}
         >
           {column.key === "date"
             ? formatDate(rowData[column.key])
@@ -1245,7 +1277,6 @@ function TableRowWithTotal({ rowData, columns }) {
     </tr>
   );
 }
-
 
 export function TableWithCTD({
   register,
