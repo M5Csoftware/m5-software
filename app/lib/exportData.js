@@ -2,6 +2,16 @@ import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 
+const formatExcelDate = (dateStr) => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (isNaN(date)) return dateStr; // Return original if invalid
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 export const exportCodeList = (data, name) => {
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
@@ -13,7 +23,7 @@ export const exportCodeList = (data, name) => {
 
   const now = new Date();
   const timestamp = `${String(now.getDate()).padStart(2, "0")}-${String(
-    now.getMonth() + 1
+    now.getMonth() + 1,
   ).padStart(2, "0")}-${now.getFullYear()}`;
 
   saveAs(dataBlob, `${name}_Checklist_${timestamp}.xlsx`);
@@ -23,7 +33,7 @@ export const exportAccountLedgerData = async (
   rowData,
   customerCode,
   openingBalance,
-  totalBalance
+  totalBalance,
 ) => {
   if (!rowData || rowData.length === 0) {
     alert("No data to export!");
@@ -81,7 +91,15 @@ export const exportAccountLedgerData = async (
   // BODY ROWS
   // ============================
   rowData.forEach((item) => {
-    const row = sheet.addRow(headers.map((h) => item[h] ?? ""));
+    const row = sheet.addRow(
+      headers.map((h) => {
+        const val = item[h] ?? "";
+        if ((h === "Date" || h === "date") && val) {
+          return formatExcelDate(val);
+        }
+        return val;
+      }),
+    );
 
     row.eachCell((cell) => {
       cell.alignment = { vertical: "middle", horizontal: "center" };
@@ -102,7 +120,7 @@ export const exportAccountLedgerData = async (
       if (key === "ReferenceNo") return "Total";
       if (key === "RemainingBalance") return totalBalance;
       return "";
-    })
+    }),
   );
 
   totalRow.font = { bold: true };
@@ -135,6 +153,6 @@ export const exportAccountLedgerData = async (
   const buffer = await workbook.xlsx.writeBuffer();
   saveAs(
     new Blob([buffer], { type: "application/octet-stream" }),
-    `AccountLedger_${customerCode || "unknown"}.xlsx`
+    `AccountLedger_${customerCode || "unknown"}.xlsx`,
   );
 };

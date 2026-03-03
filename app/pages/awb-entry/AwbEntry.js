@@ -193,47 +193,56 @@ function AwbEntry() {
 
   // FIXED: Enhanced hold logic - Only set holdEdit for auto-hold from credit check, not for manual hold
   // AFTER — skip credit check entirely for existing shipments
-  useEffect(() => {
-    // ✅ Never auto-hold an existing shipment based on current balance.
-    // The saved isHold/holdReason from DB is the source of truth.
+ // In the credit check useEffect, add hold logging:
+
+useEffect(() => {
     if (newShipment === "old") {
-      return;
+        return;
     }
 
     if (!account || !grandTotal || Number(grandTotal) === 0) {
-      return;
+        return;
     }
 
     const leftOverBalance = account.leftOverBalance || 0;
     const creditLimit = account.creditLimit || 0;
 
-    // CONVENTION: leftOverBalance < 0 = customer HAS money (wallet credit)
-    //             leftOverBalance > 0 = customer is IN DEBT
-    // Available funds = absolute wallet value (only if negative) + credit limit
     const walletFunds = leftOverBalance < 0 ? Math.abs(leftOverBalance) : 0;
     const totalAvailable = walletFunds + creditLimit;
-
-    // If customer is already in debt, extra debt amount reduces available credit
     const effectiveDebt = leftOverBalance > 0 ? leftOverBalance : 0;
     const netAvailable = totalAvailable - effectiveDebt;
-
     const creditExceeded = Number(grandTotal) > netAvailable;
 
     if (creditExceeded) {
-      setHoldReason("Credit Limit Exceeded");
-      setIsHold(true);
-      setHoldEdit(true);
-      setValue("isHold", true);
-      setValue("holdReason", "Credit Limit Exceeded");
-      console.log("Credit Limit Exceeded - Auto Hold");
-      showNotification("error", "Credit Limit Exceeded");
+        setHoldReason("Credit Limit Exceeded");
+        setIsHold(true);
+        setHoldEdit(true);
+        setValue("isHold", true);
+        setValue("holdReason", "Credit Limit Exceeded");
+        
+        // Log the auto-hold immediately
+        if (account?.accountCode && awbNo) {
+            pushHoldLog({
+                awbNo: awbNo,
+                accountCode: account.accountCode,
+                customer: account.name || "",
+                action: "Auto Hold",
+                actionUser: "System",
+                departmentName: "System",
+                holdReason: "Credit Limit Exceeded",
+                actionSystemName: "CreditCheck",
+            }).catch(err => console.error("Failed to log auto-hold:", err));
+        }
+        
+        console.log("Credit Limit Exceeded - Auto Hold");
+        showNotification("error", "Credit Limit Exceeded");
     } else {
-      if (holdEdit) {
-        setHoldEdit(false);
-      }
-      console.log("Credit OK");
+        if (holdEdit) {
+            setHoldEdit(false);
+        }
+        console.log("Credit OK");
     }
-  }, [grandTotal, account, newShipment]); // ✅ added newShipment to deps
+}, [grandTotal, account, newShipment, awbNo]);
 
   // FIXED: Initialize hold state from fetched data
   useEffect(() => {
@@ -568,36 +577,38 @@ function AwbEntry() {
   }, [watch("pcs")]);
 
   //handle awbEntry all Operations
-  const handleAWBEntry = async (data) => {
+ // Complete handleAWBEntry function for AwbEntry component
+
+const handleAWBEntry = async (data) => {
     // Check if shipment is already assigned to a run
     if (fetchedAwbData?.runNo) {
-      showNotification(
-        "error",
-        `Shipment is already assigned to Run No: ${fetchedAwbData.runNo}. Modification not allowed.`,
-      );
-      return;
+        showNotification(
+            "error",
+            `Shipment is already assigned to Run No: ${fetchedAwbData.runNo}. Modification not allowed.`,
+        );
+        return;
     }
 
     // Check service validation before submission
     if (selectedService && serviceValidation && !serviceValidation.valid) {
-      showNotification(
-        "error",
-        "Service validation failed. Please check errors.",
-      );
-      return;
+        showNotification(
+            "error",
+            "Service validation failed. Please check errors.",
+        );
+        return;
     }
 
     // Check for warnings and ask for confirmation
     if (serviceValidation.warnings?.length > 0) {
-      const shouldProceed = window.confirm(
-        `Service has ${serviceValidation.warnings.length} warnings:\n` +
-          serviceValidation.warnings.join("\n") +
-          "\n\nDo you want to proceed?",
-      );
+        const shouldProceed = window.confirm(
+            `Service has ${serviceValidation.warnings.length} warnings:\n` +
+            serviceValidation.warnings.join("\n") +
+            "\n\nDo you want to proceed?",
+        );
 
-      if (!shouldProceed) {
-        return;
-      }
+        if (!shouldProceed) {
+            return;
+        }
     }
 
     const { code, ...fillterData } = data;
@@ -605,208 +616,239 @@ function AwbEntry() {
     const insertUser = user?.userId;
     const updateUser = user?.userId;
 
-    // FIXED: Ensure hold reason is properly set in payload - cleared if not on hold
+    // Ensure hold reason is properly set in payload - cleared if not on hold
     const payload = {
-      accountCode,
-      ...fillterData,
-      isHold: isHold,
-      holdReason: isHold ? holdReason || fillterData.holdReason || "" : "",
-      otherHoldReason: isHold ? fillterData.otherHoldReason || "" : "",
+        accountCode,
+        ...fillterData,
+        isHold: isHold,
+        holdReason: isHold ? (holdReason || fillterData.holdReason || "") : "",
+        otherHoldReason: isHold ? (fillterData.otherHoldReason || "") : "",
     };
 
     console.log("payload: ", payload, newShipment);
 
-    // small helper to safely fetch customer name
+    // Helper function to safely fetch customer name
     const getCustomerName = async (accountCode) => {
-      try {
-        if (!accountCode) return "";
-        const customerResponse = await axios.get(
-          `${server}/customer-account?accountCode=${accountCode}`,
-        );
-        return customerResponse.data?.name || "";
-      } catch (err) {
-        console.warn("Failed to fetch customer name:", err);
-        return "";
-      }
+        try {
+            if (!accountCode) return "";
+            const customerResponse = await axios.get(
+                `${server}/customer-account?accountCode=${accountCode}`,
+            );
+            return customerResponse.data?.name || "";
+        } catch (err) {
+            console.warn("Failed to fetch customer name:", err);
+            return "";
+        }
     };
 
+    // Helper function to log hold actions
+    const logHoldAction = async (action, reason, additionalData = {}) => {
+        try {
+            const customer = await getCustomerName(accountCode);
+            const holdLogPayload = {
+                awbNo: payload.awbNo || awbNo,
+                accountCode,
+                customer,
+                action: action,
+                actionUser: user?.userId || "System",
+                departmentName: user?.department || "Operations",
+                holdReason: reason,
+                actionSystemName: "AwbEntry",
+                ...additionalData
+            };
+
+            console.log(`Logging hold action: ${action}`, holdLogPayload);
+            
+            // Call the API route directly
+            const response = await axios.post(`${server}/hold-log/action`, holdLogPayload);
+            
+            console.log("Hold log response:", response.data);
+            
+            // Send notification for hold actions
+            if (action === "Hold" || action === "Auto Hold") {
+                await sendNotification({
+                    accountCode,
+                    name: customer,
+                    awbNo: payload.awbNo || awbNo,
+                    event: "Shipment Hold",
+                    description: `Shipment ${payload.awbNo || awbNo} on hold`,
+                    message: `Shipment ${payload.awbNo || awbNo} is placed on hold. Reason: ${reason}`,
+                    priority: "high",
+                });
+            } else if (action === "Unhold") {
+                await sendNotification({
+                    accountCode,
+                    name: customer,
+                    awbNo: payload.awbNo || awbNo,
+                    event: "Shipment Unhold",
+                    description: `Shipment ${payload.awbNo || awbNo} removed from hold`,
+                    message: `Shipment ${payload.awbNo || awbNo} has been taken off hold.`,
+                    priority: "medium",
+                });
+            }
+            
+            return response.data;
+        } catch (error) {
+            console.error(`Error logging hold action (${action}):`, error);
+            // Don't throw - we don't want to block the main flow if logging fails
+            return null;
+        }
+    };
+
+    // Helper function to log AWB actions
+    const logAwbAction = async (action, department = "Booking") => {
+        try {
+            const customer = await getCustomerName(accountCode);
+            await pushAWBLog({
+                awbNo: payload.awbNo || awbNo,
+                accountCode,
+                customer,
+                action: action,
+                actionUser: user?.userId,
+                department: department,
+            });
+        } catch (error) {
+            console.error("Error logging AWB action:", error);
+        }
+    };
+
+    // NEW SHIPMENT
     if (newShipment == "new" && btnAction == "save") {
-      try {
-        setIsSubmitting(true);
+        try {
+            setIsSubmitting(true);
 
-        const response = await axios.post(`${server}/portal/create-shipment`, {
-          ...payload,
-          insertUser,
-        });
+            const response = await axios.post(`${server}/portal/create-shipment`, {
+                ...payload,
+                insertUser,
+            });
 
-        if (response.data?.status == 201) {
-          const customer = await getCustomerName(accountCode);
-          await pushAWBLog({
-            awbNo: response.data?.awbNo || payload?.awbNo,
-            accountCode,
-            customer,
-            action: "Shipment created on post",
-            actionUser: user?.userId,
-            department: "Booking",
-          });
+            if (response.data?.status == 201) {
+                const createdAwbNo = response.data?.awbNo || payload?.awbNo;
+                
+                // Log shipment creation
+                await logAwbAction("Shipment created on post");
+                
+                // Log hold if applicable
+                if (payload.isHold) {
+                    await logHoldAction(
+                        payload.holdReason === "Credit Limit Exceeded" ? "Auto Hold" : "Hold",
+                        payload.holdReason || "Initial Creation"
+                    );
+                }
 
-          await sendNotification({
-            accountCode,
-            name: customer,
-            awbNo: response.data?.awbNo || payload?.awbNo,
-            event: "Shipment Created",
-            description: `Shipment ${payload?.awbNo} created`,
-            message: `Your shipment ${payload?.awbNo} has been successfully created.`,
-            priority: "medium",
-          });
+                showNotification("success", "Data Saved Successfully");
+                handleRefresh();
+            }
+        } catch (error) {
+            console.error(error);
+            showNotification("error", "Error saving AWB Entry");
+        } finally {
+            setIsSubmitting(false);
+            setBtnAction(null);
         }
-
-        if (response.data?.holdReason != "") {
-          const customer = await getCustomerName(accountCode);
-          const pushHoldLogPayload = {
-            awbNo: response.data?.awbNo || payload?.awbNo,
-            accountCode,
-            customer,
-            action: "Hold",
-            actionUser: user?.userId,
-            departmentName: user?.department || "Operations",
-            holdReason: payload?.holdReason || "Initial Creation",
-          };
-
-          const holdLogResponse = await pushHoldLog(pushHoldLogPayload);
-          console.log("Hold log response:", holdLogResponse);
-
-          await sendNotification({
-            accountCode,
-            name: customer,
-            awbNo: response.data?.awbNo || payload?.awbNo,
-            event: "Shipment Hold",
-            description: `Shipment ${payload?.awbNo} on hold`,
-            message: `Shipment ${payload?.awbNo} is placed on hold. Reason: ${payload?.holdReason}`,
-            priority: "high",
-          });
-        }
-
-        showNotification("success", "Data Saved Successfully");
-        handleRefresh();
-      } catch (error) {
-        console.error(error);
-        showNotification("error", "Error saving AWB Entry");
-      } finally {
-        setIsSubmitting(false);
-        setBtnAction(null);
-      }
-    } else if (newShipment == "old" && btnAction == "save" && isEdit == false) {
-      try {
-        setIsSubmitting(true);
-
-        const response = await axios.put(
-          `${server}/portal/create-shipment?awbNo=${awbNo}`,
-          { ...payload, updateUser },
-        );
-
-        if (response?.status === 200) {
-          const customer = await getCustomerName(accountCode);
-          await pushAWBLog({
-            awbNo,
-            accountCode,
-            customer,
-            action:
-              isHold && !fetchedAwbData?.isHold
-                ? "Shipment put on hold"
-                : !isHold && fetchedAwbData?.isHold
-                  ? "Shipment put on Unhold"
-                  : "Shipment Modified",
-            actionUser: user?.userId,
-            department: "Booking",
-          });
-
-          await sendNotification({
-            accountCode,
-            name: customer,
-            awbNo,
-            event: "Shipment Status",
-            description: `Shipment ${awbNo} updated`,
-            message: `Shipment ${awbNo} has been updated.`,
-            priority: "low",
-          });
-        }
-
-        if (response.data?.holdReason != "") {
-          const customer = await getCustomerName(accountCode);
-          const pushHoldLogPayload = {
-            awbNo: response.data?.awbNo || payload?.awbNo,
-            accountCode,
-            customer,
-            action: "Hold",
-            actionUser: user?.userId,
-            departmentName: user?.department || "Operations",
-            holdReason: payload?.holdReason || "Initial Creation",
-          };
-          const holdLogResponse = await pushHoldLog(pushHoldLogPayload);
-          console.log("Hold log response:", holdLogResponse);
-
-          await sendNotification({
-            accountCode,
-            name: customer,
-            awbNo: response.data?.awbNo || payload?.awbNo,
-            event: "Shipment Hold",
-            description: `Shipment ${payload?.awbNo} on hold`,
-            message: `Shipment ${payload?.awbNo} is placed on hold. Reason: ${payload?.holdReason}`,
-            priority: "high",
-          });
-        }
-
-        showNotification("success", "AWB Updated Successfully");
-        handleRefresh();
-      } catch (error) {
-        console.error(error);
-        showNotification("error", "Error updating AWB Entry");
-      } finally {
-        setIsSubmitting(false);
-        setBtnAction(null);
-      }
-    } else if (newShipment == "old" && btnAction == "delete") {
-      try {
-        const response = await axios.delete(
-          `${server}/portal/create-shipment?awbNo=${awbNo}`,
-        );
-        console.log("awb deleted:", response.data);
-
-        if (response?.status == 200) {
-          const customer = await getCustomerName(accountCode);
-
-          const pushAWBLogPayload = {
-            awbNo,
-            accountCode,
-            customer,
-            action: "Shipment Deleted",
-            actionUser: user?.userId,
-          };
-
-          const responseLog = await pushAWBLog(pushAWBLogPayload);
-          console.log("AWB log response:", responseLog);
-
-          await sendNotification({
-            accountCode,
-            name: customer,
-            awbNo,
-            event: "Shipment Status",
-            description: `Shipment ${awbNo} deleted`,
-            message: `Shipment ${awbNo} has been deleted from system.`,
-            priority: "high",
-          });
-        }
-        setBtnAction(null);
-        showNotification("success", "AWB Entry deleted successfully");
-        handleRefresh();
-      } catch (error) {
-        console.error("Error deleting AWB:", error);
-        setBtnAction(null);
-        showNotification("error", `Error deleting AWB: ${error}`);
-      }
     }
-  };
+    
+    // EXISTING SHIPMENT - UPDATE
+    else if (newShipment == "old" && btnAction == "save" && isEdit == false) {
+        try {
+            setIsSubmitting(true);
+
+            const response = await axios.put(
+                `${server}/portal/create-shipment?awbNo=${awbNo}`,
+                { ...payload, updateUser },
+            );
+
+            if (response?.status === 200) {
+                // Check for hold status changes
+                if (isHold && !fetchedAwbData?.isHold) {
+                    // Shipment put on hold
+                    await logHoldAction(
+                        payload.holdReason === "Credit Limit Exceeded" ? "Auto Hold" : "Hold",
+                        payload.holdReason || "Manual Hold"
+                    );
+                    
+                    await logAwbAction("Shipment put on hold");
+                    
+                } else if (!isHold && fetchedAwbData?.isHold) {
+                    // Shipment taken off hold
+                    await logHoldAction("Unhold", "Hold Removed");
+                    
+                    await logAwbAction("Shipment put on Unhold");
+                    
+                } else {
+                    // General modification
+                    await logAwbAction("Shipment Modified");
+                }
+
+                showNotification("success", "AWB Updated Successfully");
+                handleRefresh();
+            }
+        } catch (error) {
+            console.error(error);
+            showNotification("error", "Error updating AWB Entry");
+        } finally {
+            setIsSubmitting(false);
+            setBtnAction(null);
+        }
+    }
+    
+    // DELETE SHIPMENT
+    else if (newShipment == "old" && btnAction == "delete") {
+        // Check if user has permission
+        if (!user?.permissions?.includes("Booking Deletion")) {
+            showNotification("error", "You don't have permission to delete shipments");
+            setBtnAction(null);
+            return;
+        }
+
+        // Confirm deletion
+        const confirmDelete = window.confirm(`Are you sure you want to delete AWB: ${awbNo}?`);
+        if (!confirmDelete) {
+            setBtnAction(null);
+            return;
+        }
+
+        try {
+            const response = await axios.delete(
+                `${server}/portal/create-shipment?awbNo=${awbNo}`,
+            );
+            
+            console.log("awb deleted:", response.data);
+
+            if (response?.status == 200) {
+                // Log deletion
+                await logAwbAction("Shipment Deleted");
+
+                // If shipment was on hold, log that it was deleted while on hold
+                if (fetchedAwbData?.isHold) {
+                    await logHoldAction(
+                        "System",
+                        "Shipment deleted while on hold",
+                        { actionSystemName: "Deletion" }
+                    );
+                }
+
+                await sendNotification({
+                    accountCode: fetchedAwbData?.accountCode,
+                    name: fetchedAwbData?.name,
+                    awbNo,
+                    event: "Shipment Deleted",
+                    description: `Shipment ${awbNo} deleted`,
+                    message: `Shipment ${awbNo} has been deleted from system.`,
+                    priority: "high",
+                });
+
+                showNotification("success", "AWB Entry deleted successfully");
+                handleRefresh();
+            }
+        } catch (error) {
+            console.error("Error deleting AWB:", error);
+            showNotification("error", `Error deleting AWB: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setBtnAction(null);
+        }
+    }
+};
 
   //handle VolumeWt Window
   const openVolumeWtWindow = () => {
