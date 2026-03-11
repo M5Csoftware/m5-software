@@ -4,40 +4,35 @@ import { useState, useEffect, useCallback } from "react";
 // Check interval: 30 minutes
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
-// Use window.__TAURI__ directly — avoids Next.js static export bundling errors.
-// window.__TAURI__ is injected by Tauri at runtime inside the webview.
-function isTauri() {
-  return typeof window !== "undefined" && typeof window.__TAURI__ !== "undefined";
-}
-
-async function tauriInvoke(cmd, args) {
-  if (!isTauri()) return null;
-  try {
-    return await window.__TAURI__.invoke(cmd, args);
-  } catch (e) {
-    console.warn("[updater] invoke error:", e);
-    return null;
-  }
-}
-
-async function openUrl(url) {
-  try {
-    if (isTauri()) {
-      await window.__TAURI__.shell.open(url);
-    } else {
-      window.open(url, "_blank");
-    }
-  } catch {
-    window.open(url, "_blank");
-  }
-}
+// Proper v1 imports — these will work now that we've synced the versions.
+// We use dynamic imports inside an effect to prevent Next.js SSR from breaking.
+let tauriInvoke = null;
+let tauriShell = null;
 
 export default function UpdateNotification() {
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [apiReady, setApiReady] = useState(false);
+
+  useEffect(() => {
+    // Dynamically load the Tauri API only on the client side
+    const initTauri = async () => {
+      try {
+        const { invoke } = await import("@tauri-apps/api/tauri");
+        const { shell } = await import("@tauri-apps/api");
+        tauriInvoke = invoke;
+        tauriShell = shell;
+        setApiReady(true);
+      } catch (e) {
+        console.warn("[updater] Tauri API not found:", e);
+      }
+    };
+    initTauri();
+  }, []);
 
   const checkUpdate = useCallback(async () => {
+    if (!tauriInvoke) return;
     try {
       const info = await tauriInvoke("check_for_update");
       if (info && info.has_update) {
@@ -49,15 +44,22 @@ export default function UpdateNotification() {
     }
   }, []);
 
-  // Check on mount, then on interval
+  // Check on mount (after API ready), then on interval
   useEffect(() => {
-    checkUpdate();
-    const interval = setInterval(checkUpdate, CHECK_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (apiReady) {
+      checkUpdate();
+      const interval = setInterval(checkUpdate, CHECK_INTERVAL_MS);
+      return () => clearInterval(interval);
+    }
+  }, [apiReady, checkUpdate]);
 
   const handleInstall = async () => {
-    await openUrl("https://github.com/M5Csoftware/m5-software/releases/latest");
+    const url = "https://github.com/M5Csoftware/m5-software/releases/latest";
+    if (tauriShell) {
+      await tauriShell.open(url);
+    } else {
+      window.open(url, "_blank");
+    }
     setShowModal(false);
   };
 
@@ -82,7 +84,6 @@ export default function UpdateNotification() {
         }}
         title={`Version ${updateInfo.remote_version} is available`}
       >
-        {/* Bell icon */}
         <svg
           width="15" height="15" viewBox="0 0 24 24"
           fill="none" stroke="white" strokeWidth="2.2"
@@ -101,7 +102,6 @@ export default function UpdateNotification() {
           </div>
         </div>
 
-        {/* Dismiss × */}
         <button
           onClick={(e) => { e.stopPropagation(); setDismissed(true); }}
           style={{
@@ -110,9 +110,7 @@ export default function UpdateNotification() {
             padding: "0 2px", fontSize: "14px", lineHeight: 1,
           }}
           title="Dismiss"
-        >
-          ×
-        </button>
+        >×</button>
       </div>
 
       {/* ── Modal ── */}
@@ -133,7 +131,6 @@ export default function UpdateNotification() {
               boxShadow: "0 20px 60px rgba(0,0,0,0.25)", position: "relative",
             }}
           >
-            {/* Close */}
             <button
               onClick={() => setShowModal(false)}
               style={{
@@ -143,7 +140,6 @@ export default function UpdateNotification() {
               }}
             >×</button>
 
-            {/* Icon */}
             <div style={{
               width: "52px", height: "52px", borderRadius: "50%",
               background: "linear-gradient(135deg, #fef3c7, #fde68a)",
@@ -165,7 +161,6 @@ export default function UpdateNotification() {
               A new version of M5C Logs is ready.
             </p>
 
-            {/* Version badges */}
             <div style={{ display: "flex", gap: "10px", marginBottom: "18px", fontSize: "13px" }}>
               <span style={{ padding: "4px 10px", borderRadius: "20px", background: "#f3f4f6", color: "#374151" }}>
                 Current: <strong>v{updateInfo.current_version}</strong>
@@ -176,7 +171,6 @@ export default function UpdateNotification() {
               </span>
             </div>
 
-            {/* Release notes */}
             {updateInfo.notes && (
               <div style={{
                 background: "#f9fafb", border: "1px solid #e5e7eb",
@@ -191,7 +185,6 @@ export default function UpdateNotification() {
               </div>
             )}
 
-            {/* Actions */}
             <div style={{ display: "flex", gap: "10px" }}>
               <button
                 onClick={handleInstall}
@@ -201,8 +194,6 @@ export default function UpdateNotification() {
                   color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer",
                   boxShadow: "0 4px 14px rgba(245,158,11,0.4)",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
               >
                 Download Update
               </button>
@@ -217,12 +208,6 @@ export default function UpdateNotification() {
                 Later
               </button>
             </div>
-
-            {updateInfo.pub_date && (
-              <p style={{ marginTop: "14px", textAlign: "center", fontSize: "11px", color: "#9ca3af" }}>
-                Released: {new Date(updateInfo.pub_date).toLocaleDateString()}
-              </p>
-            )}
           </div>
         </div>
       )}

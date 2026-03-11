@@ -51,7 +51,7 @@
       "csp": null
     },
     "updater": {
-      "active": true,
+      "active": false,
       "dialog": false,
       "endpoints": [
         "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json"
