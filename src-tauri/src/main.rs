@@ -3,6 +3,7 @@
 
 use hostname::get as get_hostname;
 use tauri::{Manager, AppHandle};
+use serde::{Deserialize, Serialize};
 
 /// Simple ping command (keeps available)
 #[tauri::command]
@@ -88,9 +89,88 @@ fn emit_system_name_and_inject_js(app: &AppHandle) {
     }
 }
 
+// ─── Update checker ──────────────────────────────────────────────────────────
+
+/// The shape of version.json hosted on GitHub
+#[derive(Debug, Deserialize)]
+struct RemoteVersion {
+    version: String,
+    #[serde(default)]
+    notes: String,
+    #[serde(default)]
+    pub_date: String,
+}
+
+/// What we return to the frontend
+#[derive(Debug, Serialize)]
+pub struct UpdateInfo {
+    pub has_update: bool,
+    pub remote_version: String,
+    pub current_version: String,
+    pub notes: String,
+    pub pub_date: String,
+}
+
+const VERSION_URL: &str =
+    "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json";
+
+/// Compare two semver-ish strings (e.g. "0.1.2" > "0.1.1").
+/// Falls back to simple string inequality if parsing fails.
+fn is_newer(remote: &str, current: &str) -> bool {
+    let parse = |v: &str| -> Vec<u64> {
+        v.trim_start_matches('v')
+            .split('.')
+            .filter_map(|p| p.parse().ok())
+            .collect()
+    };
+    let r = parse(remote);
+    let c = parse(current);
+    for i in 0..r.len().max(c.len()) {
+        let rv = r.get(i).copied().unwrap_or(0);
+        let cv = c.get(i).copied().unwrap_or(0);
+        if rv != cv {
+            return rv > cv;
+        }
+    }
+    false
+}
+
+/// Tauri command — called from the React frontend to check for updates.
+#[tauri::command]
+async fn check_for_update() -> Result<UpdateInfo, String> {
+    let current = env!("CARGO_PKG_VERSION").to_string();
+
+    let response = reqwest::get(VERSION_URL)
+        .await
+        .map_err(|e| format!("Network error: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("HTTP {}", response.status()));
+    }
+
+    let remote: RemoteVersion = response
+        .json()
+        .await
+        .map_err(|e| format!("Parse error: {}", e))?;
+
+    let has_update = is_newer(&remote.version, &current);
+
+    Ok(UpdateInfo {
+        has_update,
+        remote_version: remote.version,
+        current_version: current,
+        notes: remote.notes,
+        pub_date: remote.pub_date,
+    })
+}
+
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![ping_tauri, get_system_name])
+        .invoke_handler(tauri::generate_handler![
+            ping_tauri,
+            get_system_name,
+            check_for_update
+        ])
         .setup(|app| {
             // emit event and inject JS with hostname (will panic if hostname not available)
             emit_system_name_and_inject_js(&app.handle());

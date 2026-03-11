@@ -3,6 +3,7 @@ import React, { useState, useContext, useEffect } from "react";
 import Image from "next/image";
 import { GlobalContext } from "../lib/GlobalContext";
 import { useAuth } from "../Context/AuthContext";
+import UpdateNotification from "./UpdateNotification";
 
 // Sidebar component
 function Sidebar() {
@@ -343,8 +344,9 @@ function Sidebar() {
           );
         })}
       </ul>
-      <div className="px-8 text-xs flex items-end font-semibold text-green-1">
-        Version: 04/08/2025
+      <UpdateNotification />
+      <div className="px-8 pb-2 text-xs flex items-end font-semibold text-green-1">
+        Version: 0.1.0
       </div>
       {/* </div>
       <div className="pr-4 pl-1 sticky bottom-2">
