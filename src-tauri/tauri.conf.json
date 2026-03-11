@@ -54,7 +54,7 @@
       "active": true,
       "dialog": false,
       "endpoints": [
-        "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json"
+        "https://github.com/M5Csoftware/m5-software/main/version.json"
       ],
       "pubkey": ""
     },
