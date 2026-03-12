@@ -252,6 +252,25 @@ function Sidebar() {
     return user?.permissions?.[mapping || name] === true;
   };
 
+  const [appVersion, setAppVersion] = useState("v0.1.0");
+
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        if (window.__TAURI__) {
+          const invokeFn = window.__TAURI__?.tauri?.invoke ?? window.__TAURI__?.invoke;
+          if (invokeFn) {
+            const version = await invokeFn("get_app_version");
+            setAppVersion(`v${version}`);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch app version:", e);
+      }
+    };
+    fetchVersion();
+  }, []);
+
   return (
     <nav className="flex flex-col min-w-56 w-[15vw] gap-3 text-gunmetal bg-seasalt h-screen overflow-auto hidden-scrollbar">
       <div className="sticky top-0 flex flex-col gap-3 bg-seasalt">
@@ -345,8 +364,8 @@ function Sidebar() {
         })}
       </ul>
       <UpdateNotification />
-      <div className="px-8 pb-2 text-xs flex items-end font-semibold text-green-1">
-        Version: 0.1.0
+      <div className="px-8 pb-4 text-xs flex items-end font-semibold text-green-1Opacity-60">
+        {appVersion}
       </div>
       {/* </div>
       <div className="pr-4 pl-1 sticky bottom-2">

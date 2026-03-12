@@ -1,0 +1,90 @@
+name: Bump Version & Update version.json
+
+on:
+  push:
+    branches:
+      - main
+    # Only trigger when actual source code changes (not version.json itself)
+    paths:
+      - "src/**"
+      - "src-tauri/src/**"
+      - "src-tauri/Cargo.toml"
+      - "package.json"
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Need full history to read current version
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read current version from version.json
+        id: read_version
+        run: |
+          CURRENT=$(jq -r '.version' version.json)
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT"
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          CURRENT="${{ steps.read_version.outputs.current }}"
+          # Split semver into parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          # Increment patch
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Bumped: $CURRENT → $NEW_VERSION"
+
+      - name: Extract commit message for notes
+        id: notes
+        run: |
+          # Use the latest commit message as release notes
+          MSG=$(git log -1 --pretty=%s)
+          # Escape for JSON
+          ESCAPED=$(echo "$MSG" | sed 's/"/\\"/g')
+          echo "notes=$ESCAPED" >> $GITHUB_OUTPUT
+
+      - name: Write new version.json
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          NOTES="${{ steps.notes.outputs.notes }}"
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          cat > version.json << EOF
+          {
+            "version": "$NEW_VERSION",
+            "notes": "$NOTES",
+            "pub_date": "$PUB_DATE"
+          }
+          EOF
+          cat version.json
+
+      - name: Update Cargo.toml version
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          # Update the version in Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" src-tauri/Cargo.toml
+          grep '^version' src-tauri/Cargo.toml
+
+      - name: Update tauri.conf.json version
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          # Update version in tauri.conf.json
+          jq --arg v "$NEW_VERSION" '.package.version = $v' src-tauri/tauri.conf.json > tmp.json && mv tmp.json src-tauri/tauri.conf.json
+          cat src-tauri/tauri.conf.json | jq '.package.version'
+
+      - name: Commit and push version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]"
+          git push
