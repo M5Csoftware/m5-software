@@ -253,6 +253,7 @@ function Sidebar() {
   };
 
   const [appVersion, setAppVersion] = useState("v0.1.0");
+  const [latestVersion, setLatestVersion] = useState(null);
 
   useEffect(() => {
     const fetchVersion = async () => {
@@ -263,6 +264,14 @@ function Sidebar() {
             const version = await invokeFn("get_app_version");
             setAppVersion(`v${version}`);
           }
+        }
+
+        // Fetch remote version for "Latest" display
+        const VERSION_URL = "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json";
+        const res = await fetch(VERSION_URL + "?t=" + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          setLatestVersion(`v${data.version}`);
         }
       } catch (e) {
         console.warn("Failed to fetch app version:", e);
@@ -364,8 +373,13 @@ function Sidebar() {
         })}
       </ul>
       <UpdateNotification />
-      <div className="px-8 pb-4 text-xs flex items-end font-semibold text-green-1Opacity-60">
-        {appVersion}
+      <div className="px-8 pb-4 text-[10px] flex flex-col gap-0.5 font-bold text-green-1">
+        <div className="opacity-60">Current: {appVersion}</div>
+        {latestVersion && (
+          <div className={`${latestVersion !== appVersion ? "text-amber-600" : "opacity-60"}`}>
+            Latest: {latestVersion}
+          </div>
+        )}
       </div>
       {/* </div>
       <div className="pr-4 pl-1 sticky bottom-2">
