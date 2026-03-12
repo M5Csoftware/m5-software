@@ -1637,7 +1637,7 @@ const UkDpdPage = () => {
       />
 
       <Heading
-        title="UK DPD"
+        title="UK DPDD"
         bulkUploadBtn="hidden"
         codeListBtn="hidden"
         onRefresh={handleRefresh}
