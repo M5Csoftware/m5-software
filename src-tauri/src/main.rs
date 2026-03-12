@@ -5,13 +5,11 @@ use hostname::get as get_hostname;
 use tauri::{Manager, AppHandle};
 use serde::{Deserialize, Serialize};
 
-/// Simple ping command
 #[tauri::command]
 fn ping_tauri() -> String {
     "pong".to_string()
 }
 
-/// Return the system hostname or panic if not found
 #[tauri::command]
 fn get_system_name() -> String {
     if let Ok(os_str) = get_hostname() {
@@ -31,10 +29,8 @@ fn get_system_name() -> String {
     panic!("unable to determine hostname");
 }
 
-/// Inject hostname into every webview as window.__SYSTEM_NAME__
 fn emit_system_name_and_inject_js(app: &AppHandle) {
     let system_name = get_system_name();
-    println!("[tauri] Emitting system-name -> {}", system_name);
     let _ = app.emit_all("system-name", system_name.clone());
 
     let js = match serde_json::to_string(&system_name) {
@@ -42,7 +38,7 @@ fn emit_system_name_and_inject_js(app: &AppHandle) {
             r#"try {{
                 window.__SYSTEM_NAME__ = {name};
                 window.dispatchEvent(new CustomEvent('system-name-ready', {{ detail: {name} }}));
-            }} catch (e) {{ console.error('[tauri] system-name injection error', e); }}"#,
+            }} catch(e) {{ console.error('[tauri] system-name injection error', e); }}"#,
             name = s
         ),
         Err(_) => { eprintln!("[tauri] failed to serialize system_name"); return; }
@@ -50,7 +46,7 @@ fn emit_system_name_and_inject_js(app: &AppHandle) {
 
     for (label, window) in app.windows() {
         match window.eval(&js) {
-            Ok(_) => println!("[tauri] injected __SYSTEM_NAME__ into window {}", label),
+            Ok(_)  => println!("[tauri] injected __SYSTEM_NAME__ into window {}", label),
             Err(e) => eprintln!("[tauri] eval failed for window {}: {:?}", label, e),
         }
     }
@@ -76,11 +72,10 @@ pub struct UpdateInfo {
     pub pub_date: String,
 }
 
-// Always points to main branch — GitHub Actions keeps this file up to date.
+// ✅ Points to main branch — GitHub Actions keeps this updated on every merge
 const VERSION_URL: &str =
     "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json";
 
-/// Semver comparison: returns true if `remote` is newer than `current`.
 fn is_newer(remote: &str, current: &str) -> bool {
     let parse = |v: &str| -> Vec<u64> {
         v.trim_start_matches('v')
@@ -98,18 +93,26 @@ fn is_newer(remote: &str, current: &str) -> bool {
     false
 }
 
-/// Called from React frontend (and also from the periodic JS check).
 #[tauri::command]
 async fn check_for_update() -> Result<UpdateInfo, String> {
     let current = env!("CARGO_PKG_VERSION").to_string();
 
-    // Add cache-busting query param so CDN always returns fresh JSON
-    let url = format!("{}?t={}", VERSION_URL, std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs());
+    // ✅ Skip update check entirely in debug/dev builds
+    // This prevents 404 errors and unnecessary network calls during development
+    if cfg!(debug_assertions) {
+        println!("[tauri] Dev build — skipping update check");
+        return Ok(UpdateInfo {
+            has_update: false,
+            remote_version: String::new(),
+            current_version: current,
+            notes: String::new(),
+            pub_date: String::new(),
+        });
+    }
 
-    let response = reqwest::get(&url)
+    println!("[tauri] Checking for update at {}", VERSION_URL);
+
+    let response = reqwest::get(VERSION_URL)
         .await
         .map_err(|e| format!("Network error: {}", e))?;
 
@@ -125,7 +128,7 @@ async fn check_for_update() -> Result<UpdateInfo, String> {
     let has_update = is_newer(&remote.version, &current);
 
     println!(
-        "[tauri] update check: current={} remote={} has_update={}",
+        "[tauri] current={} remote={} has_update={}",
         current, remote.version, has_update
     );
 
@@ -138,7 +141,6 @@ async fn check_for_update() -> Result<UpdateInfo, String> {
     })
 }
 
-/// Returns the current app version baked in at compile time from Cargo.toml
 #[tauri::command]
 fn get_app_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
