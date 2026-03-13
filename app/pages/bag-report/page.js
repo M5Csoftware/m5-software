@@ -156,13 +156,13 @@ export default function BagReport() {
 
   // API calls
   const fetchRunData = async (runNo) => {
-    const response = await axios.get(`${server}/run-entry?runNo=${runNo}`);
+    const response = await axios.get(`${server}/run-entry?runNo=${runNo.toUpperCase()}`);
     return response.data;
   };
 
   const fetchShipmentData = async (runNo) => {
     const response = await axios.get(
-      `${server}/portal/create-shipment?runNo=${runNo}`
+      `${server}/portal/create-shipment?runNo=${runNo.toUpperCase()}`
     );
     return Array.isArray(response.data)
       ? response.data.filter((item) => item.runNo === runNo)
@@ -172,12 +172,12 @@ export default function BagReport() {
   };
 
   const fetchBaggingData = async (runNo) => {
-    const response = await axios.get(`${server}/bagging?runNo=${runNo}`);
+    const response = await axios.get(`${server}/bagging?runNo=${runNo.toUpperCase()}`);
     return response.data;
   };
 
   const fetchBranchBaggingData = async (runNo) => {
-    const response = await axios.get(`${server}/branch-bagging?runNo=${runNo}`);
+    const response = await axios.get(`${server}/branch-bagging?runNo=${runNo.toUpperCase()}`);
     return response.data;
   };
 

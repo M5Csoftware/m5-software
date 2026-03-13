@@ -341,7 +341,7 @@ function General() {
       setLoading(true);
       setError("");
       const response = await axios.get(
-        `${server}/total-outstanding?accountCode=${accountCode}`
+        `${server}/total-outstanding?accountCode=${accountCode.toUpperCase()}`
       );
 
       if (response.data) {

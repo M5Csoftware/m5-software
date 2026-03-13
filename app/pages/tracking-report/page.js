@@ -10,7 +10,7 @@ import NotificationFlag from "@/app/components/Notificationflag";
 import React, { useState, useContext, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import axios from "axios";
-import * as XLSX from "xlsx";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 const TrackingReport = () => {
   const { register, setValue, handleSubmit, reset, watch } = useForm();
@@ -101,12 +101,14 @@ const TrackingReport = () => {
   };
 
   // Auto-fetch client name when code changes
+  const debouncedWatchCode = useDebounce(watchCode, 500);
+
   useEffect(() => {
     const fetchClientName = async () => {
-      if (watchCode && watchCode.trim() !== "") {
+      if (debouncedWatchCode && debouncedWatchCode.trim() !== "") {
         try {
           const customerRes = await axios.get(`${server}/customer-account`, {
-            params: { accountCode: watchCode.trim() },
+            params: { accountCode: debouncedWatchCode.trim().toUpperCase() },
           });
           const customerData = customerRes.data || {};
           const name = customerData.name || "";
@@ -124,7 +126,7 @@ const TrackingReport = () => {
     };
 
     fetchClientName();
-  }, [watchCode, server, setValue]);
+  }, [debouncedWatchCode, server, setValue]);
 
   // Function to fetch tracking data
   const fetchTrackingData = async (data) => {
@@ -166,8 +168,9 @@ const TrackingReport = () => {
         params.toDate = toParsed.toISOString();
       }
 
-      if (runNumber) params.runNumber = runNumber;
-      if (code) params.accountCode = code;
+      if (runNumber) params.runNumber = runNumber.toUpperCase();
+      if (code) params.accountCode = code.toUpperCase();
+      if (branch) params.branch = branch.toUpperCase();
       if (sector) params.sector = sector;
       if (destination) params.destination = destination;
       if (network) params.network = network;
@@ -267,13 +270,14 @@ const TrackingReport = () => {
   };
 
   // Download Excel
-  const downloadExcel = () => {
+  const downloadExcel = async () => {
     if (rowData.length === 0) {
       showNotification("error", "No data to export");
       return;
     }
 
     try {
+      const XLSX = await import("xlsx");
       const wsData = [
         columns.map((col) => col.label),
         ...rowData.map((row) => columns.map((col) => row[col.key] || "")),

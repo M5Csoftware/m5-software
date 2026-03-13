@@ -115,7 +115,7 @@ const NewBookingReport = () => {
       try {
         // Fetch customer account by code
         const response = await axios.get(
-          `${server}/customer-account?accountCode=${codeValue.trim()}`,
+          `${server}/customer-account?accountCode=${codeValue.trim().toUpperCase()}`,
         );
 
         if (response.data && response.data.name) {

@@ -223,7 +223,7 @@ function PaymentEntry({ }) {
 
     try {
       const res = await axios.get(
-        `${server}/payment-entry?accountCode=${accountCode}`
+        `${server}/payment-entry?accountCode=${accountCode.toUpperCase()}`
       );
 
       const summary = res.data.summary;
@@ -333,7 +333,7 @@ function PaymentEntry({ }) {
     const fetchCustomer = async () => {
       try {
         const res = await axios.get(
-          `${server}/customer-account?accountCode=${accountCode}`
+          `${server}/customer-account?accountCode=${accountCode.toUpperCase()}`
         );
         const customer = res.data;
 

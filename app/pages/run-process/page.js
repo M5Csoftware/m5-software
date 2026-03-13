@@ -136,7 +136,7 @@ function RunProcess() {
 
   const fetchRunHistory = async (runNumber) => {
     try {
-      const response = await axios.get(`${server}/run-process?runNo=${runNumber}`);
+      const response = await axios.get(`${server}/run-process?runNo=${runNumber.toUpperCase()}`);
       
       if (response.data.success) {
         const formattedData = response.data.data.map((item) => {
@@ -193,7 +193,7 @@ function RunProcess() {
       }
 
       const response = await axios.get(
-        `${server}/run-process?runNo=${runNumber}&check-auto-statuses=true&userId=${userData.userId}`
+        `${server}/run-process?runNo=${runNumber.toUpperCase()}&check-auto-statuses=true&userId=${userData.userId}`
       );
       
       if (response.data.success && response.data.autoUpdated) {

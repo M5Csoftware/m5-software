@@ -97,7 +97,7 @@ function AccountLedger() {
     try {
       const res = await axios.get(`${server}/ledger`, {
         params: {
-          accountCode: getValues("code"),
+          accountCode: getValues("code")?.toUpperCase(),
           openingBalance,
           from: fromDate,
           to: toDate,
@@ -159,7 +159,7 @@ function AccountLedger() {
     console.log("🌐 Server URL:", server);
 
     try {
-      const url = `${server}/customer-account?accountCode=${code}`;
+      const url = `${server}/customer-account?accountCode=${code.toUpperCase()}`;
       console.log("📡 Making request to:", url);
 
       const response = await axios.get(url);

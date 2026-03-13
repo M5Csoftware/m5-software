@@ -68,7 +68,7 @@ const AmountLog = () => {
     const fetchCustomer = async () => {
       try {
         const res = await fetch(
-          `${server}/amount-log?onlyCustomer=true&accountCode=${accountCode.trim()}`
+          `${server}/amount-log?onlyCustomer=true&accountCode=${accountCode.trim().toUpperCase()}`
         );
         const data = await res.json();
         setCustomerName(data.customerName || "");

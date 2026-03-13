@@ -403,7 +403,7 @@ export default function RunEntry() {
       console.log(`Fetching data for runNo: ${runNo}, accountType: ${accType}`);
 
       const response = await axios.get(
-        `${server}/run-entry/run-bag?runNo=${runNo}&accountType=${accType}`,
+        `${server}/run-entry/run-bag?runNo=${runNo.toUpperCase()}&accountType=${accType}`,
         {
           signal: abortControllerRef.current.signal,
           timeout: 10000,

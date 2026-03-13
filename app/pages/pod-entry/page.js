@@ -97,7 +97,7 @@ function PODEntry() {
       setLoading(true);
 
       const response = await axios.get(
-        `${server}/portal/get-shipments?awbNo=${awbNumber}`
+        `${server}/portal/get-shipments?awbNo=${awbNumber.toUpperCase()}`
       );
 
       const shipments = normalizeShipments(response.data.shipment).map((s) => ({

@@ -8,6 +8,7 @@ import { DropdownRedLabel, LabeledDropdown } from "../Dropdown";
 import Table from "../Table";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import NotificationFlag from "../Notificationflag";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 // Confirmation Modal Component
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Yes", cancelText = "No" }) => {
@@ -40,6 +41,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
 const ViewRate = ({ register, setValue, reset, watch }) => {
   const [rateData, setRateData] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [selectedShipper, setSelectedShipper] = useState("");
   const [filteredRateData, setFilteredRateData] = useState([]);
   const [isViewing, setIsViewing] = useState(false);
@@ -173,8 +175,8 @@ const ViewRate = ({ register, setValue, reset, watch }) => {
     }
 
     // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
+    if (debouncedSearchQuery.trim()) {
+      const query = debouncedSearchQuery.toLowerCase().trim();
       data = data.filter(item => {
         return Object.values(item).some(value =>
           String(value).toLowerCase().includes(query)

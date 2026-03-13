@@ -313,10 +313,10 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
       try {
         console.log(
           "📦 Fetching shipment from:",
-          `${server}/portal/get-shipments?awbNo=${awbNo}`
+          `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`
         );
         const shipmentResponse = await axios.get(
-          `${server}/portal/get-shipments?awbNo=${awbNo}`
+          `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`
         );
         console.log("✅ Shipment verified:", shipmentResponse.data);
       } catch (error) {

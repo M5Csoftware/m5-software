@@ -125,7 +125,7 @@ const AutoCalculation = () => {
     try {
       // Fetch full customer details
       const customerResponse = await axios.get(
-        `${server}/customer-account?accountCode=${accountCode}`,
+        `${server}/customer-account?accountCode=${accountCode.toUpperCase()}`,
       );
       const customerDetails = customerResponse.data;
 

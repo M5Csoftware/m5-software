@@ -238,7 +238,7 @@ const RunReport = ({ setCurrentView }) => {
         return;
       }
 
-      const res = await fetch(`${server}/run-transfer?runNo=${runNumber}`);
+      const res = await fetch(`${server}/run-transfer?runNo=${runNumber.toUpperCase()}`);
       if (!res.ok) throw new Error("Failed to fetch data");
 
       const data = await res.json();
