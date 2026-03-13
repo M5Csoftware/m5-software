@@ -85,7 +85,7 @@ const ComplaintReport = () => {
     const fetchClientName = async () => {
       try {
         const res = await axios.get(`${server}/customer-account`, {
-          params: { accountCode: watchCode.trim() },
+          params: { accountCode: watchCode.trim().toUpperCase() },
         });
         const name = res.data?.name || "";
         setClientName(name);

@@ -1,7 +1,8 @@
 "use client";
-import HoldHistory from "@/app/components/awb-entry/HoldHistory";
-import InvoiceDetails from "@/app/components/awb-entry/InvoiceDetails";
-import VolumeWeight from "@/app/components/awb-entry/VolumeWeight";
+import dynamic from "next/dynamic";
+const HoldHistory = dynamic(() => import("@/app/components/awb-entry/HoldHistory"), { ssr: false });
+const InvoiceDetails = dynamic(() => import("@/app/components/awb-entry/InvoiceDetails"), { ssr: false });
+const VolumeWeight = dynamic(() => import("@/app/components/awb-entry/VolumeWeight"), { ssr: false });
 import { sendNotification } from "../../lib/sendNotifications";
 import { OutlinedButtonRed } from "@/app/components/Buttons";
 import {
@@ -43,6 +44,7 @@ import NotificationFlag from "@/app/components/Notificationflag";
 import { useAlertCheck } from "@/app/hooks/useAlertCheck";
 import { AlertModal } from "@/app/components/AlertModal";
 import PasswordModal from "@/app/components/passwordModal";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 function AwbEntry() {
   const {
@@ -913,14 +915,15 @@ const handleAWBEntry = async (data) => {
   }, [holdHistoryWindow, invoiceDetailsWindow, volumeWtWindow]);
 
   // customer account details fetching
-  useEffect(() => {
-    const code = watch("code");
-    if (!code) return;
+  const debouncedCode = useDebounce(watch("code"), 500);
 
-    const handler = setTimeout(async () => {
+  useEffect(() => {
+    if (!debouncedCode) return;
+
+    const fetchAccount = async () => {
       try {
         const response = await axios.get(
-          `${server}/customer-account?accountCode=${code}`,
+          `${server}/customer-account?accountCode=${debouncedCode.toUpperCase()}`,
         );
         setAccount(response.data);
         console.log("customer-account", response.data);
@@ -937,12 +940,10 @@ const handleAWBEntry = async (data) => {
         setValue("customer", null);
         setValue("accountBalance", null);
       }
-    }, 500);
-
-    return () => {
-      clearTimeout(handler);
     };
-  }, [watch("code")]);
+
+    fetchAccount();
+  }, [debouncedCode, server]);
 
   //getting amount sections data
   const [airwayBills, setAirwayBills] = useState([]);
@@ -961,12 +962,14 @@ const handleAWBEntry = async (data) => {
     fetchAirwayBills();
   }, []);
 
+  const debouncedAwbNo = useDebounce(watch("awbNo"), 800);
+
   useEffect(() => {
-    const enteredAwbNo = watch("awbNo")?.trim();
+    const enteredAwbNo = debouncedAwbNo?.trim();
     if (!enteredAwbNo) return;
 
     const matchedAwb = airwayBills.find(
-      (bill) => bill.awbNo?.toLowerCase() === enteredAwbNo.toLowerCase(),
+      (bill) => bill.awbNo?.toUpperCase() === enteredAwbNo.toUpperCase(),
     );
 
     if (matchedAwb) {
@@ -1180,6 +1183,16 @@ const handleAWBEntry = async (data) => {
   }, [filteredServices, applicableRates, serviceMasterList]);
 
   // fetching amount details
+  const debouncedRatesInputs = useDebounce({
+    selectedService,
+    chargeableWt,
+    pcs,
+    actualWt,
+    selectedSector,
+    selectedDestination,
+    consigneeZipcode,
+  }, 800);
+
   useEffect(() => {
     if (!selectedService || !applicableRates || !finalServices) return;
 
@@ -1329,22 +1342,8 @@ const handleAWBEntry = async (data) => {
       }
     };
 
-    // Use debounce to prevent too many API calls
-    const timeoutId = setTimeout(fetchAmountDetails, 800);
-
-    return () => clearTimeout(timeoutId);
-  }, [
-    selectedService,
-    applicableRates,
-    finalServices,
-    chargeableWt,
-    pcs,
-    actualWt,
-    selectedSector,
-    selectedDestination,
-    server,
-    consigneeZipcode,
-  ]);
+    fetchAmountDetails();
+  }, [debouncedRatesInputs, applicableRates, finalServices, server]);
 
   // Fetch Customer, Branch, and Tax Settings from backend
   useEffect(() => {

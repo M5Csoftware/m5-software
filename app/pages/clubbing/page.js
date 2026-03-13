@@ -302,7 +302,7 @@ const Clubbing = () => {
       try {
         console.log(`Validating run no: ${runNumber}`);
         const response = await axios.get(
-          `${server}/run-entry?runNo=${runNumber.trim()}`
+          `${server}/run-entry?runNo=${runNumber.trim().toUpperCase()}`
         );
         console.log("Run No validation response:", response);
 

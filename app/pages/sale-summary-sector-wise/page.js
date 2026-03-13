@@ -174,7 +174,7 @@ function SaleSummarySectorWise() {
       const company = watch("company");
       const customerCodeValue = watch("customerCode");
 
-      if (runNumber) params.append("runNumber", runNumber);
+      if (runNumber) params.append("runNumber", runNumber.toUpperCase());
       if (payment) params.append("payment", payment);
       if (branch) params.append("branch", branch);
       if (origin) params.append("origin", origin);
@@ -185,7 +185,7 @@ function SaleSummarySectorWise() {
       if (salePerson) params.append("salePerson", salePerson);
       if (saleRefPerson) params.append("saleRefPerson", saleRefPerson);
       if (company) params.append("company", company);
-      if (customerCodeValue) params.append("customerCode", customerCodeValue);
+      if (customerCodeValue) params.append("customerCode", customerCodeValue.toUpperCase());
       params.append("withBookingDate", withBookingDate);
 
       const response = await axios.get(

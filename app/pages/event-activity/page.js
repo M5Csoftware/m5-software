@@ -140,7 +140,7 @@ function EventActivity() {
       setLoading(true);
       setError("");
       const eventResponse = await axios.get(
-        `${server}/event-activity?awbNo=${awbNumber}`
+        `${server}/event-activity?awbNo=${awbNumber.toUpperCase()}`
       );
 
       if (eventResponse?.data) {

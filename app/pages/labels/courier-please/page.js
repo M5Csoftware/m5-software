@@ -59,7 +59,7 @@ const AmsDpdPage = () => {
 
     if (awbNo) {
       try {
-        await axios.delete(`${server}/labels/couriersplease?awbNo=${awbNo}`);
+        await axios.delete(`${server}/labels/couriersplease?awbNo=${awbNo.toUpperCase()}`);
       } catch (error) {
         console.error("Error deleting labels:", error);
       }
@@ -86,7 +86,7 @@ const AmsDpdPage = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `${server}/labels/couriersplease?action=search&awbNo=${awbNo}`
+        `${server}/labels/couriersplease?action=search&awbNo=${awbNo.toUpperCase()}`
       );
 
       if (response.data.success) {

@@ -358,7 +358,7 @@ function CreditLimitReport() {
     const fetchName = async () => {
       try {
         const res = await axios.get(
-          `${server}/credit-summary-report?action=customer&accountCode=${code}`
+          `${server}/credit-summary-report?action=customer&accountCode=${code.toUpperCase()}`
         );
 
         if (res.data?.customerName) {

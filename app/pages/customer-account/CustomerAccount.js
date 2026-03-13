@@ -15,9 +15,8 @@ import BulkUploadModal from "@/app/components/BulkUploadModal";
 import { useForm } from "react-hook-form";
 import axios from "axios";
 import { GlobalContext } from "@/app/lib/GlobalContext";
+import { useDebounce } from "@/app/hooks/useDebounce";
 import Image from "next/image";
-import * as XLSX from "xlsx";
-import Papa from "papaparse";
 
 const CustomerAccount = ({ onBack, prefilledUserData, onSaveSuccess }) => {
   const { register, setValue, handleSubmit, getValues, watch, reset } = useForm(
@@ -90,6 +89,7 @@ const CustomerAccount = ({ onBack, prefilledUserData, onSaveSuccess }) => {
   ];
 
   const accountCode = watch("accountCode");
+  const debouncedAccountCode = useDebounce(accountCode, 500);
 
   // Notification handler
   const showNotification = (type, message) => {
@@ -166,7 +166,7 @@ const CustomerAccount = ({ onBack, prefilledUserData, onSaveSuccess }) => {
   };
 
   // Generate and download sample Excel file
-  const downloadSampleFile = () => {
+  const downloadSampleFile = async () => {
     // Create sample data based on your Excel headers
     const sampleData = [
       {
@@ -226,6 +226,7 @@ const CustomerAccount = ({ onBack, prefilledUserData, onSaveSuccess }) => {
     ];
 
     // Create workbook
+    const XLSX = await import("xlsx");
     const wb = XLSX.utils.book_new();
 
     // Convert data to worksheet
@@ -258,21 +259,24 @@ const CustomerAccount = ({ onBack, prefilledUserData, onSaveSuccess }) => {
 
       if (fileExtension === 'csv') {
         // Parse CSV
-        Papa.parse(file, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            resolve(results.data);
-          },
-          error: (error) => {
-            reject(error);
-          }
+        import("papaparse").then(Papa => {
+          Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              resolve(results.data);
+            },
+            error: (error) => {
+              reject(error);
+            }
+          });
         });
       } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
         // Parse Excel
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
           try {
+            const XLSX = await import("xlsx");
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
             const firstSheetName = workbook.SheetNames[0];
@@ -598,7 +602,7 @@ const CustomerAccount = ({ onBack, prefilledUserData, onSaveSuccess }) => {
 
     const fetchCustomerAccount = async () => {
       try {
-        const res = await axios.get(`${server}/customer-account?accountCode=${accountCode}`);
+        const res = await axios.get(`${server}/customer-account?accountCode=${debouncedAccountCode.toUpperCase()}`);
         if (res.status === 200) {
           const accountData = res.data;
           setCustomerData(accountData);
@@ -617,7 +621,7 @@ const CustomerAccount = ({ onBack, prefilledUserData, onSaveSuccess }) => {
       }
     };
 
-    if (accountCode && accountCode.length >= 5) {
+    if (debouncedAccountCode && debouncedAccountCode.length >= 5) {
       if (!prefilledUserData || (isPrefilledDataSet && initialLoadComplete)) {
         fetchCustomerAccount();
       }
@@ -637,7 +641,7 @@ const CustomerAccount = ({ onBack, prefilledUserData, onSaveSuccess }) => {
         }
       }
     }
-  }, [accountCode, prefilledUserData, isPrefilledDataSet, initialLoadComplete, server, getValues, setValue]);
+  }, [debouncedAccountCode, prefilledUserData, isPrefilledDataSet, initialLoadComplete, server, getValues, setValue]);
 
   const handleFormSaveSuccess = () => {
     setCustomerData(null);

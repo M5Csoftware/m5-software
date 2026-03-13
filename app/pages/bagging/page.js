@@ -446,7 +446,7 @@ const Bagging = () => {
       }
 
       try {
-        const response = await axios.get(`${server}/bagging?runNo=${runNo}`);
+        const response = await axios.get(`${server}/bagging?runNo=${runNo.toUpperCase()}`);
         const data = Array.isArray(response.data)
           ? response.data[0]
           : response.data;
@@ -569,7 +569,7 @@ const Bagging = () => {
       }
 
       try {
-        const response = await axios.get(`${server}/clubbing?runNo=${runNo}`);
+        const response = await axios.get(`${server}/clubbing?runNo=${runNo.toUpperCase()}`);
         const data = Array.isArray(response.data)
           ? response.data
           : [response.data];

@@ -111,7 +111,7 @@ function VolumeWeight({ awbNo}) {
       onSubmit={handleSubmit(addToArray)}
       className={`flex flex-col gap-7 bg-white`}
     >
-      <AwbWindowHeading label={`Volume Weight`} awbNo={awbNo} />
+      <AwbWindowHeading label={`Volume Weight`} awbNo={awbNo?.toUpperCase()} />
       <div className="flex gap-4">
         <NumberInputBox
           placeholder="Length"

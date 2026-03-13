@@ -386,7 +386,7 @@ function BookingReportWithAmount() {
         setFetchingAccount(true);
         try {
           const response = await axios.get(`${server}/booking-with-report`, {
-            params: { accountCode: customerValue.trim() },
+            params: { accountCode: customerValue.trim().toUpperCase() },
           });
 
           if (response.data.success) {
@@ -440,11 +440,11 @@ function BookingReportWithAmount() {
       const response = await axios.post(`${server}/booking-with-report`, {
         fromDate: range.from,
         toDate: range.to,
-        accountCode: formData.Customer?.trim() || null,
-        branch: formData.Branch?.trim() || null,
-        origin: formData.Origin?.trim() || null,
-        sector: formData.Sector?.trim() || null,
-        destination: formData.Destination?.trim() || null,
+        accountCode: formData.Customer?.trim().toUpperCase() || null,
+        branch: formData.Branch?.trim().toUpperCase() || null,
+        origin: formData.Origin?.trim().toUpperCase() || null,
+        sector: formData.Sector?.trim().toUpperCase() || null,
+        destination: formData.Destination?.trim().toUpperCase() || null,
         balanceShipment: withBalance,
       });
 

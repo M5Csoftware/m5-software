@@ -234,10 +234,24 @@ const ForwardingNumberReport = () => {
         return;
       }
 
+      // Build filtered object with normalization
+      const normalizedFilters = {
+        ...filters,
+        runNumber: filters.runNumber?.toUpperCase(),
+        branch: filters.branch?.toUpperCase(),
+        origin: filters.origin?.toUpperCase(),
+        sector: filters.sector?.toUpperCase(),
+        counterPart: filters.counterPart?.toUpperCase(),
+        destination: filters.destination?.toUpperCase(),
+        service: filters.service?.toUpperCase(),
+        network: filters.network?.toUpperCase(),
+        code: filters.code?.toUpperCase(),
+      };
+
       // ✅ Use the new endpoint for forwarding report
       const res = await axios.post(
         `${server}/shipment-status/forwarding-no-report`,
-        filters
+        normalizedFilters
       );
 
       if (!res.data || res.data.length === 0) {

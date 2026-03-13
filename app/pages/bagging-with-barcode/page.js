@@ -407,7 +407,7 @@ const BaggingWithBarcode = () => {
 
       try {
         const response = await axios.get(
-          `${server}/bagging-with-barcode?runNo=${runNo}`
+          `${server}/bagging-with-barcode?runNo=${runNo.toUpperCase()}`
         );
         const data = Array.isArray(response.data)
           ? response.data[0]
@@ -531,7 +531,7 @@ const BaggingWithBarcode = () => {
       }
 
       try {
-        const response = await axios.get(`${server}/clubbing?runNo=${runNo}`);
+        const response = await axios.get(`${server}/clubbing?runNo=${runNo.toUpperCase()}`);
         const data = Array.isArray(response.data)
           ? response.data
           : [response.data];

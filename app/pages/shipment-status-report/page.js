@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import React, { useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import axios from "axios";
-import * as XLSX from "xlsx";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 const ShipmentStatusReport = () => {
   const { server } = useContext(GlobalContext);
@@ -120,25 +120,15 @@ const ShipmentStatusReport = () => {
   };
 
   // Watch for accountCode changes
-  useEffect(() => {
-    const subscription = watch((value, { name }) => {
-      if (name === "code") {
-        const accountCode = value.code;
-        
-        if (accountCode && accountCode.trim() !== "") {
-          const timeoutId = setTimeout(() => {
-            fetchCustomerNameByAccountCode(accountCode);
-          }, 500);
-          
-          return () => clearTimeout(timeoutId);
-        } else {
-          setValue("client", "");
-        }
-      }
-    });
+  const debouncedCode = useDebounce(watch("code"), 500);
 
-    return () => subscription.unsubscribe();
-  }, [watch, setValue]);
+  useEffect(() => {
+    if (debouncedCode && debouncedCode.trim() !== "") {
+      fetchCustomerNameByAccountCode(debouncedCode);
+    } else if (debouncedCode === "") {
+      setValue("client", "");
+    }
+  }, [debouncedCode, setValue, server]);
 
   // Fetch shipments from backend with all filters
   const fetchShipments = async () => {
@@ -181,10 +171,10 @@ const ShipmentStatusReport = () => {
     params.append('to', toParsed.toISOString());
     
     // Add other filters if they exist
-    if (filters.code) params.append('code', filters.code);
+    if (filters.code) params.append('code', filters.code.toUpperCase());
     if (filters.client) params.append('client', filters.client);
-    if (filters.runNumber) params.append('runNumber', filters.runNumber);
-    if (filters.branch) params.append('branch', filters.branch);
+    if (filters.runNumber) params.append('runNumber', filters.runNumber.toUpperCase());
+    if (filters.branch) params.append('branch', filters.branch.toUpperCase());
     if (filters.origin) params.append('origin', filters.origin);
     if (filters.sector) params.append('sector', filters.sector);
     if (filters.status) params.append('status', filters.status);
@@ -259,7 +249,7 @@ const ShipmentStatusReport = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadExcel = () => {
+  const handleDownloadExcel = async () => {
     if (!shipments.length) {
       setNotification({
         visible: true,
@@ -268,6 +258,7 @@ const ShipmentStatusReport = () => {
       });
       return;
     }
+    const XLSX = await import("xlsx");
     const worksheet = XLSX.utils.json_to_sheet(shipments);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Shipments");

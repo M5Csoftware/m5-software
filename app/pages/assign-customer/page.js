@@ -121,7 +121,7 @@ const AssignCustomer = () => {
       const response = await axios.get(
         `${server}/assign-customer/sales-target`,
         {
-          params: { accountCode, month: selectedMonth },
+          params: { accountCode: accountCode.toUpperCase(), month: selectedMonth },
         }
       );
 
@@ -222,7 +222,7 @@ const AssignCustomer = () => {
 
     try {
       const res = await axios.get(`${server}/assign-customer`, {
-        params: { accountCode },
+        params: { accountCode: accountCode.toUpperCase() },
       });
       const customer = res.data;
       const name =

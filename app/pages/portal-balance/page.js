@@ -62,12 +62,12 @@ const PortalBalance = () => {
         let response;
         try {
           response = await axios.get(
-            `https://m5c-server.vercel.app/api/customer-account?accountCode=${codeValue.trim()}`,
+            `https://m5c-server.vercel.app/api/customer-account?accountCode=${codeValue.trim().toUpperCase()}`,
             { timeout: 5000 }
           );
         } catch (axiosErr) {
           const fetchResponse = await fetch(
-            `https://m5c-server.vercel.app/api/customer-account?accountCode=${codeValue.trim()}`
+            `https://m5c-server.vercel.app/api/customer-account?accountCode=${codeValue.trim().toUpperCase()}`
           );
           if (!fetchResponse.ok) {
             throw new Error(`HTTP error! status: ${fetchResponse.status}`);

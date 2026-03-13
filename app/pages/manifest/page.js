@@ -111,8 +111,8 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
         
         // Fetch both bagging and branch bagging data
         const [baggingResponse, branchBaggingResponse] = await Promise.all([
-          axios.get(`${server}/bagging?runNo=${manifest.runNumber}`).catch(() => null),
-          axios.get(`${server}/branch-bagging?runNo=${manifest.runNumber}`).catch(() => null),
+          axios.get(`${server}/bagging?runNo=${manifest.runNumber.toUpperCase()}`).catch(() => null),
+          axios.get(`${server}/branch-bagging?runNo=${manifest.runNumber.toUpperCase()}`).catch(() => null),
         ]);
         
         console.log("Bagging response:", baggingResponse?.data);
@@ -698,7 +698,7 @@ export default function Manifest() {
   // Fetch origin and destination from run-entry
   const fetchRunDetails = useCallback(async (runNo) => {
     try {
-      const response = await axios.get(`${server}/run-entry?runNo=${runNo}`);
+      const response = await axios.get(`${server}/run-entry?runNo=${runNo.toUpperCase()}`);
       return {
         origin: response.data?.origin || "N/A",
         destination: response.data?.destination || "N/A",

@@ -109,7 +109,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
       }
 
       const response = await axios.get(
-        `${server}/shipment-query?awbNo=${awbNo}`
+        `${server}/shipment-query?awbNo=${awbNo.toUpperCase()}`
       );
       const run = response.data.response;
       console.log(run);
@@ -131,7 +131,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
 
       // ✅ NEW: fetch status + web history from custom route
       const statusRes = await axios.get(
-        `${server}/shipment-query/shipment-status?awbNo=${awbNo}`
+        `${server}/shipment-query/shipment-status?awbNo=${awbNo.toUpperCase()}`
       );
 
       if (statusRes.data?.data) {
@@ -196,7 +196,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
     try {
       // Get data from portal/get-shipments endpoint
       const shipmentResponse = await axios.get(
-        `${server}/portal/get-shipments?awbNo=${awbNumber}`
+        `${server}/portal/get-shipments?awbNo=${awbNumber.toUpperCase()}`
       );
 
       // Get child shipments data from shipment-query
