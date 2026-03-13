@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "M5C Logs",
-    "version": "0.1.0"
+    "version": "0.1.9"
   },
   "tauri": {
     "allowlist": {
@@ -54,9 +54,9 @@
       "active": false,
       "dialog": false,
       "endpoints": [
-        "https://github.com/suraj-oso/<your-repo>/releases/latest/download/latest.json"
+        "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMwQjQzOTQ5Nzc4QzY3MzQKUldRMFo0eDNTVG0wTUQ2ck50L3k1a25qcHFVMFUrK2VLdXNtT2VTdkV0ZWNCc1hKa2NTUU84WUEK"
+      "pubkey": ""
     },
     "windows": [
       {

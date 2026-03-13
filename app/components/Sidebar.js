@@ -3,6 +3,7 @@ import React, { useState, useContext, useEffect } from "react";
 import Image from "next/image";
 import { GlobalContext } from "../lib/GlobalContext";
 import { useAuth } from "../Context/AuthContext";
+import UpdateNotification from "./UpdateNotification";
 
 // Sidebar component
 function Sidebar() {
@@ -251,6 +252,34 @@ function Sidebar() {
     return user?.permissions?.[mapping || name] === true;
   };
 
+  const [appVersion, setAppVersion] = useState("v0.1.0");
+  const [latestVersion, setLatestVersion] = useState(null);
+
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        if (window.__TAURI__) {
+          const invokeFn = window.__TAURI__?.tauri?.invoke ?? window.__TAURI__?.invoke;
+          if (invokeFn) {
+            const version = await invokeFn("get_app_version");
+            setAppVersion(`v${version}`);
+          }
+        }
+
+        // Fetch remote version for "Latest" display
+        const VERSION_URL = "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json";
+        const res = await fetch(VERSION_URL + "?t=" + Date.now());
+        if (res.ok) {
+          const data = await res.json();
+          setLatestVersion(`v${data.version}`);
+        }
+      } catch (e) {
+        console.warn("Failed to fetch app version:", e);
+      }
+    };
+    fetchVersion();
+  }, []);
+
   return (
     <nav className="flex flex-col min-w-56 w-[15vw] gap-3 text-gunmetal bg-seasalt h-screen overflow-auto hidden-scrollbar">
       <div className="sticky top-0 flex flex-col gap-3 bg-seasalt">
@@ -343,8 +372,14 @@ function Sidebar() {
           );
         })}
       </ul>
-      <div className="px-8 text-xs flex items-end font-semibold text-green-1">
-        Version: 04/08/2025
+      <UpdateNotification />
+      <div className="px-8 pb-4 text-[10px] flex flex-col gap-0.5 font-bold text-green-1">
+        <div className="opacity-60">Current: {appVersion}</div>
+        {latestVersion && (
+          <div className={`${latestVersion !== appVersion ? "text-amber-600" : "opacity-60"}`}>
+            Latest: {latestVersion}
+          </div>
+        )}
       </div>
       {/* </div>
       <div className="pr-4 pl-1 sticky bottom-2">
