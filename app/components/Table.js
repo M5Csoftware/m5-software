@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo, memo } from "react";
 import Image from "next/image";
 import formatDate from "../lib/formatDate";
 
@@ -261,7 +261,7 @@ function TableHeader({ columns }) {
   );
 }
 
-function TableRow({ rowData, columns }) {
+const TableRow = memo(function TableRow({ rowData, columns }) {
   return (
     <tr className="border-b h-11">
       {columns.map((column, index) => (
@@ -278,7 +278,7 @@ function TableRow({ rowData, columns }) {
       ))}
     </tr>
   );
-}
+});
 
 export function TableWithSorting({
   register,
@@ -297,27 +297,29 @@ export function TableWithSorting({
     setValue(`${name}Table`, rowData);
   }, [rowData]);
 
-  const handleSort = (key) => {
+  const handleSort = useCallback((key) => {
     if (sortKey === key) {
       setSortOrder((prevOrder) => (prevOrder === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
       setSortOrder("asc");
     }
-  };
+  }, [sortKey]);
 
-  const sortedData = [...rowData].sort((a, b) => {
-    const valueA = a[sortKey];
-    const valueB = b[sortKey];
-    if (typeof valueA === "string" && typeof valueB === "string") {
-      return sortOrder === "asc"
-        ? valueA.localeCompare(valueB)
-        : valueB.localeCompare(valueA);
-    } else if (typeof valueA === "number" && typeof valueB === "number") {
-      return sortOrder === "asc" ? valueA - valueB : valueB - valueA;
-    }
-    return 0;
-  });
+  const sortedData = useMemo(() => {
+    return [...rowData].sort((a, b) => {
+      const valueA = a[sortKey];
+      const valueB = b[sortKey];
+      if (typeof valueA === "string" && typeof valueB === "string") {
+        return sortOrder === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      } else if (typeof valueA === "number" && typeof valueB === "number") {
+        return sortOrder === "asc" ? valueA - valueB : valueB - valueA;
+      }
+      return 0;
+    });
+  }, [rowData, sortKey, sortOrder]);
 
   return (
     <div
@@ -397,7 +399,7 @@ function TableHeaderWithSorting({
   );
 }
 
-function TableRowWithSorting({ rowData, columns, isTicketDashboard }) {
+const TableRowWithSorting = memo(function TableRowWithSorting({ rowData, columns, isTicketDashboard }) {
   return (
     <tr className="border-b h-11">
       {columns.map((column, index) => (
@@ -430,7 +432,7 @@ function TableRowWithSorting({ rowData, columns, isTicketDashboard }) {
       ))}
     </tr>
   );
-}
+});
 
 export function TableWithCTA({
   register,
@@ -487,7 +489,7 @@ function TableHeaderWithCTA({ columns }) {
   );
 }
 
-function TableRowWithCTA({
+const TableRowWithCTA = memo(function TableRowWithCTA({
   rowData,
   columns,
   handleDelete,
@@ -511,7 +513,7 @@ function TableRowWithCTA({
       </td>
     </tr>
   );
-}
+});
 
 export function TableWithCheckboxEditDelete({
   register,
@@ -747,7 +749,7 @@ function TableHeaderWithSortingCheckbox({
   );
 }
 
-function TableRowWithSortingCheckbox({
+const TableRowWithSortingCheckbox = memo(function TableRowWithSortingCheckbox({
   rowData,
   columns,
   isSelected,
@@ -810,7 +812,7 @@ function TableRowWithSortingCheckbox({
       </td>
     </tr>
   );
-}
+});
 
 export function TableWithSortingAndCopy({
   register,
@@ -832,27 +834,29 @@ export function TableWithSortingAndCopy({
     setValue(`${name}Table`, rowData);
   }, [rowData]);
 
-  const handleSort = (key) => {
+  const handleSort = useCallback((key) => {
     if (sortKey === key) {
       setSortOrder((prevOrder) => (prevOrder === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
       setSortOrder("asc");
     }
-  };
+  }, [sortKey]);
 
-  const sortedData = [...rowData].sort((a, b) => {
-    const valueA = a[sortKey];
-    const valueB = b[sortKey];
-    if (typeof valueA === "string" && typeof valueB === "string") {
-      return sortOrder === "asc"
-        ? valueA.localeCompare(valueB)
-        : valueB.localeCompare(valueA);
-    } else if (typeof valueA === "number" && typeof valueB === "number") {
-      return sortOrder === "asc" ? valueA - valueB : valueB - valueA;
-    }
-    return 0;
-  });
+  const sortedData = useMemo(() => {
+    return [...rowData].sort((a, b) => {
+      const valueA = a[sortKey];
+      const valueB = b[sortKey];
+      if (typeof valueA === "string" && typeof valueB === "string") {
+        return sortOrder === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      } else if (typeof valueA === "number" && typeof valueB === "number") {
+        return sortOrder === "asc" ? valueA - valueB : valueB - valueA;
+      }
+      return 0;
+    });
+  }, [rowData, sortKey, sortOrder]);
 
   // --- Selection Helpers ---
   const isCellSelected = (rowIndex, colIndex) => {
@@ -891,7 +895,7 @@ export function TableWithSortingAndCopy({
     const text = getSelectedText();
     if (text) {
       navigator.clipboard.writeText(text).then(() => {
-        console.log("Copied to clipboard!");
+        // console.log("Copied to clipboard!");
       });
     }
   }, [startCell, endCell, sortedData, columns]);
@@ -1157,7 +1161,7 @@ function TableHeaderWithCheckbox({
   );
 }
 
-function TableRowWithCheckbox({
+const TableRowWithCheckbox = memo(function TableRowWithCheckbox({
   rowData,
   columns,
   isSelected,
@@ -1193,7 +1197,7 @@ function TableRowWithCheckbox({
       ))}
     </tr>
   );
-}
+});
 
 export function TableWithTotal({
   register,
@@ -1259,7 +1263,7 @@ function TableHeaderWithTotal({ columns }) {
   );
 }
 
-function TableRowWithTotal({ rowData, columns }) {
+const TableRowWithTotal = memo(function TableRowWithTotal({ rowData, columns }) {
   return (
     <tr className="border-b h-11 ">
       {columns.map((column, index) => (
@@ -1276,7 +1280,7 @@ function TableRowWithTotal({ rowData, columns }) {
       ))}
     </tr>
   );
-}
+});
 
 export function TableWithCTD({
   register,
@@ -1313,7 +1317,7 @@ export function TableWithCTD({
   );
 }
 
-function TableRowWithCTD({ rowData, columns, handleDelete, index }) {
+const TableRowWithCTD = memo(function TableRowWithCTD({ rowData, columns, handleDelete, index }) {
   return (
     <tr className="border-b border-alice-blue h-11">
       {columns.map((column, colIndex) => (
@@ -1330,4 +1334,4 @@ function TableRowWithCTD({ rowData, columns, handleDelete, index }) {
       </td>
     </tr>
   );
-}
+});

@@ -83,7 +83,7 @@ function FuelSetting() {
       const response = await axios.get(
         `${server}/shipper-tariff/get-all-zones`
       );
-      console.log("Zones response:", response.data);
+      // console.log("Zones response:", response.data);
       setServiceOptions(response.data?.services || []);
     } catch (error) {
       console.error("Error fetching zones data:", error);
@@ -97,18 +97,18 @@ function FuelSetting() {
       ...data,
       taxAmount: parseFloat(data.taxAmount) / 100,
     };
-    console.log("Form data:", formattedData);
+    // console.log("Form data:", formattedData);
 
     try {
       const res = await axios.post(`${server}/fuel-setting`, formattedData);
-      console.log("Fuel settings saved:", res.data);
+      // console.log("Fuel settings saved:", res.data);
       showNotification("success", "fuel settings data updated successfully!");
       handleRefresh();
     } catch (error) {
-      console.log(
-        "Error saving fuel settings:",
-        error.response?.data || error.message
-      );
+      // console.log(
+//         "Error saving fuel settings:",
+//         error.response?.data || error.message
+//       );
 
       showNotification("error", "fuel settings data update failed!");
       handleRefresh();

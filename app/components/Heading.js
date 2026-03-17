@@ -12,7 +12,7 @@ function Heading({
   searchBar = false,
   onClickDownloadBtn = () => { },
   onRefresh = () => {
-    console.log("No Action!");
+    // console.log("No Action!");
   },
   handleBulkFileChange,
   fileInputRef,

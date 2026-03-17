@@ -120,13 +120,13 @@ const AddressAndContact = ({
           setIsEditMode(true);
 
           console.log("=== Fetching customer data for edit ===");
-          console.log("Account Code:", accountCodeFromUrl);
+          // console.log("Account Code:", accountCodeFromUrl);
 
           const response = await axios.get(
             `${server}/customer-account?accountCode=${accountCodeFromUrl}`
           );
 
-          console.log("Fetched customer data:", response.data);
+          // console.log("Fetched customer data:", response.data);
           setFetchedData(response.data);
         } catch (error) {
           console.error("Error fetching customer data:", error);
@@ -150,8 +150,8 @@ const AddressAndContact = ({
   // Initialize form data from data source
   useEffect(() => {
     if (dataSource) {
-      console.log("=== Initializing form data from dataSource ===");
-      console.log("dataSource:", dataSource);
+      // console.log("=== Initializing form data from dataSource ===");
+      // console.log("dataSource:", dataSource);
 
       const newFormData = {
         accountCode: dataSource.accountCode || "",
@@ -186,7 +186,7 @@ const AddressAndContact = ({
         tanNo: dataSource.tanNo || "",
       };
 
-      console.log("Setting form data:", newFormData);
+      // console.log("Setting form data:", newFormData);
       setFormData(newFormData);
 
       // Also update react-hook-form values
@@ -230,18 +230,18 @@ const AddressAndContact = ({
     try {
       setLoadingCode(true);
 
-      console.log("=== Generating Suggested Code ===");
-      console.log("Selected state:", state);
+      // console.log("=== Generating Suggested Code ===");
+      // console.log("Selected state:", state);
 
       const response = await axios.post(`${server}/portal/auth/assign-code`, {
         state: state,
       });
 
-      console.log("Suggested code response:", response.data);
+      // console.log("Suggested code response:", response.data);
 
       if (response.data.success) {
         setSuggestedCode(response.data.accountCode);
-        console.log("Suggested code:", response.data.accountCode);
+        // console.log("Suggested code:", response.data.accountCode);
       } else {
         setSuggestedCode("");
         console.error("Failed to generate code:", response.data.message);

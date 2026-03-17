@@ -83,7 +83,7 @@ const InvoiceMain = ({ fYear }) => {
         if (!res.ok) throw new Error("Failed to fetch invoices");
         const result = await res.json();
 
-        console.log("📦 Raw invoices response:", result);
+        // console.log("📦 Raw invoices response:", result);
 
         // ✅ Handle both response formats
         const invoicesData = result.invoices || result.data || result || [];
@@ -99,7 +99,7 @@ const InvoiceMain = ({ fYear }) => {
               Boolean
             );
 
-        console.log("✅ Branches detected:", uniqueBranches);
+        // console.log("✅ Branches detected:", uniqueBranches);
         setBranchFilterOptions(uniqueBranches);
       } catch (err) {
         console.error("Error fetching invoices:", err);
@@ -120,8 +120,8 @@ const InvoiceMain = ({ fYear }) => {
       return;
     }
 
-    console.log("🔍 Selected branch:", selectedBranch);
-    console.log("📜 All invoices:", allInvoices);
+    // console.log("🔍 Selected branch:", selectedBranch);
+    // console.log("📜 All invoices:", allInvoices);
 
     // ✅ Filter invoices by selected branch
     const filtered = allInvoices.filter(
@@ -131,7 +131,7 @@ const InvoiceMain = ({ fYear }) => {
     // ✅ Extract invoice numbers
     const invoiceNos = filtered.map((inv) => inv.invoiceNumber).filter(Boolean); // Remove null/undefined values
 
-    console.log("✅ Filtered invoice numbers:", invoiceNos);
+    // console.log("✅ Filtered invoice numbers:", invoiceNos);
 
     setInvoiceNumberOptions(invoiceNos);
   }, [watch("branchFilter"), allInvoices, setValue]);
@@ -375,7 +375,7 @@ const InvoiceMain = ({ fYear }) => {
       totalAwb: rowData?.length || 0,
     };
 
-    console.log("DEBUG payload before save:", payload); // quick sanity check
+    // console.log("DEBUG payload before save:", payload); // quick sanity check
 
     try {
       const res = await fetch(`${server}/billing-invoice`, {
@@ -395,7 +395,7 @@ const InvoiceMain = ({ fYear }) => {
         return;
       }
 
-      console.log("✅ Saved Invoice:", data);
+      // console.log("✅ Saved Invoice:", data);
       
       // ✅ Log "Invoice Generated" for each AWB in the invoice
       if (user?.userId) {
@@ -440,7 +440,7 @@ const InvoiceMain = ({ fYear }) => {
   const fetchSummary = async (accountCode) => {
     const fromDate = watch("from");
     const toDate = watch("to");
-    console.log("📅 Dates:", { fromDate, toDate, accountCode });
+    // console.log("📅 Dates:", { fromDate, toDate, accountCode });
 
     if (!fromDate || !toDate) {
       showNotification("error", "Please select both From and To dates.");
@@ -549,19 +549,19 @@ const InvoiceMain = ({ fYear }) => {
       return;
     }
 
-    console.log("🔍 Searching for invoice:", selectedInvoice);
+    // console.log("🔍 Searching for invoice:", selectedInvoice);
 
     try {
       const url = `${server}/billing-invoice/invoice?invoiceNumber=${encodeURIComponent(
         selectedInvoice
       )}`;
-      console.log("📡 Fetching from:", url);
+      // console.log("📡 Fetching from:", url);
 
       const res = await fetch(url);
       if (!res.ok) throw new Error("Invoice not found");
       const data = await res.json();
 
-      console.log("🔍 Invoice data:", data);
+      // console.log("🔍 Invoice data:", data);
 
       // inside handleSearchInvoice after fetching `data`
       const cust = data.customer || {};
@@ -696,7 +696,7 @@ const InvoiceMain = ({ fYear }) => {
           setRowData(formattedRows);
           setInvoiceData(data);
           setIsExistingInvoice(true);
-          console.log("✅ Table populated with", formattedRows.length, "rows");
+          // console.log("✅ Table populated with", formattedRows.length, "rows");
         } else {
           setRowData([]);
         }

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import Image from "next/image";
 
 export const Dropdown = ({
@@ -397,7 +397,6 @@ export const SearchableDropDrown = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredOptions, setFilteredOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(defaultValue || "");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const dropdownRef = useRef(null);
@@ -405,22 +404,20 @@ export const SearchableDropDrown = ({
   const optionRefs = useRef([]);
 
   // Filter options based on search term
-  useEffect(() => {
-    const filtered = options.filter((option) =>
+  const filteredOptions = useMemo(() => {
+    return options.filter((option) =>
       option.toLowerCase().startsWith(searchTerm.toLowerCase())
     );
-    setFilteredOptions(filtered);
-    setHighlightedIndex(-1); // Reset highlighted index when options change
   }, [searchTerm, options]);
 
   // Handle selection of an option
-  const handleSelect = (option) => {
+  const handleSelect = useCallback((option) => {
     setSelectedOption(option);
     setSearchTerm(option);
     setValue(value, option);
     setIsOpen(false);
     setHighlightedIndex(-1);
-  };
+  }, [value, setValue]);
 
   // Reset selection when defaultValue changes
   useEffect(() => {
@@ -608,138 +605,6 @@ export const SearchableDropDrown = ({
   );
 };
 
-// export const LabeledDropdown = ({
-//   options,
-//   value,
-//   register,
-//   setValue,
-//   title,
-//   defaultValue,
-//   placeholder,
-//   resetFactor = false,
-//   disabled = false,
-// }) => {
-//   const [isOpen, setIsOpen] = useState(false);
-//   const [searchTerm, setSearchTerm] = useState("");
-//   const [filteredOptions, setFilteredOptions] = useState(options);
-//   const [selectedOption, setSelectedOption] = useState(defaultValue || "");
-//   const dropdownRef = useRef(null);
-
-//   // Filter options based on search term
-//   useEffect(() => {
-//     setFilteredOptions(
-//       options.filter((option) =>
-//         option.toLowerCase().startsWith(searchTerm.toLowerCase())
-//       )
-//     );
-//   }, [searchTerm, options]);
-
-//   // Handle selection of an option
-//   const handleSelect = (option) => {
-//     setSelectedOption(option);
-//     setSearchTerm(option);
-//     setValue(value, option);
-//     setIsOpen(false);
-//   };
-
-//   // Reset selection when defaultValue changes
-//   useEffect(() => {
-//     setSelectedOption(defaultValue || "");
-//     setSearchTerm(defaultValue || "");
-//   }, [defaultValue]);
-
-//   // Reset dropdown when resetFactor is triggered
-//   useEffect(() => {
-//     if (resetFactor) {
-//       setSelectedOption("");
-//       setSearchTerm("");
-//       setValue(value, null);
-//     }
-//   }, [resetFactor, setValue, value]);
-
-//   // Close dropdown when clicking outside
-//   useEffect(() => {
-//     const handleClickOutside = (event) => {
-//       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-//         setIsOpen(false);
-//       }
-//     };
-
-//     document.addEventListener("mousedown", handleClickOutside);
-//     return () => {
-//       document.removeEventListener("mousedown", handleClickOutside);
-//     };
-//   }, []);
-
-//   return (
-//     <div className="relative w-full" ref={dropdownRef}>
-//       {/* Floating label */}
-//       <span
-//         className={`absolute transition-all px-2 left-4 bg-white ${isOpen || selectedOption
-//           ? "-top-2 text-xs font-semibold text-[#979797] z-10"
-//           : "top-1/2 -translate-y-1/2 text-sm text-[#979797]"
-//           }`}
-//       >
-//         {title}
-//       </span>
-
-//       {/* Input field */}
-//       <div
-//         onClick={() => setIsOpen(!isOpen)}
-//         className={`flex w-full justify-between border border-[#979797] text-dim-gray rounded-md items-center h-10 px-4 py-2 cursor-pointer relative ${disabled ? 'bg-white-smoke' : ''}`}
-//       >
-//         <input
-//           type="text"
-//           value={searchTerm}
-//           disabled={disabled}
-//           autoComplete="off"
-//           onChange={(e) => {
-//             const inputValue = e.target.value;
-//             setSearchTerm(inputValue);
-//             setIsOpen(true);
-
-//             if (inputValue === "") {
-//               setSelectedOption(""); // Reset selected option when input is cleared
-//               setValue(value, ""); // Ensure the form value is updated properly
-//             }
-//           }}
-//           className="w-full outline-none bg-transparent"
-//           placeholder={!searchTerm ? placeholder : ""}
-//         />
-//         <Image
-//           className={`transition-all ${isOpen ? "rotate-180" : ""}`}
-//           src={`/dropdown-arrow.svg`}
-//           height={18}
-//           width={18}
-//           alt="arrow"
-//         />
-//       </div>
-
-//       {/* Dropdown menu */}
-//       {isOpen && (
-//         <div className="absolute z-20 w-full shadow-md bg-white text-dim-gray rounded-[4px] mt-1 transition-all overflow-auto max-h-80">
-//           {filteredOptions.length > 0 ? (
-//             filteredOptions.map((option, idx) => (
-//               <div
-//                 key={idx}
-//                 onClick={() => handleSelect(option)}
-//                 className="px-6 py-4 hover:bg-gray-100 cursor-pointer"
-//               >
-//                 <span className="text-xs">{option}</span>
-//               </div>
-//             ))
-//           ) : (
-//             <div className="px-6 py-4 text-xs text-gray-400">
-//               No options found
-//             </div>
-//           )}
-//         </div>
-//       )}
-//       <input type="hidden" {...register(value)} value={selectedOption || ""} />
-//     </div>
-//   );
-// };
-
 export const LabeledDropdown = ({
   options,
   value,
@@ -758,7 +623,6 @@ export const LabeledDropdown = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredOptions, setFilteredOptions] = useState(options);
   const [selectedOption, setSelectedOption] = useState(defaultValue || "");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const dropdownRef = useRef(null);
@@ -773,16 +637,14 @@ export const LabeledDropdown = ({
   }, [selectedValue]);
 
   // Filter options based on search term
-  useEffect(() => {
-    const filtered = options.filter((option) =>
+  const filteredOptions = useMemo(() => {
+    return options.filter((option) =>
       option?.toLowerCase().includes((searchTerm || "").toLowerCase())
     );
-    setFilteredOptions(filtered);
-    setHighlightedIndex(-1); // Reset highlighted index when options change
   }, [searchTerm, options]);
 
   // Handle selection of an option
-  const handleSelect = (option) => {
+  const handleSelect = useCallback((option) => {
     setSelectedOption(option);
     setSearchTerm(option);
     setValue(value, option);
@@ -794,7 +656,7 @@ export const LabeledDropdown = ({
     if (onChange) {
       onChange(option);
     }
-  };
+  }, [value, setValue, trigger, onChange]);
 
   // Reset selection when defaultValue changes
   useEffect(() => {

@@ -248,8 +248,12 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
   const [currentView, setCurrentView] = useState("table"); // 'table' or 'form'
   const [editingUser, setEditingUser] = useState(null);
 
-  const lineRef = useRef(null);
-  const { server } = React.useContext(GlobalContext);
+  const { 
+    server, 
+    getCachedData, 
+    setCachedData, 
+    isCacheValid 
+  } = React.useContext(GlobalContext);
 
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
@@ -333,9 +337,25 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
     { key: "accountOpenUser", label: "AccountOpenUser" },
   ];
 
-  // ✅ Function to fetch users
-  const fetchUsers = async () => {
+  // ✅ Function to fetch users with caching
+  const fetchUsers = async (forceRefresh = false) => {
     try {
+      const cacheKey = "CustomerManagement";
+      
+      // Check cache first if not forcing refresh
+      if (!forceRefresh && isCacheValid(cacheKey)) {
+        const cached = getCachedData(cacheKey);
+        if (cached && cached.data) {
+          // console.log("=== Using Cached Customer Data ===");
+          setUsers(cached.data);
+          
+          // Still need to update filter options from cached data
+          updateFilterOptions(cached.data);
+          return;
+        }
+      }
+
+      console.log("=== Fetching Fresh Customer Data from Server ===");
       const response = await axios.get(`${server}/customer-account`);
       const data = Array.isArray(response.data)
         ? response.data
@@ -351,42 +371,49 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
       }));
 
       setUsers(mappedData);
+      
+      // Update cache
+      setCachedData(cacheKey, mappedData);
 
-      // Extract unique filter options
-      const uniqueAccountTypes = [
-        ...new Set(mappedData.map((u) => u.accountType).filter(Boolean)),
-      ];
-      const uniqueCities = [
-        ...new Set(mappedData.map((u) => u.city).filter(Boolean)),
-      ];
-      const uniqueStates = [
-        ...new Set(mappedData.map((u) => u.state).filter(Boolean)),
-      ];
-      const uniqueCountries = [
-        ...new Set(mappedData.map((u) => u.country).filter(Boolean)),
-      ];
-      const uniqueBranchCodes = [
-        ...new Set(mappedData.map((u) => u.branch).filter(Boolean)),
-      ];
-      const uniqueGstNumbers = [
-        ...new Set(mappedData.map((u) => u.gst).filter(Boolean)),
-      ];
-      const uniqueHubs = [
-        ...new Set(mappedData.map((u) => u.hub).filter(Boolean)),
-      ];
-
-      setFilterOptions({
-        accountTypes: uniqueAccountTypes.sort(),
-        cities: uniqueCities.sort(),
-        states: uniqueStates.sort(),
-        countries: uniqueCountries.sort(),
-        branchCodes: uniqueBranchCodes.sort(),
-        gstNumbers: uniqueGstNumbers.sort(),
-        hubs: uniqueHubs.sort(),
-      });
+      updateFilterOptions(mappedData);
     } catch (error) {
       console.error("Error fetching users:", error);
     }
+  };
+
+  // Helper to update filter options
+  const updateFilterOptions = (mappedData) => {
+    const uniqueAccountTypes = [
+      ...new Set(mappedData.map((u) => u.accountType).filter(Boolean)),
+    ];
+    const uniqueCities = [
+      ...new Set(mappedData.map((u) => u.city).filter(Boolean)),
+    ];
+    const uniqueStates = [
+      ...new Set(mappedData.map((u) => u.state).filter(Boolean)),
+    ];
+    const uniqueCountries = [
+      ...new Set(mappedData.map((u) => u.country).filter(Boolean)),
+    ];
+    const uniqueBranchCodes = [
+      ...new Set(mappedData.map((u) => u.branch).filter(Boolean)),
+    ];
+    const uniqueGstNumbers = [
+      ...new Set(mappedData.map((u) => u.gst).filter(Boolean)),
+    ];
+    const uniqueHubs = [
+      ...new Set(mappedData.map((u) => u.hub).filter(Boolean)),
+    ];
+
+    setFilterOptions({
+      accountTypes: uniqueAccountTypes.sort(),
+      cities: uniqueCities.sort(),
+      states: uniqueStates.sort(),
+      countries: uniqueCountries.sort(),
+      branchCodes: uniqueBranchCodes.sort(),
+      gstNumbers: uniqueGstNumbers.sort(),
+      hubs: uniqueHubs.sort(),
+    });
   };
 
   useEffect(() => {
@@ -566,7 +593,7 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
 
   // ✅ NEW: Handler when user clicks "Edit details" in kebab menu
   const handleEditUser = (userData) => {
-    console.log("Opening form with user data:", userData);
+    // console.log("Opening form with user data:", userData);
     setEditingUser(userData);
     setCurrentView("form");
   };
@@ -575,17 +602,17 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
   const handleBackToTable = () => {
     setCurrentView("table");
     setEditingUser(null);
-    // Refresh the users list
+    // Refresh the users list - can use cache here as it's just a back button
     fetchUsers();
   };
 
   // ✅ NEW: Handler after successful save
   const handleSaveSuccess = () => {
-    console.log("Save successful, returning to table");
+    // console.log("Save successful, returning to table and forcing refresh");
     setCurrentView("table");
     setEditingUser(null);
-    // Refresh the users list
-    fetchUsers();
+    // Force refresh the users list after a save
+    fetchUsers(true);
   };
 
   const activeFilterCount = Object.values(appliedFilters).filter(
@@ -732,7 +759,7 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
             sortConfig={sortConfig}
             selectedIds={selectedIds}
             setSelectedIds={setSelectedIds}
-            refetchUsers={fetchUsers} // ✅ Pass refetch function
+            refetchUsers={() => fetchUsers(true)} // ✅ Force refresh on manual triggers
             onEditUser={handleEditUser} // ✅ Pass edit handler
           />
           {filteredUsers.length > 0 ? (

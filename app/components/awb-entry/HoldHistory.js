@@ -41,7 +41,7 @@ function HoldHistory({ awbNo, window }) {
                 // Use the API route path
                 const response = await axios.get(`${server}/hold-log/action?awbNo=${awbNo}`);
                 
-                console.log("Hold history API response:", response.data);
+                // console.log("Hold history API response:", response.data);
                 
                 const data = Array.isArray(response.data) ? response.data : 
                             (response.data ? [response.data] : []);

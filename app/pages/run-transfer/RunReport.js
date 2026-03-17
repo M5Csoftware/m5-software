@@ -149,14 +149,14 @@ const RunReport = ({ setCurrentView }) => {
     }
 
     try {
-      console.log(awbNumbers, newCountry);
+      // console.log(awbNumbers, newCountry);
       for (const awb of awbNumbers) {
         const res = await axios.put(`${server}/run-transfer`, {
           hawbNumber: awb, // or awbNumber if applicable
           country: newCountry,
         });
 
-        console.log(res);
+        // console.log(res);
 
         if (res.status !== 200) {
           console.error(`Failed to update ${awb}`);
@@ -183,7 +183,7 @@ const RunReport = ({ setCurrentView }) => {
 
   const handleClose = (e) => {
     e.preventDefault();
-    console.log("Close clicked");
+    // console.log("Close clicked");
   };
 
   // 👉 Download CSV
@@ -226,7 +226,7 @@ const RunReport = ({ setCurrentView }) => {
   };
 
   const onSubmit = (data) => {
-    console.log("Form data:", data);
+    // console.log("Form data:", data);
   };
 
   // 👉 Handle "Show" button click

@@ -236,13 +236,13 @@ useEffect(() => {
             }).catch(err => console.error("Failed to log auto-hold:", err));
         }
         
-        console.log("Credit Limit Exceeded - Auto Hold");
+        // console.log("Credit Limit Exceeded - Auto Hold");
         showNotification("error", "Credit Limit Exceeded");
     } else {
         if (holdEdit) {
             setHoldEdit(false);
         }
-        console.log("Credit OK");
+        // console.log("Credit OK");
     }
 }, [grandTotal, account, newShipment, awbNo]);
 
@@ -259,11 +259,11 @@ useEffect(() => {
       // Don't set holdEdit for existing holds - allow modification
       setHoldEdit(false);
 
-      console.log("Loaded hold data:", {
-        isHold: fetchedAwbData.isHold,
-        holdReason: fetchedAwbData.holdReason,
-        otherHoldReason: fetchedAwbData.otherHoldReason,
-      });
+      // console.log("Loaded hold data:", {
+//         isHold: fetchedAwbData.isHold,
+//         holdReason: fetchedAwbData.holdReason,
+//         otherHoldReason: fetchedAwbData.otherHoldReason,
+//       });
     }
   }, [fetchedAwbData, setValue]);
 
@@ -531,7 +531,7 @@ useEffect(() => {
       try {
         const res = await axios.get(`${server}/service-master`);
         setServiceMasterList(res.data || []);
-        console.log("Service Master List:", res.data);
+        // console.log("Service Master List:", res.data);
       } catch (err) {
         console.error("Error fetching service list:", err);
         setServiceMasterList([]);
@@ -627,7 +627,7 @@ const handleAWBEntry = async (data) => {
         otherHoldReason: isHold ? (fillterData.otherHoldReason || "") : "",
     };
 
-    console.log("payload: ", payload, newShipment);
+    // console.log("payload: ", payload, newShipment);
 
     // Helper function to safely fetch customer name
     const getCustomerName = async (accountCode) => {
@@ -659,12 +659,12 @@ const handleAWBEntry = async (data) => {
                 ...additionalData
             };
 
-            console.log(`Logging hold action: ${action}`, holdLogPayload);
+            // console.log(`Logging hold action: ${action}`, holdLogPayload);
             
             // Call the API route directly
             const response = await axios.post(`${server}/hold-log/action`, holdLogPayload);
             
-            console.log("Hold log response:", response.data);
+            // console.log("Hold log response:", response.data);
             
             // Send notification for hold actions
             if (action === "Hold" || action === "Auto Hold") {
@@ -815,7 +815,7 @@ const handleAWBEntry = async (data) => {
                 `${server}/portal/create-shipment?awbNo=${awbNo}`,
             );
             
-            console.log("awb deleted:", response.data);
+            // console.log("awb deleted:", response.data);
 
             if (response?.status == 200) {
                 // Log deletion
@@ -926,7 +926,7 @@ const handleAWBEntry = async (data) => {
           `${server}/customer-account?accountCode=${debouncedCode.toUpperCase()}`,
         );
         setAccount(response.data);
-        console.log("customer-account", response.data);
+        // console.log("customer-account", response.data);
 
         if (response.data) {
           setValue("customer", response.data?.name);
@@ -952,11 +952,11 @@ const handleAWBEntry = async (data) => {
     const fetchAirwayBills = async () => {
       try {
         const response = await axios.get(`${server}/rate-sheet`);
-        console.log("awb billing data", response.data);
+        // console.log("awb billing data", response.data);
         setAirwayBills(response.data);
       } catch (err) {
         console.error("Error fetching airway bills:", err);
-        console.log("Failed to fetch data.");
+        // console.log("Failed to fetch data.");
       }
     };
     fetchAirwayBills();
@@ -1018,7 +1018,7 @@ const handleAWBEntry = async (data) => {
   //Find sector
   useEffect(() => {
     const selectedSectorName = watch("sector");
-    console.log("Watched sector:", selectedSectorName);
+    // console.log("Watched sector:", selectedSectorName);
 
     if (!sectors || !Array.isArray(sectors)) {
       console.error("Sectors data is missing or not an array");
@@ -1032,7 +1032,7 @@ const handleAWBEntry = async (data) => {
     );
     const selectedSectorCode = selectedSector ? selectedSector.code : null;
 
-    console.log("Selected sector code:", selectedSectorCode);
+    // console.log("Selected sector code:", selectedSectorCode);
     setSelectedSector(selectedSectorCode);
 
     if (!selectedSectorCode) {
@@ -1048,7 +1048,7 @@ const handleAWBEntry = async (data) => {
 
         const zoneData = response.data || [];
         setZones(zoneData);
-        console.log("Zones fetched:", zoneData);
+        // console.log("Zones fetched:", zoneData);
 
         if (!Array.isArray(zoneData)) {
           console.error("Zones data is missing or not an array");
@@ -1061,7 +1061,7 @@ const handleAWBEntry = async (data) => {
           .filter((zone) => zone.sector === selectedSectorCode)
           .map((zone) => zone.destination);
 
-        console.log("Filtered Destinations:", filteredDestinations);
+        // console.log("Filtered Destinations:", filteredDestinations);
         setDestinations(filteredDestinations);
       } catch (error) {
         console.error("Error fetching zones:", error);
@@ -1082,8 +1082,8 @@ const handleAWBEntry = async (data) => {
 
   //filtering services based on sector and destination
   useEffect(() => {
-    console.log("Selected Destination:", selectedDestination);
-    console.log("Selected Sector:", selectedSector);
+    // console.log("Selected Destination:", selectedDestination);
+    // console.log("Selected Sector:", selectedSector);
 
     if (!zones || !Array.isArray(zones)) {
       console.error("Zones data is missing or not an array");
@@ -1107,7 +1107,7 @@ const handleAWBEntry = async (data) => {
       }));
 
     setFilteredServices(filteredResults);
-    console.log("Filtered Results:", filteredResults);
+    // console.log("Filtered Results:", filteredResults);
   }, [watch("destination"), selectedSector, selectedDestination, zones]);
 
   // getting applicable rates
@@ -1117,7 +1117,7 @@ const handleAWBEntry = async (data) => {
         const response = await axios.get(
           `${server}/shipper-tariff?accountCode=${account.accountCode}`,
         );
-        console.log("ApplicableRates", response.data);
+        // console.log("ApplicableRates", response.data);
         setApplicableRates(response.data);
       } catch (error) {
         setApplicableRates(null);
@@ -1178,7 +1178,7 @@ const handleAWBEntry = async (data) => {
       );
 
       setFinalServices(onlyActiveServices);
-      console.log("Active Final Services (Unique):", onlyActiveServices);
+      // console.log("Active Final Services (Unique):", onlyActiveServices);
     }
   }, [filteredServices, applicableRates, serviceMasterList]);
 
@@ -1232,7 +1232,7 @@ const handleAWBEntry = async (data) => {
         // For Canada shipments, we need proper postal code format
         if (isCanadaShipment) {
           if (!consigneeZipcode || consigneeZipcode.trim().length < 3) {
-            console.log("Waiting for valid Canadian postal code...");
+            // console.log("Waiting for valid Canadian postal code...");
             return;
           }
         }
@@ -1240,7 +1240,7 @@ const handleAWBEntry = async (data) => {
         // For Australia shipments, we need proper postcode format
         if (isAustraliaShipment) {
           if (!consigneeZipcode || consigneeZipcode.trim().length < 1) {
-            console.log("Waiting for valid Australian postcode...");
+            // console.log("Waiting for valid Australian postcode...");
             return;
           }
         }
@@ -1267,7 +1267,7 @@ const handleAWBEntry = async (data) => {
           params.append("zipcode", cleanedZip);
         }
 
-        console.log("Fetching amount details...");
+        // console.log("Fetching amount details...");
 
         const response = await axios.get(
           `${server}/portal/create-shipment/get-rates?${params.toString()}`,
@@ -1358,8 +1358,8 @@ const handleAWBEntry = async (data) => {
 
         setBranch(branchRes.data);
         setTaxSettings(taxRes.data);
-        console.log("Fetched Branch:", branchRes.data);
-        console.log("Fetched Tax Settings:", taxRes.data);
+        // console.log("Fetched Branch:", branchRes.data);
+        // console.log("Fetched Tax Settings:", taxRes.data);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -1371,11 +1371,11 @@ const handleAWBEntry = async (data) => {
   // Calculate base amount and GST once (on amountDetails change)
   useEffect(() => {
     if (amountDetails && account && branch && taxSettings) {
-      console.log(
-        "Updating form with amount details:",
-        amountDetails,
-        taxSettings,
-      );
+      // console.log(
+//         "Updating form with amount details:",
+//         amountDetails,
+//         taxSettings,
+//       );
 
       if (
         !amountDetails.rate ||
@@ -1421,15 +1421,15 @@ const handleAWBEntry = async (data) => {
       const cgstRate = sameState ? cgstObj?.taxAmount || 0 : 0;
       const igstRate = !sameState ? igstObj?.taxAmount || 0 : 0;
 
-      console.log("GST Applicability:", gstApplicable);
-      console.log(
-        "Tax Rates - SGST:",
-        sgstRate,
-        "CGST:",
-        cgstRate,
-        "IGST:",
-        igstRate,
-      );
+      // console.log("GST Applicability:", gstApplicable);
+      // console.log(
+//         "Tax Rates - SGST:",
+//         sgstRate,
+//         "CGST:",
+//         cgstRate,
+//         "IGST:",
+//         igstRate,
+//       );
 
       const sgstAmt = gstApplicable ? basicAmount * sgstRate : 0;
       const cgstAmt = gstApplicable ? basicAmount * cgstRate : 0;
@@ -1454,7 +1454,7 @@ const handleAWBEntry = async (data) => {
       setValue("baseGrandTotal", baseGrandTotal);
       setValue("grandTotal", baseGrandTotal);
 
-      console.log("Calculated baseGrandTotal:", baseGrandTotal);
+      // console.log("Calculated baseGrandTotal:", baseGrandTotal);
     }
   }, [
     amountDetails,
@@ -1550,7 +1550,7 @@ const handleAWBEntry = async (data) => {
   //extracting zone from filtered services
   useEffect(() => {
     const selectedServiceLocal = watch("service");
-    console.log("Selected Service:", selectedServiceLocal);
+    // console.log("Selected Service:", selectedServiceLocal);
     setSelectedService(selectedServiceLocal);
 
     if (!filteredServices || !Array.isArray(filteredServices)) {
@@ -1563,7 +1563,7 @@ const handleAWBEntry = async (data) => {
     );
 
     const zoneNumber = matchedZone ? matchedZone.zone : null;
-    console.log("Extracted Zone:", zoneNumber);
+    // console.log("Extracted Zone:", zoneNumber);
   }, [watch("service"), filteredServices]);
 
   //handle date formatting
@@ -1770,10 +1770,10 @@ const handleAWBEntry = async (data) => {
       if (regex.test(awbNo)) {
         try {
           const response = await axios.get(`${server}/bagging`);
-          console.log("Bagging API response:", response.data);
+          // console.log("Bagging API response:", response.data);
 
           if (!response.data || response.data.length === 0) {
-            console.log("No bagging data found");
+            // console.log("No bagging data found");
             setFetchedBaggingData({});
             return;
           }
@@ -1806,10 +1806,10 @@ const handleAWBEntry = async (data) => {
           }
 
           if (foundAwbData) {
-            console.log("Found AWB in bagging data:", foundAwbData);
+            // console.log("Found AWB in bagging data:", foundAwbData);
             setFetchedBaggingData(foundAwbData);
           } else {
-            console.log(`AWB ${awbNo} not found in any bagging record`);
+            // console.log(`AWB ${awbNo} not found in any bagging record`);
             setFetchedBaggingData({});
           }
         } catch (error) {
@@ -1827,26 +1827,26 @@ const handleAWBEntry = async (data) => {
   // Add handler for content changes
   const handleSetInvoiceContent = useCallback((data) => {
     setInvoiceContent(data);
-    console.log(invoiceContent);
+    // console.log(invoiceContent);
   }, []);
 
   // Sync invoiceContent with form state
   useEffect(() => {
     setValue("invoiceContent", invoiceContent);
-    console.log("Invoice Content Updated:", invoiceContent);
+    // console.log("Invoice Content Updated:", invoiceContent);
   }, [invoiceContent]);
 
   // Add handler for volume content changes
   const handleSetVolumeContent = useCallback((data) => {
     const cleanedData = data.map(({ volumeWeightTable, ...rest }) => rest);
     setVolumeContent(cleanedData);
-    console.log("Clean Volume Content Updated:", cleanedData);
+    // console.log("Clean Volume Content Updated:", cleanedData);
   }, []);
 
   // Sync volumeContent with form state
   useEffect(() => {
     setValue("volumeContent", volumeContent);
-    console.log("Volume Content Updated:", volumeContent);
+    // console.log("Volume Content Updated:", volumeContent);
   }, [volumeContent]);
 
   // Populate form when fetchedAwbData changes
@@ -1911,18 +1911,18 @@ const handleAWBEntry = async (data) => {
         fetchedAwbData.volDiscount !== null
       ) {
         setValue("volDisc", fetchedAwbData.volDiscount);
-        console.log(
-          `✅ Volume discount loaded from saved AWB: ${fetchedAwbData.volDiscount}%`,
-        );
+        // console.log(
+//           `✅ Volume discount loaded from saved AWB: ${fetchedAwbData.volDiscount}%`,
+//         );
       } else if (
         fetchedAwbData.volDisc !== undefined &&
         fetchedAwbData.volDisc !== null
       ) {
         // Fallback to volDisc field if volDiscount doesn't exist
         setValue("volDisc", fetchedAwbData.volDisc);
-        console.log(
-          `✅ Volume discount loaded from saved AWB (volDisc): ${fetchedAwbData.volDisc}%`,
-        );
+        // console.log(
+//           `✅ Volume discount loaded from saved AWB (volDisc): ${fetchedAwbData.volDisc}%`,
+//         );
       }
 
       setValue("payment", fetchedAwbData.payment || "Credit");
@@ -1991,7 +1991,7 @@ const handleAWBEntry = async (data) => {
       setValue("volDisc", "");
       setIsHold(false);
       setInvContent([]);
-      console.log("No AWB data found - new shipment");
+      // console.log("No AWB data found - new shipment");
     }
   }, [fetchedAwbData, setValue]);
 
@@ -2005,7 +2005,7 @@ const handleAWBEntry = async (data) => {
         setHoldEdit(false);
         setInvContent([]);
       }
-      console.log("No AWB data found - new shipment");
+      // console.log("No AWB data found - new shipment");
     }
   }, [fetchedAwbData, setValue, grandTotal, newShipment]);
 
@@ -2046,7 +2046,7 @@ const handleAWBEntry = async (data) => {
           params: { serviceName: selectedService },
         });
 
-        console.log("ServiceMaster data:", res.data);
+        // console.log("ServiceMaster data:", res.data);
 
         if (!res.data || !res.data._id) {
           setServiceData(null);
@@ -2121,9 +2121,9 @@ const handleAWBEntry = async (data) => {
             serviceData.volDiscountPercent !== null
           ) {
             setValue("volDisc", serviceData.volDiscountPercent.toString());
-            console.log(
-              `✅ Volume discount set from service master: ${serviceData.volDiscountPercent}%`,
-            );
+            // console.log(
+//               `✅ Volume discount set from service master: ${serviceData.volDiscountPercent}%`,
+//             );
 
             // ✅ FORCE RECALCULATION: Trigger the chargeable weight calculation
             // by temporarily updating actualWt or volWt
@@ -2240,8 +2240,8 @@ const handleAWBEntry = async (data) => {
       setValue("network", "");
     }
 
-    console.log("Selected service:", selectedService);
-    console.log("Matched rate:", matchedRate);
+    // console.log("Selected service:", selectedService);
+    // console.log("Matched rate:", matchedRate);
   }, [selectedService, applicableRates, setValue]);
 
   // Zone status checking effect - when destination or service changes
@@ -3622,7 +3622,7 @@ const handleAWBEntry = async (data) => {
                   onClick={(data) => {
                     setBtnAction("modify");
                     setIsEdit(false);
-                    console.log(data);
+                    // console.log(data);
                   }}
                   disabled={
                     newShipment == "new" ||

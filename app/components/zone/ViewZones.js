@@ -112,11 +112,11 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
       const response = await fetch(`${server}/zones`);
       const data = await response.json();
       
-      console.log("API Response:", data);
+      // console.log("API Response:", data);
       
       const zonesArray = data.zones || data || [];
       
-      console.log("Zones Array:", zonesArray);
+      // console.log("Zones Array:", zonesArray);
       setAllZonesData(zonesArray);
       
       if (zonesArray.length === 0) {
@@ -135,14 +135,14 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
   }, []);
 
   useEffect(() => {
-    console.log("Selected Sector:", selectedSector);
-    console.log("All Zones Data:", allZonesData);
+    // console.log("Selected Sector:", selectedSector);
+    // console.log("All Zones Data:", allZonesData);
 
     if (selectedSector && allZonesData.length > 0) {
       const availableSectors = [
         ...new Set(allZonesData.map((zone) => zone.sector)),
       ];
-      console.log("Available sectors in data:", availableSectors);
+      // console.log("Available sectors in data:", availableSectors);
 
       let sectorZones = [];
 
@@ -185,14 +185,14 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
         }
       }
 
-      console.log("Filtered zones for sector:", sectorZones);
+      // console.log("Filtered zones for sector:", sectorZones);
 
       if (sectorZones.length > 0) {
         const firstZone = sectorZones[0];
-        console.log("First zone data:", firstZone);
+        // console.log("First zone data:", firstZone);
 
         setTimeout(() => {
-          console.log("Setting zoneTariff:", firstZone.zoneMatrix);
+          // console.log("Setting zoneTariff:", firstZone.zoneMatrix);
           setValue("zoneTariff", firstZone.zoneMatrix || "", {
             shouldDirty: true,
             shouldTouch: true,
@@ -200,14 +200,14 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
 
           if (firstZone.remoteZones && firstZone.remoteZones.length > 0) {
             const remoteZonesStr = firstZone.remoteZones.join(", ");
-            console.log("Setting remoteZones:", remoteZonesStr);
+            // console.log("Setting remoteZones:", remoteZonesStr);
             setValue("remoteZones", remoteZonesStr, {
               shouldDirty: true,
               shouldTouch: true,
             });
             setRemoteZones(firstZone.remoteZones);
           } else {
-            console.log("Setting remoteZones to empty");
+            // console.log("Setting remoteZones to empty");
             setValue("remoteZones", "", {
               shouldDirty: true,
               shouldTouch: true,
@@ -221,14 +221,14 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
           ) {
             const unserviceableZonesStr =
               firstZone.unserviceableZones.join(", ");
-            console.log("Setting unserviceableZones:", unserviceableZonesStr);
+            // console.log("Setting unserviceableZones:", unserviceableZonesStr);
             setValue("unserviceableZones", unserviceableZonesStr, {
               shouldDirty: true,
               shouldTouch: true,
             });
             setUnserviceableZones(firstZone.unserviceableZones);
           } else {
-            console.log("Setting unserviceableZones to empty");
+            // console.log("Setting unserviceableZones to empty");
             setValue("unserviceableZones", "", {
               shouldDirty: true,
               shouldTouch: true,
@@ -237,7 +237,7 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
           }
         }, 100);
       } else {
-        console.log("No zones found for selected sector");
+        // console.log("No zones found for selected sector");
         setValue("zoneTariff", "");
         setValue("remoteZones", "");
         setValue("unserviceableZones", "");
@@ -271,20 +271,20 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
 
     let data = [...allZonesData];
 
-    console.log("Filtering data for sector:", selectedSector);
-    console.log("Total zones before filter:", data.length);
+    // console.log("Filtering data for sector:", selectedSector);
+    // console.log("Total zones before filter:", data.length);
 
     data = data.filter(
       (z) => z.sector && z.sector.toLowerCase() === selectedSector.toLowerCase()
     );
 
-    console.log("Zones after sector filter:", data.length);
+    // console.log("Zones after sector filter:", data.length);
 
     const from = normalizeDate(effectiveFrom);
     const to = normalizeDate(effectiveTo);
 
     if (from || to) {
-      console.log("Applying date filter - From:", from, "To:", to);
+      // console.log("Applying date filter - From:", from, "To:", to);
       
       data = data.filter((z) => {
         if (!z.effectiveDateFrom && !z.effectiveDateTo) return true;
@@ -292,7 +292,7 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
         const zoneFromDate = z.effectiveDateFrom ? normalizeDate(z.effectiveDateFrom.toString().split('T')[0]) : null;
         const zoneToDate = z.effectiveDateTo ? normalizeDate(z.effectiveDateTo.toString().split('T')[0]) : null;
 
-        console.log("Zone dates - From:", zoneFromDate, "To:", zoneToDate);
+        // console.log("Zone dates - From:", zoneFromDate, "To:", zoneToDate);
 
         if (from && zoneFromDate && zoneFromDate < from) return false;
         if (to && zoneToDate && zoneToDate > to) return false;
@@ -300,7 +300,7 @@ const ViewZones = ({ register, setValue, watch, zones, tabChange }) => {
         return true;
       });
 
-      console.log("Zones after date filter:", data.length);
+      // console.log("Zones after date filter:", data.length);
     }
 
     setFilteredZones(data);

@@ -173,7 +173,7 @@ function AwbBilling() {
       try {
         const res = await axios.get(`${server}/service-master`);
         setServiceMasterList(res.data || []);
-        console.log("Service Master List:", res.data);
+        // console.log("Service Master List:", res.data);
       } catch (err) {
         console.error("Error fetching service list:", err);
         setServiceMasterList([]);
@@ -501,7 +501,7 @@ function AwbBilling() {
     const accountCode = code;
     const updateUser = user?.userId;
     const payload = { accountCode, ...fillterData };
-    console.log("Billing payload: ", payload, newShipment);
+    // console.log("Billing payload: ", payload, newShipment);
 
     // small helper to safely fetch customer name
     const getCustomerName = async (accountCode) => {
@@ -550,7 +550,7 @@ function AwbBilling() {
             holdReason: payload?.holdReason || "Billing Update",
           };
           const holdLogResponse = await pushHoldLog(pushHoldLogPayload);
-          console.log("Hold log response:", holdLogResponse);
+          // console.log("Hold log response:", holdLogResponse);
         }
 
         showNotification("success", "Billing Updated Successfully");
@@ -630,7 +630,7 @@ function AwbBilling() {
           `${server}/customer-account?accountCode=${code}`,
         );
         setAccount(response.data);
-        console.log("customer-account", response.data);
+        // console.log("customer-account", response.data);
 
         if (response.data) {
           setValue("customer", response.data?.name);
@@ -654,7 +654,7 @@ function AwbBilling() {
   // Find sector
   useEffect(() => {
     const selectedSectorName = watch("sector");
-    console.log("Watched sector:", selectedSectorName);
+    // console.log("Watched sector:", selectedSectorName);
 
     if (!sectors || !Array.isArray(sectors)) {
       console.error("Sectors data is missing or not an array");
@@ -668,7 +668,7 @@ function AwbBilling() {
     );
     const selectedSectorCode = selectedSector ? selectedSector.code : null;
 
-    console.log("Selected sector code:", selectedSectorCode);
+    // console.log("Selected sector code:", selectedSectorCode);
     setSelectedSector(selectedSectorCode);
 
     if (!selectedSectorCode) {
@@ -684,7 +684,7 @@ function AwbBilling() {
 
         const zoneData = response.data || [];
         setZones(zoneData);
-        console.log("Zones fetched:", zoneData);
+        // console.log("Zones fetched:", zoneData);
 
         if (!Array.isArray(zoneData)) {
           console.error("Zones data is missing or not an array");
@@ -697,7 +697,7 @@ function AwbBilling() {
           .filter((zone) => zone.sector === selectedSectorCode)
           .map((zone) => zone.destination);
 
-        console.log("Filtered Destinations:", filteredDestinations);
+        // console.log("Filtered Destinations:", filteredDestinations);
         setDestinations(filteredDestinations);
       } catch (error) {
         console.error("Error fetching zones:", error);
@@ -718,8 +718,8 @@ function AwbBilling() {
 
   // Filtering services based on sector and destination
   useEffect(() => {
-    console.log("Selected Destination:", selectedDestination);
-    console.log("Selected Sector:", selectedSector);
+    // console.log("Selected Destination:", selectedDestination);
+    // console.log("Selected Sector:", selectedSector);
 
     if (!zones || !Array.isArray(zones)) {
       console.error("Zones data is missing or not an array");
@@ -743,7 +743,7 @@ function AwbBilling() {
       }));
 
     setFilteredServices(filteredResults);
-    console.log("Filtered Results:", filteredResults);
+    // console.log("Filtered Results:", filteredResults);
   }, [watch("destination"), selectedSector, selectedDestination, zones]);
 
   // Getting applicable rates
@@ -753,7 +753,7 @@ function AwbBilling() {
         const response = await axios.get(
           `${server}/shipper-tariff?accountCode=${account.accountCode}`,
         );
-        console.log("ApplicableRates", response.data);
+        // console.log("ApplicableRates", response.data);
         setApplicableRates(response.data);
       } catch (error) {
         setApplicableRates(null);
@@ -811,7 +811,7 @@ function AwbBilling() {
       );
 
       setFinalServices(onlyActiveServices);
-      console.log("Active Final Services:", onlyActiveServices);
+      // console.log("Active Final Services:", onlyActiveServices);
     }
   }, [filteredServices, applicableRates, serviceMasterList]);
 
@@ -855,7 +855,7 @@ function AwbBilling() {
         // For Canada shipments, we need proper postal code format
         if (isCanadaShipment) {
           if (!consigneeZipcode || consigneeZipcode.trim().length < 3) {
-            console.log("Waiting for valid Canadian postal code...");
+            // console.log("Waiting for valid Canadian postal code...");
             return;
           }
         }
@@ -863,7 +863,7 @@ function AwbBilling() {
         // For Australia shipments, we need proper postcode format
         if (isAustraliaShipment) {
           if (!consigneeZipcode || consigneeZipcode.trim().length < 1) {
-            console.log("Waiting for valid Australian postcode...");
+            // console.log("Waiting for valid Australian postcode...");
             return;
           }
         }
@@ -890,7 +890,7 @@ function AwbBilling() {
           params.append("zipcode", cleanedZip);
         }
 
-        console.log("Fetching amount details...");
+        // console.log("Fetching amount details...");
 
         const response = await axios.get(
           `${server}/portal/create-shipment/get-rates?${params.toString()}`,
@@ -995,8 +995,8 @@ function AwbBilling() {
 
         setBranch(branchRes.data);
         setTaxSettings(taxRes.data);
-        console.log("Fetched Branch:", branchRes.data);
-        console.log("Fetched Tax Settings:", taxRes.data);
+        // console.log("Fetched Branch:", branchRes.data);
+        // console.log("Fetched Tax Settings:", taxRes.data);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -1008,11 +1008,11 @@ function AwbBilling() {
   // Calculate base amount and GST once
   useEffect(() => {
     if (amountDetails && account && branch && taxSettings) {
-      console.log(
-        "Updating form with amount details:",
-        amountDetails,
-        taxSettings,
-      );
+      // console.log(
+//         "Updating form with amount details:",
+//         amountDetails,
+//         taxSettings,
+//       );
 
       if (
         !amountDetails.rate ||
@@ -1058,15 +1058,15 @@ function AwbBilling() {
       const cgstRate = sameState ? cgstObj?.taxAmount || 0 : 0;
       const igstRate = !sameState ? igstObj?.taxAmount || 0 : 0;
 
-      console.log("GST Applicability:", gstApplicable);
-      console.log(
-        "Tax Rates - SGST:",
-        sgstRate,
-        "CGST:",
-        cgstRate,
-        "IGST:",
-        igstRate,
-      );
+      // console.log("GST Applicability:", gstApplicable);
+      // console.log(
+//         "Tax Rates - SGST:",
+//         sgstRate,
+//         "CGST:",
+//         cgstRate,
+//         "IGST:",
+//         igstRate,
+//       );
 
       const sgstAmt = gstApplicable ? basicAmount * sgstRate : 0;
       const cgstAmt = gstApplicable ? basicAmount * cgstRate : 0;
@@ -1091,7 +1091,7 @@ function AwbBilling() {
       setValue("baseGrandTotal", baseGrandTotal);
       setValue("grandTotal", baseGrandTotal);
 
-      console.log("Calculated baseGrandTotal:", baseGrandTotal);
+      // console.log("Calculated baseGrandTotal:", baseGrandTotal);
     }
   }, [
     amountDetails,
@@ -1187,7 +1187,7 @@ function AwbBilling() {
   // Extracting zone from filtered services
   useEffect(() => {
     const selectedServiceLocal = watch("service");
-    console.log("Selected Service:", selectedServiceLocal);
+    // console.log("Selected Service:", selectedServiceLocal);
     setSelectedService(selectedServiceLocal);
 
     if (!filteredServices || !Array.isArray(filteredServices)) {
@@ -1200,7 +1200,7 @@ function AwbBilling() {
     );
 
     const zoneNumber = matchedZone ? matchedZone.zone : null;
-    console.log("Extracted Zone:", zoneNumber);
+    // console.log("Extracted Zone:", zoneNumber);
   }, [watch("service"), filteredServices]);
 
   // Handle date formatting
@@ -1419,7 +1419,7 @@ function AwbBilling() {
       setValue("accountBalance", "");
       setIsHold(false);
       setInvContent([]);
-      console.log("No AWB data found");
+      // console.log("No AWB data found");
     }
   }, [fetchedAwbData, setValue]);
 
@@ -1439,7 +1439,7 @@ function AwbBilling() {
     setIsHold(false);
     setValue("isHold", false);
     setHoldReason(" ");
-    console.log("Credit limit check disabled - No hold for credit limit");
+    // console.log("Credit limit check disabled - No hold for credit limit");
   }, [grandTotal, setValue]);
   // For alerts
   useEffect(() => {
@@ -1478,7 +1478,7 @@ function AwbBilling() {
           params: { serviceName: selectedService },
         });
 
-        console.log("ServiceMaster data:", res.data);
+        // console.log("ServiceMaster data:", res.data);
 
         if (!res.data || !res.data._id) {
           setServiceData(null);
@@ -1615,8 +1615,8 @@ function AwbBilling() {
       setValue("network", "");
     }
 
-    console.log("Selected service:", selectedService);
-    console.log("Matched rate:", matchedRate);
+    // console.log("Selected service:", selectedService);
+    // console.log("Matched rate:", matchedRate);
   }, [selectedService, applicableRates, setValue]);
 
   // Zone status checking effect - when destination or service changes
@@ -1686,24 +1686,24 @@ function AwbBilling() {
   // Content handlers
   const handleSetInvoiceContent = useCallback((data) => {
     setInvoiceContent(data);
-    console.log(invoiceContent);
+    // console.log(invoiceContent);
   }, []);
 
   const handleSetVolumeContent = useCallback((data) => {
     const cleanedData = data.map(({ volumeWeightTable, ...rest }) => rest);
     setVolumeContent(cleanedData);
-    console.log("Clean Volume Content Updated:", cleanedData);
+    // console.log("Clean Volume Content Updated:", cleanedData);
   }, []);
 
   // Sync content with form state
   useEffect(() => {
     setValue("invoiceContent", invoiceContent);
-    console.log("Invoice Content Updated:", invoiceContent);
+    // console.log("Invoice Content Updated:", invoiceContent);
   }, [invoiceContent]);
 
   useEffect(() => {
     setValue("volumeContent", volumeContent);
-    console.log("Volume Content Updated:", volumeContent);
+    // console.log("Volume Content Updated:", volumeContent);
   }, [volumeContent]);
 
   // Code list columns
@@ -3059,7 +3059,7 @@ function AwbBilling() {
                   onClick={(data) => {
                     setBtnAction("modify");
                     setIsEdit(false);
-                    console.log(data);
+                    // console.log(data);
                   }}
                   disabled={
                     newShipment == "new" ||

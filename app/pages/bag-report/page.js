@@ -348,14 +348,14 @@ export default function BagReport() {
   // Main data fetching function
   const handleShowData = async () => {
     if (!runNumber?.trim()) {
-      console.log("Run number is empty");
+      // console.log("Run number is empty");
       showNotification("error", "Please enter a run number");
       return;
     }
 
     try {
       setLoading(true);
-      console.log("Fetching data for run number:", runNumber);
+      // console.log("Fetching data for run number:", runNumber);
 
       let newTableData = [];
 

@@ -1095,12 +1095,12 @@ const CANComponent = () => {
 
   const handleDownloadXML = async (runNo, selectedAirport) => {
     try {
-      console.log("RAW runNo →", runNo);
-      console.log("selectedAirport →", selectedAirport);
-      console.log(
-        "Final API URL →",
-        `${server}/overseas-manifest/can/run?runNo=${runNo}`,
-      );
+      // console.log("RAW runNo →", runNo);
+      // console.log("selectedAirport →", selectedAirport);
+      // console.log(
+//         "Final API URL →",
+//         `${server}/overseas-manifest/can/run?runNo=${runNo}`,
+//       );
 
       // simple normalization
       const normalizedRunNo = `${runNo || ""}`.trim();
@@ -1134,7 +1134,7 @@ const CANComponent = () => {
         `${server}/overseas-manifest/can/run?runNo=${normalizedRunNo}`,
       );
       const bagJson = await bagRes.json();
-      console.log("BAG JSON →", bagJson);
+      // console.log("BAG JSON →", bagJson);
 
       if (!bagJson.success || !bagJson.data) {
         showNotification("error", "Bagging run not found");
@@ -1147,7 +1147,7 @@ const CANComponent = () => {
       const awbList = bag.rowData
         .map((r) => (r.awbNo ? r.awbNo.trim().toUpperCase() : null))
         .filter(Boolean);
-      console.log("AWB LIST →", awbList);
+      // console.log("AWB LIST →", awbList);
 
       const shipmentsXML = [];
 
@@ -1368,7 +1368,7 @@ const CANComponent = () => {
 
       showNotification("success", "XML downloaded");
     } catch (err) {
-      console.log(err);
+      // console.log(err);
       showNotification("error", "XML generation failed");
     }
   };

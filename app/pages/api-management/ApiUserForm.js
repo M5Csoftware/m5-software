@@ -44,14 +44,14 @@ const ApiUserForm = ({ user, apiUserList = [], onSave, onClose }) => {
   ];
 
   const submitForm = (data) => {
-    console.log(userData, userType);
+    // console.log(userData, userType);
   };
 
   useEffect(() => {
     if (!user) return;
 
     setUserData(user);
-    console.log(user);
+    // console.log(user);
   }, [user]);
 
   return (

@@ -424,9 +424,9 @@ export function buildMasterSheet(
       months
     );
 
-  console.log(
-    `DEBUG: Active customers: ${activeCustomers.length}, Inactive: ${inactiveCustomers.length}`
-  );
+  // console.log(
+//     `DEBUG: Active customers: ${activeCustomers.length}, Inactive: ${inactiveCustomers.length}`
+//   );
 
   // Insert active customer rows first
   let nextRow = insertMasterCustomerRows(sheet, activeCustomers, months, 4);
@@ -717,9 +717,9 @@ export function buildEmployeeSheets(wb, employees, employeeData, months) {
     const { activeCustomers, inactiveCustomers } =
       separateEmployeeActiveInactiveCustomers(allEmpCustomers, months);
 
-    console.log(
-      `DEBUG: Employee ${emp.userName} - Active: ${activeCustomers.length}, Inactive: ${inactiveCustomers.length}`
-    );
+    // console.log(
+//       `DEBUG: Employee ${emp.userName} - Active: ${activeCustomers.length}, Inactive: ${inactiveCustomers.length}`
+//     );
 
     const sheet = wb.addWorksheet(sheetName, {
       views: [{ state: "frozen", ySplit: 3 }],
@@ -938,7 +938,7 @@ function buildStateSummarySheet(
 }
 
 export async function downloadStateHSSB(data) {
-  console.log("=== DEBUG: START downloadStateHSSB ===");
+  // console.log("=== DEBUG: START downloadStateHSSB ===");
 
   const {
     state,
@@ -969,7 +969,7 @@ export async function downloadStateHSSB(data) {
 
   try {
     // 1) SUMMARY sheet (Sales performance only)
-    console.log("Creating SUMMARY sheet...");
+    // console.log("Creating SUMMARY sheet...");
     buildStateSummarySheet(
       wb,
       state,
@@ -980,15 +980,15 @@ export async function downloadStateHSSB(data) {
     );
 
     // 2) MASTER sheet (With inactive customers section)
-    console.log("Creating MASTER sheet with inactive customers...");
+    // console.log("Creating MASTER sheet with inactive customers...");
     buildMasterSheet(wb, masterCustomers, months, employees, employeeCustomers);
 
     // 3) EMPLOYEE sheets (With inactive customers section)
-    console.log("Creating EMPLOYEE sheets with inactive customers...");
+    // console.log("Creating EMPLOYEE sheets with inactive customers...");
     buildEmployeeSheets(wb, employees, employeeCustomers, months);
 
     // 4) Prepare download
-    console.log("Generating Excel file...");
+    // console.log("Generating Excel file...");
     const buffer = await wb.xlsx.writeBuffer();
 
     const fileName = `HSSB-${state}-${months[0]}-to-${
@@ -1002,7 +1002,7 @@ export async function downloadStateHSSB(data) {
       fileName
     );
 
-    console.log(`File "${fileName}" downloaded successfully!`);
+    // console.log(`File "${fileName}" downloaded successfully!`);
   } catch (error) {
     console.error("Error generating Excel:", error);
     alert(`Error generating Excel file: ${error.message}`);

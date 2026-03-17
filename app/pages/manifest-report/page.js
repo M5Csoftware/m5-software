@@ -266,7 +266,7 @@ export default function ManifestReport() {
           setValue("date", formattedDate);
         }
         
-        console.log("Run entry data loaded:", runEntry);
+        // console.log("Run entry data loaded:", runEntry);
       }
     } catch (err) {
       console.error("Failed to fetch run entry data:", err);

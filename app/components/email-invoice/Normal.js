@@ -165,12 +165,12 @@ function Normal() {
         `${server}/email-invoice?${params.toString()}`
       );
 
-      console.log("API Response:", response.data);
+      // console.log("API Response:", response.data);
 
       if (response.data.success && response.data.invoices) {
         const invoices = response.data.invoices;
 
-        console.log(`Found ${invoices.length} invoice(s)`);
+        // console.log(`Found ${invoices.length} invoice(s)`);
 
         // Fetch customer emails in parallel
         const formattedData = await Promise.all(
@@ -342,7 +342,7 @@ function Normal() {
         });
 
         if (response.data.results) {
-          console.log("Email Results:", response.data.results);
+          // console.log("Email Results:", response.data.results);
         }
         if (response.data.errors && response.data.errors.length > 0) {
           console.error("Email Errors:", response.data.errors);

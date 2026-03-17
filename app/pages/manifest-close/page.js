@@ -41,14 +41,14 @@ function ManifestClose() {
     try {
       const response = await axios.get(`${server}/portal/get-manifest`);
       const { data } = response;
-      console.log("manifestData", data);
+      // console.log("manifestData", data);
 
       if (data.success && data.manifests) {
         const closedManifests = data.manifests.filter(
           (manifest) => manifest.status?.toLowerCase() === "closed"
         );
 
-        console.log("closedManifests", closedManifests);
+        // console.log("closedManifests", closedManifests);
 
         // 🔹 Fetch shipment totals
         const manifestsWithTotals = await Promise.all(

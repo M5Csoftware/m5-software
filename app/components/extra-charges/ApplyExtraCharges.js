@@ -140,7 +140,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     const { code, ...fillterData } = data;
     const accountCode = code;
     const payload = { accountCode, ...fillterData };
-    console.log("payload: ", payload, newShipment);
+    // console.log("payload: ", payload, newShipment);
 
     // small helper to safely fetch customer name
     const getCustomerName = async (accountCode) => {
@@ -160,8 +160,8 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     if (newShipment == "new" && btnAction == "save") {
       try {
         const response = await axios.post(`${server}/extraCharges`, payload);
-        console.log("awb-entry:", response.data);
-        console.log("payload: ", payload);
+        // console.log("awb-entry:", response.data);
+        // console.log("payload: ", payload);
 
         if (response.data?.status == 201) {
           const customer = await getCustomerName(accountCode);
@@ -175,7 +175,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
           };
 
           const responseLog = await pushAWBLog(pushAWBLogPayload);
-          console.log("AWB log response:", responseLog);
+          // console.log("AWB log response:", responseLog);
 
           if (response.data?.holdReason != "") {
             const pushHoldLogPayload = {
@@ -189,7 +189,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
             };
 
             const holdLogResponse = await pushHoldLog(pushHoldLogPayload);
-            console.log("Hold log response:", holdLogResponse);
+            // console.log("Hold log response:", holdLogResponse);
           }
         }
         setBtnAction(null);
@@ -205,12 +205,12 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       }
     } else if (newShipment == "old" && btnAction == "save" && isEdit == false) {
       try {
-        console.log("Updating AWB entry with data:", payload);
+        // console.log("Updating AWB entry with data:", payload);
         const response = await axios.put(
           `${server}/extraCharges?awbNo=${awbNo}`,
           payload
         );
-        console.log("awb modified:", response.data);
+        // console.log("awb modified:", response.data);
 
         if (response?.status == 200) {
           const customer = await getCustomerName(accountCode);
@@ -223,7 +223,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
           };
 
           const responseLog = await pushAWBLog(pushAWBLogPayload);
-          console.log("AWB log response:", responseLog);
+          // console.log("AWB log response:", responseLog);
 
           if (response.data?.holdReason != "") {
             const pushHoldLogPayload = {
@@ -237,7 +237,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
             };
 
             const holdLogResponse = await pushHoldLog(pushHoldLogPayload);
-            console.log("Hold log response:", holdLogResponse);
+            // console.log("Hold log response:", holdLogResponse);
           }
         }
         setBtnAction(null);
@@ -256,7 +256,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
         const response = await axios.delete(
           `${server}/extraCharges?awbNo=${awbNo}`
         );
-        console.log("awb deleted:", response.data);
+        // console.log("awb deleted:", response.data);
 
         if (response?.status == 200) {
           const customer = await getCustomerName(accountCode);
@@ -270,7 +270,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
           };
 
           const responseLog = await pushAWBLog(pushAWBLogPayload);
-          console.log("AWB log response:", responseLog);
+          // console.log("AWB log response:", responseLog);
         }
         setBtnAction(null);
         setResponseMsg("AWB entry deleted successfully!");
@@ -359,7 +359,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
           `${server}/customer-account?accountCode=${code}`
         );
         setAccount(response.data);
-        console.log("customer-account", response.data);
+        // console.log("customer-account", response.data);
 
         if (response.data) {
           setValue("customer", response.data?.name);
@@ -388,11 +388,11 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     const fetchAirwayBills = async () => {
       try {
         const response = await axios.get(`${server}/rate-sheet`);
-        console.log("awb billing data", response.data);
+        // console.log("awb billing data", response.data);
         setAirwayBills(response.data);
       } catch (err) {
         console.error("Error fetching airway bills:", err);
-        console.log("Failed to fetch data.");
+        // console.log("Failed to fetch data.");
       }
     };
     fetchAirwayBills();
@@ -453,7 +453,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
   //Find sector
   useEffect(() => {
     const selectedSectorName = watch("sector"); // Get selected sector name
-    console.log("Watched sector:", selectedSectorName);
+    // console.log("Watched sector:", selectedSectorName);
 
     if (!sectors || !Array.isArray(sectors)) {
       console.error("Sectors data is missing or not an array");
@@ -468,7 +468,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     );
     const selectedSectorCode = selectedSector ? selectedSector.code : null;
 
-    console.log("Selected sector code:", selectedSectorCode);
+    // console.log("Selected sector code:", selectedSectorCode);
     setSelectedSector(selectedSectorCode);
 
     if (!selectedSectorCode) {
@@ -484,7 +484,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
 
         const zoneData = response.data || [];
         setZones(zoneData);
-        console.log("Zones fetched:", zoneData);
+        // console.log("Zones fetched:", zoneData);
 
         if (!Array.isArray(zoneData)) {
           console.error("Zones data is missing or not an array");
@@ -498,7 +498,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
           .filter((zone) => zone.sector === selectedSectorCode)
           .map((zone) => zone.destination);
 
-        console.log("Filtered Destinations:", filteredDestinations);
+        // console.log("Filtered Destinations:", filteredDestinations);
         setDestinations(filteredDestinations);
       } catch (error) {
         console.error("Error fetching zones:", error);
@@ -519,8 +519,8 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
 
   //filtering services based on sector and destination
   useEffect(() => {
-    console.log("Selected Destination:", selectedDestination);
-    console.log("Selected Sector:", selectedSector);
+    // console.log("Selected Destination:", selectedDestination);
+    // console.log("Selected Sector:", selectedSector);
 
     if (!zones || !Array.isArray(zones)) {
       console.error("Zones data is missing or not an array");
@@ -545,7 +545,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       }));
 
     setFilteredServices(filteredResults);
-    console.log("Filtered Results:", filteredResults);
+    // console.log("Filtered Results:", filteredResults);
   }, [watch("destination"), selectedSector, selectedDestination, zones]);
 
   // getting applicable rates
@@ -555,7 +555,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
         const response = await axios.get(
           `${server}/shipper-tariff?accountCode=${account.accountCode}`
         );
-        console.log("ApplicableRates", response.data);
+        // console.log("ApplicableRates", response.data);
         setApplicableRates(response.data);
       } catch (error) {
         setApplicableRates(null);
@@ -571,7 +571,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
   //filtering final services based on applicable rates and filtered services
   useEffect(() => {
     // Extract services from applicableRates
-    console.log("Filtered Services:", filteredServices);
+    // console.log("Filtered Services:", filteredServices);
 
     if (filteredServices.length > 0 && applicableRates) {
       // ✅ STEP 0: Ensure it's always an array
@@ -614,7 +614,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       );
 
       setFinalServices(availableServices);
-      console.log("availableServices", availableServices);
+      // console.log("availableServices", availableServices);
     }
   }, [filteredServices, applicableRates]);
 
@@ -624,10 +624,10 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
 
     // Check if ratesApplicable exists and is an array
     if (!applicableRates || !Array.isArray(applicableRates)) {
-      console.log(
-        "ratesApplicable is not available or not an array",
-        applicableRates
-      );
+      // console.log(
+//         "ratesApplicable is not available or not an array",
+//         applicableRates
+//       );
       return;
     }
 
@@ -637,33 +637,33 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     );
     const zone = finalService?.zone;
 
-    console.log("finalService", finalService);
+    // console.log("finalService", finalService);
 
     // 2. Find first applicable rateTariff for selectedService safely
     const ratesArray = applicableRates || [];
     const matchingRate = ratesArray.find((r) => r.service === selectedService);
     const rateTariff = matchingRate?.rateTariff || "";
 
-    console.log("Determined zone:", zone);
-    console.log("Determined rateTariff:", rateTariff);
-    console.log("Chargable Weight:", chargeableWt);
+    // console.log("Determined zone:", zone);
+    // console.log("Determined rateTariff:", rateTariff);
+    // console.log("Chargable Weight:", chargeableWt);
 
     // Only fetch if all required values are present
     if (!zone || !rateTariff || !chargeableWt) return;
 
     const fetchAmountDetails = async () => {
       try {
-        console.log(
-          "Fetching amount details with:",
-          selectedService,
-          zone,
-          rateTariff,
-          chargeableWt
-        );
+        // console.log(
+//           "Fetching amount details with:",
+//           selectedService,
+//           zone,
+//           rateTariff,
+//           chargeableWt
+//         );
         const response = await axios.get(
           `${server}/portal/create-shipment/get-rates?service=${selectedService}&zone=${zone}&rateTariff=${rateTariff}&chargeableWt=${chargeableWt}`
         );
-        console.log("Amount Details Response:", response.data);
+        // console.log("Amount Details Response:", response.data);
         setAmountDetails(response.data);
       } catch (error) {
         console.error("Error fetching amount details:", error);
@@ -687,8 +687,8 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
 
         setBranch(branchRes.data);
         setTaxSettings(taxRes.data);
-        console.log("Fetched Branch:", branchRes.data);
-        console.log("Fetched Tax Settings:", taxRes.data);
+        // console.log("Fetched Branch:", branchRes.data);
+        // console.log("Fetched Tax Settings:", taxRes.data);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -700,11 +700,11 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
   // Calculate base amount and GST once (on amountDetails change)
   useEffect(() => {
     if (amountDetails && account && branch && taxSettings) {
-      console.log(
-        "Updating form with amount details:",
-        amountDetails,
-        taxSettings
-      );
+      // console.log(
+//         "Updating form with amount details:",
+//         amountDetails,
+//         taxSettings
+//       );
 
       const rate = amountDetails.rate || 0;
       let basicAmount = 0;
@@ -732,15 +732,15 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       const cgstRate = sameState ? cgstObj?.taxAmount || 0 : 0;
       const igstRate = !sameState ? igstObj?.taxAmount || 0 : 0;
 
-      console.log("GST Applicability:", gstApplicable);
-      console.log(
-        "Tax Rates - SGST:",
-        sgstRate,
-        "CGST:",
-        cgstRate,
-        "IGST:",
-        igstRate
-      );
+      // console.log("GST Applicability:", gstApplicable);
+      // console.log(
+//         "Tax Rates - SGST:",
+//         sgstRate,
+//         "CGST:",
+//         cgstRate,
+//         "IGST:",
+//         igstRate
+//       );
 
       // Compute GST amounts
       const sgstAmt = gstApplicable ? basicAmount * sgstRate : 0;
@@ -758,7 +758,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       setValue("baseGrandTotal", baseGrandTotal); // <-- contains GST once
       setValue("grandTotal", baseGrandTotal); // initialize grand total
 
-      console.log("Calculated baseGrandTotal:", baseGrandTotal);
+      // console.log("Calculated baseGrandTotal:", baseGrandTotal);
     }
   }, [amountDetails, account, branch, taxSettings, chargeableWt]);
 
@@ -818,7 +818,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
   //extracting zone from filtered services
   useEffect(() => {
     const selectedServiceLocal = watch("service");
-    console.log("Selected Service:", selectedServiceLocal);
+    // console.log("Selected Service:", selectedServiceLocal);
     setSelectedService(selectedServiceLocal);
 
     if (!filteredServices || !Array.isArray(filteredServices)) {
@@ -833,7 +833,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
 
     // Extract the zone if found
     const zoneNumber = matchedZone ? matchedZone.zone : null;
-    console.log("Extracted Zone:", zoneNumber);
+    // console.log("Extracted Zone:", zoneNumber);
   }, [watch("service"), filteredServices]);
 
   //handle date formatting
@@ -892,7 +892,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
 
           if (!response.data || response.data.notFound) {
             setNewShipment("new");
-            console.log("hello");
+            // console.log("hello");
           } else {
             clearErrors("awbNo");
             setIsEdit(true);
@@ -949,7 +949,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
               setFetchedAwbData(normalizedData);
             }
 
-            console.log("Normalized ExtraCharges:", normalizedData);
+            // console.log("Normalized ExtraCharges:", normalizedData);
           }
         } catch (error) {
           console.error("Error fetching airway bill data:", error);
@@ -987,7 +987,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
             if (newShipment == "new") {
               setFetchedAwbData(response.data);
               setIsEdit(true);
-              console.log(response.data);
+              // console.log(response.data);
             }
           }
         } catch (error) {
@@ -1012,10 +1012,10 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       if (regex.test(awbNo)) {
         try {
           const response = await axios.get(`${server}/bagging`);
-          console.log("Bagging API response:", response.data);
+          // console.log("Bagging API response:", response.data);
 
           if (!response.data || response.data.length === 0) {
-            console.log("No bagging data found");
+            // console.log("No bagging data found");
             setFetchedBaggingData({});
             return;
           }
@@ -1050,10 +1050,10 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
           }
 
           if (foundAwbData) {
-            console.log("Found AWB in bagging data:", foundAwbData);
+            // console.log("Found AWB in bagging data:", foundAwbData);
             setFetchedBaggingData(foundAwbData);
           } else {
-            console.log(`AWB ${awbNo} not found in any bagging record`);
+            // console.log(`AWB ${awbNo} not found in any bagging record`);
             setFetchedBaggingData({});
           }
         } catch (error) {
@@ -1093,13 +1093,13 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
   // Add handler for content changes
   const handleSetInvoiceContent = useCallback((data) => {
     setInvoiceContent(data);
-    console.log(invoiceContent);
+    // console.log(invoiceContent);
   }, []);
 
   // Sync invoiceContent with form state
   useEffect(() => {
     setValue("invoiceContent", invoiceContent);
-    console.log("Invoice Content Updated:", invoiceContent);
+    // console.log("Invoice Content Updated:", invoiceContent);
   }, [invoiceContent]);
 
   // Add handler for volume content changes
@@ -1107,13 +1107,13 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     // Remove any nested self-reference before storing
     const cleanedData = data.map(({ volumeWeightTable, ...rest }) => rest);
     setVolumeContent(cleanedData);
-    console.log("Clean Volume Content Updated:", cleanedData);
+    // console.log("Clean Volume Content Updated:", cleanedData);
   }, []);
 
   // Sync volumeContent with form state
   useEffect(() => {
     setValue("volumeContent", volumeContent);
-    console.log("Volume Content Updated:", volumeContent);
+    // console.log("Volume Content Updated:", volumeContent);
   }, [volumeContent]);
 
   // Populate form when fetchedAwbData changes
@@ -1232,7 +1232,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       setValue("accountBalance", "");
       setIsHold(false);
       setInvContent([]);
-      console.log("No AWB data found - new shipment");
+      // console.log("No AWB data found - new shipment");
     }
   }, [fetchedAwbData, setValue]);
 
@@ -1243,15 +1243,15 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     const availableBalance = account?.leftOverBalance
       ? -account.leftOverBalance // convert negative to positive “available” amount
       : 0;
-    console.log("availableBalance", availableBalance, "grandTotal", grandTotal);
+    // console.log("availableBalance", availableBalance, "grandTotal", grandTotal);
     if (availableBalance < grandTotal) {
       setHoldReason("Insufficient balance");
       setIsHold(true);
-      console.log(
-        "holdreason dynamic rendering",
-        account?.leftOverBalance,
-        grandTotal
-      );
+      // console.log(
+//         "holdreason dynamic rendering",
+//         account?.leftOverBalance,
+//         grandTotal
+//       );
     } else {
       setIsHold(false);
       setHoldReason("");
@@ -2276,7 +2276,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                   onClick={(data) => {
                     setBtnAction("modify");
                     setIsEdit(false);
-                    console.log(data);
+                    // console.log(data);
                   }}
                   disabled={isEdit == false || newShipment == null}
                   type="submit"

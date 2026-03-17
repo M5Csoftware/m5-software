@@ -504,7 +504,7 @@ export default function InvoicePDFDownloader({ server, invoiceNumber }) {
             }
           );
           setQrImage(qrDataUrl);
-          console.log("✅ QR Code generated successfully");
+          // console.log("✅ QR Code generated successfully");
         } catch (err) {
           console.error("❌ QR Code generation error:", err);
         }
@@ -534,7 +534,7 @@ export default function InvoicePDFDownloader({ server, invoiceNumber }) {
       if (!res.ok) throw new Error("Invoice not found");
       const data = await res.json();
 
-      console.log("📄 Full invoice data:", JSON.stringify(data, null, 2));
+      // console.log("📄 Full invoice data:", JSON.stringify(data, null, 2));
 
       setInvoiceData(data);
 

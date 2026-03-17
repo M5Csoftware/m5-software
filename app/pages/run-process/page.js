@@ -49,7 +49,7 @@ function RunProcess() {
         
         if (storedUserData) {
           const parsedUserData = JSON.parse(storedUserData);
-          console.log("User data from localStorage:", parsedUserData);
+          // console.log("User data from localStorage:", parsedUserData);
           
           if (parsedUserData.userId && parsedUserData.department) {
             setUserData(parsedUserData);
@@ -57,7 +57,7 @@ function RunProcess() {
             console.error("User data missing required fields:", parsedUserData);
           }
         } else {
-          console.log("No user data found in localStorage");
+          // console.log("No user data found in localStorage");
         }
       } catch (error) {
         console.error("Error parsing user data from localStorage:", error);
@@ -163,7 +163,7 @@ function RunProcess() {
         
         // Set step from the backend response - it returns the most recent step
         const currentStep = response.data.currentStep || 0;
-        console.log("Setting step to:", currentStep);
+        // console.log("Setting step to:", currentStep);
         setStep(currentStep);
         
         // Show success notification only if we have data
@@ -188,7 +188,7 @@ function RunProcess() {
   const checkAndAutoUpdateStatuses = async (runNumber) => {
     try {
       if (!userData) {
-        console.log("User data not available for auto-update");
+        // console.log("User data not available for auto-update");
         return;
       }
 
@@ -258,7 +258,7 @@ function RunProcess() {
           showNotification("success", response.data.message);
           // Update step from response
           if (response.data.currentStep !== undefined) {
-            console.log("Updating step to:", response.data.currentStep);
+            // console.log("Updating step to:", response.data.currentStep);
             setStep(response.data.currentStep);
           }
           setValue("status", "");

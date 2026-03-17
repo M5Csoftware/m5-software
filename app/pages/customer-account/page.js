@@ -28,8 +28,8 @@ const Customer = () => {
 
   // ✅ Handle opening customer form after code assignment
   const handleEditCustomer = (userData) => {
-    console.log("=== Opening Customer Form from Assign Code ===");
-    console.log("User data received:", userData);
+    // console.log("=== Opening Customer Form from Assign Code ===");
+    // console.log("User data received:", userData);
     setEditingUser(userData);
     setShowCustomerForm(true);
     setUserManagementForm(false);
@@ -38,7 +38,7 @@ const Customer = () => {
 
   // ✅ Handle successful save from customer form - go back to CUSTOMER MANAGEMENT
   const handleSaveSuccess = () => {
-    console.log("=== Customer Form Save Success ===");
+    // console.log("=== Customer Form Save Success ===");
     setShowCustomerForm(false);
     setEditingUser(null);
     setUserManagementForm(false); // ✅ Changed: Don't go to user management
@@ -49,7 +49,7 @@ const Customer = () => {
 
   // ✅ Handle back from customer form
   const handleBackFromCustomerForm = () => {
-    console.log("=== Back from Customer Form ===");
+    // console.log("=== Back from Customer Form ===");
     setShowCustomerForm(false);
     setEditingUser(null);
     // If we came from user management (editingUser was set), go back there

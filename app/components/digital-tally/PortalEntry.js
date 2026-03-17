@@ -61,7 +61,7 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
     axios
       .get(`${server}/entity-manager`, { params: { entityType: "Hub" } })
       .then((res) => {
-        console.log("Hub list data:", res.data);
+        // console.log("Hub list data:", res.data);
         setHubList(res.data);
       })
       .catch((err) => console.error(err));
@@ -82,7 +82,7 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
         });
         const data = res.data;
 
-        console.log("Fetched manifest numbers:", data.manifest?.awbNumbers);
+        // console.log("Fetched manifest numbers:", data.manifest?.awbNumbers);
 
         setMawbOptions(data.manifest?.awbNumbers || []);
       } catch (error) {
@@ -127,9 +127,9 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
 
       const boxes = data.boxes || [];
 
-      console.log("Boxes data:", boxes);
+      // console.log("Boxes data:", boxes);
       if (boxes.length > 0) {
-        console.log("First box details:", boxes[0]);
+        // console.log("First box details:", boxes[0]);
       }
 
       setBoxOptions(boxes);
@@ -154,7 +154,7 @@ const PortalEntry = ({ register, setValue, watch, trigger, errors }) => {
       );
 
       const data = res.data.shipment;
-      console.log("Shipment data:", data);
+      // console.log("Shipment data:", data);
 
       if (awbToFetch === data.awbNo) {
         if (isManualSearch) {
@@ -228,11 +228,11 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
   // Update the applyBoxData function to handle missing data better
   const applyBoxData = (box) => {
     if (!box) {
-      console.log("No box data available");
+      // console.log("No box data available");
       return;
     }
 
-    console.log("Applying box data:", JSON.stringify(box, null, 2));
+    // console.log("Applying box data:", JSON.stringify(box, null, 2));
 
     // Try different possible field names with better fallback
     const actualWeight =
@@ -249,7 +249,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         (Number(length) * Number(breadth) * Number(height)) /
         5000
       ).toFixed(2);
-      console.log("Calculated portal volumeWeight:", volumeWeight);
+      // console.log("Calculated portal volumeWeight:", volumeWeight);
     }
 
     setValue("portalActualWeight", actualWeight);
@@ -258,13 +258,13 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
     setValue("portalHeight", height);
     setValue("portalVolWeight", volumeWeight);
 
-    console.log("Set portal values:", {
-      portalActualWeight: actualWeight,
-      portalLength: length,
-      portalBreadth: breadth,
-      portalHeight: height,
-      portalVolWeight: volumeWeight,
-    });
+    // console.log("Set portal values:", {
+//       portalActualWeight: actualWeight,
+//       portalLength: length,
+//       portalBreadth: breadth,
+//       portalHeight: height,
+//       portalVolWeight: volumeWeight,
+//     });
 
     // Trigger comparison after setting values
     setTimeout(() => compareValues(box), 100);
@@ -350,13 +350,13 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
 
   // Debug effect to log current form values
   useEffect(() => {
-    console.log("Current form values:", {
-      portalActualWeight: watch("portalActualWeight"),
-      portalVolWeight: watch("portalVolWeight"),
-      portalLength: watch("portalLength"),
-      portalBreadth: watch("portalBreadth"),
-      portalHeight: watch("portalHeight"),
-    });
+    // console.log("Current form values:", {
+//       portalActualWeight: watch("portalActualWeight"),
+//       portalVolWeight: watch("portalVolWeight"),
+//       portalLength: watch("portalLength"),
+//       portalBreadth: watch("portalBreadth"),
+//       portalHeight: watch("portalHeight"),
+//     });
   }, [watch]);
 
   // Effect to update portal data when box changes
@@ -456,12 +456,12 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
 
   const handleSendEmail = async () => {
     if (!eMail) {
-      console.log("Please enable Email checkbox to send email");
+      // console.log("Please enable Email checkbox to send email");
       return;
     }
 
     if (rowData.length === 0) {
-      console.log("Please add data to the table before sending email");
+      // console.log("Please add data to the table before sending email");
       return;
     }
 
@@ -492,7 +492,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
 
       if (response.data.success) {
         showNotification("success", "Email sent successfully!");
-        console.log("Email sent:", response.data);
+        // console.log("Email sent:", response.data);
       } else {
         showNotification(
           "error",
@@ -514,7 +514,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
       const entryUser = user?.userId || "Unknown";
       const entryUserName = user?.userName || "Unknown";
 
-      console.log("Entry User:", { entryUser, entryUserName, user });
+      // console.log("Entry User:", { entryUser, entryUserName, user });
 
       if (!watch("manifestNumber")) {
         showNotification("error", "Manifest Number is required");
@@ -573,7 +573,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         inscanUserName: entryUserName,
       };
 
-      console.log("Payload:", JSON.stringify(payload, null, 2));
+      // console.log("Payload:", JSON.stringify(payload, null, 2));
 
       const token = localStorage.getItem("token");
       if (!token) {
@@ -585,11 +585,11 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      console.log("Response received:", res);
+      // console.log("Response received:", res);
 
       if (res.status === 200 || res.status === 201) {
         showNotification("success", "Portal entry saved successfully! ✅");
-        console.log("✅ Response:", res.data);
+        // console.log("✅ Response:", res.data);
 
         const currentDate = new Date();
         const formattedDate = currentDate.toLocaleDateString("en-GB");
@@ -603,13 +603,13 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
             const eventCode = "OGH";
             const eventLocation = payload.hubName || "Unknown Hub";
 
-            console.log("📝 Saving to EventActivity:", {
-              awbNo: row.awbNo,
-              eventCode,
-              status: status,
-              eventLocation,
-              entryUser,
-            });
+            // console.log("📝 Saving to EventActivity:", {
+//               awbNo: row.awbNo,
+//               eventCode,
+//               status: status,
+//               eventLocation,
+//               entryUser,
+//             });
 
             try {
               const eventActivityPayload = {
@@ -633,11 +633,11 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 },
               );
 
-              console.log(
-                "✅ EventActivity saved for AWB:",
-                row.awbNo,
-                eventRes.data,
-              );
+              // console.log(
+//                 "✅ EventActivity saved for AWB:",
+//                 row.awbNo,
+//                 eventRes.data,
+//               );
             } catch (eventError) {
               console.error(
                 "❌ Failed to save EventActivity for AWB:",
@@ -681,8 +681,8 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
       const responseData = res.data || {};
       const accountCode = responseData.code || payload.code;
 
-      console.log("Response Data for logs:", responseData);
-      console.log("Account Code for logs:", accountCode);
+      // console.log("Response Data for logs:", responseData);
+      // console.log("Account Code for logs:", accountCode);
 
       const getCustomerName = async (accountCode) => {
         if (!accountCode) return "";
@@ -709,9 +709,9 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
           actionUser: user?.userId || "System",
         };
 
-        console.log("AWB log payload:", awbLogPayload);
+        // console.log("AWB log payload:", awbLogPayload);
         const awbLogResponse = await pushAWBLog(awbLogPayload);
-        console.log("AWB log response:", awbLogResponse);
+        // console.log("AWB log response:", awbLogResponse);
 
         if (payload.hold && payload.holdReason) {
           const holdLogPayload = {
@@ -725,7 +725,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
           };
 
           const holdLogResponse = await pushHoldLog(holdLogPayload);
-          console.log("Hold log response:", holdLogResponse);
+          // console.log("Hold log response:", holdLogResponse);
         }
       }
     } catch (error) {
@@ -939,7 +939,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                   type="button"
                   onClick={() => {
                     if (boxOptions[selectedBoxIndex]) {
-                      console.log("Current box:", boxOptions[selectedBoxIndex]);
+                      // console.log("Current box:", boxOptions[selectedBoxIndex]);
                       applyBoxData(boxOptions[selectedBoxIndex]);
                     }
                   }}
@@ -1161,7 +1161,7 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 className="flex h-[40px] bg-gray-200 border border-gray-300 rounded items-center p-4 text-gray-600 cursor-pointer"
                 onClick={() => {
                   const currentReason = watch("selectedReason");
-                  console.log("Adding reason:", currentReason);
+                  // console.log("Adding reason:", currentReason);
                   if (currentReason && !holdReasons.includes(currentReason)) {
                     const updated = [...holdReasons, currentReason];
                     setHoldReasons(updated);

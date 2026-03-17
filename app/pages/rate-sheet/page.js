@@ -127,9 +127,9 @@ const RateSheet = () => {
 
   const onSubmit = async (rowData) => {
     try {
-      console.log("Uploading data:", rowData);
+      // console.log("Uploading data:", rowData);
       const response = await axios.post(`${server}/rate-sheet`, rowData);
-      console.log("Upload successful", response.data);
+      // console.log("Upload successful", response.data);
       showNotification("success", "Data uploaded successfully");
       
       // Optionally refresh the view after upload

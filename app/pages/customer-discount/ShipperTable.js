@@ -81,7 +81,7 @@ const ShipperTable = ({ onAccountCodesSelected }) => {
       const extractedCodes = extractAccountCodes(inputValue);
 
       if (extractedCodes.length === 0) {
-        console.log("No valid codes found");
+        // console.log("No valid codes found");
         return;
       }
 
@@ -91,7 +91,7 @@ const ShipperTable = ({ onAccountCodesSelected }) => {
       );
 
       if (newCodes.length === 0) {
-        console.log("All codes already exist");
+        // console.log("All codes already exist");
         return;
       }
 

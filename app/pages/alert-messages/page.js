@@ -38,7 +38,7 @@ export default function AlertMessages({ setCurrentView }) {
 
         setListData(filtered);
       } catch (err) {
-        console.log(err);
+        // console.log(err);
       }
     };
 

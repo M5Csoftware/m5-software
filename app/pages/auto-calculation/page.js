@@ -129,17 +129,17 @@ const AutoCalculation = () => {
       );
       const customerDetails = customerResponse.data;
 
-      console.log("Fetched Customer Details:", customerDetails);
+      // console.log("Fetched Customer Details:", customerDetails);
       setSelectedAccount(customerDetails);
 
       // Now fetch shipments with full customer details
       await fetchAllShipments(customerDetails);
     } catch (error) {
       console.error("Error fetching customer details:", error);
-      console.log(
-        "Failed to fetch customer details: " +
-        (error.response?.data?.message || error.message),
-      );
+      // console.log(
+//         "Failed to fetch customer details: " +
+//         (error.response?.data?.message || error.message),
+//       );
       setSelectedAccount(null);
     } finally {
       setIsLoading(false);
@@ -158,7 +158,7 @@ const AutoCalculation = () => {
       );
       const shipments = response.data.shipments;
 
-      console.log("Fetched All Shipments:", shipments.length);
+      // console.log("Fetched All Shipments:", shipments.length);
       setAllShipments(shipments);
       setDisplayedShipments(shipments);
 
@@ -169,19 +169,19 @@ const AutoCalculation = () => {
 
       setValue("basicAmount", totalBasic.toFixed(2));
       setCalBasicAmount(totalBasic.toFixed(2));
-      console.log(
-        `Loaded ${shipments.length} shipments with Total Basic Amount:`,
-        totalBasic,
-      );
+      // console.log(
+//         `Loaded ${shipments.length} shipments with Total Basic Amount:`,
+//         totalBasic,
+//       );
 
       // Fetch account data (branch, tax, rates)
       await fetchAccountData(account);
     } catch (error) {
       console.error("Error fetching shipments:", error);
-      console.log(
-        "Failed to fetch shipment data: " +
-        (error.response?.data?.message || error.message),
-      );
+      // console.log(
+//         "Failed to fetch shipment data: " +
+//         (error.response?.data?.message || error.message),
+//       );
       showNotification("error", "Error fetching shipments");
       setAllShipments([]);
       setDisplayedShipments([]);
@@ -210,16 +210,16 @@ const AutoCalculation = () => {
         const services = [
           ...new Set(ratesRes.data.map((r) => r.service).filter(Boolean)),
         ];
-        console.log("Available services from rates:", services);
+        // console.log("Available services from rates:", services);
         setAvailableServices(["All", ...services]);
       } else {
-        console.log("Rates is not an array:", ratesRes.data);
+        // console.log("Rates is not an array:", ratesRes.data);
         setAvailableServices(["All"]);
       }
 
-      console.log("Fetched Branch:", branchRes.data);
-      console.log("Fetched Tax Settings:", taxRes.data);
-      console.log("Fetched Applicable Rates:", ratesRes.data?.length);
+      // console.log("Fetched Branch:", branchRes.data);
+      // console.log("Fetched Tax Settings:", taxRes.data);
+      // console.log("Fetched Applicable Rates:", ratesRes.data?.length);
     } catch (error) {
       console.error("Error fetching account data:", error);
       setAvailableServices(["All"]);
@@ -282,19 +282,19 @@ const AutoCalculation = () => {
     setValue("basicAmount", totalBasic.toFixed(2));
     setCalBasicAmount(totalBasic.toFixed(2));
 
-    console.log(
-      `Filtered to ${filtered.length} shipments with Total Basic Amount:`,
-      totalBasic,
-    );
+    // console.log(
+//       `Filtered to ${filtered.length} shipments with Total Basic Amount:`,
+//       totalBasic,
+//     );
   }, [watch("from"), watch("to"), allShipments]);
 
   // REUSING BULK UPLOAD ROUTE FOR RATE CALCULATION
   const calculateRatesUsingBulkUploadRoute = async (shipments, newService) => {
     try {
-      console.log("🔍 Using bulk upload route for rate calculation");
-      console.log("Shipments to calculate:", shipments.length);
-      console.log("Selected service:", newService);
-      console.log("Account:", selectedAccount?.accountCode);
+      // console.log("🔍 Using bulk upload route for rate calculation");
+      // console.log("Shipments to calculate:", shipments.length);
+      // console.log("Selected service:", newService);
+      // console.log("Account:", selectedAccount?.accountCode);
 
       // Prepare shipments in the format expected by bulk upload route
       const shipmentPayloads = shipments.map((shipment) => {
@@ -337,11 +337,11 @@ const AutoCalculation = () => {
         isCalculationOnly: true, // Flag to indicate this is just calculation, not upload
       };
 
-      console.log("📦 Sending to bulk upload route:", {
-        payloadSize: JSON.stringify(payload).length,
-        shipmentCount: payload.shipments.length,
-        sampleShipment: payload.shipments[0],
-      });
+      // console.log("📦 Sending to bulk upload route:", {
+//         payloadSize: JSON.stringify(payload).length,
+//         shipmentCount: payload.shipments.length,
+//         sampleShipment: payload.shipments[0],
+//       });
 
       // Call the bulk upload calculate-rates endpoint
       const response = await fetch(`${server}/bulk-upload/calculate-rates`, {
@@ -361,11 +361,11 @@ const AutoCalculation = () => {
       }
 
       const data = await response.json();
-      console.log("✅ Bulk upload route response:", {
-        success: data.success,
-        resultsCount: data.results?.length,
-        summary: data.summary,
-      });
+      // console.log("✅ Bulk upload route response:", {
+//         success: data.success,
+//         resultsCount: data.results?.length,
+//         summary: data.summary,
+//       });
 
       if (data.success && data.results && Array.isArray(data.results)) {
         // Map results back to shipments
@@ -375,11 +375,11 @@ const AutoCalculation = () => {
           );
 
           if (calculated && calculated.success) {
-            console.log(`✅ Rate calculated for ${shipment.awbNo}:`, {
-              basicAmt: calculated.basicAmt,
-              totalAmt: calculated.totalAmt,
-              service: calculated.service,
-            });
+            // console.log(`✅ Rate calculated for ${shipment.awbNo}:`, {
+//               basicAmt: calculated.basicAmt,
+//               totalAmt: calculated.totalAmt,
+//               service: calculated.service,
+//             });
 
             return {
               awbNo: shipment.awbNo,
@@ -441,10 +441,10 @@ const AutoCalculation = () => {
       updateUser: "Auto Calculation (Bulk Upload Route)",
     };
 
-    console.log("Payload for shipment update:", {
-      awbNo: shipment.awbNo,
-      payload: payload,
-    });
+    // console.log("Payload for shipment update:", {
+//       awbNo: shipment.awbNo,
+//       payload: payload,
+//     });
 
     return axios.put(
       `${server}/portal/create-shipment/auto-calculation?awbNo=${shipment.awbNo}`,
@@ -457,13 +457,13 @@ const AutoCalculation = () => {
   const handleAutoCalculate = async () => {
     const newService = watch("service");
 
-    console.log("\n=== START AUTO CALCULATION USING BULK UPLOAD ROUTE ===");
-    console.log("New service selected:", newService);
-    console.log("Displayed shipments count:", displayedShipments.length);
-    console.log("Selected account:", selectedAccount?.accountCode);
+    // console.log("\n=== START AUTO CALCULATION USING BULK UPLOAD ROUTE ===");
+    // console.log("New service selected:", newService);
+    // console.log("Displayed shipments count:", displayedShipments.length);
+    // console.log("Selected account:", selectedAccount?.accountCode);
 
     if (!displayedShipments.length) {
-      console.log("No shipments to calculate. Please select a customer first.");
+      // console.log("No shipments to calculate. Please select a customer first.");
       showNotification(
         "error",
         "No shipments to calculate, Please select a customer first",
@@ -472,7 +472,7 @@ const AutoCalculation = () => {
     }
 
     if (!selectedAccount) {
-      console.log("No customer selected. Please select a customer first.");
+      // console.log("No customer selected. Please select a customer first.");
       showNotification("error", "Please select a customer first");
       return;
     }
@@ -491,11 +491,11 @@ const AutoCalculation = () => {
 
     setIsLoading(true);
     try {
-      console.log(
-        "Starting auto calculation using bulk upload route for",
-        displayedShipments.length,
-        "shipments",
-      );
+      // console.log(
+//         "Starting auto calculation using bulk upload route for",
+//         displayedShipments.length,
+//         "shipments",
+//       );
 
       // STEP 1: Calculate rates using bulk upload route
       const calculatedResults = await calculateRatesUsingBulkUploadRoute(
@@ -507,12 +507,12 @@ const AutoCalculation = () => {
       const successfulCalculations = calculatedResults.filter((r) => r.success);
       const failedCalculations = calculatedResults.filter((r) => !r.success);
 
-      console.log("Calculation results:", {
-        total: calculatedResults.length,
-        successful: successfulCalculations.length,
-        failed: failedCalculations.length,
-        failedAWBs: failedCalculations.map((f) => f.awbNo),
-      });
+      // console.log("Calculation results:", {
+//         total: calculatedResults.length,
+//         successful: successfulCalculations.length,
+//         failed: failedCalculations.length,
+//         failedAWBs: failedCalculations.map((f) => f.awbNo),
+//       });
 
       // If all failed, show error
       if (successfulCalculations.length === 0) {
@@ -559,7 +559,7 @@ const AutoCalculation = () => {
 
           // Update shipment in database
           await updateShipmentInDB(shipment, calculated);
-          console.log(`✓ Successfully updated shipment ${calculated.awbNo}`);
+          // console.log(`✓ Successfully updated shipment ${calculated.awbNo}`);
           updatedCount++;
 
           // Track totals
@@ -578,13 +578,13 @@ const AutoCalculation = () => {
         }
       }
 
-      console.log("=== Auto Calculation Results ===");
-      console.log("Total processed:", calculatedResults.length);
-      console.log("Successfully calculated:", successfulCalculations.length);
-      console.log("Successfully updated in DB:", updatedCount);
+      // console.log("=== Auto Calculation Results ===");
+      // console.log("Total processed:", calculatedResults.length);
+      // console.log("Successfully calculated:", successfulCalculations.length);
+      // console.log("Successfully updated in DB:", updatedCount);
       console.log("Failed updates:", errorCount);
-      console.log("Total NEW Basic Amount:", totalNewBasic.toFixed(2));
-      console.log("Total NEW Grand Total:", totalNewGrandTotal.toFixed(2));
+      // console.log("Total NEW Basic Amount:", totalNewBasic.toFixed(2));
+      // console.log("Total NEW Grand Total:", totalNewGrandTotal.toFixed(2));
 
       // Update form with new totals
       setValue("basicAmount", totalNewBasic.toFixed(2));
@@ -592,7 +592,7 @@ const AutoCalculation = () => {
 
       // Refresh shipments to show updated data
       if (selectedAccount && updatedCount > 0) {
-        console.log("Refreshing shipments...");
+        // console.log("Refreshing shipments...");
         await fetchAllShipments(selectedAccount);
       }
 
@@ -632,16 +632,16 @@ const AutoCalculation = () => {
   // Test calculation using bulk upload route
   const testCalculation = async () => {
     if (!displayedShipments.length || !watch("service")) {
-      console.log("Cannot test: No shipments or service selected");
+      // console.log("Cannot test: No shipments or service selected");
       return;
     }
 
     const testShipment = displayedShipments[0];
     const newService = watch("service");
 
-    console.log("\n=== TESTING CALCULATION USING BULK UPLOAD ROUTE ===");
-    console.log("Test shipment:", testShipment.awbNo);
-    console.log("Selected service:", newService);
+    // console.log("\n=== TESTING CALCULATION USING BULK UPLOAD ROUTE ===");
+    // console.log("Test shipment:", testShipment.awbNo);
+    // console.log("Selected service:", newService);
 
     try {
       // Use the bulk upload route for testing

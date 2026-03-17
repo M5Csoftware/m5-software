@@ -155,29 +155,29 @@ function AccountLedger() {
       return;
     }
 
-    console.log("🔍 Fetching customer info for code:", code);
-    console.log("🌐 Server URL:", server);
+    // console.log("🔍 Fetching customer info for code:", code);
+    // console.log("🌐 Server URL:", server);
 
     try {
       const url = `${server}/customer-account?accountCode=${code.toUpperCase()}`;
-      console.log("📡 Making request to:", url);
+      // console.log("📡 Making request to:", url);
 
       const response = await axios.get(url);
 
-      console.log("✅ API Response:", response);
-      console.log("📦 Response data:", response.data);
-      console.log("👤 Customer Name:", response.data.customerName);
-      console.log("📧 Email:", response.data.email);
-      console.log("💰 Opening Balance:", response.data.openingBalance);
+      // console.log("✅ API Response:", response);
+      // console.log("📦 Response data:", response.data);
+      // console.log("👤 Customer Name:", response.data.customerName);
+      // console.log("📧 Email:", response.data.email);
+      // console.log("💰 Opening Balance:", response.data.openingBalance);
 
       // Set the values based on the API response
       const name = response.data.name || "";
       const email = response.data.email || "";
       const balance = response.data.openingBalance || "";
 
-      console.log("🎯 Setting customerName to:", name);
-      console.log("🎯 Setting email to:", email);
-      console.log("🎯 Setting openingBalance to:", balance);
+      // console.log("🎯 Setting customerName to:", name);
+      // console.log("🎯 Setting email to:", email);
+      // console.log("🎯 Setting openingBalance to:", balance);
 
       setCustomerName(name);
       setValue("email", email);
@@ -206,11 +206,11 @@ function AccountLedger() {
 
   // --- Debounced fetchCustomerInfo ---
   useEffect(() => {
-    console.log("🔄 Debounce effect triggered. watchedCode:", watchedCode);
+    // console.log("🔄 Debounce effect triggered. watchedCode:", watchedCode);
 
     // Only run if code has a value
     if (!watchedCode || watchedCode.trim() === "") {
-      console.log("⏭️ Skipping fetch - empty code");
+      // console.log("⏭️ Skipping fetch - empty code");
       // Clear fields when code is empty
       setCustomerName("");
       setOpeningBalance("");
@@ -218,14 +218,14 @@ function AccountLedger() {
       return;
     }
 
-    console.log("⏰ Setting up debounce timer for code:", watchedCode);
+    // console.log("⏰ Setting up debounce timer for code:", watchedCode);
     const delayDebounce = setTimeout(() => {
-      console.log("⏱️ Debounce timer expired - fetching now");
+      // console.log("⏱️ Debounce timer expired - fetching now");
       fetchCustomerInfo(watchedCode);
     }, 500); // wait 0.5s after typing stops
 
     return () => {
-      console.log("🧹 Cleaning up debounce timer");
+      // console.log("🧹 Cleaning up debounce timer");
       clearTimeout(delayDebounce);
     };
   }, [watchedCode, server]); // Watch the form value directly
@@ -233,7 +233,7 @@ function AccountLedger() {
   useEffect(() => {
     const totalOutstanding = () => {
       const OutstandingData = { ...rowData, totalBalance };
-      console.log("Altaf:", OutstandingData);
+      // console.log("Altaf:", OutstandingData);
     };
     if (rowData) {
       totalOutstanding();
@@ -339,7 +339,7 @@ function AccountLedger() {
             id={`withHoldAWBNo`}
             isChecked={isChecked}
             setChecked={(val) => {
-              console.log("Checkbox changed to:", val);
+              // console.log("Checkbox changed to:", val);
               setIsChecked(val);
               setValue("withHoldAWBNo", val);
             }}

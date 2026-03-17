@@ -270,11 +270,11 @@ function UserManagement({
     XLSX.writeFile(wb, fileName);
 
     // Show success message
-    console.log(
-      selectedIds.length > 0
-        ? `Downloaded ${selectedIds.length} selected user(s)`
-        : `Downloaded all ${dataToExport.length} user(s)`
-    );
+    // console.log(
+//       selectedIds.length > 0
+//         ? `Downloaded ${selectedIds.length} selected user(s)`
+//         : `Downloaded all ${dataToExport.length} user(s)`
+//     );
   };
 
   const hasActiveFilters =

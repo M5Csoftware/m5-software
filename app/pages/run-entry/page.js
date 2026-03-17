@@ -158,7 +158,7 @@ export default function RunEntry() {
         shouldValidate: true,
         shouldDirty: true,
       });
-      console.log("Generated unique ID for existing entry:", newUniqueId);
+      // console.log("Generated unique ID for existing entry:", newUniqueId);
     }
 
     setSelectRunEntry(runData);
@@ -197,16 +197,16 @@ export default function RunEntry() {
 
   // Generate unique ID when runNo changes
   useEffect(() => {
-    console.log("RunNo changed:", runNo);
+    // console.log("RunNo changed:", runNo);
     if (runNo && typeof runNo === "string" && runNo.trim() !== "") {
       const newUniqueId = `${runNo.trim()}00`;
-      console.log("Setting unique ID:", newUniqueId);
+      // console.log("Setting unique ID:", newUniqueId);
       setValue("uniqueID", newUniqueId, {
         shouldValidate: true,
         shouldDirty: true,
       });
     } else {
-      console.log("Clearing unique ID");
+      // console.log("Clearing unique ID");
       setValue("uniqueID", "", { shouldValidate: true, shouldDirty: true });
     }
   }, [runNo, setValue]);
@@ -239,7 +239,7 @@ export default function RunEntry() {
       accountType: accountType,
     };
 
-    console.log("Submitting data:", combinedData);
+    // console.log("Submitting data:", combinedData);
     setIsSubmitting(true);
 
     try {
@@ -249,7 +249,7 @@ export default function RunEntry() {
       );
 
       if (response.status === 201) {
-        console.log("Run entry created successfully!");
+        // console.log("Run entry created successfully!");
         showNotification("success", "Run-entry data added successfully!");
 
         reset({
@@ -289,7 +289,7 @@ export default function RunEntry() {
 
   const handleUpdate = async (formData) => {
     if (!selectRunEntry || !selectRunEntry._id) {
-      console.log("No matching entry found for update");
+      // console.log("No matching entry found for update");
       return;
     }
 
@@ -305,7 +305,7 @@ export default function RunEntry() {
       );
 
       if (response.status === 200) {
-        console.log("Run entry updated successfully!");
+        // console.log("Run entry updated successfully!");
         setDisabledInput(true);
         setEditMode(false);
         setEditing(false);
@@ -330,7 +330,7 @@ export default function RunEntry() {
 
   const handleDelete = async () => {
     if (!selectRunEntry || !selectRunEntry._id) {
-      console.log("No matching entry found for deletion");
+      // console.log("No matching entry found for deletion");
       return;
     }
 
@@ -342,7 +342,7 @@ export default function RunEntry() {
       );
 
       if (response.status === 200) {
-        console.log("Run entry deleted successfully!");
+        // console.log("Run entry deleted successfully!");
         reset();
         resetFormState();
         showNotification("success", "Run-entry data deleted successfully!");
@@ -400,7 +400,7 @@ export default function RunEntry() {
     abortControllerRef.current = new AbortController();
 
     try {
-      console.log(`Fetching data for runNo: ${runNo}, accountType: ${accType}`);
+      // console.log(`Fetching data for runNo: ${runNo}, accountType: ${accType}`);
 
       const response = await axios.get(
         `${server}/run-entry/run-bag?runNo=${runNo.toUpperCase()}&accountType=${accType}`,
@@ -412,19 +412,19 @@ export default function RunEntry() {
 
       if (response.status === 200) {
         const runData = response.data;
-        console.log("Fetched data:", runData);
+        // console.log("Fetched data:", runData);
         updateFormWithData(runData);
       }
     } catch (error) {
       if (axios.isCancel(error)) {
-        console.log("Request was cancelled");
+        // console.log("Request was cancelled");
         return;
       }
 
       if (error.response?.status === 404) {
-        console.log(
-          `No data found for runNo: ${runNo}, accountType: ${accType}`
-        );
+        // console.log(
+//           `No data found for runNo: ${runNo}, accountType: ${accType}`
+//         );
         showNotification("error", "Run entry not found");
         resetFormState();
 
@@ -443,7 +443,7 @@ export default function RunEntry() {
             shouldValidate: true,
             shouldDirty: true,
           });
-          console.log("Generated unique ID for new entry:", newUniqueId);
+          // console.log("Generated unique ID for new entry:", newUniqueId);
         }
       } else if (
         error.code === "ECONNABORTED" ||

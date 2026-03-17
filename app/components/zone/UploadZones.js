@@ -193,7 +193,7 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         }
 
         const headers = result.meta.fields || [];
-        console.log("CSV Headers:", headers);
+        // console.log("CSV Headers:", headers);
 
         const normalizedHeaders = headers.map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
         
@@ -269,7 +269,7 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
           return;
         }
 
-        console.log("Processed CSV Data:", parsedData);
+        // console.log("Processed CSV Data:", parsedData);
         setRowData(parsedData);
         setSearchFilteredData(parsedData);
         setErrorMessage("");
@@ -407,7 +407,7 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         totalRecords: rowData.length
       };
 
-      console.log("Submitting Zone Data:", dataToSubmit);
+      // console.log("Submitting Zone Data:", dataToSubmit);
 
       const response = await fetch(`${server}/zones`, {
         method: 'POST',
@@ -423,7 +423,7 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         throw new Error(result.error || 'Failed to upload zones');
       }
 
-      console.log("Upload successful:", result);
+      // console.log("Upload successful:", result);
 
       showNotification(
         "success", 

@@ -67,7 +67,7 @@ export function CloseButton({
 
   // ✅ Internal handleRefresh logic
   const handleRefresh = () => {
-    console.log("🔄 Refresh clicked - Force refetch from API");
+    // console.log("🔄 Refresh clicked - Force refetch from API");
     reset();                  // clear form fields
     setError("");             // clear error
     setApiError("");          // clear API error

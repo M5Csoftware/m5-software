@@ -191,7 +191,7 @@ function CreditLimitTemp({ }) {
         ...data,
       });
 
-      console.log("Modify response:", res.data);
+      // console.log("Modify response:", res.data);
       showNotification("success", "Record updated successfully");
 
       setRefetch(!refetch);
@@ -215,7 +215,7 @@ function CreditLimitTemp({ }) {
     const user = JSON.parse(localStorage.getItem("user"));
     const verifiedByUser = user?.userId || user?.username || "Unknown";
 
-    console.log("🔍 Verifying with user:", verifiedByUser); // Debug log
+    // console.log("🔍 Verifying with user:", verifiedByUser); // Debug log
 
     try {
       // ✅ CRITICAL: Only send necessary fields, DO NOT spread ...data
@@ -226,11 +226,11 @@ function CreditLimitTemp({ }) {
         verifierUser: verifiedByUser, // ✅ Changed from entryUser to verifierUser
       };
 
-      console.log("🔍 Sending payload:", payload); // Debug log
+      // console.log("🔍 Sending payload:", payload); // Debug log
 
       const response = await axios.put(`${server}/credit-limit-temp`, payload);
 
-      console.log("✅ Response:", response.data); // Debug log
+      // console.log("✅ Response:", response.data); // Debug log
 
       showNotification("success", "Record verified successfully ✅");
       setRefetch(!refetch);
@@ -283,10 +283,10 @@ function CreditLimitTemp({ }) {
         mode: "temp",
       };
 
-      console.log("Final payload:", payload);
+      // console.log("Final payload:", payload);
 
       const res = await axios.post(`${server}/credit-limit-temp`, payload);
-      console.log("Payment API response:", res.data);
+      // console.log("Payment API response:", res.data);
       showNotification("success", "New Record saved successfully");
     } catch (error) {
       console.error(
@@ -307,7 +307,7 @@ function CreditLimitTemp({ }) {
 
       const response = await axios.put(url, { amount });
 
-      console.log("Balance updated successfully:", response.data);
+      // console.log("Balance updated successfully:", response.data);
 
       return response.data;
     } catch (error) {
@@ -327,7 +327,7 @@ function CreditLimitTemp({ }) {
         customerCode,
         Number(amount)
       );
-      console.log("Updated Customer:", updatedCustomer);
+      // console.log("Updated Customer:", updatedCustomer);
     } catch (error) {
       console.error("Failed to update balance:", error);
     }

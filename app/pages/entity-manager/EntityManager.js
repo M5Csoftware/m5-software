@@ -237,7 +237,7 @@ export default function EntityManager({ setCurrentView }) {
           params: { entityType },
         });
         setData(response.status === 200 ? response.data : []);
-        console.log(response.data);
+        // console.log(response.data);
       } catch (error) {
         console.error("Error fetching entities:", error);
         setData([]);
@@ -630,7 +630,7 @@ function ExtraFields({
       const portalValue = Boolean(data.activeOnPortal);
       const softwareValue = Boolean(data.activeOnSoftware);
 
-      console.log(matchedEntity)
+      // console.log(matchedEntity)
 
       setActiveOnPortal(portalValue);
       setActiveOnSoftware(softwareValue);
@@ -656,7 +656,7 @@ function ExtraFields({
     if (selectedEntity === "Service") {
       setActiveOnPortal(Boolean(activeOnPortalWatch));
       setActiveOnSoftware(Boolean(activeOnSoftwareWatch));
-      console.log(selectedEntity)
+      // console.log(selectedEntity)
     }
   }, [activeOnPortalWatch, activeOnSoftwareWatch, selectedEntity, refreshKey]);
 

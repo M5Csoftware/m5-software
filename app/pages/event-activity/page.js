@@ -441,7 +441,7 @@ function EventActivity() {
       );
 
       setSelectedItems([]);
-      console.log("Items excluded successfully:", selectedItems);
+      // console.log("Items excluded successfully:", selectedItems);
       showNotification("success", "Items excluded successfully");
     } catch (error) {
       console.error("Error excluding items:", error);
@@ -461,7 +461,7 @@ function EventActivity() {
         ...eventActivityData,
       });
 
-      console.log("Event activity created successfully:", response.data);
+      // console.log("Event activity created successfully:", response.data);
       showNotification("success", "Event activity created successfully");
       return response.data;
     } catch (error) {
@@ -476,7 +476,7 @@ function EventActivity() {
 
   const onSubmit = async (data) => {
     try {
-      console.log(eventData);
+      // console.log(eventData);
       await createEventActivity(eventData);
 
       // Send notifications for each event

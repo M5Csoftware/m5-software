@@ -285,7 +285,7 @@ export default function EmployeeTable({
         break;
       case "permissions":
         onEmployeeAction("permissions", user);
-        console.log("Change permissions for:", user);
+        // console.log("Change permissions for:", user);
         break;
       case "deactivate":
         setUserToDeactivate(user);

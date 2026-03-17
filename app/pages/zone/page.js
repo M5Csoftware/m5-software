@@ -55,7 +55,7 @@ const Zone = () => {
   const onSubmit = async (rowData) => {
     try {
       const response = await axios.post(`${server}/zones`, rowData);
-      console.log("Upload successful", response.data);
+      // console.log("Upload successful", response.data);
       showNotification("success", "Data uploaded successfully");
       
       // After successful upload, refresh the form

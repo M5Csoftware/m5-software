@@ -100,7 +100,7 @@ const ChildAwbNoReport = () => {
                 );
                 masterData = masterRes.data;
               } catch (err) {
-                console.log("Master data not found:", err);
+                // console.log("Master data not found:", err);
               }
             }
 
@@ -208,7 +208,7 @@ const ChildAwbNoReport = () => {
         showNotification("success", `Found ${finalData.length} record(s)`);
       }
 
-      console.log("Processed Data:", finalData);
+      // console.log("Processed Data:", finalData);
     } catch (err) {
       console.error("Error fetching data:", err);
       showNotification("error", err.response?.data?.error || "Error fetching data");
@@ -223,7 +223,7 @@ const ChildAwbNoReport = () => {
     const from = getValues("from");
     const to = getValues("to");
 
-    console.log(from, to);
+    // console.log(from, to);
     setCurrDate([from, to]);
 
     if (!from) setValue("from", formattedToday);
@@ -267,7 +267,7 @@ const ChildAwbNoReport = () => {
   };
 
   const onSubmit = (data) => {
-    console.log("data :", data);
+    // console.log("data :", data);
   };
 
   return (
