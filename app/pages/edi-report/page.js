@@ -23,7 +23,7 @@ const EdiReport = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [pageLimit, setPageLimit] = useState(50); // Records per page
-  const [paginatedData, setPaginatedData] = useState([]);
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
 
   const [notification, setNotification] = useState({
     type: "success",
@@ -74,63 +74,39 @@ const EdiReport = () => {
     { key: "CRN_MHBS_NO", label: "CRN MHBS NO" },
   ];
 
-  // Filter data for CSB file if checkbox is checked
-  const filteredData = useMemo(() => {
-    if (csbFile) {
-      return rowData.filter((item) => item.csb === true);
-    }
-    return rowData;
-  }, [rowData, csbFile]);
-
-  // Update paginated data whenever filteredData, currentPage, or pageLimit changes
-  useEffect(() => {
-    const startIndex = (currentPage - 1) * pageLimit;
-    const endIndex = startIndex + pageLimit;
-    setPaginatedData(filteredData.slice(startIndex, endIndex));
-    
-    // Update total pages based on filtered data
-    setTotalPages(Math.ceil(filteredData.length / pageLimit));
-    setTotalRecords(filteredData.length);
-    
-    // Reset to page 1 if current page is beyond available pages
-    if (filteredData.length > 0 && currentPage > Math.ceil(filteredData.length / pageLimit)) {
-      setCurrentPage(1);
-    }
-  }, [filteredData, currentPage, pageLimit]);
-
-  // Handle page change
-  const handlePageChange = (newPage) => {
-    if (newPage < 1 || newPage > totalPages) return;
-    
-    // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    setCurrentPage(newPage);
-  };
-
-  // Handle limit change
-  const handleLimitChange = (e) => {
-    const newLimit = parseInt(e.target.value, 10);
-    setPageLimit(newLimit);
-    setCurrentPage(1); // Reset to first page when changing limit
-  };
+  const [loadingShipments, setLoadingShipments] = useState(false);
 
   // Function to fetch data based on runNo using axios
-  const fetchDataByRunNo = async () => {
+  const fetchDataByRunNo = async (page = 1) => {
     if (!runNumber || runNumber.trim() === "") {
       showNotification("error", "Please enter a Run Number");
       return;
     }
 
     setLoading(true);
+    setCurrentFilters({ runNumber, csbFile });
+
     try {
-      // Fetch data from the get-shipment API filtered by runNo
+      const queryParams = new URLSearchParams({
+        runNo: runNumber,
+        page: page,
+        limit: pageLimit,
+      });
+      
+      if (csbFile) {
+        queryParams.append("csb", "true");
+      }
+
       const response = await axios.get(
-        `${server}/portal/get-shipments?runNo=${runNumber}`
+        `${server}/portal/get-shipments?${queryParams.toString()}`
       );
 
-      // Extract shipments array from response
       const allData = response.data.shipments || [];
+      const pagination = response.data.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: allData.length,
+      };
 
       if (!allData || allData.length === 0) {
         showNotification("error", "No data found for the entered Run Number");
@@ -140,7 +116,6 @@ const EdiReport = () => {
         return;
       }
 
-      // Transform the database data to match your table structure
       const transformedData = allData.map((item) => ({
         HAWBNumber: item.awbNo || "",
         ConsignorName: item.shipperFullName || "",
@@ -178,34 +153,111 @@ const EdiReport = () => {
         ADCode: "",
         CRN_NO: item.awbNo || "",
         CRN_MHBS_NO: "",
-        csb: item.csb || false, // Store csb flag for filtering
+        csb: item.csb || false,
       }));
 
       setRowData(transformedData);
-      // Reset to page 1 when new data is loaded
-      setCurrentPage(1);
-      showNotification("success", `Found ${transformedData.length} shipments`);
+      setCurrentPage(pagination.currentPage);
+      setTotalPages(pagination.totalPages);
+      setTotalRecords(pagination.totalRecords);
+      showNotification("success", `Found ${pagination.totalRecords} shipments (Page ${pagination.currentPage} of ${pagination.totalPages})`);
     } catch (error) {
       console.error("Error fetching data:", error);
-      if (error.response) {
-        showNotification(
-          "error",
-          `Error: ${error.response.status} - ${error.response.statusText}`
-        );
-      } else if (error.request) {
-        showNotification(
-          "error",
-          "Network error. Please check if the server is running."
-        );
-      } else {
-        showNotification("error", "Error fetching data. Please try again.");
-      }
+      showNotification("error", "Error fetching data. Please try again.");
       setRowData([]);
       setTotalRecords(0);
       setTotalPages(1);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    fetchDataByRunNo(newPage);
+  };
+
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchDataByRunNo(1);
+    }
+  };
+
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm bg-white"
+              disabled={loading}
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   // Function to download data as CSV
@@ -264,12 +316,13 @@ const EdiReport = () => {
     setCurrentPage(1); // Reset pagination
     setTotalPages(1);
     setTotalRecords(0);
+    setCurrentFilters(null);
     showNotification("success", "Refreshed successfully");
   };
 
   // Handle form submission (prevents default page reload)
   const onSubmit = (data) => {
-    fetchDataByRunNo();
+    fetchDataByRunNo(1);
   };
 
   // Handle CSB checkbox change
@@ -278,75 +331,7 @@ const EdiReport = () => {
     setCurrentPage(1); // Reset to page 1 when filtering changes
   };
 
-  // Pagination component
-  const PaginationControls = () => {
-    if (totalPages <= 1 && filteredData.length === 0) return null;
-
-    return (
-      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
-        <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">{paginatedData.length}</span> of{" "}
-            <span className="font-medium">{totalRecords}</span> records
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label htmlFor="limit" className="text-sm text-gray-600">
-              Rows per page:
-            </label>
-            <select
-              id="limit"
-              value={pageLimit}
-              onChange={handleLimitChange}
-              className="border rounded px-2 py-1 text-sm"
-              disabled={loading}
-            >
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value={200}>200</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handlePageChange(1)}
-            disabled={currentPage === 1 || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            First
-          </button>
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1 || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            Previous
-          </button>
-
-          <span className="px-3 py-1 text-sm">
-            Page {currentPage} of {totalPages}
-          </span>
-
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            Next
-          </button>
-          <button
-            onClick={() => handlePageChange(totalPages)}
-            disabled={currentPage === totalPages || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-          >
-            Last
-          </button>
-        </div>
-      </div>
-    );
-  };
+  const [temp, setTemp] = useState(null);
 
   return (
     <form className="flex flex-col gap-[34px]" onSubmit={handleSubmit(onSubmit)}>
@@ -375,7 +360,7 @@ const EdiReport = () => {
           <div>
             <OutlinedButtonRed
               label={loading ? "Loading..." : "Show"}
-              onClick={fetchDataByRunNo}
+              onClick={() => fetchDataByRunNo(1)}
               disabled={loading}
               type="button"
             />
@@ -384,7 +369,7 @@ const EdiReport = () => {
             <SimpleButton
               name={"Download CSV"}
               onClick={downloadCSV}
-              disabled={filteredData.length === 0 || loading}
+              disabled={rowData.length === 0 || loading}
               type="button"
             />
           </div>
@@ -407,7 +392,7 @@ const EdiReport = () => {
             setValue={setValue}
             name="ediReportTable"
             columns={columns}
-            rowData={paginatedData} // Use paginated data
+            rowData={rowData} // Use rowData directly
             className={`h-[50vh]`}
           />
 
