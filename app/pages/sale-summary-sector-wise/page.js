@@ -35,7 +35,10 @@ function SaleSummarySectorWise() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
 
   // Watch customer code for auto-fill
   const customerCode = watch("customerCode");
@@ -71,42 +74,10 @@ function SaleSummarySectorWise() {
     }
   }, [customerCode]);
 
-  // Pagination calculations
-  const totalPages = Math.ceil(allRowData.length / itemsPerPage);
-  
-  useEffect(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    setRowData(allRowData.slice(startIndex, endIndex));
-  }, [currentPage, allRowData]);
-
-  const goToPage = (page) => {
-    setCurrentPage(page);
-  };
-
-  const goToPrevious = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-
-  const goToNext = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
-
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisible = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-    
-    if (endPage - startPage < maxVisible - 1) {
-      startPage = Math.max(1, endPage - maxVisible + 1);
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-    return pages;
-  };
+  const [overallTotals, setOverallTotals] = useState({
+    totalWeight: 0,
+    grandTotal: 0
+  });
 
   const columns = useMemo(
     () => [
@@ -139,13 +110,25 @@ function SaleSummarySectorWise() {
     []
   );
 
-  const handleShow = async (e) => {
-    e.preventDefault();
-    
-    const from = watch("from");
-    const to = watch("to");
+  const handleShow = async (page = 1) => {
+    const values = {
+      from: watch("from"),
+      to: watch("to"),
+      runNumber: watch("runNumber"),
+      payment: watch("payment"),
+      branch: watch("branch"),
+      origin: watch("origin"),
+      sector: watch("sector"),
+      destination: watch("destination"),
+      network: watch("network"),
+      counterPart: watch("counterPart"),
+      salePerson: watch("salePerson"),
+      saleRefPerson: watch("saleRefPerson"),
+      company: watch("company"),
+      customerCode: watch("customerCode")
+    };
 
-    if (!from || !to) {
+    if (!values.from || !values.to) {
       setNotification({
         type: "error",
         message: "Please select From and To dates",
@@ -155,37 +138,27 @@ function SaleSummarySectorWise() {
     }
 
     setLoading(true);
+    setCurrentFilters(values);
     
     try {
       const params = new URLSearchParams();
-      params.append("from", from);
-      params.append("to", to);
+      params.append("from", values.from);
+      params.append("to", values.to);
+      params.append("page", page);
+      params.append("limit", pageLimit);
       
-      const runNumber = watch("runNumber");
-      const payment = watch("payment");
-      const branch = watch("branch");
-      const origin = watch("origin");
-      const sector = watch("sector");
-      const destination = watch("destination");
-      const network = watch("network");
-      const counterPart = watch("counterPart");
-      const salePerson = watch("salePerson");
-      const saleRefPerson = watch("saleRefPerson");
-      const company = watch("company");
-      const customerCodeValue = watch("customerCode");
-
-      if (runNumber) params.append("runNumber", runNumber.toUpperCase());
-      if (payment) params.append("payment", payment);
-      if (branch) params.append("branch", branch);
-      if (origin) params.append("origin", origin);
-      if (sector) params.append("sector", sector);
-      if (destination) params.append("destination", destination);
-      if (network) params.append("network", network);
-      if (counterPart) params.append("counterPart", counterPart);
-      if (salePerson) params.append("salePerson", salePerson);
-      if (saleRefPerson) params.append("saleRefPerson", saleRefPerson);
-      if (company) params.append("company", company);
-      if (customerCodeValue) params.append("customerCode", customerCodeValue.toUpperCase());
+      if (values.runNumber) params.append("runNumber", values.runNumber.toUpperCase());
+      if (values.payment) params.append("payment", values.payment);
+      if (values.branch) params.append("branch", values.branch);
+      if (values.origin) params.append("origin", values.origin);
+      if (values.sector) params.append("sector", values.sector);
+      if (values.destination) params.append("destination", values.destination);
+      if (values.network) params.append("network", values.network);
+      if (values.counterPart) params.append("counterPart", values.counterPart);
+      if (values.salePerson) params.append("salePerson", values.salePerson);
+      if (values.saleRefPerson) params.append("saleRefPerson", values.saleRefPerson);
+      if (values.company) params.append("company", values.company);
+      if (values.customerCode) params.append("customerCode", values.customerCode.toUpperCase());
       params.append("withBookingDate", withBookingDate);
 
       const response = await axios.get(
@@ -193,12 +166,23 @@ function SaleSummarySectorWise() {
       );
 
       if (response.data.success) {
-        setAllRowData(response.data.data);
-        setTotals(response.data.totals);
-        setCurrentPage(1);
+        const records = response.data.data || [];
+        const pagination = response.data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalRecords: records.length,
+        };
+        
+        setAllRowData(records);
+        setRowData(records);
+        setCurrentPage(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+        setTotalRecords(pagination.totalRecords);
+        setOverallTotals(response.data.totals || { totalWeight: 0, grandTotal: 0 });
+
         setNotification({
           type: "success",
-          message: `Found ${response.data.data.length} records`,
+          message: `Found ${pagination.totalRecords} records (Page ${pagination.currentPage} of ${pagination.totalPages})`,
           visible: true,
         });
       } else {
@@ -208,7 +192,8 @@ function SaleSummarySectorWise() {
           visible: true,
         });
         setAllRowData([]);
-        setTotals({ totalWeight: 0, grandTotal: 0 });
+        setRowData([]);
+        setOverallTotals({ totalWeight: 0, grandTotal: 0 });
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -218,10 +203,99 @@ function SaleSummarySectorWise() {
         visible: true,
       });
       setAllRowData([]);
-      setTotals({ totalWeight: 0, grandTotal: 0 });
+      setRowData([]);
+      setOverallTotals({ totalWeight: 0, grandTotal: 0 });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    handleShow(newPage);
+  };
+
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    if (currentFilters) {
+      setCurrentPage(1);
+      handleShow(1);
+    }
+  };
+
+  const PaginationControls = () => {
+    if (totalPages <= 1 && allRowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{allRowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm bg-white"
+              disabled={loading}
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   const handlePrint = () => {
@@ -248,8 +322,8 @@ function SaleSummarySectorWise() {
 
     const finalY = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(10);
-    doc.text(`Total Weight: ${totals.totalWeight}`, 14, finalY);
-    doc.text(`Grand Total: ${totals.grandTotal.toFixed(2)}`, 14, finalY + 7);
+    doc.text(`Total Weight: ${overallTotals.totalWeight}`, 14, finalY);
+    doc.text(`Grand Total: ${overallTotals.grandTotal.toFixed(2)}`, 14, finalY + 7);
 
     doc.save("sale-summary-sector-wise.pdf");
     
@@ -327,8 +401,11 @@ function SaleSummarySectorWise() {
           onRefresh={() => {
             setAllRowData([]);
             setRowData([]);
-            setTotals({ totalWeight: 0, grandTotal: 0 });
+            setOverallTotals({ totalWeight: 0, grandTotal: 0 });
             setCurrentPage(1);
+            setTotalPages(1);
+            setTotalRecords(0);
+            setCurrentFilters(null);
           }}
           fullscreenBtn={false}
         />
@@ -444,7 +521,7 @@ function SaleSummarySectorWise() {
                 <OutlinedButtonRed 
                   type="button" 
                   label={loading ? "Loading..." : "Show"}
-                  onClick={handleShow}
+                  onClick={() => handleShow(1)}
                   disabled={loading}
                 />
               </div>
@@ -474,60 +551,17 @@ function SaleSummarySectorWise() {
             className={`border-b-0 rounded-b-none h-[45vh]`}
           />
           
-          {totalPages > 1 && (
-            <div className="flex justify-between items-center border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 border-b-0 bg-gray-50 px-4 py-3">
-              <div className="text-sm text-gray-700">
-                Showing {Math.min((currentPage - 1) * itemsPerPage + 1, allRowData.length)} to {Math.min(currentPage * itemsPerPage, allRowData.length)} of {allRowData.length} results
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={goToPrevious}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-                >
-                  Previous
-                </button>
-                
-                {getPageNumbers().map((pageNumber) => (
-                  <button
-                    type="button"
-                    key={pageNumber}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      goToPage(pageNumber);
-                    }}
-                    className={`px-3 py-1 border rounded text-sm ${
-                      currentPage === pageNumber
-                        ? 'bg-red-500 text-white border-red-500'
-                        : 'border-gray-300 hover:bg-gray-100'
-                    }`}
-                  >
-                    {pageNumber}
-                  </button>
-                ))}
-                
-                <button
-                  type="button"
-                  onClick={goToNext}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
+          <PaginationControls />
           
-          <div className="flex justify-end border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 text-gray-900 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2 gap-16">
+          <div className="flex justify-end border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 text-gray-900 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2 gap-16 mb-2">
             <div>
               <span className="font-sans">Total Weight: </span>
-              <span className="text-red">{totals.totalWeight.toFixed(2)}</span>
+              <span className="text-red">{overallTotals.totalWeight.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center">
               <div className="flex gap-16">
                 <div>
-                  Grand Total: <span className="text-red">{totals.grandTotal.toFixed(2)}</span>
+                  Grand Total: <span className="text-red">{overallTotals.grandTotal.toFixed(2)}</span>
                 </div>
               </div>
             </div>
