@@ -25,7 +25,7 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
 function DateRangeWise() {
-  const { register, setValue, watch } = useForm();
+  const { register, setValue, watch, getValues } = useForm();
   const { server } = useContext(GlobalContext);
   const [rowData, setRowData] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -36,6 +36,13 @@ function DateRangeWise() {
     type: "",
     message: "",
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
 
   const customerCode = watch("Customer");
   const selectedBranch = watch("branch");
@@ -122,16 +129,18 @@ function DateRangeWise() {
     }
   };
 
-  const handleShow = async (e) => {
-    e.preventDefault();
-
-    if (!fromDate || !toDate) {
-      showNotification("error", "Please select both From and To dates");
-      return;
-    }
-
+  // Function to fetch invoice data with pagination
+  const fetchInvoiceDataWithPagination = async (filters, page = 1) => {
     setLoading(true);
     try {
+      const { fromDate, toDate, selectedBranch, customerCode } = filters;
+
+      if (!fromDate || !toDate) {
+        showNotification("error", "Please select both From and To dates");
+        setLoading(false);
+        return;
+      }
+
       const fromParsed = parseDateDDMMYYYY(fromDate);
       const toParsed = parseDateDDMMYYYY(toDate);
 
@@ -152,6 +161,8 @@ function DateRangeWise() {
       const params = new URLSearchParams({
         dateFrom: fromParsed.toISOString(),
         dateTo: toParsed.toISOString(),
+        page: page.toString(),
+        limit: pageLimit.toString(),
       });
 
       if (selectedBranch) {
@@ -164,13 +175,15 @@ function DateRangeWise() {
         params.append("accountCode", customerCode);
       }
 
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
+
       const response = await axios.get(
         `${server}/invoice-ptp-summary?${params.toString()}`
       );
 
       if (response.data.success && Array.isArray(response.data.data)) {
-        const formattedData = response.data.data.map((item, index) => ({
-          srNo: index + 1,
+        const formattedData = response.data.data.map((item) => ({
+          srNo: item.srNo, // Use the srNo from backend (global index)
           invoiceNo: item.clientDetails?.invoiceSrNo || "-",
           invoiceDate: item.clientDetails?.invoiceDate
             ? new Date(item.clientDetails.invoiceDate).toLocaleDateString()
@@ -197,12 +210,22 @@ function DateRangeWise() {
         }));
 
         setRowData(formattedData);
+        
+        // Set pagination info
+        if (response.data.pagination) {
+          setCurrentPage(response.data.pagination.currentPage);
+          setTotalPages(response.data.pagination.totalPages);
+          setTotalRecords(response.data.pagination.totalRecords);
+        }
+
         showNotification(
           "success",
-          `Found ${formattedData.length} invoice(s) for the selected criteria`
+          `Found ${formattedData.length} invoice(s) (Page ${response.data.pagination?.currentPage || page} of ${response.data.pagination?.totalPages || 1})`
         );
       } else {
         setRowData([]);
+        setTotalRecords(0);
+        setTotalPages(1);
         showNotification("info", "No invoices found for the selected criteria");
       }
     } catch (error) {
@@ -212,9 +235,57 @@ function DateRangeWise() {
         error.response?.data?.message || "Failed to fetch invoice data"
       );
       setRowData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchInvoiceDataWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchInvoiceDataWithPagination(currentFilters, 1);
+    }
+  };
+
+  const handleShow = async (e) => {
+    e.preventDefault();
+
+    // Store filters for pagination
+    setCurrentFilters({
+      fromDate,
+      toDate,
+      selectedBranch,
+      customerCode,
+    });
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page
+    await fetchInvoiceDataWithPagination({
+      fromDate,
+      toDate,
+      selectedBranch,
+      customerCode,
+    }, 1);
   };
 
   const handlePrint = () => {
@@ -349,6 +420,76 @@ function DateRangeWise() {
     showNotification("success", "CSV file downloaded successfully");
   };
 
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <NotificationFlag
@@ -424,6 +565,18 @@ function DateRangeWise() {
             rowData={rowData}
             className="h-[450px]"
           />
+          
+          {/* Pagination Controls */}
+          <PaginationControls />
+
+          {/* Total Records Display */}
+          <div className="flex justify-between mt-2">
+            <div className="text-sm text-gray-600">
+              {totalRecords > 0 && (
+                <span>Total Records: {totalRecords}</span>
+              )}
+            </div>
+          </div>
         </div>
         <div className="flex justify-end"></div>
       </form>

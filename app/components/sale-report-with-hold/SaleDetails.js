@@ -29,6 +29,14 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
     message: "",
     visible: false,
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   const parseDateDDMMYYYY = (str) => {
     if (!str) return null;
     const [d, m, y] = str.split("/");
@@ -94,18 +102,20 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
   const fromDate = watch("from");
   const toDate = watch("to");
 
-  const handleShow = async () => {
-    const values = getValues();
+  // Function to fetch data with pagination
+  const fetchDataWithPagination = async (filters, page = 1) => {
+    setIsLoading(true);
 
-    if (!values.from || !values.to) {
+    if (!filters.from || !filters.to) {
       console.log("please select from and to dates");
       showNotification("error", "Please select from and to dates");
+      setIsLoading(false);
       return;
     }
 
     // Convert to Date objects
-    const fromObj = parseDateDDMMYYYY(values.from);
-    const toObj = parseDateDDMMYYYY(values.to);
+    const fromObj = parseDateDDMMYYYY(filters.from);
+    const toObj = parseDateDDMMYYYY(filters.to);
 
     if (
       !fromObj ||
@@ -114,6 +124,7 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
       isNaN(toObj.getTime())
     ) {
       showNotification("error", "Invalid date format");
+      setIsLoading(false);
       return;
     }
 
@@ -123,23 +134,26 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
     const queryParams = new URLSearchParams({
       from: fromObj.toISOString(),
       to: toObj.toISOString(),
-      runNo: values.runNumber || "",
-      payment: values.payment !== "All" ? values.payment : "", // 👈 skip if All
-      branch: values.branch || "",
-      origin: values.origin || "",
-      sector: values.sector || "",
-      destination: values.destination || "",
-      network: values.network || "",
-      counterPart: values.counterPart || "",
-      salePerson: values.salePerson !== "All" ? values.salePerson : "", // 👈 skip if All
-      saleRefPerson: values.saleRefPerson !== "All" ? values.saleRefPerson : "", // 👈 skip if All
-      company: values.company !== "All" ? values.company : "", // 👈 skip if All
-      accountCode: values.accountCode || "",
-      state: values.state || "",
+      runNo: filters.runNumber || "",
+      payment: filters.payment !== "All" ? filters.payment : "", // 👈 skip if All
+      branch: filters.branch || "",
+      origin: filters.origin || "",
+      sector: filters.sector || "",
+      destination: filters.destination || "",
+      network: filters.network || "",
+      counterPart: filters.counterPart || "",
+      salePerson: filters.salePerson !== "All" ? filters.salePerson : "", // 👈 skip if All
+      saleRefPerson: filters.saleRefPerson !== "All" ? filters.saleRefPerson : "", // 👈 skip if All
+      company: filters.company !== "All" ? filters.company : "", // 👈 skip if All
+      accountCode: filters.accountCode || "",
+      state: filters.state || "",
       withBooking: withBooking ? "1" : "0",
+      // Add pagination parameters
+      page: page.toString(),
+      limit: pageLimit.toString(),
     });
 
-    setIsLoading(true);
+    console.log("Fetching with pagination:", { page, limit: pageLimit });
 
     try {
       const res = await fetch(`${server}/sale-report-with-hold?${queryParams}`);
@@ -147,15 +161,27 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Fetch failed");
       }
-      if (!fromDate || !toDate) {
-        showNotification("error", "Please select both From and To dates.");
-        setIsLoading(false);
-        return;
-      }
 
-      const data = await res.json();
-      setRowData(data.data || []);
-      showNotification("success", `fetched ${data.data.length} records`);
+      const responseData = await res.json();
+
+      // Handle response with pagination
+      const shipmentsData = responseData.data || [];
+      const pagination = responseData.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: shipmentsData.length,
+        limit: pageLimit,
+      };
+
+      setRowData(shipmentsData);
+      setCurrentPage(pagination.currentPage);
+      setTotalPages(pagination.totalPages);
+      setTotalRecords(pagination.totalRecords);
+
+      showNotification(
+        "success",
+        `Fetched ${shipmentsData.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`
+      );
     } catch (err) {
       console.error(err);
       showNotification("error", `Failed to fetch data: ${err.message} `);
@@ -163,6 +189,42 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchDataWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchDataWithPagination(currentFilters, 1);
+    }
+  };
+
+  const handleShow = async () => {
+    const values = getValues();
+
+    // Store filters for pagination
+    setCurrentFilters(values);
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page
+    await fetchDataWithPagination(values, 1);
   };
 
   const accountCode = watch("accountCode");
@@ -209,7 +271,7 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
     const fetchDropdowns = async () => {
       try {
         const res = await fetch(
-          `${server}/sale-report-with-hold/customer?dropdowns=true`
+          `${server}/sale-report-with-hold?dropdowns=true`
         );
         const data = await res.json();
 
@@ -254,6 +316,7 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
       setValue("salePerson", match.userName);
     }
   }, [salePersonCodeValue]);
+
   const handleDownloadExcel = () => {
     if (!rowData || rowData.length === 0) {
       showNotification("error", "No data to export");
@@ -364,6 +427,76 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
       document.removeEventListener("keydown", handleKeyDown);
     };
   });
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={isLoading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <form
@@ -521,6 +654,7 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
             <OutlinedButtonRed
               label={isLoading ? "Loading..." : "Show"}
               onClick={handleShow}
+              disabled={isLoading}
             />
           </div>
           <div className="flex gap-2">
@@ -541,6 +675,10 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
           rowData={rowData}
           className="border-b-0 rounded-b-none h-[40vh]"
         />
+
+        {/* Pagination Controls */}
+        <PaginationControls />
+
         {/* Totals Row */}
         <div className="flex justify-end gap-6 text-sm font-semibold border border-t-0 border-battleship-gray bg-[#D0D5DDB8] text-gray-900 rounded rounded-t-none font-sans px-4 py-2">
           <div>
@@ -550,6 +688,15 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
           <div>
             Grand Total:{" "}
             <span className="text-red">{totals.grandTotal.toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* Total Records Display */}
+        <div className="flex justify-between mt-2">
+          <div className="text-sm text-gray-600">
+            {totalRecords > 0 && (
+              <span>Total Records: {totalRecords}</span>
+            )}
           </div>
         </div>
       </div>

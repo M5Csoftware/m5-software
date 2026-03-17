@@ -29,6 +29,13 @@ const MultipleInvoiceWise = ({
     visible: false,
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   // Form state
   const [formData, setFormData] = useState({
     branch: "",
@@ -115,6 +122,12 @@ const MultipleInvoiceWise = ({
     showNotification("success", "Invoice number removed");
   };
 
+  // Clear all invoice numbers
+  const handleClearAll = () => {
+    setInvoiceNumbers([]);
+    showNotification("success", "All invoice numbers cleared");
+  };
+
   // Handle Enter key press in invoice input
   const handleInvoiceKeyPress = (e) => {
     if (e.key === "Enter") {
@@ -123,9 +136,9 @@ const MultipleInvoiceWise = ({
     }
   };
 
-  // Fetch credit notes based on invoice numbers
-  const handleShow = async () => {
-    if (invoiceNumbers.length === 0) {
+  // Function to fetch credit notes with pagination
+  const fetchCreditNotesWithPagination = async (filters, page = 1) => {
+    if (filters.invoiceNumbers.length === 0) {
       showNotification("error", "Please add at least one invoice number");
       return;
     }
@@ -133,15 +146,18 @@ const MultipleInvoiceWise = ({
     setLoading(true);
     try {
       const payload = {
-        invoiceNumbers: invoiceNumbers,
+        invoiceNumbers: filters.invoiceNumbers,
+        page: page,
+        limit: pageLimit,
       };
 
       // Only add branch to payload if it's not "All" or empty
-      if (formData.branch && formData.branch !== "All") {
-        payload.branch = formData.branch;
+      if (filters.branch && filters.branch !== "All") {
+        payload.branch = filters.branch;
       }
 
       console.log("Sending payload:", payload);
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       const response = await axios.post(
         `${server}/credit-summary-report/multiple-invoice`,
@@ -149,33 +165,69 @@ const MultipleInvoiceWise = ({
       );
 
       if (response.data.success) {
-        // Format the data for display
-        const formattedData = response.data.data.map((row) => ({
-          ...row,
-          InvoiceDate: new Date(row.InvoiceDate).toLocaleDateString("en-GB"),
-          BasicAmount: parseFloat(row.BasicAmount || 0).toFixed(2),
-          MiscAmount: parseFloat(row.MiscAmount || 0).toFixed(2),
-          Fuel: parseFloat(row.Fuel || 0).toFixed(2),
-          Taxable: parseFloat(row.Taxable || 0).toFixed(2),
-          SGST: parseFloat(row.SGST || 0).toFixed(2),
-          CGST: parseFloat(row.CGST || 0).toFixed(2),
-          IGST: parseFloat(row.IGST || 0).toFixed(2),
-          GrandTotal: parseFloat(row.GrandTotal || 0).toFixed(2),
-        }));
+        // The data is already formatted from the backend
+        setRowData(response.data.data);
+        
+        // Set pagination info
+        if (response.data.pagination) {
+          setCurrentPage(response.data.pagination.currentPage);
+          setTotalPages(response.data.pagination.totalPages);
+          setTotalRecords(response.data.pagination.totalRecords);
+        }
 
-        setRowData(formattedData);
         showNotification(
           "success",
-          `Found ${response.data.summary.totalRecords} records`
+          `Found ${response.data.data.length} records (Page ${response.data.pagination?.currentPage || page} of ${response.data.pagination?.totalPages || 1})`
         );
       }
     } catch (error) {
       console.error("Error fetching credit notes:", error);
       showNotification("error", "Failed to fetch credit summary data");
       setRowData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchCreditNotesWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchCreditNotesWithPagination(currentFilters, 1);
+    }
+  };
+
+  const handleShow = async () => {
+    const filters = {
+      branch: formData.branch,
+      invoiceNumbers: invoiceNumbers,
+    };
+
+    // Store filters for pagination
+    setCurrentFilters(filters);
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page
+    await fetchCreditNotesWithPagination(filters, 1);
   };
 
   // Download Excel
@@ -256,6 +308,76 @@ const MultipleInvoiceWise = ({
     }
   };
 
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <NotificationFlag
@@ -311,38 +433,65 @@ const MultipleInvoiceWise = ({
             </div>
           </div>
 
-          {/* Display added invoice numbers with remove button */}
+          {/* Display added invoice numbers with remove button and Clear All */}
           {invoiceNumbers.length > 0 && (
-            <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md border border-gray-200">
-              {invoiceNumbers.map((invoice, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-md border border-gray-300 shadow-sm"
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">
+                  Added Invoice Numbers ({invoiceNumbers.length}):
+                </span>
+                <button
+                  onClick={handleClearAll}
+                  className="text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded transition-colors"
                 >
-                  <span className="text-sm font-medium text-gray-700">
-                    {invoice}
-                  </span>
-                  <button
-                    onClick={() => handleRemoveInvoice(invoice)}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-0.5 transition-colors"
-                    title="Remove invoice"
+                  Clear All
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md border border-gray-200">
+                {invoiceNumbers.map((invoice, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-md border border-gray-300 shadow-sm"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+                    <span className="text-sm font-medium text-gray-700">
+                      {invoice}
+                    </span>
+                    <button
+                      onClick={() => handleRemoveInvoice(invoice)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-0.5 transition-colors"
+                      title="Remove invoice"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {/* Normal Table */}
           {!isFullscreen && (
-            <TableWithSorting
-              columns={columns}
-              rowData={rowData}
-              register={register}
-              setValue={setValue}
-              className="h-[45vh]"
-            />
+            <>
+              <TableWithSorting
+                columns={columns}
+                rowData={rowData}
+                register={register}
+                setValue={setValue}
+                className="h-[45vh]"
+              />
+              
+              {/* Pagination Controls */}
+              <PaginationControls />
+
+              {/* Total Records Display */}
+              <div className="flex justify-between mt-2">
+                <div className="text-sm text-gray-600">
+                  {totalRecords > 0 && (
+                    <span>Total Records: {totalRecords}</span>
+                  )}
+                </div>
+              </div>
+            </>
           )}
         </div>
 
@@ -366,6 +515,13 @@ const MultipleInvoiceWise = ({
                 setValue={setValue}
                 className="h-full w-full"
               />
+            </div>
+            <div className="flex justify-between mt-4">
+              <div className="text-sm text-gray-600">
+                {totalRecords > 0 && (
+                  <span>Total Records: {totalRecords}</span>
+                )}
+              </div>
             </div>
           </div>
         )}

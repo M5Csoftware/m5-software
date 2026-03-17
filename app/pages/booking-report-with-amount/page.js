@@ -12,8 +12,7 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import { LabeledDropdown } from "@/app/components/Dropdown";
 import axios from "axios";
 
-// Import packages for CSV and Excel download (make sure to install these)
-// npm install papaparse xlsx file-saver
+// Import packages for CSV and Excel download
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
@@ -22,8 +21,8 @@ import NotificationFlag from "@/app/components/Notificationflag";
 
 function BookingReportWithAmount() {
   const { register, setValue, getValues, watch } = useForm();
-  const [allRowData, setAllRowData] = useState([]); // Store all data
-  const [currentPageData, setCurrentPageData] = useState([]); // Store current page data
+  const [rowData, setRowData] = useState([]); // Store current page data
+  const [allData, setAllData] = useState([]); // Store all data for download
   const [withBalance, setWithBalance] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchingAccount, setFetchingAccount] = useState(false);
@@ -31,10 +30,13 @@ function BookingReportWithAmount() {
   const { server } = useContext(GlobalContext);
   const [branchList, setBranchList] = useState([]);
 
-  // Pagination states
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(50);
-  const [totalPages, setTotalPages] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   const [fullscreen, setFullScreen] = useState(false);
   const [notification, setNotification] = useState({
     type: "success",
@@ -73,8 +75,10 @@ function BookingReportWithAmount() {
   const fromDate = watch("from");
   const toDate = watch("to");
 
+  // Add Sr No column to columns
   const columns = useMemo(
     () => [
+      { key: "srNo", label: "Sr No." },
       { key: "awbNo", label: "AWB No" },
       { key: "shipmentDate", label: "Shipment Date" },
       { key: "runNo", label: "Run Number" },
@@ -155,12 +159,12 @@ function BookingReportWithAmount() {
   // Handle CSV download
   const handleDownloadCSV = () => {
     try {
-      if (!allRowData || allRowData.length === 0) {
+      if (!rowData || rowData.length === 0) {
         showNotification("error", "No data available to download");
         return;
       }
 
-      const formattedData = prepareTableData(allRowData, columns);
+      const formattedData = prepareTableData(rowData, columns);
 
       // Convert to CSV using Papa Parse
       const csv = Papa.unparse(formattedData, {
@@ -190,12 +194,12 @@ function BookingReportWithAmount() {
   // Handle Excel download
   const handleDownloadExcel = () => {
     try {
-      if (!allRowData || allRowData.length === 0) {
+      if (!rowData || rowData.length === 0) {
         showNotification("error", "No data available to download");
         return;
       }
 
-      const formattedData = prepareTableData(allRowData, columns);
+      const formattedData = prepareTableData(rowData, columns);
 
       // Create workbook and worksheet
       const workbook = XLSX.utils.book_new();
@@ -284,24 +288,6 @@ function BookingReportWithAmount() {
     }
   };
 
-  // Update pagination when data changes
-  useEffect(() => {
-    const pages = Math.ceil(allRowData.length / itemsPerPage);
-    setTotalPages(pages);
-
-    // Reset to first page if current page is beyond available pages
-    if (currentPage > pages && pages > 0) {
-      setCurrentPage(1);
-    }
-  }, [allRowData.length, itemsPerPage, currentPage]);
-
-  // Update current page data when page changes or data changes
-  useEffect(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    setCurrentPageData(allRowData.slice(startIndex, endIndex));
-  }, [currentPage, allRowData, itemsPerPage]);
-
   useEffect(() => {
     const fetchBranches = async () => {
       try {
@@ -319,44 +305,6 @@ function BookingReportWithAmount() {
 
     if (server) fetchBranches();
   }, [server]);
-
-  // Pagination handlers
-  const goToPage = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
-
-  const goToPrevious = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const goToNext = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages = [];
-    const showPages = 5; // Show 5 page numbers at a time
-    let startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
-    let endPage = Math.min(totalPages, startPage + showPages - 1);
-
-    // Adjust start page if we're near the end
-    if (endPage - startPage + 1 < showPages) {
-      startPage = Math.max(1, endPage - showPages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-
-    return pages;
-  };
 
   // Fetch customer accounts on component mount
   useEffect(() => {
@@ -418,19 +366,17 @@ function BookingReportWithAmount() {
     return () => clearTimeout(timeoutId);
   }, [customerValue, server, setValue]);
 
-  const handleShow = async () => {
-    if (!fromDate || !toDate) {
+  // Function to fetch data with pagination
+  const fetchDataWithPagination = async (filters, page = 1) => {
+    if (!filters.from || !filters.to) {
       showNotification("error", "Please select both From and To dates");
       return;
     }
 
     setLoading(true);
-    setCurrentPage(1); // Reset to first page when new data is loaded
 
     try {
-      const formData = getValues();
-
-      const range = toISOStartEnd(fromDate, toDate);
+      const range = toISOStartEnd(filters.from, filters.to);
       if (!range) {
         showNotification("error", "Invalid date format");
         setLoading(false);
@@ -440,27 +386,42 @@ function BookingReportWithAmount() {
       const response = await axios.post(`${server}/booking-with-report`, {
         fromDate: range.from,
         toDate: range.to,
-        accountCode: formData.Customer?.trim().toUpperCase() || null,
-        branch: formData.Branch?.trim().toUpperCase() || null,
-        origin: formData.Origin?.trim().toUpperCase() || null,
-        sector: formData.Sector?.trim().toUpperCase() || null,
-        destination: formData.Destination?.trim().toUpperCase() || null,
+        accountCode: filters.Customer?.trim().toUpperCase() || null,
+        branch: filters.Branch?.trim().toUpperCase() || null,
+        origin: filters.Origin?.trim().toUpperCase() || null,
+        sector: filters.Sector?.trim().toUpperCase() || null,
+        destination: filters.Destination?.trim().toUpperCase() || null,
         balanceShipment: withBalance,
+        page: page,
+        limit: pageLimit,
       });
 
       if (response.data.success) {
-        const { shipments, totals, summary } = response.data.data;
+        const { shipments, totals, pagination, summary } = response.data.data;
 
-        // Set all table data
-        setAllRowData(shipments);
+        // Set table data
+        setRowData(shipments);
+        setAllData(shipments); // Store for download
+
+        // Set pagination info
+        if (pagination) {
+          setCurrentPage(pagination.currentPage);
+          setTotalPages(pagination.totalPages);
+          setTotalRecords(pagination.totalRecords);
+        }
 
         console.log(
-          `Loaded ${summary.totalRecords} records for ${summary.dateRange}`
+          `Loaded ${shipments.length} records (Page ${pagination?.currentPage || page} of ${pagination?.totalPages || 1})`
         );
         console.log("Applied filters:", response.data.data.filters);
 
         if (shipments.length === 0) {
           showNotification("error", "No data found for the selected criteria");
+        } else {
+          showNotification(
+            "success",
+            `Found ${shipments.length} records (Page ${pagination?.currentPage || page} of ${pagination?.totalPages || 1})`
+          );
         }
       } else {
         throw new Error(response.data.error || "Failed to fetch data");
@@ -470,23 +431,67 @@ function BookingReportWithAmount() {
       showNotification("error", error.response?.data?.error || error.message);
 
       // Reset data on error
-      setAllRowData([]);
-      setCurrentPageData([]);
+      setRowData([]);
+      setAllData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchDataWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchDataWithPagination(currentFilters, 1);
+    }
+  };
+
+  const handleShow = async () => {
+    const filters = {
+      from: fromDate,
+      to: toDate,
+      Customer: getValues("Customer"),
+      Branch: getValues("Branch"),
+      Origin: getValues("Origin"),
+      Sector: getValues("Sector"),
+      Destination: getValues("Destination"),
+    };
+
+    // Store filters for pagination
+    setCurrentFilters(filters);
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page
+    await fetchDataWithPagination(filters, 1);
   };
 
   // Handle checkbox change
   const handleBalanceShipmentChange = (checked) => {
     setWithBalance(checked);
 
-    // If data is already loaded and we have date range, refresh with new filter
-    if (allRowData.length > 0 && fromDate && toDate) {
-      // Small delay to ensure state is updated before API call
-      setTimeout(() => {
-        handleShow();
-      }, 100);
+    // If we have current filters, refresh with new filter
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchDataWithPagination(currentFilters, 1);
     }
   };
 
@@ -502,9 +507,86 @@ function BookingReportWithAmount() {
     setValue("from", "");
     setValue("to", "");
     setWithBalance(false);
-    setAllRowData([]);
-    setCurrentPageData([]);
+    setRowData([]);
+    setAllData([]);
+    
+    // Reset pagination
     setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
+
+    showNotification("success", "Page refreshed successfully");
+  };
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -528,12 +610,6 @@ function BookingReportWithAmount() {
       <div className="flex flex-col gap-3 mt-3">
         <div className="flex flex-col gap-3">
           <div className="flex gap-3">
-            {/* <InputBox
-              placeholder="Branch"
-              register={register}
-              setValue={setValue}
-              value="Branch"
-            /> */}
             <LabeledDropdown
               value="Branch"
               title="Branch"
@@ -636,7 +712,7 @@ function BookingReportWithAmount() {
           register={register}
           setValue={setValue}
           columns={columns}
-          rowData={currentPageData} // Use current page data instead of all data
+          rowData={rowData} // Use current page data
           className={` h-[45vh]`}
         />
 
@@ -655,7 +731,7 @@ function BookingReportWithAmount() {
                 register={register}
                 setValue={setValue}
                 columns={columns}
-                rowData={currentPageData} // Use current page data instead of all data
+                rowData={rowData} // Use current page data
                 className={`w-full h-[80vh]`}
               />
             </div>
@@ -663,50 +739,16 @@ function BookingReportWithAmount() {
         )}
 
         {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 border-b-0 bg-gray-50 px-4 py-3">
-            <div className="text-sm text-gray-700">
-              Showing{" "}
-              {Math.min(
-                (currentPage - 1) * itemsPerPage + 1,
-                allRowData.length
-              )}{" "}
-              to {Math.min(currentPage * itemsPerPage, allRowData.length)} of{" "}
-              {allRowData.length} results
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={goToPrevious}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                Previous
-              </button>
+        <PaginationControls />
 
-              {getPageNumbers().map((pageNumber) => (
-                <button
-                  key={pageNumber}
-                  onClick={() => goToPage(pageNumber)}
-                  className={`px-3 py-1 border rounded text-sm ${
-                    currentPage === pageNumber
-                      ? "bg-red-500 text-white border-red-500"
-                      : "border-gray-300 hover:bg-gray-100"
-                  }`}
-                >
-                  {pageNumber}
-                </button>
-              ))}
-
-              <button
-                onClick={goToNext}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                Next
-              </button>
-            </div>
+        {/* Total Records Display */}
+        <div className="flex justify-between mt-2">
+          <div className="text-sm text-gray-600">
+            {totalRecords > 0 && (
+              <span>Total Records: {totalRecords}</span>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <div className="flex justify-between">

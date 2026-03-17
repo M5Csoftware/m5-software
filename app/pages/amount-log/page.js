@@ -15,7 +15,7 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import CodeList from "@/app/components/CodeList";
 
 const AmountLog = () => {
-  const { register, setValue, watch, reset } = useForm();
+  const { register, setValue, watch, reset, getValues } = useForm();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [rowData, setRowData] = useState([]);
   const [filterValue, setFilterValue] = useState("All");
@@ -31,12 +31,48 @@ const AmountLog = () => {
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [customerName, setCustomerName] = useState("");
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+  const [loading, setLoading] = useState(false);
+
+  // Add Sr No column to columns
+  const columns = [
+    { key: "srNo", label: "Sr No." },
+    { key: "awbNo", label: "AWB No." },
+    { key: "accountCode", label: "Customer Code" },
+    { key: "customerName", label: "Customer Name" },
+    { key: "basicamt", label: "Basic Amount" },
+    { key: "sgst", label: "SGST" },
+    { key: "cgst", label: "CGST" },
+    { key: "igst", label: "IGST" },
+    { key: "mischg", label: "Misc Charge" },
+    { key: "miscRemark", label: "Misc Remark" },
+    { key: "fuel", label: "Fuel" },
+    { key: "fuelPercent", label: "Fuel Percentage" },
+    { key: "handling", label: "Handling" },
+    { key: "OVWT", label: "OVWT" },
+    { key: "rateHike", label: "Rate Hike" },
+    { key: "grandTotal", label: "Grand Total" },
+    { key: "hikeAmount", label: "Hike Amount" },
+    { key: "lessAmount", label: "Less Amount" },
+    { key: "diffAmount", label: "Diff Amount" },
+    { key: "insertDate", label: "Insert Date" },
+    { key: "lastUpdateDate", label: "Last Update Date" },
+    { key: "insertUser", label: "Insert User" },
+    { key: "updateUser", label: "Update User" },
+  ];
+
   const showNotification = (type, message) => {
     setNotification({ type, message, visible: true });
   };
 
   // watch accountCode
   const accountCode = watch("accountCode");
+  const filterType = watch("filter");
 
   const ddmmyyyyToYmd = (d) => {
     if (!d) return "";
@@ -54,6 +90,11 @@ const AmountLog = () => {
     setRowData([]);
     setCustomerName("");
     setFilterValue("All");
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
     showNotification("success", "Form and table cleared");
   };
 
@@ -108,24 +149,31 @@ const AmountLog = () => {
     setFilteredCustomers(filtered);
   }, [searchTerm, customerList]);
 
-  const fetchData = async () => {
-    const accountCode = watch("accountCode")?.trim();
+  // Function to fetch data with pagination
+  const fetchDataWithPagination = async (filters, page = 1) => {
+    const accountCode = filters.accountCode?.trim();
     if (!accountCode) {
       showNotification("error", "Customer code is required");
       return;
     }
 
+    setLoading(true);
+
     try {
       const params = new URLSearchParams({
         accountCode,
-        filter: watch("filter") || "All",
+        filter: filters.filter || "All",
+        page: page.toString(),
+        limit: pageLimit.toString(),
       });
 
-      const from = watch("from");
-      const to = watch("to");
+      const from = filters.from;
+      const to = filters.to;
 
       if (from) params.append("from", ddmmyyyyToYmd(from));
       if (to) params.append("to", ddmmyyyyToYmd(to));
+
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       const res = await fetch(`${server}/amount-log?${params.toString()}`);
 
@@ -136,20 +184,78 @@ const AmountLog = () => {
         return;
       }
 
-      const data = await res.json();
-      if (!data || data.length === 0) {
+      const responseData = await res.json();
+      
+      // Handle response with pagination
+      const shipmentsData = responseData.data || [];
+      const pagination = responseData.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: shipmentsData.length,
+        limit: pageLimit,
+      };
+
+      if (!shipmentsData || shipmentsData.length === 0) {
         showNotification("error", "No data found for this customer");
         setRowData([]);
-        return;
+      } else {
+        setRowData(shipmentsData);
+        setCurrentPage(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+        setTotalRecords(pagination.totalRecords);
+        showNotification(
+          "success", 
+          `Found ${shipmentsData.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`
+        );
       }
-
-      setRowData(data);
-      showNotification("success", "Data fetched successfully");
     } catch (err) {
       console.error(err);
       showNotification("error", "Failed to fetch data");
       setRowData([]);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchDataWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchDataWithPagination(currentFilters, 1);
+    }
+  };
+
+  const fetchData = async () => {
+    const filters = {
+      accountCode: watch("accountCode")?.trim(),
+      filter: watch("filter") || "All",
+      from: watch("from"),
+      to: watch("to"),
+    };
+
+    // Store filters for pagination
+    setCurrentFilters(filters);
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page
+    await fetchDataWithPagination(filters, 1);
   };
 
   const downloadTable = () => {
@@ -185,37 +291,12 @@ const AmountLog = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isFullscreen]);
 
-  const columns = [
-    { key: "awbNo", label: "AWB No." },
-    { key: "accountCode", label: "Customer Code" },
-    { key: "customerName", label: "Customer Name" },
-    { key: "basicamt", label: "Basic Amount" },
-    { key: "sgst", label: "SGST" },
-    { key: "cgst", label: "CGST" },
-    { key: "igst", label: "IGST" },
-    { key: "mischg", label: "Misc Charge" },
-    { key: "miscRemark", label: "Misc Remark" },
-    { key: "fuel", label: "Fuel" },
-    { key: "fuelPercent", label: "Fuel Percentage" },
-    { key: "handling", label: "Handling" },
-    { key: "OVWT", label: "OVWT" },
-    { key: "rateHike", label: "Rate Hike" },
-    { key: "grandTotal", label: "Grand Total" },
-    { key: "hikeAmount", label: "Hike Amount" },
-    { key: "lessAmount", label: "Less Amount" },
-    { key: "diffAmount", label: "Diff Amount" },
-    { key: "insertDate", label: "Insert Date" },
-    { key: "lastUpdateDate", label: "Last Update Date" },
-    { key: "insertUser", label: "Insert User" },
-    { key: "updateUser", label: "Update User" },
-  ];
-
   useEffect(() => {
     const fetchCodeList = async () => {
       try {
-        const res = await fetch(`${server}/amount-log/customer`); // your new route
+        const res = await fetch(`${server}/amount-log/customer`);
         const data = await res.json();
-        setCodeList(data); // assign to state
+        setCodeList(data);
       } catch (err) {
         console.error("Failed to fetch customers", err);
         setCodeList([]);
@@ -224,6 +305,76 @@ const AmountLog = () => {
 
     fetchCodeList();
   }, [server]);
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="">
@@ -256,7 +407,7 @@ const AmountLog = () => {
             />
           </div>
           <CodeList
-            data={codeList} // use customer code & name
+            data={codeList}
             handleAction={(item) => {
               setValue("accountCode", item.accountCode);
               setValue("customerName", item.name);
@@ -313,10 +464,18 @@ const AmountLog = () => {
           </div>
 
           <div className="w-[200px]">
-            <OutlinedButtonRed label={`Show`} onClick={fetchData} />
+            <OutlinedButtonRed 
+              label={loading ? "Loading..." : "Show"} 
+              onClick={fetchData}
+              disabled={loading}
+            />
           </div>
           <div>
-            <SimpleButton name={`Download`} onClick={downloadTable} />
+            <SimpleButton 
+              name={"Download"} 
+              onClick={downloadTable}
+              disabled={rowData.length === 0}
+            />
           </div>
         </div>
 
@@ -328,6 +487,18 @@ const AmountLog = () => {
             columns={columns}
             rowData={rowData}
           />
+
+          {/* Pagination Controls */}
+          <PaginationControls />
+
+          {/* Total Records Display */}
+          <div className="flex justify-between mt-2">
+            <div className="text-sm text-gray-600">
+              {totalRecords > 0 && (
+                <span>Total Records: {totalRecords}</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -348,6 +519,13 @@ const AmountLog = () => {
               rowData={rowData}
               className="h-full w-full"
             />
+          </div>
+          <div className="flex justify-end mt-4">
+            <div className="text-sm text-gray-600">
+              {totalRecords > 0 && (
+                <span>Total Records: {totalRecords}</span>
+              )}
+            </div>
           </div>
         </div>
       )}

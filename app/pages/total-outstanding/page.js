@@ -43,6 +43,14 @@ function General() {
     visible: false,
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+  const [paginatedData, setPaginatedData] = useState([]);
+
   const fromDate = watch("from");
   const toDate = watch("to");
   const customerCode = watch("Customer");
@@ -92,6 +100,18 @@ function General() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isFullscreen]);
 
+  // Update paginated data whenever rowData, currentPage, or pageLimit changes
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * pageLimit;
+    const endIndex = startIndex + pageLimit;
+    setPaginatedData(rowData.slice(startIndex, endIndex));
+    
+    // Reset to page 1 if current page is beyond available pages
+    if (rowData.length > 0 && currentPage > Math.ceil(rowData.length / pageLimit)) {
+      setCurrentPage(1);
+    }
+  }, [rowData, currentPage, pageLimit]);
+
   useEffect(() => {
     let dataToFilter = isGroupingEnabled ? getGroupedData() : allData;
 
@@ -113,8 +133,13 @@ function General() {
         return accountCodeMatch || nameMatch;
       });
       setRowData(filtered);
+      setTotalRecords(filtered.length);
+      setTotalPages(Math.ceil(filtered.length / pageLimit));
+      setCurrentPage(1); // Reset to page 1 when search changes
     } else {
       setRowData(dataToFilter);
+      setTotalRecords(dataToFilter.length);
+      setTotalPages(Math.ceil(dataToFilter.length / pageLimit));
     }
   }, [searchTerm, allData, isGroupingEnabled]);
 
@@ -208,12 +233,66 @@ function General() {
     return result;
   };
 
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    setCurrentPage(newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    setCurrentPage(1); // Reset to first page when changing limit
+  };
+
+  // Function to fetch data with pagination
+  const fetchDataWithPagination = async (url, params = {}) => {
+    setLoading(true);
+    setError("");
+    
+    try {
+      // Add pagination parameters
+      const paginatedParams = {
+        ...params,
+        page: currentPage,
+        limit: pageLimit,
+      };
+
+      const response = await axios.get(url, { params: paginatedParams });
+
+      return response.data;
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchAllCustomerAccounts = async () => {
     try {
       setLoading(true);
       setError("");
-      const response = await axios.get(`${server}/total-outstanding`);
-      const customerData = await response.data;
+      
+      const response = await axios.get(`${server}/total-outstanding`, {
+        params: {
+          page: 1,
+          limit: pageLimit,
+        },
+      });
+
+      const customerData = response.data.data || [];
+      const pagination = response.data.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: customerData.length,
+        limit: pageLimit,
+      };
 
       const transformedData = customerData.map((account) => {
         const totalOutstanding = parseFloat(account.totalOutstanding || 0);
@@ -251,9 +330,14 @@ function General() {
       });
 
       setAllData(transformedData);
+      setRowData(transformedData);
+      setTotalRecords(pagination.totalRecords);
+      setTotalPages(pagination.totalPages);
+      setCurrentPage(pagination.currentPage);
+      
       showNotification(
         "success",
-        `Found ${transformedData.length} customer accounts`
+        `Found ${transformedData.length} customer accounts (Page ${pagination.currentPage} of ${pagination.totalPages})`
       );
     } catch (err) {
       console.error("Error fetching customer accounts:", err);
@@ -279,10 +363,18 @@ function General() {
         params: {
           fromDate: dmyToYmd(fromDate),
           toDate: dmyToYmd(toDate),
+          page: 1,
+          limit: pageLimit,
         },
       });
 
-      const customerData = response.data;
+      const customerData = response.data.data || [];
+      const pagination = response.data.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: customerData.length,
+        limit: pageLimit,
+      };
 
       const transformedData = customerData.map((account) => {
         const totalOutstanding = parseFloat(account.totalOutstanding || 0);
@@ -320,9 +412,14 @@ function General() {
       });
 
       setAllData(transformedData);
+      setRowData(transformedData);
+      setTotalRecords(pagination.totalRecords);
+      setTotalPages(pagination.totalPages);
+      setCurrentPage(pagination.currentPage);
+      
       showNotification(
         "success",
-        `Found ${transformedData.length} records for selected date range`
+        `Found ${transformedData.length} records for selected date range (Page ${pagination.currentPage} of ${pagination.totalPages})`
       );
     } catch (err) {
       console.error("Error fetching customer accounts by date:", err);
@@ -382,6 +479,11 @@ function General() {
         ];
 
         setAllData(transformedData);
+        setRowData(transformedData);
+        setTotalRecords(1);
+        setTotalPages(1);
+        setCurrentPage(1);
+        
         showNotification("success", "Customer account loaded successfully");
       }
     } catch (err) {
@@ -462,6 +564,9 @@ function General() {
     setValue("Customer", "");
     setValue("from", "");
     setValue("to", "");
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
   };
 
   const handleDownloadCSV = () => {
@@ -567,6 +672,10 @@ function General() {
       to: "",
     });
 
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+
     showNotification("success", "Page refreshed successfully");
   };
 
@@ -575,6 +684,76 @@ function General() {
       setValue("Customer", data.accountCode);
       setToggleCodeList(false);
     }
+  };
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{paginatedData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -656,15 +835,6 @@ function General() {
                 />
               </div>
             </div>
-            {/* <div className="flex gap-2">
-              <DownloadDropdown
-                type="button"
-                name="Download"
-                handleDownloadExcel={handleDownloadExcel}
-                handleDownloadCSV={handleDownloadCSV}
-                disabled={rowData.length === 0 ? true : false}
-              />
-            </div> */}
           </div>
         </div>
 
@@ -705,10 +875,19 @@ function General() {
                 register={register}
                 setValue={setValue}
                 columns={columns}
-                rowData={rowData}
+                rowData={paginatedData}
                 className="border-b-0 rounded-b-none h-[45vh]"
               />
-              <div className="flex justify-end border border-t-0 border-[#D0D5DD] border-opacity-75 bg-[#D0D5DDB8] text-gray-900 rounded rounded-t-none font-sans px-4 py-2">
+              
+              {/* Pagination Controls */}
+              <PaginationControls />
+              
+              <div className="flex justify-between items-center border border-t-0 border-[#D0D5DD] border-opacity-75 bg-[#D0D5DDB8] text-gray-900 rounded rounded-t-none font-sans px-4 py-2">
+                <div className="text-sm text-gray-600">
+                  {totalRecords > 0 && (
+                    <span>Total Records: {totalRecords}</span>
+                  )}
+                </div>
                 <div>
                   Total: <span className="text-red">{calculateTotal()}</span>
                 </div>
@@ -745,11 +924,15 @@ function General() {
                 register={register}
                 setValue={setValue}
                 columns={columns}
-                rowData={rowData}
+                rowData={paginatedData}
                 className="h-full w-full"
               />
             </div>
-            <div className="flex justify-end border-t border-gray-300 pt-4 mt-4">
+            <div className="flex justify-between border-t border-gray-300 pt-4 mt-4">
+              <div>
+                <span className="font-semibold">Total Records: </span>
+                <span className="font-semibold">{totalRecords}</span>
+              </div>
               <div>
                 <span className="font-semibold">Total: </span>
                 <span className="text-red font-semibold">

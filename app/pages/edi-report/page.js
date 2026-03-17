@@ -4,7 +4,7 @@ import Heading from "@/app/components/Heading";
 import InputBox from "@/app/components/InputBox";
 import RedCheckbox from "@/app/components/RedCheckBox";
 import Table, { TableWithSorting } from "@/app/components/Table";
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useMemo, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import axios from "axios";
 import { GlobalContext } from "@/app/lib/GlobalContext";
@@ -17,6 +17,13 @@ const EdiReport = () => {
   const [loading, setLoading] = useState(false);
   const { server } = useContext(GlobalContext);
   const [resetFactor, setResetFactor] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [paginatedData, setPaginatedData] = useState([]);
 
   const [notification, setNotification] = useState({
     type: "success",
@@ -67,10 +74,50 @@ const EdiReport = () => {
     { key: "CRN_MHBS_NO", label: "CRN MHBS NO" },
   ];
 
+  // Filter data for CSB file if checkbox is checked
+  const filteredData = useMemo(() => {
+    if (csbFile) {
+      return rowData.filter((item) => item.csb === true);
+    }
+    return rowData;
+  }, [rowData, csbFile]);
+
+  // Update paginated data whenever filteredData, currentPage, or pageLimit changes
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * pageLimit;
+    const endIndex = startIndex + pageLimit;
+    setPaginatedData(filteredData.slice(startIndex, endIndex));
+    
+    // Update total pages based on filtered data
+    setTotalPages(Math.ceil(filteredData.length / pageLimit));
+    setTotalRecords(filteredData.length);
+    
+    // Reset to page 1 if current page is beyond available pages
+    if (filteredData.length > 0 && currentPage > Math.ceil(filteredData.length / pageLimit)) {
+      setCurrentPage(1);
+    }
+  }, [filteredData, currentPage, pageLimit]);
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    setCurrentPage(newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    setCurrentPage(1); // Reset to first page when changing limit
+  };
+
   // Function to fetch data based on runNo using axios
   const fetchDataByRunNo = async () => {
     if (!runNumber || runNumber.trim() === "") {
-      alert("Please enter a Run Number");
       showNotification("error", "Please enter a Run Number");
       return;
     }
@@ -86,9 +133,10 @@ const EdiReport = () => {
       const allData = response.data.shipments || [];
 
       if (!allData || allData.length === 0) {
-        alert("No data found for the entered Run Number");
         showNotification("error", "No data found for the entered Run Number");
         setRowData([]);
+        setTotalRecords(0);
+        setTotalPages(1);
         return;
       }
 
@@ -134,6 +182,8 @@ const EdiReport = () => {
       }));
 
       setRowData(transformedData);
+      // Reset to page 1 when new data is loaded
+      setCurrentPage(1);
       showNotification("success", `Found ${transformedData.length} shipments`);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -151,18 +201,12 @@ const EdiReport = () => {
         showNotification("error", "Error fetching data. Please try again.");
       }
       setRowData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   };
-
-  // Filter data for CSB file if checkbox is checked
-  const filteredData = useMemo(() => {
-    if (csbFile) {
-      return rowData.filter((item) => item.csb === true);
-    }
-    return rowData;
-  }, [rowData, csbFile]);
 
   // Function to download data as CSV
   const downloadCSV = () => {
@@ -174,7 +218,7 @@ const EdiReport = () => {
     // Create CSV headers
     const headers = columns.map((col) => col.label).join(",");
 
-    // Create CSV rows
+    // Create CSV rows from ALL filtered data (not just paginated)
     const csvRows = filteredData.map((row) =>
       columns
         .map((col) => {
@@ -216,12 +260,92 @@ const EdiReport = () => {
   const handleRefresh = () => {
     setResetFactor((prev) => prev + 1);
     setRowData([]); // Clear the table data
+    setCsbFile(false); // Reset checkbox
+    setCurrentPage(1); // Reset pagination
+    setTotalPages(1);
+    setTotalRecords(0);
     showNotification("success", "Refreshed successfully");
   };
 
   // Handle form submission (prevents default page reload)
   const onSubmit = (data) => {
     fetchDataByRunNo();
+  };
+
+  // Handle CSB checkbox change
+  const handleCsbChange = (checked) => {
+    setCsbFile(checked);
+    setCurrentPage(1); // Reset to page 1 when filtering changes
+  };
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && filteredData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{paginatedData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -260,7 +384,7 @@ const EdiReport = () => {
             <SimpleButton
               name={"Download CSV"}
               onClick={downloadCSV}
-              disabled={filteredData.length === 0}
+              disabled={filteredData.length === 0 || loading}
               type="button"
             />
           </div>
@@ -269,7 +393,7 @@ const EdiReport = () => {
         <div>
           <RedCheckbox
             isChecked={csbFile}
-            setChecked={setCsbFile}
+            setChecked={handleCsbChange}
             id="csbfile"
             register={register}
             setValue={setValue}
@@ -283,9 +407,21 @@ const EdiReport = () => {
             setValue={setValue}
             name="ediReportTable"
             columns={columns}
-            rowData={filteredData}
+            rowData={paginatedData} // Use paginated data
             className={`h-[50vh]`}
           />
+
+          {/* Pagination Controls */}
+          <PaginationControls />
+
+          {/* Total Records Display */}
+          <div className="flex justify-between mt-2">
+            <div className="text-sm text-gray-600">
+              {totalRecords > 0 && (
+                <span>Total Records: {totalRecords}</span>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-between">

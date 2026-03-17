@@ -29,6 +29,14 @@ const ForwardingNumberReport = () => {
     type: "error",
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+  const [isLoading, setIsLoading] = useState(false);
+
   const contentRef = useRef(null);
 
   // Updated columns to include parent/child info
@@ -195,11 +203,11 @@ const ForwardingNumberReport = () => {
     });
   };
 
-  const fetchShipments = async (e) => {
-    if (e) e.preventDefault();
+  // Function to fetch shipments with pagination
+  const fetchShipmentsWithPagination = async (filters, page = 1) => {
+    setIsLoading(true);
+    
     try {
-      const filters = getValues();
-
       const fromParsed = parseDateDDMMYYYY(filters.from);
       const toParsed = parseDateDDMMYYYY(filters.to);
 
@@ -215,6 +223,7 @@ const ForwardingNumberReport = () => {
           type: "error",
         });
         setShipments([]);
+        setIsLoading(false);
         return;
       }
 
@@ -231,6 +240,7 @@ const ForwardingNumberReport = () => {
           type: "error",
         });
         setShipments([]);
+        setIsLoading(false);
         return;
       }
 
@@ -246,7 +256,12 @@ const ForwardingNumberReport = () => {
         service: filters.service?.toUpperCase(),
         network: filters.network?.toUpperCase(),
         code: filters.code?.toUpperCase(),
+        // Add pagination parameters
+        page,
+        limit: pageLimit,
       };
+
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       // ✅ Use the new endpoint for forwarding report
       const res = await axios.post(
@@ -254,22 +269,34 @@ const ForwardingNumberReport = () => {
         normalizedFilters
       );
 
-      if (!res.data || res.data.length === 0) {
+      // Handle response with pagination
+      const shipmentsData = res.data.data || [];
+      const pagination = res.data.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: shipmentsData.length,
+        limit: pageLimit,
+      };
+
+      if (!shipmentsData || shipmentsData.length === 0) {
         setNotification({
           visible: true,
           message: "No shipments found for the given filters",
           type: "error",
         });
         setShipments([]);
-        return;
+      } else {
+        setNotification({
+          visible: true,
+          message: `${shipmentsData.length} shipments found (Page ${pagination.currentPage} of ${pagination.totalPages})`,
+          type: "success",
+        });
+        setShipments(shipmentsData);
       }
 
-      setNotification({
-        visible: true,
-        message: `${res.data.length} shipments found (including child shipments)`,
-        type: "success",
-      });
-      setShipments(res.data);
+      setCurrentPage(pagination.currentPage);
+      setTotalPages(pagination.totalPages);
+      setTotalRecords(pagination.totalRecords);
     } catch (err) {
       setNotification({
         visible: true,
@@ -277,7 +304,47 @@ const ForwardingNumberReport = () => {
         type: "error",
       });
       setShipments([]);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Fetch new page
+    fetchShipmentsWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchShipmentsWithPagination(currentFilters, 1);
+    }
+  };
+
+  const fetchShipments = async (e) => {
+    if (e) e.preventDefault();
+    
+    const filters = getValues();
+    
+    // Store filters for pagination
+    setCurrentFilters(filters);
+    
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+    
+    // Fetch first page
+    await fetchShipmentsWithPagination(filters, 1);
   };
 
   const handleRefresh = () => {
@@ -285,6 +352,11 @@ const ForwardingNumberReport = () => {
     setShipments([]);
     reset();
     setdateFormat(false);
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
   };
 
   useEffect(() => {
@@ -298,6 +370,76 @@ const ForwardingNumberReport = () => {
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isFullscreen]);
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && shipments.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{shipments.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={isLoading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+          
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -429,7 +571,11 @@ const ForwardingNumberReport = () => {
               />
             </div>
             <div className="flex gap-2">
-              <OutlinedButtonRed label="Show" type="submit" />
+              <OutlinedButtonRed 
+                label={isLoading ? "Loading..." : "Show"} 
+                type="submit"
+                disabled={isLoading}
+              />
               <DownloadDropdown
                 handleDownloadPDF={handleDownloadPDF}
                 handleDownloadExcel={handleDownloadExcel}
@@ -448,6 +594,9 @@ const ForwardingNumberReport = () => {
               columns={columns}
               rowData={shipments}
             />
+
+            {/* Pagination Controls */}
+            <PaginationControls />
 
             {isFullscreen && (
               <div className="fixed inset-0 z-50 bg-white p-4 flex flex-col">
@@ -471,6 +620,15 @@ const ForwardingNumberReport = () => {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Total Records Display */}
+          <div className="flex justify-between">
+            <div className="text-sm text-gray-600">
+              {totalRecords > 0 && (
+                <span>Total Records: {totalRecords}</span>
+              )}
+            </div>
           </div>
         </div>
 

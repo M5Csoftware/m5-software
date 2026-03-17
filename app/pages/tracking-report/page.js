@@ -26,6 +26,13 @@ const TrackingReport = () => {
     visible: false,
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   const watchCode = watch("code");
 
   const parseDateDDMMYYYY = (str) => {
@@ -128,13 +135,14 @@ const TrackingReport = () => {
     fetchClientName();
   }, [debouncedWatchCode, server, setValue]);
 
-  // Function to fetch tracking data
-  const fetchTrackingData = async (data) => {
+  // Function to fetch tracking data with pagination
+  const fetchTrackingData = async (filters, page = 1) => {
     setLoading(true);
     try {
       const {
         runNumber,
         code,
+        branch,
         sector,
         destination,
         network,
@@ -142,10 +150,12 @@ const TrackingReport = () => {
         counterPart,
         from,
         to,
-      } = data;
+      } = filters;
 
       // Build query parameters
       const params = {};
+      
+      // Date range
       if (from && to) {
         const fromParsed = parseDateDDMMYYYY(from);
         const toParsed = parseDateDDMMYYYY(to);
@@ -168,6 +178,7 @@ const TrackingReport = () => {
         params.toDate = toParsed.toISOString();
       }
 
+      // Other filters
       if (runNumber) params.runNumber = runNumber.toUpperCase();
       if (code) params.accountCode = code.toUpperCase();
       if (branch) params.branch = branch.toUpperCase();
@@ -176,22 +187,75 @@ const TrackingReport = () => {
       if (network) params.network = network;
       if (service) params.service = service;
       if (counterPart) params.counterPart = counterPart;
+      
+      // Pagination parameters
+      params.page = page;
+      params.limit = pageLimit;
+
+      console.log("Fetching tracking data with pagination:", { page, limit: pageLimit });
 
       const response = await axios.get(`${server}/tracking-report`, { params });
 
-      if (response.data && Array.isArray(response.data)) {
-        setRowData(response.data);
-        showNotification("success", `Found ${response.data.length} records`);
+      // Handle response with pagination
+      const responseData = response.data.data || [];
+      const pagination = response.data.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: responseData.length,
+        limit: pageLimit,
+      };
+
+      if (responseData && Array.isArray(responseData)) {
+        setRowData(responseData);
+        setCurrentPage(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+        setTotalRecords(pagination.totalRecords);
+        
+        if (responseData.length > 0) {
+          showNotification(
+            "success", 
+            `Found ${responseData.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`
+          );
+        } else {
+          showNotification("info", "No records found");
+        }
       } else {
         setRowData([]);
+        setTotalRecords(0);
+        setTotalPages(1);
         showNotification("info", "No records found");
       }
     } catch (error) {
       console.error("Error fetching tracking data:", error);
       showNotification("error", "Error fetching data. Please try again.");
       setRowData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Fetch new page
+    fetchTrackingData(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchTrackingData(currentFilters, 1);
     }
   };
 
@@ -199,6 +263,7 @@ const TrackingReport = () => {
     const {
       runNumber,
       code,
+      branch,
       sector,
       destination,
       network,
@@ -211,6 +276,7 @@ const TrackingReport = () => {
     if (
       !runNumber &&
       !code &&
+      !branch &&
       !sector &&
       !destination &&
       !network &&
@@ -229,7 +295,14 @@ const TrackingReport = () => {
       return;
     }
 
-    fetchTrackingData(data);
+    // Store filters for pagination
+    setCurrentFilters(data);
+    
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+    
+    // Fetch first page
+    fetchTrackingData(data, 1);
   };
 
   const handleRefresh = () => {
@@ -251,6 +324,11 @@ const TrackingReport = () => {
     setRowData([]);
     setClientName("");
     setRefreshKey((prev) => prev + 1);
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
     showNotification("success", "Page refreshed successfully");
   };
 
@@ -259,6 +337,11 @@ const TrackingReport = () => {
     setRowData([]);
     setClientName("");
     setRefreshKey((prev) => prev + 1);
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
   };
 
   // Handle code list action
@@ -342,6 +425,76 @@ const TrackingReport = () => {
       console.error("Error downloading CSV:", error);
       showNotification("error", "Failed to download CSV file");
     }
+  };
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+          
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -498,14 +651,18 @@ const TrackingReport = () => {
                 <p className="text-gray-500">Loading tracking data...</p>
               </div>
             ) : rowData.length > 0 ? (
-              <TableWithSorting
-                register={register}
-                setValue={setValue}
-                resetFactor={refreshKey}
-                name="tracking"
-                columns={columns}
-                rowData={rowData}
-              />
+              <>
+                <TableWithSorting
+                  register={register}
+                  setValue={setValue}
+                  resetFactor={refreshKey}
+                  name="tracking"
+                  columns={columns}
+                  rowData={rowData}
+                />
+                {/* Pagination Controls */}
+                <PaginationControls />
+              </>
             ) : (
               <div className="flex justify-center items-center h-[45vh] border border-[#D0D5DD] rounded">
                 <p className="text-gray-500">
@@ -516,8 +673,10 @@ const TrackingReport = () => {
           </div>
 
           <div className="flex justify-between">
-            <div>
-              {/* <OutlinedButtonRed label={"Close"} onClick={handleClose} type="button" /> */}
+            <div className="text-sm text-gray-600">
+              {totalRecords > 0 && (
+                <span>Total Records: {totalRecords}</span>
+              )}
             </div>
           </div>
         </div>
