@@ -26,6 +26,14 @@ export default function ManifestReport() {
   const [data, setData] = useState([]);
   const { server } = useContext(GlobalContext);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+  const [loading, setLoading] = useState(false);
+
   const runNo = watch("runNumber");
   const debouncedRunNo = useDebounce(runNo, 600);
   const fromDate = watch("from");
@@ -282,15 +290,21 @@ export default function ManifestReport() {
   };
 
   // Fetch manifest shipment data
-  const fetchManifestData = async (runNumber) => {
-    if (!runNumber) return [];
+  const fetchManifestData = async (runNumber, page = 1) => {
+    if (!runNumber) return { shipments: [], pagination: { currentPage: 1, totalPages: 1, totalRecords: 0 } };
     
+    setLoading(true);
     try {
-      const response = await axios.get(`${server}/portal/get-shipments?runNo=${runNumber}`);
+      const response = await axios.get(`${server}/portal/get-shipments?runNo=${runNumber}&page=${page}&limit=${pageLimit}`);
       const responseData = response.data.shipments || [];
+      const pagination = response.data.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: responseData.length,
+      };
 
       const transformed = responseData.map((item, idx) => ({
-        srNo: idx + 1,
+        srNo: (page - 1) * pageLimit + idx + 1,
         awbNo: item.awbNo || "N/A",
         consignor: item.shipperFullName || "N/A",
         consignee: item.receiverFullName || "N/A",
@@ -316,12 +330,111 @@ export default function ManifestReport() {
       }));
 
       setData(transformed);
-      return transformed;
+      setRowData(transformed);
+      setTotalRecords(pagination.totalRecords);
+      setTotalPages(pagination.totalPages);
+      setCurrentPage(pagination.currentPage);
+
+      return { transformed, pagination };
     } catch (err) {
       console.error("Failed fetching manifest data:", err);
       setData([]);
-      return [];
+      setRowData([]);
+      return { transformed: [], pagination: { currentPage: 1, totalPages: 1, totalRecords: 0 } };
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    fetchManifestData(currentFilters, newPage);
+  };
+
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchManifestData(currentFilters, 1);
+    }
+  };
+
+  const PaginationControls = () => {
+    if (totalPages <= 1 && data.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{data.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm bg-white"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   // Auto-fetch run entry data when run number changes
@@ -341,20 +454,20 @@ export default function ManifestReport() {
   }, [runNo]);
 
   const handleView = async () => {
-    if (!runNo || !runNo.trim()) {
+    const query = runNo?.trim();
+    if (!query) {
       alert("Please enter a run number");
       return;
     }
 
+    setCurrentFilters(query);
+    setCurrentPage(1);
+
     // Fetch both run entry and manifest data
-    await fetchRunEntryData(runNo.trim());
-    const manifestData = await fetchManifestData(runNo.trim());
+    await fetchRunEntryData(query);
+    const result = await fetchManifestData(query, 1);
     
-    // Apply date filters if enabled
-    const filtered = getFilteredData(manifestData);
-    setRowData(filtered);
-    
-    if (filtered.length === 0) {
+    if (result.transformed.length === 0) {
       alert("No shipments found for this run number");
     }
   };
@@ -515,6 +628,7 @@ export default function ManifestReport() {
           setValue={setValue}
           name="manifestreportd"
         />
+        <PaginationControls />
       </div>
 
       {/* Hidden content for PDF rendering */}
