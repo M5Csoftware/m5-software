@@ -21,8 +21,11 @@ export default function ClientReport() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [pageLimit, setPageLimit] = useState(50); // Records per page
-  const [paginatedData, setPaginatedData] = useState([]);
+  const [currentFilters, setCurrentFilters] = useState({ search: "" });
+  const [loading, setLoading] = useState(false);
 
   const showNotification = (type, message) =>
     setNotification({ type, message, visible: true });
@@ -40,88 +43,71 @@ export default function ClientReport() {
     { key: "branch", label: "Branch" },
   ];
 
-  // normalize + fuzzy helpers
-  const norm = (s) =>
-    (s ?? "").toString().toLowerCase().replace(/\s+/g, "").trim();
-  const escapeReg = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const fuzzy = (text, q) => {
-    const nText = norm(text);
-    const nQ = norm(q);
-    if (!nQ) return true;
-    if (nText.includes(nQ)) return true;
-    const pattern = nQ.split("").map(escapeReg).join(".*");
-    return new RegExp(pattern).test(nText);
+  const fetchClients = async (page = 1, searchQuery = "") => {
+    setLoading(true);
+    setCurrentFilters({ search: searchQuery });
+    try {
+      const queryParams = new URLSearchParams({
+        page,
+        limit: pageLimit,
+        search: searchQuery
+      });
+      const res = await fetch(`${server}/customer-account?${queryParams.toString()}`);
+      const responseData = await res.json();
+      
+      const data = responseData.data || [];
+      const pagination = responseData.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: data.length
+      };
+
+      setClients(data);
+      setCurrentPage(pagination.currentPage);
+      setTotalPages(pagination.totalPages);
+      setTotalRecords(pagination.totalRecords);
+      
+      showNotification("success", `Fetched ${pagination.totalRecords} Clients (Page ${pagination.currentPage} of ${pagination.totalPages})`);
+    } catch (err) {
+      console.error("Error fetching clients:", err);
+      showNotification("error", "Error fetching clients");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // filter by code OR name
-  const filteredClients = clients.filter(
-    (c) => fuzzy(c.accountCode, query) || fuzzy(c.name, query)
-  );
-
-  // Update paginated data whenever filtered clients or page/limit changes
-  useEffect(() => {
-    const startIndex = (currentPage - 1) * pageLimit;
-    const endIndex = startIndex + pageLimit;
-    setPaginatedData(filteredClients.slice(startIndex, endIndex));
-    
-    // Reset to page 1 if current page is beyond available pages
-    if (filteredClients.length > 0 && currentPage > Math.ceil(filteredClients.length / pageLimit)) {
-      setCurrentPage(1);
-    }
-  }, [filteredClients, currentPage, pageLimit]);
+  // load initially
 
   // load initially
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const res = await fetch(`${server}/customer-account`); // ✅ same as working
-        const data = await res.json();
-        console.log("Fetched clients:", data);
-        showNotification("success", `Fetched ${data.length} Clients`);
-        setClients(data);
-        setValue("customerSearch", "");
-        // Reset pagination when new data loads
-        setCurrentPage(1);
-      } catch (err) {
-        console.error("Error fetching clients:", err);
-        showNotification("error", "Error fetching clients");
-      }
-    };
-    fetchClients();
-  }, [server, setValue]);
+    fetchClients(1, "");
+  }, [server]);
 
-  // 🔥 notify when they type something and get no results
-  useEffect(() => {
-    if (query && filteredClients.length === 0) {
-      showNotification("error", "No matching clients found");
-      // Reset to page 1
-      setCurrentPage(1);
-    }
-  }, [query, filteredClients.length]);
-
-  // Handle page change
-  const handlePageChange = (newPage) => {
-    if (newPage < 1 || newPage > totalPages) return;
-    setCurrentPage(newPage);
-    // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    fetchClients(1, watch("customerSearch"));
   };
 
-  // Handle limit change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || loading) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    fetchClients(newPage, currentFilters.search);
+  };
+
   const handleLimitChange = (e) => {
     const newLimit = parseInt(e.target.value, 10);
     setPageLimit(newLimit);
-    setCurrentPage(1); // Reset to first page when changing limit
+    fetchClients(1, currentFilters.search);
   };
 
   const handleDownloadCSV = () => {
-    if (filteredClients.length === 0) {
-      showNotification("error", "No data to download"); // 🔥 added
+    if (clients.length === 0) {
+      showNotification("error", "No data to download");
       return;
     }
 
     const headers = columns.map((col) => col.label).join(",");
-    const rows = filteredClients.map((client) =>
+    const rows = clients.map((client) =>
       columns.map((col) => client[col.key] ?? "").join(",")
     );
 
@@ -135,12 +121,10 @@ export default function ClientReport() {
     a.click();
     window.URL.revokeObjectURL(url);
 
-    showNotification("success", "Report Downloaded"); // 🔥 works same as your other screens
+    showNotification("success", "Report Downloaded");
   };
 
-  // Calculate total pages
-  const totalPages = Math.ceil(filteredClients.length / pageLimit);
-  const totalRecords = filteredClients.length;
+  const totalRecordsCount = totalRecords;
 
   // Pagination component
   const PaginationControls = () => {
@@ -150,7 +134,7 @@ export default function ClientReport() {
       <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">{paginatedData.length}</span> of{" "}
+            Showing <span className="font-medium">{clients.length}</span> of{" "}
             <span className="font-medium">{totalRecords}</span> records
           </div>
           
@@ -222,20 +206,11 @@ export default function ClientReport() {
 
       <Heading
         title="Client Report"
-        onRefresh={async () => {
-          try {
-            const res = await fetch(`${server}/customer-account`);
-            const data = await res.json();
-            setClients(data);
-            setValue("customerSearch", "");
-            setCurrentPage(1); // Reset to first page on refresh
-
-            showNotification("success", "Client list refreshed"); // 🔥 added
-          } catch (err) {
-            console.error("Error refreshing clients:", err);
-            showNotification("error", "Error refreshing clients"); // 🔥 added
-          }
+        onRefresh={() => {
+          setValue("customerSearch", "");
+          fetchClients(1, "");
         }}
+
         bulkUploadBtn="hidden"
         codeListBtn="hidden"
       />
@@ -247,11 +222,16 @@ export default function ClientReport() {
             register={register}
             setValue={setValue}
             value="customerSearch"
-            onChange={(e) => setValue("customerSearch", e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleSearchSubmit(e);
+              }
+            }}
           />
         </div>
 
-        <div className="w=[10%]">
+        <div className="flex gap-2">
+          <OutlinedButtonRed label={loading ? "Searching..." : "Search"} onClick={handleSearchSubmit} disabled={loading} />
           <SimpleButton name="Download CSV" onClick={handleDownloadCSV} />
         </div>
       </div>
@@ -262,18 +242,19 @@ export default function ClientReport() {
           setValue={setValue}
           name="Client Report"
           columns={columns}
-          rowData={paginatedData}
-          className="min-h-[60vh]"
+          rowData={clients}
+          className="min-h-[50vh] border-b-0 rounded-b-none"
         />
       </div>
 
       {/* Pagination Controls */}
       <PaginationControls />
 
-      <div className="flex justify-between">
+      {/* Total Records Display */}
+      <div className="flex justify-between mt-2">
         <div className="text-sm text-gray-600">
-          {totalRecords > 0 && (
-            <span>Total Records: {totalRecords}</span>
+          {totalRecordsCount > 0 && (
+            <span>Total Records: {totalRecordsCount}</span>
           )}
         </div>
       </div>
