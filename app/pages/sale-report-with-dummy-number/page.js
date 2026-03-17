@@ -973,7 +973,7 @@ function SaleReportWithDummyNumber() {
       </div>
 
       <div>
-        <Table
+        <TableWithSorting
           register={register}
           setValue={setValue}
           columns={columns}
