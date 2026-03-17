@@ -31,7 +31,10 @@ function BookingWithSale() {
   const [loading, setLoading] = useState(false);
   const [searchType, setSearchType] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(30);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
   const [notification, setNotification] = useState({
     type: "",
     message: "",
@@ -131,20 +134,19 @@ function BookingWithSale() {
     return new Date(year, month, day);
   };
 
-  const fetchShipments = async () => {
+  const fetchShipments = async (page = 1) => {
     try {
       setLoading(true);
 
       let url = `${server}/booking-with-sale`;
-      const params = [];
+      const queryParams = new URLSearchParams();
 
       if (runNumber && !fromDate && !toDate) {
         setSearchType("runNo");
-        params.push(`runNo=${runNumber}`);
+        queryParams.append("runNo", runNumber);
       } else if ((fromDate || toDate) && !runNumber) {
         setSearchType("date");
 
-        // Parse and validate dates
         if (fromDate) {
           const fromDateObj = parseDateDDMMYYYY(fromDate);
           if (!fromDateObj || isNaN(fromDateObj.getTime())) {
@@ -153,7 +155,7 @@ function BookingWithSale() {
             return;
           }
           fromDateObj.setHours(0, 0, 0, 0);
-          params.push(`fromDate=${fromDateObj.toISOString()}`);
+          queryParams.append("fromDate", fromDateObj.toISOString());
         }
 
         if (toDate) {
@@ -164,7 +166,7 @@ function BookingWithSale() {
             return;
           }
           toDateObj.setHours(23, 59, 59, 999);
-          params.push(`toDate=${toDateObj.toISOString()}`);
+          queryParams.append("toDate", toDateObj.toISOString());
         }
       } else if (runNumber && (fromDate || toDate)) {
         showNotification(
@@ -182,23 +184,37 @@ function BookingWithSale() {
         return;
       }
 
-      if (params.length > 0) {
-        url += `?${params.join("&")}`;
-      }
+      // Add pagination parameters
+      queryParams.append("page", page.toString());
+      queryParams.append("limit", pageLimit.toString());
 
-      // console.log("Fetching from URL:", url);
+      url += `?${queryParams.toString()}`;
+      
+      setCurrentFilters({ runNumber, from: fromDate, to: toDate });
 
       const response = await axios.get(url);
-      const shipments = response.data.data || [];
+      const data = response.data.data || [];
+      const pagination = response.data.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: data.length,
+      };
 
-      if (shipments.length === 0) {
+      if (data.length === 0) {
         showNotification("info", "No shipments found");
       } else {
-        showNotification("success", `Found ${shipments.length} shipment(s)`);
+        showNotification("success", `Found ${data.length} shipment(s) (Page ${pagination.currentPage} of ${pagination.totalPages})`);
       }
 
-      setRowData(shipments);
-      calculateTotals(shipments);
+      setRowData(data);
+      setCurrentPage(pagination.currentPage);
+      setTotalPages(pagination.totalPages);
+      setTotalRecords(pagination.totalRecords);
+      // Wait, totals should probably come from backend or be calculated from all pages?
+      // Usually totals for weight/amt should be for the entire dataset.
+      // If the backend doesn't provide it, we might only have totals for the current page.
+      // For now, I'll calculate from the current page if not provided.
+      calculateTotals(data);
     } catch (error) {
       console.error("Error fetching shipments:", error);
       showNotification(
@@ -297,12 +313,15 @@ function BookingWithSale() {
   const handleClose = () => {
     setRowData([]);
     setSearchType(null);
-    setCurrentPage(1);
     setTotals({
       totalActualWeight: 0,
       totalChargeableWeight: 0,
       grandTotal: 0,
     });
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
     setValue("runNumber", "");
     setValue("from", "");
     setValue("to", "");
@@ -312,12 +331,15 @@ function BookingWithSale() {
     // Clear all states first
     setRowData([]);
     setSearchType(null);
-    setCurrentPage(1);
     setTotals({
       totalActualWeight: 0,
       totalChargeableWeight: 0,
       grandTotal: 0,
     });
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
 
     // Increment form key to force complete remount
     setFormKey((prev) => prev + 1);
@@ -342,38 +364,91 @@ function BookingWithSale() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isFullscreen]);
 
-  // Pagination logic
-  const totalPages = Math.ceil(rowData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedData = rowData.slice(startIndex, endIndex);
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || loading) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    fetchShipments(newPage);
+  };
 
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxPagesToShow = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-
-    if (endPage - startPage < maxPagesToShow - 1) {
-      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    if (currentFilters) {
+      fetchShipments(1);
     }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-    return pages;
   };
 
-  const goToPrevious = () => {
-    setCurrentPage(Math.max(1, currentPage - 1));
-  };
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
 
-  const goToNext = () => {
-    setCurrentPage(Math.min(totalPages, currentPage + 1));
-  };
+    return (
+      <div className="flex items-center justify-between border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 border-b-0 bg-gray-50 px-4 py-3">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
 
-  const goToPage = (pageNumber) => {
-    setCurrentPage(pageNumber);
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm bg-white"
+              disabled={loading}
+            >
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -433,7 +508,7 @@ function BookingWithSale() {
               <OutlinedButtonRed
                 type="button"
                 label={loading ? "Loading..." : "Show"}
-                onClick={fetchShipments}
+                onClick={() => fetchShipments(1)}
                 disabled={loading}
               />
             </div>
@@ -456,55 +531,11 @@ function BookingWithSale() {
           register={register}
           setValue={setValue}
           columns={columns}
-          rowData={paginatedData}
+          rowData={rowData}
           className={`border-b-0 rounded-b-none h-[45vh]`}
         />
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 border-b-0 bg-gray-50 px-4 py-3">
-            <div className="text-sm text-gray-700">
-              Showing{" "}
-              {Math.min((currentPage - 1) * itemsPerPage + 1, rowData.length)}{" "}
-              to {Math.min(currentPage * itemsPerPage, rowData.length)} of{" "}
-              {rowData.length} results
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={goToPrevious}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                Previous
-              </button>
-
-              {getPageNumbers().map((pageNumber) => (
-                <button
-                  key={pageNumber}
-                  type="button"
-                  onClick={() => goToPage(pageNumber)}
-                  className={`px-3 py-1 border rounded text-sm ${
-                    currentPage === pageNumber
-                      ? "bg-red-500 text-white border-red-500"
-                      : "border-gray-300 hover:bg-gray-100"
-                  }`}
-                >
-                  {pageNumber}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={goToNext}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <PaginationControls />
 
         <div className="flex justify-end border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 text-gray-900 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2 gap-16">
           <div>
