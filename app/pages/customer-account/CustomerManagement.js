@@ -234,6 +234,7 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState({});
+  const lineRef = useRef(null);
   const [filterOptions, setFilterOptions] = useState({
     accountTypes: [],
     cities: [],
