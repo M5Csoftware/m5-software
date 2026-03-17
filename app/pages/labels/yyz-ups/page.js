@@ -179,7 +179,7 @@ const LabelPage = () => {
 
     if (awbNo) {
       try {
-        await axios.delete(`${server}/labels/ups?awbNo=${awbNo}`);
+        await axios.delete(`${server}/labels/ups?awbNo=${awbNo.toUpperCase()}`);
       } catch (error) {
         console.error("Error deleting labels:", error);
       }
@@ -205,7 +205,7 @@ const LabelPage = () => {
 
     setLoading(true);
     try {
-      const response = await axios.get(`${server}/labels/ups?awbNo=${awbNo}`);
+      const response = await axios.get(`${server}/labels/ups?awbNo=${awbNo.toUpperCase()}`);
 
       if (response.data.success) {
         const data = response.data.data;

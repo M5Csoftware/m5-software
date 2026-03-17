@@ -5,9 +5,9 @@ import { DeleteButton, EditButton } from "../AddUpdateDeleteButton";
 import InputBox, { DateInputBox, SearchInputBox } from "../InputBox";
 import { DropdownRedLabel, LabeledDropdown } from "../Dropdown";
 import { GlobalContext } from "@/app/lib/GlobalContext";
-import Papa from "papaparse";
 import Table from "../Table";
 import NotificationFlag from "../Notificationflag";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 const UploadRate = ({ register, setValue, reset, onSubmit }) => {
   const [tabChange, setTabChange] = useState(false);
@@ -15,6 +15,7 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
   const [rowData, setRowData] = useState([]);
   const [searchFilteredData, setSearchFilteredData] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [selectedShipper, setSelectedShipper] = useState("");
   const [selectedRows, setSelectedRows] = useState([]); // Track selected rows
   const [isEditMode, setIsEditMode] = useState(false);
@@ -55,10 +56,11 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
     return unique.sort();
   }, [rowData]);
 
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
+    const Papa = await import("papaparse");
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -123,8 +125,8 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
     }
 
     // Filter by search query across all columns
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
+    if (debouncedSearchQuery.trim()) {
+      const query = debouncedSearchQuery.toLowerCase().trim();
       result = result.filter(item => {
         return columns.some(column => {
           const value = item[column.key];
@@ -135,7 +137,7 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
     }
 
     setSearchFilteredData(result);
-  }, [searchQuery, selectedShipper, rowData, columns]);
+  }, [debouncedSearchQuery, selectedShipper, rowData, columns]);
 
   useEffect(() => {
     console.log("Current rowData:", rowData);

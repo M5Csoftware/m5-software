@@ -102,7 +102,7 @@ function PaymentCollectionReport() {
       setCustomerNameLoading(true);
       try {
         const response = await axios.get(
-          `${server}/customer-account?accountCode=${code}`
+          `${server}/customer-account?accountCode=${code.toUpperCase()}`
         );
 
         if (response.data && response.data.name) {

@@ -10,7 +10,6 @@ import { useForm } from "react-hook-form";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import axios from "axios";
 import NotificationFlag from "@/app/components/Notificationflag";
-import * as XLSX from "xlsx";
 
 const RateSheet = () => {
   const { server } = useContext(GlobalContext);
@@ -94,6 +93,7 @@ const RateSheet = () => {
       });
 
       // Create worksheet
+      const XLSX = await import("xlsx");
       const worksheet = XLSX.utils.json_to_sheet(excelData);
 
       // Set column widths

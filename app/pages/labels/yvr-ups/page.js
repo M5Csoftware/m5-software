@@ -178,7 +178,7 @@ const YvrUpsPage = () => {
 
     if (awbNo) {
       try {
-        await axios.delete(`${server}/labels/ups/yvr?awbNo=${awbNo}`);
+        await axios.delete(`${server}/labels/ups/yvr?awbNo=${awbNo.toUpperCase()}`);
       } catch (error) {
         console.error("Error deleting labels:", error);
       }
@@ -205,7 +205,7 @@ const YvrUpsPage = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `${server}/labels/ups/yvr?awbNo=${awbNo}`
+        `${server}/labels/ups/yvr?awbNo=${awbNo.toUpperCase()}`
       );
 
       if (response.data.success) {

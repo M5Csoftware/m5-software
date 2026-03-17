@@ -112,7 +112,7 @@ function RunSummary() {
 
       if (filterType === "runNumber") {
         // Fetch specific run number
-        params.append("runNo", runNumber);
+        params.append("runNo", runNumber.toUpperCase());
       } else if (filterType === "all") {
         // Fetch all data - need to provide a wide date range
         // You can adjust these dates as needed

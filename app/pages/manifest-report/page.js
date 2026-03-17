@@ -8,14 +8,12 @@ import RedCheckbox from "@/app/components/RedCheckBox";
 import Table from "@/app/components/Table";
 import React, { useMemo, useState, useEffect, useRef, useContext } from "react";
 import { useForm } from "react-hook-form";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import JsBarcode from "jsbarcode";
 import axios from "axios";
-import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import DownloadDropdown from "@/app/components/DownloadDropdown";
 import { GlobalContext } from "@/app/lib/GlobalContext";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 export default function ManifestReport() {
   const [demoRadio, setDemoRadio] = useState("Manifest (O)");
@@ -29,6 +27,7 @@ export default function ManifestReport() {
   const { server } = useContext(GlobalContext);
 
   const runNo = watch("runNumber");
+  const debouncedRunNo = useDebounce(runNo, 600);
   const fromDate = watch("from");
   const toDate = watch("to");
 
@@ -97,9 +96,11 @@ export default function ManifestReport() {
       setTimeout(resolve, 500);
     });
 
+    const html2canvas = (await import("html2canvas")).default;
     const canvas = await html2canvas(input, { scale: 2, useCORS: true });
     const imgData = canvas.toDataURL("image/png");
 
+    const { jsPDF } = await import("jspdf");
     const pdf = new jsPDF("p", "mm", "letter");
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const imgProps = pdf.getImageProperties(imgData);
@@ -111,7 +112,7 @@ export default function ManifestReport() {
     pdf.save(`Manifest_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
-  const handleDownloadExcel = () => {
+  const handleDownloadExcel = async () => {
     const filtered = getFilteredData(data);
     
     if (!filtered || filtered.length === 0) {
@@ -212,6 +213,7 @@ export default function ManifestReport() {
       aoa.push([]);
     });
 
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Manifest");
@@ -221,7 +223,7 @@ export default function ManifestReport() {
     );
   };
 
-  const handleDownloadCSV = () => {
+  const handleDownloadCSV = async () => {
     const filtered = getFilteredData(data);
     
     if (!filtered || filtered.length === 0) {
@@ -229,6 +231,7 @@ export default function ManifestReport() {
       return;
     }
     
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet(filtered);
     const csv = XLSX.utils.sheet_to_csv(ws);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -323,8 +326,8 @@ export default function ManifestReport() {
 
   // Auto-fetch run entry data when run number changes
   useEffect(() => {
-    if (runNo && runNo.trim()) {
-      fetchRunEntryData(runNo.trim());
+    if (debouncedRunNo && debouncedRunNo.trim()) {
+      fetchRunEntryData(debouncedRunNo.trim().toUpperCase());
     } else {
       // Clear all fields when run number is cleared
       setRunData({});

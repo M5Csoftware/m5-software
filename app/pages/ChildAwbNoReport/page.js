@@ -68,7 +68,7 @@ const ChildAwbNoReport = () => {
 
       if (runNumber && !mawbNumber) {
         // Fetch bagging data by run number
-        const res = await axios.get(`${server}/bagging?runNo=${runNumber}`);
+        const res = await axios.get(`${server}/bagging?runNo=${runNumber.toUpperCase()}`);
         const baggingData = res.data;
 
         if (!baggingData || !baggingData.rowData) {
@@ -140,7 +140,7 @@ const ChildAwbNoReport = () => {
       } else if (!runNumber && mawbNumber) {
         // Fetch by MAWB number
         const res = await axios.get(
-          `${server}/portal/create-child?masterAwbNo=${mawbNumber}`
+          `${server}/portal/create-child?masterAwbNo=${mawbNumber.toUpperCase()}`
         );
         const childShipments = Array.isArray(res.data) ? res.data : [res.data];
 
@@ -163,8 +163,8 @@ const ChildAwbNoReport = () => {
       } else if (runNumber && mawbNumber) {
         // Fetch by both - combine results
         const [baggingRes, childRes] = await Promise.all([
-          axios.get(`${server}/bagging?runNo=${runNumber}`),
-          axios.get(`${server}/portal/create-child?masterAwbNo=${mawbNumber}`),
+          axios.get(`${server}/bagging?runNo=${runNumber.toUpperCase()}`),
+          axios.get(`${server}/portal/create-child?masterAwbNo=${mawbNumber.toUpperCase()}`),
         ]);
 
         const baggingData = baggingRes.data;

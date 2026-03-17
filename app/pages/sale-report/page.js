@@ -4,7 +4,6 @@ import { LabeledDropdown } from "@/app/components/Dropdown";
 import Heading from "@/app/components/Heading";
 import InputBox, { DateInputBox } from "@/app/components/InputBox";
 import NotificationFlag from "@/app/components/Notificationflag";
-import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { RadioButtonLarge } from "@/app/components/RadioButton";
 import RedCheckbox from "@/app/components/RedCheckBox";
@@ -13,9 +12,12 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import { X } from "lucide-react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 const SalesReport = () => {
-  const { register, setValue, getValues, reset, handleSubmit } = useForm();
+  const { register, setValue, getValues, reset, handleSubmit, watch } = useForm();
+  const values = watch();
+  const debouncedValues = useDebounce(values, 800);
   const [demoRadio, setDemoRadio] = useState("Sale Details");
   const [bookingDate, setBookingDate] = useState(false);
   const [unBilledShipment, setUnBilledShipment] = useState(false);
@@ -42,7 +44,7 @@ const SalesReport = () => {
 
   // Inside SalesReport component:
 
-  const handleDownloadExcel = () => {
+  const handleDownloadExcel = async () => {
     if (rowData.length === 0) {
       showNotification("error", "No data to download!");
       return;
@@ -113,6 +115,7 @@ const SalesReport = () => {
     summaryRow[last6Keys[5]] = "Rs " + grandTotal;
     wsData.push(summaryRow);
 
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet(wsData);
 
     // Set column widths
@@ -227,7 +230,7 @@ const SalesReport = () => {
 
   const handleSearch = async () => {
     try {
-      const values = getValues();
+      const values = debouncedValues;
 
       const { from, to } = values;
 
@@ -262,7 +265,11 @@ const SalesReport = () => {
 
       filterKeys.forEach((key) => {
         if (values[key]) {
-          params.append(key, values[key]);
+          let val = values[key];
+          if (["runNumber", "customer", "branch"].includes(key)) {
+            val = val.toUpperCase();
+          }
+          params.append(key, val);
         }
       });
 

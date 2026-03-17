@@ -8,11 +8,31 @@
   },
   "package": {
     "productName": "M5C Logs",
-    "version": "0.1.9"
+    "version": "0.1.10"
   },
   "tauri": {
     "allowlist": {
-      "all": true
+      "all": false,
+      "fs": {
+        "all": true,
+        "scope": [
+          "$APPDIR/*"
+        ]
+      },
+      "http": {
+        "all": true,
+        "scope": [
+          "https://m5clogs.com/*",
+          "https://m5c-server.vercel.app/*"
+        ]
+      },
+      "shell": {
+        "all": true,
+        "open": true
+      },
+      "window": {
+        "all": true
+      }
     },
     "bundle": {
       "active": true,

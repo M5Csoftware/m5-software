@@ -126,7 +126,7 @@ function CreditLimitTemp({ }) {
     const fetchCustomer = async () => {
       try {
         const res = await axios.get(
-          `${server}/customer-account?accountCode=${customerCode}`
+          `${server}/customer-account?accountCode=${customerCode.toUpperCase()}`
         );
         const customer = res.data;
 

@@ -55,7 +55,7 @@ function RTOShipment() {
     try {
       if (!accountCode) return "";
       const customerResponse = await axios.get(
-        `${server}/customer-account?accountCode=${accountCode}`
+        `${server}/customer-account?accountCode=${accountCode.toUpperCase()}`
       );
       return customerResponse.data?.name || "";
     } catch (err) {
@@ -92,7 +92,7 @@ function RTOShipment() {
       console.log("Fetching customer for account code:", accountCode);
 
       const response = await axios.get(
-        `${server}/customer-account?accountCode=${accountCode}`
+        `${server}/customer-account?accountCode=${accountCode.toUpperCase()}`
       );
 
       console.log("Customer Response:", response.data);
@@ -144,7 +144,7 @@ function RTOShipment() {
       console.log("Fetching data for AWB:", awbNumber);
 
       const response = await axios.get(
-        `${server}/rto-shipment?awbNo=${awbNumber}`
+        `${server}/rto-shipment?awbNo=${awbNumber.toUpperCase()}`
       );
 
       console.log("Response:", response.data);

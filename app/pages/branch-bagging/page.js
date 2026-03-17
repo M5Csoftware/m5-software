@@ -238,7 +238,7 @@ export default function BranchBagging() {
 
       try {
         const response = await axios.get(
-          `${server}/branch-bagging?runNo=${runNo}`
+          `${server}/branch-bagging?runNo=${runNo.toUpperCase()}`
         );
         const data = Array.isArray(response.data)
           ? response.data[0]
@@ -324,7 +324,7 @@ export default function BranchBagging() {
       }
 
       try {
-        const response = await axios.get(`${server}/clubbing?runNo=${runNo}`);
+        const response = await axios.get(`${server}/clubbing?runNo=${runNo.toUpperCase()}`);
         const data = Array.isArray(response.data)
           ? response.data
           : [response.data];

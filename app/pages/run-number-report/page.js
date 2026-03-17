@@ -86,7 +86,7 @@ const RunNumberReport = () => {
 
       // Add runNo filter if provided
       if (runNo && runNo.trim() !== "") {
-        params.append("runNo", runNo.trim());
+        params.append("runNo", runNo.trim().toUpperCase());
       }
 
       const response = await axios.get(

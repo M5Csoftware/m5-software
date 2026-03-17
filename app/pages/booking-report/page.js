@@ -112,7 +112,7 @@ const BookingReport = () => {
       try {
         // Fetch customer account by code (using same endpoint as PaymentCollectionReport)
         const response = await axios.get(
-          `${server}/customer-account?accountCode=${codeValue.trim()}`,
+          `${server}/customer-account?accountCode=${codeValue.trim().toUpperCase()}`,
         );
 
         if (response.data && response.data.name) {
@@ -189,14 +189,14 @@ const BookingReport = () => {
 
       // Format dates to ISO string to ensure proper format
       const formattedData = {
-        code: data.code || undefined,
-        runNumber: data.runNumber || undefined,
-        origin: data.origin || undefined,
-        sector: data.sector || undefined,
-        salePerson: data.salePerson || undefined,
-        branch: data.branch || undefined,
-        destination: data.destination || undefined,
-        service: data.service || undefined,
+        code: data.code?.toUpperCase() || undefined,
+        runNumber: data.runNumber?.toUpperCase() || undefined,
+        origin: data.origin?.toUpperCase() || undefined,
+        sector: data.sector?.toUpperCase() || undefined,
+        salePerson: data.salePerson?.toUpperCase() || undefined,
+        branch: data.branch?.toUpperCase() || undefined,
+        destination: data.destination?.toUpperCase() || undefined,
+        service: data.service?.toUpperCase() || undefined,
         from: fromDate.toISOString(),
         to: toDate.toISOString(),
         holdShipments,

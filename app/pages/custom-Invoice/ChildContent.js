@@ -23,7 +23,7 @@ const ChildContent = () => {
     if (!awbNo) return alert("Enter AirwayBill Number");
 
     try {
-      const res = await fetch(`${server}/custom-invoice?awbNo=${awbNo}`);
+      const res = await fetch(`${server}/custom-invoice?awbNo=${awbNo.toUpperCase()}`);
       if (!res.ok) throw new Error("Shipment not found");
       const data = await res.json();
 

@@ -60,14 +60,14 @@ const MessageSheet = () => {
 
   // API Functions
   const fetchRunData = async (runNo) => {
-    const response = await axios.get(`${server}/run-entry?runNo=${runNo}`);
+    const response = await axios.get(`${server}/run-entry?runNo=${runNo.toUpperCase()}`);
     return response.data;
   };
 
   const fetchShipmentDataByRunNo = async (runNo) => {
     try {
       const response = await axios.get(
-        `${server}/portal/create-shipment?runNo=${runNo}`
+        `${server}/portal/create-shipment?runNo=${runNo.toUpperCase()}`
       );
       console.log("API Response:", response.data);
       return Array.isArray(response.data) ? response.data : [response.data];
@@ -80,7 +80,7 @@ const MessageSheet = () => {
 
   const fetchBaggingDataByRunNo = async (runNo) => {
     try {
-      const response = await axios.get(`${server}/bagging?runNo=${runNo}`);
+      const response = await axios.get(`${server}/bagging?runNo=${runNo.toUpperCase()}`);
       console.log("Bagging API Response:", response.data);
       return Array.isArray(response.data) ? response.data : [response.data];
     } catch (error) {

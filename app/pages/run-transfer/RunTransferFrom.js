@@ -33,7 +33,7 @@ const RunTransferForm = ({ setCurrentView }) => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `${server}/portal/create-shipment?runNo=${runNumber}`
+        `${server}/portal/create-shipment?runNo=${runNumber.toUpperCase()}`
       );
       const filteredData = response.data;
 

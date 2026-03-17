@@ -1,7 +1,4 @@
 import React, { useRef, useState, useEffect } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
-import QRCode from "qrcode";
 
 // Simple Invoice Template
 const InvoiceTemplate = ({ invoiceData, qrImage }) => {
@@ -492,6 +489,7 @@ export default function InvoicePDFDownloader({ server, invoiceNumber }) {
     const generateQR = async () => {
       if (invoiceData?.qrCodeData?.[0]?.qrCode) {
         try {
+          const QRCode = (await import("qrcode")).default;
           // Generate QR code using qrcode library
           const qrDataUrl = await QRCode.toDataURL(
             invoiceData.qrCodeData[0].qrCode,
@@ -530,7 +528,7 @@ export default function InvoicePDFDownloader({ server, invoiceNumber }) {
       // Fetch invoice from DB
       const res = await fetch(
         `${server}/billing-invoice/invoice?invoiceNumber=${encodeURIComponent(
-          invoiceNumber
+          invoiceNumber.toUpperCase()
         )}`
       );
       if (!res.ok) throw new Error("Invoice not found");
@@ -542,6 +540,9 @@ export default function InvoicePDFDownloader({ server, invoiceNumber }) {
 
       // Wait for render and QR code generation
       setTimeout(async () => {
+        const jsPDF = (await import("jspdf")).default;
+        const html2canvas = (await import("html2canvas")).default;
+
         // Initialize PDF with compression enabled
         const pdf = new jsPDF({
           orientation: "p",

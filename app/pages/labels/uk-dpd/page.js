@@ -234,7 +234,7 @@ const UkDpdPage = () => {
 
     if (awbNo) {
       try {
-        await axios.delete(`${server}/labels/dpd/uk?awbNo=${awbNo}`);
+        await axios.delete(`${server}/labels/dpd/uk?awbNo=${awbNo.toUpperCase()}`);
       } catch (error) {
         console.error("Error deleting labels:", error);
       }
@@ -262,7 +262,7 @@ const UkDpdPage = () => {
 
     setLoading(true);
     try {
-      const response = await axios.get(`${server}/labels/dpd/uk?awbNo=${awbNo}`);
+      const response = await axios.get(`${server}/labels/dpd/uk?awbNo=${awbNo.toUpperCase()}`);
 
       if (response.data.success) {
         const data = response.data.data;

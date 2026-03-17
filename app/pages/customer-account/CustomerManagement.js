@@ -4,7 +4,7 @@ import Image from "next/image";
 import CustomerTable from "./CustomerTable";
 import CustomerAccount from "./CustomerAccount"; // ✅ Import CustomerAccount
 import { GlobalContext } from "@/app/lib/GlobalContext";
-import * as XLSX from "xlsx";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 // Filter Modal Component (unchanged)
 const FilterModal = ({ isOpen, onClose, onApply, filterOptions, users }) => {
@@ -251,6 +251,8 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
   const lineRef = useRef(null);
   const { server } = React.useContext(GlobalContext);
 
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
   const departmentMap = {
     All: null,
     Agents: "Agents",
@@ -412,9 +414,9 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
       filtered = filtered.filter((user) => !!user.deactivateReason);
     }
 
-    // UPDATED: Apply search filter - now searches name AND account code
-    if (searchQuery.trim() !== "") {
-      const query = searchQuery.toLowerCase().trim();
+    // Apply search filter - now searches name AND account code
+    const query = debouncedSearchQuery.toLowerCase().trim();
+    if (query !== "") {
       filtered = filtered.filter((user) => {
         // Check name
         if (user.name && user.name.toLowerCase().includes(query)) {
@@ -515,7 +517,7 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
     setFilteredUsers(sortedUsers);
   };
 
-  const handleDownloadExcel = () => {
+  const handleDownloadExcel = async () => {
     const dataToExport =
       selectedIds.length > 0
         ? filteredUsers.filter((user) =>
@@ -545,6 +547,7 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
       return row;
     });
 
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Customers");

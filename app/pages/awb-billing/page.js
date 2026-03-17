@@ -508,7 +508,7 @@ function AwbBilling() {
       try {
         if (!accountCode) return "";
         const customerResponse = await axios.get(
-          `${server}/customer-account?accountCode=${accountCode}`,
+          `${server}/customer-account?accountCode=${accountCode.toUpperCase()}`,
         );
         return customerResponse.data?.name || "";
       } catch (err) {

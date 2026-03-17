@@ -1,6 +1,4 @@
 import { saveAs } from "file-saver";
-import * as XLSX from "xlsx";
-import ExcelJS from "exceljs";
 
 const formatExcelDate = (dateStr) => {
   if (!dateStr) return "";
@@ -12,7 +10,8 @@ const formatExcelDate = (dateStr) => {
   return `${day}/${month}/${year}`;
 };
 
-export const exportCodeList = (data, name) => {
+export const exportCodeList = async (data, name) => {
+  const XLSX = await import("xlsx");
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Data");
@@ -42,6 +41,7 @@ export const exportAccountLedgerData = async (
 
   const headers = Object.keys(rowData[0]);
 
+  const ExcelJS = (await import("exceljs")).default;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Account Ledger");
 

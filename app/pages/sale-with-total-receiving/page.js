@@ -392,7 +392,7 @@ function SaleWithTotalReceiving() {
           const response = await axios.get(
             `${server}/sale-with-total-receiving`,
             {
-              params: { accountCode: accountCode.trim() },
+              params: { accountCode: accountCode.trim().toUpperCase() },
             }
           );
 
