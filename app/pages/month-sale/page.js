@@ -17,6 +17,8 @@ function MonthSale() {
   const { server } = useContext(GlobalContext);
   const [rowData, setRowData] = useState([]);
   const [fullscreen, setFullScreen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
