@@ -6,7 +6,7 @@ import { InputBoxYellow } from "@/app/components/InputBox";
 import { RadioButtonLarge } from "@/app/components/RadioButton";
 import RedCheckbox from "@/app/components/RedCheckBox";
 import Table from "@/app/components/Table";
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import axios from "axios";
 import { GlobalContext } from "@/app/lib/GlobalContext";
@@ -25,6 +25,13 @@ export default function BagReport() {
     message: "",
     visible: false,
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [paginatedData, setPaginatedData] = useState([]);
 
   const showNotification = (type, message) => {
     setNotification({ type, message, visible: true });
@@ -72,6 +79,18 @@ export default function BagReport() {
     ],
   };
 
+  // Update paginated data whenever tableData, currentPage, or pageLimit changes
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * pageLimit;
+    const endIndex = startIndex + pageLimit;
+    setPaginatedData(tableData.slice(startIndex, endIndex));
+    
+    // Reset to page 1 if current page is beyond available pages
+    if (tableData.length > 0 && currentPage > Math.ceil(tableData.length / pageLimit)) {
+      setCurrentPage(1);
+    }
+  }, [tableData, currentPage, pageLimit]);
+
   const formatDate = (d) => {
     if (!d) return "";
     const date = new Date(d);
@@ -93,6 +112,23 @@ export default function BagReport() {
     return cols;
   };
 
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    setCurrentPage(newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    setCurrentPage(1); // Reset to first page when changing limit
+  };
+
   // CSV Download Function
   const handleDownloadCSV = () => {
     if (tableData.length === 0) {
@@ -105,7 +141,7 @@ export default function BagReport() {
     // Create CSV header
     const headers = filteredColumns.map((col) => col.label).join(",");
 
-    // Create CSV rows
+    // Create CSV rows from ALL data (not just paginated)
     const rows = tableData
       .map((row) => {
         return filteredColumns
@@ -321,12 +357,14 @@ export default function BagReport() {
       setLoading(true);
       console.log("Fetching data for run number:", runNumber);
 
+      let newTableData = [];
+
       if (reportType === "Summary") {
         const [baggingData, branchBaggingData] = await Promise.all([
           fetchBaggingData(runNumber).catch(() => null),
           fetchBranchBaggingData(runNumber).catch(() => null),
         ]);
-        setTableData(mapSummaryData(baggingData, branchBaggingData));
+        newTableData = mapSummaryData(baggingData, branchBaggingData);
       } else {
         const [shipmentData, baggingData, branchBaggingData] =
           await Promise.all([
@@ -341,14 +379,23 @@ export default function BagReport() {
         );
 
         if (reportType === "Shipper") {
-          setTableData(mapShipperData(shipmentData, baggingLookup));
+          newTableData = mapShipperData(shipmentData, baggingLookup);
         } else {
-          setTableData(mapConsigneeData(shipmentData, baggingLookup));
+          newTableData = mapConsigneeData(shipmentData, baggingLookup);
         }
       }
+
+      setTableData(newTableData);
+      setTotalRecords(newTableData.length);
+      setTotalPages(Math.ceil(newTableData.length / pageLimit));
+      setCurrentPage(1); // Reset to first page
+
+      showNotification("success", `Found ${newTableData.length} records`);
     } catch (error) {
       console.error("Error fetching data:", error);
       setTableData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
       showNotification("error", "Error fetching data");
     } finally {
       setLoading(false);
@@ -384,6 +431,8 @@ export default function BagReport() {
             (field) => setValue(field, "")
           );
           setTableData([]);
+          setTotalRecords(0);
+          setTotalPages(1);
         }
       } else {
         setRunData(null);
@@ -391,6 +440,8 @@ export default function BagReport() {
           (field) => setValue(field, "")
         );
         setTableData([]);
+        setTotalRecords(0);
+        setTotalPages(1);
       }
     };
 
@@ -400,6 +451,79 @@ export default function BagReport() {
   const handleReportTypeChange = (value) => {
     setReportType(value);
     setTableData([]);
+    setTotalRecords(0);
+    setTotalPages(1);
+    setCurrentPage(1);
+  };
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && tableData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{paginatedData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -498,6 +622,7 @@ export default function BagReport() {
                     name="Download"
                     onClick={handleDownloadCSV}
                     type="button"
+                    disabled={tableData.length === 0 || loading}
                   />
                 </div>
               </div>
@@ -517,11 +642,23 @@ export default function BagReport() {
               {/* Data Table */}
               <Table
                 columns={getFilteredColumns()}
-                rowData={tableData}
+                rowData={paginatedData} // Use paginated data
                 register={register}
                 setValue={setValue}
                 name="begReportTable"
               />
+
+              {/* Pagination Controls */}
+              <PaginationControls />
+
+              {/* Total Records Display */}
+              <div className="flex justify-between mt-2">
+                <div className="text-sm text-gray-600">
+                  {totalRecords > 0 && (
+                    <span>Total Records: {totalRecords}</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

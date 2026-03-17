@@ -41,6 +41,13 @@ function CreditLimitReport() {
     message: "",
     visible: false,
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   const printRef = useRef(null);
 
   // Watch form values for filtering
@@ -82,22 +89,31 @@ function CreditLimitReport() {
     });
   };
 
-  // Fetch data function
-  const fetchCreditLimitReport = async (
-    accountCode = "",
-    customerName = ""
+  // Function to fetch data with pagination
+  const fetchCreditLimitReportWithPagination = async (
+    filters = null,
+    page = 1
   ) => {
     try {
       setLoading(true);
 
       // Build query parameters
       const params = new URLSearchParams();
-      if (accountCode && accountCode.trim()) {
-        params.append("accountCode", accountCode.trim());
+      
+      if (filters) {
+        if (filters.accountCode && filters.accountCode.trim()) {
+          params.append("accountCode", filters.accountCode.trim());
+        }
+        if (filters.customerName && filters.customerName.trim()) {
+          params.append("customerName", filters.customerName.trim());
+        }
       }
-      if (customerName && customerName.trim()) {
-        params.append("customerName", customerName.trim());
-      }
+
+      // Add pagination parameters
+      params.append("page", page.toString());
+      params.append("limit", pageLimit.toString());
+
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       const response = await axios.get(
         `${server}/credit-limit-report?${params.toString()}`
@@ -108,7 +124,18 @@ function CreditLimitReport() {
         setTotalRecords(response.data.totalRecords);
         setGrandTotal(response.data.grandTotal);
 
-        // Calculate total credit balance
+        // Get pagination info
+        const pagination = response.data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalRecords: response.data.totalRecords,
+          limit: pageLimit,
+        };
+
+        setCurrentPage(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+
+        // Calculate total credit balance for current page
         const creditBalanceSum = response.data.data.reduce((sum, record) => {
           return sum + (parseFloat(record.creditBalance) || 0);
         }, 0);
@@ -116,6 +143,11 @@ function CreditLimitReport() {
 
         if (response.data.data.length === 0) {
           showNotification("info", "No records found");
+        } else {
+          showNotification(
+            "success",
+            `Fetched ${response.data.data.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`
+          );
         }
       } else {
         console.error("Failed to fetch report:", response.data.error);
@@ -139,14 +171,69 @@ function CreditLimitReport() {
 
   // Load all data on component mount
   useEffect(() => {
-    fetchCreditLimitReport();
+    fetchCreditLimitReportWithPagination(null, 1);
   }, []);
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Prepare filters
+    const filters = {};
+    if (customerCode && customerCode.trim()) {
+      filters.accountCode = customerCode.trim();
+    }
+    if (customerName && customerName.trim()) {
+      filters.customerName = customerName.trim();
+    }
+
+    // Fetch new page
+    fetchCreditLimitReportWithPagination(filters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // Prepare filters
+    const filters = {};
+    if (customerCode && customerCode.trim()) {
+      filters.accountCode = customerCode.trim();
+    }
+    if (customerName && customerName.trim()) {
+      filters.customerName = customerName.trim();
+    }
+
+    // Reset to page 1 and fetch with new limit
+    setCurrentPage(1);
+    fetchCreditLimitReportWithPagination(
+      Object.keys(filters).length > 0 ? filters : null,
+      1
+    );
+  };
 
   // Handle show button click with filters
   const handleShow = () => {
-    const code = customerCode || "";
-    const name = customerName || "";
-    fetchCreditLimitReport(code, name);
+    const filters = {};
+    if (customerCode && customerCode.trim()) {
+      filters.accountCode = customerCode.trim();
+    }
+    if (customerName && customerName.trim()) {
+      filters.customerName = customerName.trim();
+    }
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page with filters
+    fetchCreditLimitReportWithPagination(
+      Object.keys(filters).length > 0 ? filters : null,
+      1
+    );
   };
 
   // Handle refresh with complete reset
@@ -156,6 +243,10 @@ function CreditLimitReport() {
     setTotalRecords(0);
     setGrandTotal("0.00");
     setTotalCreditBalance("0.00");
+
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
 
     // Increment form key to force complete remount
     setFormKey((prev) => prev + 1);
@@ -167,7 +258,7 @@ function CreditLimitReport() {
     });
 
     // Fetch all data again
-    fetchCreditLimitReport();
+    fetchCreditLimitReportWithPagination(null, 1);
 
     // Show refresh notification
     showNotification("success", "Page refreshed successfully");
@@ -347,6 +438,76 @@ function CreditLimitReport() {
     }
   };
 
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   useEffect(() => {
     const code = watch("Customer");
 
@@ -445,6 +606,10 @@ function CreditLimitReport() {
           className={`border-b-0 rounded-b-none h-[45vh]`}
           loading={loading}
         />
+
+        {/* Pagination Controls */}
+        <PaginationControls />
+
         <div className="flex justify-between items-center border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 text-gray-900 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2">
           {/* Left side: Total Records */}
           <div>

@@ -20,6 +20,15 @@ const ClubReport = () => {
     message: "",
     visible: false,
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+  const [isLoading, setIsLoading] = useState(false);
+
   const showNotification = useCallback((type, message) => {
     setNotification({ type, message, visible: true });
   }, []);
@@ -31,6 +40,7 @@ const ClubReport = () => {
   };
 
   const columns = [
+    { key: "srNo", label: "Sr No." }, // Added Sr No column
     { key: "awbNo", label: "Awb Number" },
     { key: "date", label: "Date" },
     { key: "sector", label: "Sector" },
@@ -45,16 +55,16 @@ const ClubReport = () => {
     { key: "forwardingNo", label: "Forwarding Number" },
   ];
 
-  const handleShow = async () => {
+  // Function to fetch club report data with pagination
+  const fetchClubReportWithPagination = async (filters, page = 1) => {
+    setIsLoading(true);
     try {
       const query = new URLSearchParams();
-      const runNo = getValues("runNo");
-      const clubNo = getValues("clubNo");
-      const from = getValues("from");
-      const to = getValues("to");
+      const { runNo, clubNo, from, to } = filters;
 
       if (!runNo && !clubNo && !from && !to) {
         showNotification("error", "Enter at least one filter");
+        setIsLoading(false);
         return;
       }
 
@@ -62,6 +72,12 @@ const ClubReport = () => {
       if (clubNo) query.append("clubNo", clubNo);
       if (from) query.append("from", dmyToYmd(from));
       if (to) query.append("to", dmyToYmd(to));
+      
+      // Add pagination parameters
+      query.append("page", page.toString());
+      query.append("limit", pageLimit.toString());
+
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       const res = await fetch(`${server}/club-report?${query.toString()}`);
       const data = await res.json();
@@ -69,11 +85,67 @@ const ClubReport = () => {
       if (!res.ok) throw new Error(data.message || "Fetch failed");
 
       setRowData(data.shipments || []);
-      showNotification("success", "Data loaded successfully");
+      
+      // Set pagination info
+      if (data.pagination) {
+        setCurrentPage(data.pagination.currentPage);
+        setTotalPages(data.pagination.totalPages);
+        setTotalRecords(data.pagination.totalRecords);
+      }
+
+      showNotification(
+        "success", 
+        `Data loaded successfully (Page ${data.pagination?.currentPage || page} of ${data.pagination?.totalPages || 1})`
+      );
     } catch (err) {
       showNotification("error", err.message);
       setRowData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchClubReportWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchClubReportWithPagination(currentFilters, 1);
+    }
+  };
+
+  const handleShow = async () => {
+    const filters = {
+      runNo: getValues("runNo"),
+      clubNo: getValues("clubNo"),
+      from: getValues("from"),
+      to: getValues("to"),
+    };
+
+    // Store filters for pagination
+    setCurrentFilters(filters);
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page
+    await fetchClubReportWithPagination(filters, 1);
   };
 
   const handleFullScreen = () => {
@@ -83,6 +155,12 @@ const ClubReport = () => {
   const handleRefresh = () => {
     setResetFactor((prev) => prev + 1);
     setRowData([]);
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
+    showNotification("success", "Page refreshed");
   };
 
   useEffect(() => {
@@ -132,6 +210,76 @@ const ClubReport = () => {
     document.body.removeChild(link);
   };
 
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={isLoading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-3">
       <NotificationFlag
@@ -178,10 +326,18 @@ const ClubReport = () => {
           resetFactor={resetFactor}
         />
         <div>
-          <OutlinedButtonRed label={`Show`} onClick={handleShow} />
+          <OutlinedButtonRed 
+            label={isLoading ? "Loading..." : "Show"} 
+            onClick={handleShow}
+            disabled={isLoading}
+          />
         </div>
         <div>
-          <SimpleButton name={`Download CSV`} onClick={handleDownloadCSV} />
+          <SimpleButton 
+            name={`Download CSV`} 
+            onClick={handleDownloadCSV}
+            disabled={!rowData.length || isLoading}
+          />
         </div>
       </div>
 
@@ -193,6 +349,19 @@ const ClubReport = () => {
           columns={columns}
           className={`h-[55vh]`}
         />
+        
+        {/* Pagination Controls */}
+        <PaginationControls />
+
+        {/* Total Records Display */}
+        <div className="flex justify-between mt-2">
+          <div className="text-sm text-gray-600">
+            {totalRecords > 0 && (
+              <span>Total Records: {totalRecords}</span>
+            )}
+          </div>
+        </div>
+
         {isFullScreen && (
           <div className="fixed inset-0 z-50 p-10 bg-white">
             <div className="flex justify-between items-center mb-2 mx-1">

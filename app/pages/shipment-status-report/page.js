@@ -26,6 +26,14 @@ const ShipmentStatusReport = () => {
   });
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+  const [isLoading, setIsLoading] = useState(false);
+
   const router = useRouter();
 
   const parseDateDDMMYYYY = (str) => {
@@ -85,6 +93,11 @@ const ShipmentStatusReport = () => {
     setShipments([]);
     reset();
     setNotification({ visible: false, message: "", type: "error" });
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
   };
 
   // Fetch customer name by account code
@@ -130,10 +143,10 @@ const ShipmentStatusReport = () => {
     }
   }, [debouncedCode, setValue, server]);
 
-  // Fetch shipments from backend with all filters
-  const fetchShipments = async () => {
-    const filters = getValues();
-
+  // Function to fetch shipments with pagination
+  const fetchShipmentsWithPagination = async (filters, page = 1) => {
+    setIsLoading(true);
+    
     if (!filters.from || !filters.to) {
       setNotification({
         visible: true,
@@ -141,6 +154,7 @@ const ShipmentStatusReport = () => {
         type: "error",
       });
       setShipments([]);
+      setIsLoading(false);
       return;
     }
 
@@ -159,6 +173,7 @@ const ShipmentStatusReport = () => {
         type: "error",
       });
       setShipments([]);
+      setIsLoading(false);
       return;
     }
 
@@ -177,11 +192,15 @@ const ShipmentStatusReport = () => {
     if (filters.branch) params.append('branch', filters.branch.toUpperCase());
     if (filters.origin) params.append('origin', filters.origin);
     if (filters.sector) params.append('sector', filters.sector);
-    if (filters.status) params.append('status', filters.status);
+    if (filters.status && filters.status !== "All") params.append('status', filters.status);
     if (filters.destination) params.append('destination', filters.destination);
     if (filters.network) params.append('network', filters.network);
     if (filters.service) params.append('service', filters.service);
     if (filters.counterPart) params.append('counterPart', filters.counterPart);
+    
+    // Add pagination parameters
+    params.append('page', page.toString());
+    params.append('limit', pageLimit.toString());
 
     try {
       const res = await fetch(`${server}/shipment-status?${params.toString()}`, {
@@ -191,28 +210,40 @@ const ShipmentStatusReport = () => {
 
       if (!res.ok) throw new Error(`Server responded with ${res.status}`);
 
-      const data = await res.json();
+      const responseData = await res.json();
 
-      if (!Array.isArray(data) || data.length === 0) {
+      // Handle response with pagination
+      const shipmentsData = responseData.data || [];
+      const pagination = responseData.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: shipmentsData.length,
+        limit: pageLimit,
+      };
+
+      if (!shipmentsData || shipmentsData.length === 0) {
         setNotification({
           visible: true,
           message: "No shipments found for the given filters",
           type: "error",
         });
         setShipments([]);
-        return;
+      } else {
+        setNotification({
+          visible: true,
+          message: `${shipmentsData.length} shipments found (Page ${pagination.currentPage} of ${pagination.totalPages})`,
+          type: "success",
+        });
+        const formatted = shipmentsData.map((item) => ({
+          ...item,
+          createdAt: toDDMMYYYY(item.createdAt),
+        }));
+        setShipments(formatted);
       }
 
-      setNotification({
-        visible: true,
-        message: `${data.length} shipments found`,
-        type: "success",
-      });
-      const formatted = data.map((item) => ({
-        ...item,
-        createdAt: toDDMMYYYY(item.createdAt),
-      }));
-      setShipments(formatted);
+      setCurrentPage(pagination.currentPage);
+      setTotalPages(pagination.totalPages);
+      setTotalRecords(pagination.totalRecords);
     } catch (err) {
       setNotification({
         visible: true,
@@ -220,7 +251,43 @@ const ShipmentStatusReport = () => {
         type: "error",
       });
       setShipments([]);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Fetch new page
+    fetchShipmentsWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchShipmentsWithPagination(currentFilters, 1);
+    }
+  };
+
+  // Update the fetchShipments function to use the new paginated version
+  const fetchShipments = () => {
+    const filters = getValues();
+    // Store filters for pagination
+    setCurrentFilters(filters);
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+    // Fetch first page
+    fetchShipmentsWithPagination(filters, 1);
   };
 
   const handleDownloadCSV = () => {
@@ -286,6 +353,76 @@ const ShipmentStatusReport = () => {
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, []);
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && shipments.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{shipments.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={isLoading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+          
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -411,12 +548,16 @@ const ShipmentStatusReport = () => {
               value="to"
             />
             <div className="flex gap-2">
-              <OutlinedButtonRed label="Show" onClick={fetchShipments} />
+              <OutlinedButtonRed 
+                label={isLoading ? "Loading..." : "Show"} 
+                onClick={fetchShipments}
+                disabled={isLoading}
+              />
               <OutlinedButtonRed label="Excel" onClick={handleDownloadExcel} />
               <SimpleButton
                 name="Download CSV"
                 onClick={handleDownloadCSV}
-                disabled={!shipments.length}
+                disabled={!shipments.length || isLoading}
               />
             </div>
           </div>
@@ -430,6 +571,9 @@ const ShipmentStatusReport = () => {
             columns={columns}
             className="h-[40vh]"
           />
+
+          {/* Pagination Controls */}
+          <PaginationControls />
 
           {/* Fullscreen overlay */}
           {isFullscreen && (
@@ -461,7 +605,11 @@ const ShipmentStatusReport = () => {
 
           {/* Actions */}
           <div className="flex justify-between">
-            <div></div>
+            <div className="text-sm text-gray-600">
+              {totalRecords > 0 && (
+                <span>Total Records: {totalRecords}</span>
+              )}
+            </div>
           </div>
         </div>
       </form>

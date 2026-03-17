@@ -27,6 +27,13 @@ function RunSummary() {
     visible: false,
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   const parseDateDDMMYYYY = (dateStr) => {
     if (!dateStr) return null;
     const [d, m, y] = dateStr.split("/");
@@ -51,6 +58,11 @@ function RunSummary() {
     setValue("runNumber", "");
     setValue("from", "");
     setValue("to", "");
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
   };
 
   // Determine which filter is active
@@ -73,36 +85,8 @@ function RunSummary() {
     { key: "chargableWt", label: "Chargable Weight" },
   ];
 
-  const handleShow = async () => {
-    // Determine which filter is being used
-    let filterType = null;
-
-    if (isRunNumberActive) {
-      filterType = "runNumber";
-    } else if (isAllActive) {
-      filterType = "all";
-    } else if (isDateRangeActive) {
-      filterType = "dateRange";
-    }
-
-    // Validate based on filter type
-    if (filterType === "runNumber") {
-      if (!runNumber || runNumber.trim() === "") {
-        showNotification("error", "Please enter a Run Number");
-        return;
-      }
-    } else if (filterType === "all") {
-      // No validation needed for ALL
-    } else if (filterType === "dateRange") {
-      if (!fromDate || !toDate) {
-        showNotification("error", "Please select both From and To dates");
-        return;
-      }
-    } else {
-      showNotification("error", "Please select a filter option");
-      return;
-    }
-
+  // Function to fetch data with pagination
+  const fetchDataWithPagination = async (filters, page = 1) => {
     setLoading(true);
     setRowData([]);
 
@@ -110,36 +94,30 @@ function RunSummary() {
       let url = `${server}/run-summary`;
       const params = new URLSearchParams();
 
+      const filterType = filters.filterType;
+      const runNumber = filters.runNumber;
+      const fromDate = filters.fromDate;
+      const toDate = filters.toDate;
+
       if (filterType === "runNumber") {
         // Fetch specific run number
         params.append("runNo", runNumber.toUpperCase());
       } else if (filterType === "all") {
         // Fetch all data - need to provide a wide date range
-        // You can adjust these dates as needed
         const startDate = new Date("2000-01-01").toISOString().split("T")[0];
         const endDate = new Date().toISOString().split("T")[0];
         params.append("fromDate", startDate);
         params.append("toDate", endDate);
       } else if (filterType === "dateRange") {
-        const fromParsed = parseDateDDMMYYYY(fromDate);
-        const toParsed = parseDateDDMMYYYY(toDate);
-
-        if (
-          !fromParsed ||
-          !toParsed ||
-          isNaN(fromParsed.getTime()) ||
-          isNaN(toParsed.getTime())
-        ) {
-          showNotification("error", "Invalid date");
-          return;
-        }
-
-        fromParsed.setHours(0, 0, 0, 0);
-        toParsed.setHours(23, 59, 59, 999);
-
-        params.append("fromDate", fromParsed.toISOString());
-        params.append("toDate", toParsed.toISOString());
+        params.append("fromDate", fromDate);
+        params.append("toDate", toDate);
       }
+
+      // Add pagination parameters
+      params.append("page", page.toString());
+      params.append("limit", pageLimit.toString());
+
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       const response = await axios.get(`${url}?${params.toString()}`);
 
@@ -147,6 +125,13 @@ function RunSummary() {
 
       if (response.data.success) {
         const fetchedData = response.data.data || [];
+        const pagination = response.data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalRecords: fetchedData.length,
+          limit: pageLimit,
+        };
+
         console.log("Fetched data:", fetchedData);
 
         const formattedData = fetchedData.map((row) => ({
@@ -155,10 +140,19 @@ function RunSummary() {
         }));
 
         setRowData(formattedData);
-        showNotification("success", `Found ${response.data.count} records`);
+        setCurrentPage(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+        setTotalRecords(pagination.totalRecords);
+        
+        showNotification(
+          "success", 
+          `Found ${fetchedData.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`
+        );
       } else {
         showNotification("error", response.data.message || "No data found");
         setRowData([]);
+        setTotalRecords(0);
+        setTotalPages(1);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -167,8 +161,101 @@ function RunSummary() {
         error.response?.data?.message || "Failed to fetch data"
       );
       setRowData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleShow = async () => {
+    // Determine which filter is being used
+    let filterType = null;
+    let filterParams = {};
+
+    if (isRunNumberActive) {
+      filterType = "runNumber";
+      filterParams = { runNumber };
+    } else if (isAllActive) {
+      filterType = "all";
+    } else if (isDateRangeActive) {
+      filterType = "dateRange";
+      
+      const fromParsed = parseDateDDMMYYYY(fromDate);
+      const toParsed = parseDateDDMMYYYY(toDate);
+
+      if (
+        !fromParsed ||
+        !toParsed ||
+        isNaN(fromParsed.getTime()) ||
+        isNaN(toParsed.getTime())
+      ) {
+        showNotification("error", "Invalid date");
+        return;
+      }
+
+      fromParsed.setHours(0, 0, 0, 0);
+      toParsed.setHours(23, 59, 59, 999);
+
+      filterParams.fromDate = fromParsed.toISOString();
+      filterParams.toDate = toParsed.toISOString();
+    }
+
+    // Validate based on filter type
+    if (filterType === "runNumber") {
+      if (!runNumber || runNumber.trim() === "") {
+        showNotification("error", "Please enter a Run Number");
+        return;
+      }
+    } else if (filterType === "dateRange") {
+      if (!fromDate || !toDate) {
+        showNotification("error", "Please select both From and To dates");
+        return;
+      }
+    } else if (filterType === null) {
+      showNotification("error", "Please select a filter option");
+      return;
+    }
+
+    // Store filters for pagination
+    setCurrentFilters({
+      filterType,
+      ...filterParams,
+    });
+    
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+    
+    // Fetch first page
+    await fetchDataWithPagination(
+      {
+        filterType,
+        ...filterParams,
+      },
+      1
+    );
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Fetch new page
+    fetchDataWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchDataWithPagination(currentFilters, 1);
     }
   };
 
@@ -297,6 +384,76 @@ function RunSummary() {
     }
   };
 
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+          
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <form className="flex flex-col gap-3">
       <NotificationFlag
@@ -389,6 +546,18 @@ function RunSummary() {
           rowData={rowData}
           className={`h-[45vh]`}
         />
+      </div>
+
+      {/* Pagination Controls */}
+      <PaginationControls />
+
+      {/* Total Records Display */}
+      <div className="flex justify-between">
+        <div className="text-sm text-gray-600">
+          {totalRecords > 0 && (
+            <span>Total Records: {totalRecords}</span>
+          )}
+        </div>
       </div>
     </form>
   );

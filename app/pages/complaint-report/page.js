@@ -31,6 +31,13 @@ const ComplaintReport = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [customerAccounts, setCustomerAccounts] = useState([]);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   const [notification, setNotification] = useState({
     type: "success",
     message: "",
@@ -124,11 +131,11 @@ const ComplaintReport = () => {
     }
   };
 
-  // Submit handler
-  const onSubmit = async (data) => {
+  // Function to fetch reports with pagination
+  const fetchReports = async (filters, page = 1) => {
     setIsLoading(true);
     try {
-      const { from, to, code, runNumber, branch, statusFilter } = data;
+      const { from, to, code, runNumber, branch, statusFilter } = filters;
 
       if (!from || !to) {
         showNotification("error", "Please select both From and To dates");
@@ -146,16 +153,27 @@ const ComplaintReport = () => {
       const toFormatted = formatDateForAPI(to);
 
       console.log("Sending dates to API:", fromFormatted, toFormatted);
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       const complaintsRes = await axios.get(`${server}/complaint-report`, {
-        params: { from: fromFormatted, to: toFormatted },
+        params: { 
+          from: fromFormatted, 
+          to: toFormatted,
+          page,
+          limit: pageLimit,
+        },
       });
 
       console.log("API Response:", complaintsRes.data);
 
-      // Use reports directly from API response
+      // Get reports and pagination from API response
       const reportsFromAPI = complaintsRes.data?.reports || [];
-      setReports(reportsFromAPI);
+      const pagination = complaintsRes.data?.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: reportsFromAPI.length,
+        limit: pageLimit,
+      };
 
       // Apply client-side filters
       let filteredReports = reportsFromAPI;
@@ -198,16 +216,56 @@ const ComplaintReport = () => {
             report.status.toLowerCase() === statusFilter.trim().toLowerCase()
         );
       }
-      showNotification("success", "Complaint report fetched successfully.");
 
       setReports(filteredReports);
-
-      // ... rest of your code
+      setCurrentPage(pagination.currentPage);
+      setTotalPages(pagination.totalPages);
+      setTotalRecords(pagination.totalRecords);
+      
+      showNotification(
+        "success", 
+        `Complaint report fetched successfully. Found ${filteredReports.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`
+      );
     } catch (error) {
       console.error("Error fetching complaint report:", error);
       showNotification("error", "Failed to fetch complaints.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Submit handler
+  const onSubmit = async (data) => {
+    // Store filters for pagination
+    setCurrentFilters(data);
+    
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+    
+    // Fetch first page
+    await fetchReports(data, 1);
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Fetch new page
+    fetchReports(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchReports(currentFilters, 1);
     }
   };
 
@@ -218,6 +276,11 @@ const ComplaintReport = () => {
     setClientName("");
     setIsLoading(false);
     setAdded((prev) => !prev);
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
   };
 
   // Refresh button handler
@@ -227,6 +290,11 @@ const ComplaintReport = () => {
     setClientName("");
     setIsLoading(false);
     setAdded((prev) => !prev);
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
   };
 
   // Excel download handler
@@ -292,6 +360,76 @@ const ComplaintReport = () => {
 
     fetchClient();
   }, [watch("code")]);
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && reports.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{reports.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={isLoading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+          
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -402,23 +540,33 @@ const ComplaintReport = () => {
           </div>
 
           {/* Table */}
-          <TableWithSorting
-            register={register}
-            setValue={setValue}
-            name="bookingReportTable"
-            columns={columns}
-            rowData={reports}
-            className="h-72"
-          />
+          {reports.length > 0 ? (
+            <>
+              <TableWithSorting
+                register={register}
+                setValue={setValue}
+                name="bookingReportTable"
+                columns={columns}
+                rowData={reports}
+                className="h-72"
+              />
+              {/* Pagination Controls */}
+              <PaginationControls />
+            </>
+          ) : (
+            <div className="flex justify-center items-center h-[45vh] border border-[#D0D5DD] rounded">
+              <p className="text-gray-500">
+                Enter filter criteria and click 'Show' to load complaint data
+              </p>
+            </div>
+          )}
 
           {/* Footer actions */}
           <div className="flex justify-between mt-1">
-            <div>
-              {/* <OutlinedButtonRed
-                label="Close"
-                type="button"
-                onClick={handleClose}
-              /> */}
+            <div className="text-sm text-gray-600">
+              {totalRecords > 0 && (
+                <span>Total Records: {totalRecords}</span>
+              )}
             </div>
           </div>
         </div>

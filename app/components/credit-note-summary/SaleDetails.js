@@ -40,6 +40,13 @@ function SaleDetails() {
     visible: false,
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   // Watch for customer code changes
   const customerCode = watch("customerCode");
 
@@ -154,26 +161,16 @@ function SaleDetails() {
     []
   );
 
-  const fetchSaleDetails = async () => {
-    const formData = getValues();
-
-    if (!formData.from || !formData.to) {
-      setNotification({
-        type: "error",
-        message: "Please select both From and To dates",
-        visible: true,
-      });
-      return;
-    }
-
+  // Function to fetch sale details with pagination
+  const fetchSaleDetailsWithPagination = async (filters, page = 1) => {
     setLoading(true);
     try {
       // Build query parameters
       const params = new URLSearchParams();
 
       // Ensure dates are in YYYY-MM-DD format
-      const fromParsed = parseDateDDMMYYYY(formData.from);
-      const toParsed = parseDateDDMMYYYY(formData.to);
+      const fromParsed = parseDateDDMMYYYY(filters.from);
+      const toParsed = parseDateDDMMYYYY(filters.to);
 
       if (
         !fromParsed ||
@@ -196,26 +193,26 @@ function SaleDetails() {
       params.append("from", fromParsed.toISOString());
       params.append("to", toParsed.toISOString());
 
-      if (formData.runNumber) params.append("runNumber", formData.runNumber);
-      if (formData.payment) params.append("payment", formData.payment);
-      if (formData.branch) params.append("branch", formData.branch);
-      if (formData.origin) params.append("origin", formData.origin);
-      if (formData.sector) params.append("sector", formData.sector);
-      if (formData.destination)
-        params.append("destination", formData.destination);
-      if (formData.network) params.append("network", formData.network);
-      if (formData.counterPart)
-        params.append("counterPart", formData.counterPart);
-      if (formData.salePerson) params.append("salePerson", formData.salePerson);
-      if (formData.saleRefPerson)
-        params.append("saleRefPerson", formData.saleRefPerson);
-      if (formData.company) params.append("company", formData.company);
-      if (formData.state) params.append("state", formData.state);
-      if (formData.accountManager)
-        params.append("accountManager", formData.accountManager);
-      if (formData.type) params.append("type", formData.type);
-      if (formData.customerCode)
-        params.append("customerCode", formData.customerCode);
+      if (filters.runNumber) params.append("runNumber", filters.runNumber);
+      if (filters.payment) params.append("payment", filters.payment);
+      if (filters.branch) params.append("branch", filters.branch);
+      if (filters.origin) params.append("origin", filters.origin);
+      if (filters.sector) params.append("sector", filters.sector);
+      if (filters.destination)
+        params.append("destination", filters.destination);
+      if (filters.network) params.append("network", filters.network);
+      if (filters.counterPart)
+        params.append("counterPart", filters.counterPart);
+      if (filters.salePerson) params.append("salePerson", filters.salePerson);
+      if (filters.saleRefPerson)
+        params.append("saleRefPerson", filters.saleRefPerson);
+      if (filters.company) params.append("company", filters.company);
+      if (filters.state) params.append("state", filters.state);
+      if (filters.accountManager)
+        params.append("accountManager", filters.accountManager);
+      if (filters.type) params.append("type", filters.type);
+      if (filters.customerCode)
+        params.append("customerCode", filters.customerCode);
 
       params.append("withBookingDate", withBookingDate.toString());
       params.append("withUnbilled", withUnbilled.toString());
@@ -224,12 +221,26 @@ function SaleDetails() {
       params.append("withBranchWise", withBranchWise.toString());
       params.append("withConsignor", withConsignor.toString());
 
+      // Add pagination parameters
+      params.append("page", page.toString());
+      params.append("limit", pageLimit.toString());
+
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
+
       const response = await axios.get(
         `${server}/credit-note-awb-wise/sale-details?${params.toString()}`
       );
 
       if (response.data.success) {
         setRowData(response.data.data || []);
+        
+        // Set pagination info
+        if (response.data.pagination) {
+          setCurrentPage(response.data.pagination.currentPage);
+          setTotalPages(response.data.pagination.totalPages);
+          setTotalRecords(response.data.pagination.totalRecords);
+        }
+
         setTotals(
           response.data.totals || {
             totalBagWeight: 0,
@@ -252,6 +263,8 @@ function SaleDetails() {
         });
         setRowData([]);
         setTotals({ totalBagWeight: 0, totalWeight: 0, grandTotal: 0 });
+        setTotalRecords(0);
+        setTotalPages(1);
       }
     } catch (error) {
       console.error("Error fetching sale details:", error);
@@ -264,9 +277,56 @@ function SaleDetails() {
       });
       setRowData([]);
       setTotals({ totalBagWeight: 0, totalWeight: 0, grandTotal: 0 });
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchSaleDetailsWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchSaleDetailsWithPagination(currentFilters, 1);
+    }
+  };
+
+  const fetchSaleDetails = async () => {
+    const formData = getValues();
+
+    if (!formData.from || !formData.to) {
+      setNotification({
+        type: "error",
+        message: "Please select both From and To dates",
+        visible: true,
+      });
+      return;
+    }
+
+    // Store filters for pagination
+    setCurrentFilters(formData);
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page
+    await fetchSaleDetailsWithPagination(formData, 1);
   };
 
   const exportToPDF = () => {
@@ -543,6 +603,76 @@ function SaleDetails() {
     window.print();
   };
 
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <NotificationFlag
@@ -764,26 +894,32 @@ function SaleDetails() {
             rowData={rowData}
             className={`border-b-0 rounded-b-none h-[35vh]`}
           />
-          <div className="flex justify-end border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 text-gray-900 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2 gap-16">
-            <div>
-              <span className="font-sans">Total Bag Weight: </span>
-              <span className="text-red">
-                {totals.totalBagWeight.toFixed(2)}
-              </span>
+          
+          {/* Pagination Controls */}
+          <PaginationControls />
+          
+          <div className="flex justify-between items-center border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 text-gray-900 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2">
+            <div className="text-sm text-gray-600">
+              {totalRecords > 0 && (
+                <span>Total Records: {totalRecords}</span>
+              )}
             </div>
-            <div>
-              <span className="font-sans">Total Weight: </span>
-              <span className="text-red">{totals.totalWeight.toFixed(2)}</span>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <div className="flex gap-16">
-                <div>
-                  Grand Total:{" "}
-                  <span className="text-red">
-                    {totals.grandTotal.toFixed(2)}
-                  </span>
-                </div>
+            <div className="flex gap-16">
+              <div>
+                <span className="font-sans">Total Bag Weight: </span>
+                <span className="text-red">
+                  {totals.totalBagWeight.toFixed(2)}
+                </span>
+              </div>
+              <div>
+                <span className="font-sans">Total Weight: </span>
+                <span className="text-red">{totals.totalWeight.toFixed(2)}</span>
+              </div>
+              <div>
+                Grand Total:{" "}
+                <span className="text-red">
+                  {totals.grandTotal.toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
