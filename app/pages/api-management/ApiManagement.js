@@ -228,7 +228,7 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
 
         // view / edit are handled locally
         if (action === "view") {
-            console.log("View user:", userData);
+            // console.log("View user:", userData);
             return;
         }
         if (action === "edit") {

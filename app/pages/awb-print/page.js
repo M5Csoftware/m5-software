@@ -539,23 +539,23 @@ const RunWise = forwardRef((props, ref) => {
         const dataList = await res.json();
 
         // Debug logging
-        console.log("🔍 Raw API Data:", dataList);
-        console.log("🔍 First item date fields:", {
-          date: dataList[0]?.date,
-          createdAt: dataList[0]?.createdAt,
-          created_at: dataList[0]?.created_at,
-          bookingDate: dataList[0]?.bookingDate,
-        });
+        // console.log("🔍 Raw API Data:", dataList);
+        // console.log("🔍 First item date fields:", {
+//           date: dataList[0]?.date,
+//           createdAt: dataList[0]?.createdAt,
+//           created_at: dataList[0]?.created_at,
+//           bookingDate: dataList[0]?.bookingDate,
+//         });
 
         // Try multiple date fields in priority order
         const awbs = dataList.map((r) => {
           // Determine which date field to use
           let dateToFormat =
             r.date || r.createdAt || r.created_at || r.bookingDate || r.runDate;
-          console.log("📅 Date to format for", r.awbNo, ":", dateToFormat);
+          // console.log("📅 Date to format for", r.awbNo, ":", dateToFormat);
 
           const formattedDate = formatDate(dateToFormat);
-          console.log("📅 Formatted date for", r.awbNo, ":", formattedDate);
+          // console.log("📅 Formatted date for", r.awbNo, ":", formattedDate);
 
           return {
             awbNo: r.awbNo,
@@ -566,7 +566,7 @@ const RunWise = forwardRef((props, ref) => {
           };
         });
 
-        console.log("🔍 Final table data:", awbs);
+        // console.log("🔍 Final table data:", awbs);
 
         setRowData(awbs);
 
@@ -860,7 +860,7 @@ const ManifestNo = forwardRef((props, ref) => {
         if (!res.ok) throw new Error("No shipments found");
         const dataList = await res.json();
 
-        console.log("🔍 Raw API Data (Manifest):", dataList);
+        // console.log("🔍 Raw API Data (Manifest):", dataList);
 
         const formattedData = dataList.map((d) => {
           let dateToFormat =
@@ -869,10 +869,10 @@ const ManifestNo = forwardRef((props, ref) => {
             d.created_at ||
             d.bookingDate ||
             d.manifestDate;
-          console.log("📅 Date to format for", d.awbNo, ":", dateToFormat);
+          // console.log("📅 Date to format for", d.awbNo, ":", dateToFormat);
 
           const formattedDate = formatDate(dateToFormat);
-          console.log("📅 Formatted date for", d.awbNo, ":", formattedDate);
+          // console.log("📅 Formatted date for", d.awbNo, ":", formattedDate);
 
           return {
             awbNo: d.awbNo,
@@ -882,7 +882,7 @@ const ManifestNo = forwardRef((props, ref) => {
           };
         });
 
-        console.log("🔍 Final table data (Manifest):", formattedData);
+        // console.log("🔍 Final table data (Manifest):", formattedData);
 
         setRowData(formattedData);
 

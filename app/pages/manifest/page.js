@@ -67,16 +67,16 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
 
   const fetchAccountName = async (accountCode) => {
     try {
-      console.log("Fetching account name for:", accountCode);
+      // console.log("Fetching account name for:", accountCode);
       const response = await axios.get(
         `${server}/customer-account?accountCode=${accountCode}`
       );
 
-      console.log("Account response for", accountCode, ":", response.data);
+      // console.log("Account response for", accountCode, ":", response.data);
 
       const name = response.data?.name || "N/A";
 
-      console.log("Extracted name for", accountCode, ":", name);
+      // console.log("Extracted name for", accountCode, ":", name);
 
       return name;
     } catch (err) {
@@ -107,7 +107,7 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
     try {
       // For Branch manifests, fetch using runNo
       if (manifestType === "Branch") {
-        console.log("Fetching branch shipments for runNo:", manifest.runNumber);
+        // console.log("Fetching branch shipments for runNo:", manifest.runNumber);
         
         // Fetch both bagging and branch bagging data
         const [baggingResponse, branchBaggingResponse] = await Promise.all([
@@ -115,8 +115,8 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
           axios.get(`${server}/branch-bagging?runNo=${manifest.runNumber.toUpperCase()}`).catch(() => null),
         ]);
         
-        console.log("Bagging response:", baggingResponse?.data);
-        console.log("Branch Bagging response:", branchBaggingResponse?.data);
+        // console.log("Bagging response:", baggingResponse?.data);
+        // console.log("Branch Bagging response:", branchBaggingResponse?.data);
         
         // Create bagging lookup
         const lookup = {};
@@ -152,7 +152,7 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
         // Get unique AWB numbers from both bagging sources
         const awbNumbers = [...new Set(Object.keys(lookup))];
         
-        console.log("Extracted AWB numbers:", awbNumbers);
+        // console.log("Extracted AWB numbers:", awbNumbers);
         
         if (awbNumbers.length === 0) {
           setShipmentDetails([]);
@@ -179,7 +179,7 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
           }
         }
 
-        console.log("Fetched shipments:", allShipments);
+        // console.log("Fetched shipments:", allShipments);
         setShipmentDetails(allShipments);
 
         // Fetch account names for all unique account codes
@@ -187,7 +187,7 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
           ...new Set(allShipments.map((s) => s.accountCode).filter(Boolean)),
         ];
         
-        console.log("Unique account codes:", uniqueAccountCodes);
+        // console.log("Unique account codes:", uniqueAccountCodes);
         
         const names = {};
         await Promise.all(
@@ -197,7 +197,7 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
           })
         );
 
-        console.log("Fetched account names:", names);
+        // console.log("Fetched account names:", names);
         setAccountNames(names);
       } 
       // For Client manifests
@@ -208,18 +208,18 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
           return;
         }
 
-        console.log("Fetching shipments for account code:", manifest.mfuser);
-        console.log("Manifest AWB numbers:", manifest.awbNumbers);
+        // console.log("Fetching shipments for account code:", manifest.mfuser);
+        // console.log("Manifest AWB numbers:", manifest.awbNumbers);
 
         const response = await axios.get(
           `${server}/portal/get-shipments?accountCode=${manifest.mfuser}`
         );
 
-        console.log("Shipment response:", response.data);
+        // console.log("Shipment response:", response.data);
 
         const shipments = response.data?.shipments || [];
 
-        console.log("All shipments:", shipments);
+        // console.log("All shipments:", shipments);
 
         // Filter shipments that are in the manifest's AWB list
         const filteredShipments =
@@ -229,7 +229,7 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
               )
             : shipments;
 
-        console.log("Filtered shipments:", filteredShipments);
+        // console.log("Filtered shipments:", filteredShipments);
 
         setShipmentDetails(filteredShipments);
 
@@ -237,7 +237,7 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
         const uniqueAccountCodes = [
           ...new Set(filteredShipments.map((s) => s.accountCode).filter(Boolean)),
         ];
-        console.log("Unique account codes:", uniqueAccountCodes);
+        // console.log("Unique account codes:", uniqueAccountCodes);
 
         const names = {};
         await Promise.all(
@@ -247,7 +247,7 @@ const ViewDetailsModal = ({ isOpen, onClose, manifest, server, manifestType }) =
           })
         );
 
-        console.log("Fetched account names:", names);
+        // console.log("Fetched account names:", names);
         setAccountNames(names);
       }
     } catch (err) {
@@ -740,7 +740,7 @@ export default function Manifest() {
 
   // Transform client manifest data for table display
   const transformClientManifestForTable = useCallback((manifest) => {
-    console.log(manifest);
+    // console.log(manifest);
     return {
       manifestNo: manifest.manifestNumber || "N/A",
       mfdate: new Date(manifest.createdAt).toLocaleDateString(),
@@ -830,7 +830,7 @@ export default function Manifest() {
     try {
       const response = await axios.get(`${server}/portal/get-manifest`);
       const { data } = response;
-      console.log("Client Manifest Data:", data);
+      // console.log("Client Manifest Data:", data);
 
       if (data.success && data.manifests) {
         const manifestsWithWeights = await Promise.all(
@@ -848,10 +848,10 @@ export default function Manifest() {
                 );
 
                 const shipments = shipmentResponse.data?.shipments || [];
-                console.log("Shipments for", manifest.accountCode, shipments);
+                // console.log("Shipments for", manifest.accountCode, shipments);
 
                 shipments.forEach((shipment) => {
-                  console.log("Processing shipment:", shipment);
+                  // console.log("Processing shipment:", shipment);
                   totalWeight += Number(shipment.totalActualWt || 0);
                   totalPcs += Number(shipment.pcs || 1);
                 });

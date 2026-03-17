@@ -165,7 +165,7 @@ const ModifiedShipperTariff = () => {
     };
 
     setRowData((prevData) => [...prevData, newRow]);
-    console.log("Added to table:", newRow);
+    // console.log("Added to table:", newRow);
   };
 
   // Save to database
@@ -197,7 +197,7 @@ const ModifiedShipperTariff = () => {
 
     try {
       const response = await axios.post(`${server}/shipper-tariff`, payload);
-      console.log("Saved to database:", response.data);
+      // console.log("Saved to database:", response.data);
 
       // Reset form and clear data
       reset();
@@ -205,7 +205,7 @@ const ModifiedShipperTariff = () => {
       setServiceOptions([]);
       setzoneMatrixOptions([]);
 
-      console.log("Data saved successfully!");
+      // console.log("Data saved successfully!");
       showNotification("success", "shipper tariff data added successfully!");
     } catch (error) {
       console.error("Error saving data:", error);

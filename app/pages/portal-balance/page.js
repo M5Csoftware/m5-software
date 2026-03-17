@@ -102,7 +102,7 @@ const PortalBalance = () => {
   // Enhanced API fetch with multiple retry strategies
   const fetchCustomerAccounts = async (retryAttempt = 0) => {
     try {
-      console.log(`🌐 API Fetch Attempt ${retryAttempt + 1}...`);
+      // console.log(`🌐 API Fetch Attempt ${retryAttempt + 1}...`);
       setLoading(true);
       setApiError("");
 
@@ -164,7 +164,7 @@ const PortalBalance = () => {
       // Try each strategy until one works
       for (let i = 0; i < apiStrategies.length; i++) {
         try {
-          console.log(`📡 Trying API strategy ${i + 1}...`);
+          // console.log(`📡 Trying API strategy ${i + 1}...`);
           apiData = await apiStrategies[i]();
           strategyUsed = i + 1;
           break;
@@ -176,8 +176,8 @@ const PortalBalance = () => {
         }
       }
 
-      console.log(`✅ API Strategy ${strategyUsed} succeeded!`);
-      console.log("📡 Raw API response:", apiData);
+      // console.log(`✅ API Strategy ${strategyUsed} succeeded!`);
+      // console.log("📡 Raw API response:", apiData);
 
       if (apiData && Array.isArray(apiData) && apiData.length > 0) {
         // Ensure data structure matches exactly what we need
@@ -203,7 +203,7 @@ const PortalBalance = () => {
           };
         });
 
-        console.log("✅ Successfully mapped API data:", mappedData);
+        // console.log("✅ Successfully mapped API data:", mappedData);
         setCustomerData(mappedData);
         showNotification("success", "Customer accounts loaded");
         setApiDataLoaded(true);
@@ -219,7 +219,7 @@ const PortalBalance = () => {
 
       // Retry logic - up to 3 attempts
       if (retryAttempt < 2) {
-        console.log(`🔄 Retrying in 2 seconds... (${retryAttempt + 1}/3)`);
+        // console.log(`🔄 Retrying in 2 seconds... (${retryAttempt + 1}/3)`);
         setRetryCount(retryAttempt + 1);
         setTimeout(() => {
           fetchCustomerAccounts(retryAttempt + 1);
@@ -245,7 +245,7 @@ const PortalBalance = () => {
   // Ensure we always have some data
   useEffect(() => {
     if (customerData.length === 0 && !loading) {
-      console.log("🚨 No data available, loading fallback");
+      // console.log("🚨 No data available, loading fallback");
       setCustomerData([...FALLBACK_MOCK_DATA]);
     }
   }, [customerData, loading]);
@@ -323,7 +323,7 @@ const PortalBalance = () => {
   };
 
   const handleRefresh = () => {
-    console.log("🔄 Refresh clicked - Force refetch from API");
+    // console.log("🔄 Refresh clicked - Force refetch from API");
     reset();
     setError("");
     setApiError("");
@@ -345,7 +345,7 @@ const PortalBalance = () => {
   };
 
   const handleAction = async (action, rowData) => {
-    console.log("🎯 Handle action:", action, rowData);
+    // console.log("🎯 Handle action:", action, rowData);
 
     if (action === "edit") {
       const accountCode = rowData.accountCode || rowData.code;
@@ -401,11 +401,11 @@ const PortalBalance = () => {
   );
 
   const handleCodeListClick = () => {
-    console.log("🎯 CodeList button clicked!");
+    // console.log("🎯 CodeList button clicked!");
 
     // If no real data loaded, try to fetch again
     if (!apiDataLoaded && customerData.length <= FALLBACK_MOCK_DATA.length) {
-      console.log("🔄 No API data loaded, attempting fresh fetch...");
+      // console.log("🔄 No API data loaded, attempting fresh fetch...");
       fetchCustomerAccounts();
     }
 
@@ -414,7 +414,7 @@ const PortalBalance = () => {
 
   // Manual API refresh function
   const handleForceApiRefresh = () => {
-    console.log("🔄 Force API refresh requested");
+    // console.log("🔄 Force API refresh requested");
     setApiDataLoaded(false);
     setCustomerData([]);
     setApiError("");

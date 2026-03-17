@@ -229,7 +229,7 @@ const ShipperTariffBulk = () => {
         data: rowData
       });
 
-      console.log("Bulk data saved to database:", response.data);
+      // console.log("Bulk data saved to database:", response.data);
       
       // Reset form and clear data
       reset();

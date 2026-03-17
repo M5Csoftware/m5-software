@@ -295,13 +295,13 @@ export default function BranchBagging() {
           }
         );
 
-        console.log("Branch bagging run entry response:", response.data);
+        // console.log("Branch bagging run entry response:", response.data);
         return response.data;
       } catch (error) {
         console.error("Error fetching run entry:", error);
 
         if (error.response?.status === 404) {
-          console.log(`Run ${runNo} not found in database`);
+          // console.log(`Run ${runNo} not found in database`);
         } else if (error.code === "ECONNABORTED") {
           console.error("Request timeout for run entry");
           showNotification("error", "Request timeout. Please try again.");
@@ -332,9 +332,9 @@ export default function BranchBagging() {
         calculateAndSetClubDetails(data);
       } catch (error) {
         if (error.response?.status === 404) {
-          console.log(
-            `No clubbing data found for run ${runNo} - this is normal`
-          );
+          // console.log(
+//             `No clubbing data found for run ${runNo} - this is normal`
+//           );
           setClubbingData([]);
           resetClubDetails();
         } else {
@@ -763,7 +763,7 @@ export default function BranchBagging() {
           // FIXED: Get the actual AWB number - handle both master AWB and child AWB
           const oldAwbNo = oldRow.childShipment || oldRow.awbNo;
 
-          console.log("Editing mode - removing old AWB:", oldAwbNo);
+          // console.log("Editing mode - removing old AWB:", oldAwbNo);
 
           // Remove old AWB (works for both master and child AWBs)
           await axios.put(
@@ -776,7 +776,7 @@ export default function BranchBagging() {
             axiosConfig
           );
 
-          console.log("Adding updated AWB:", trimmedAwb);
+          // console.log("Adding updated AWB:", trimmedAwb);
 
           // Add updated AWB
           const response = await axios.put(

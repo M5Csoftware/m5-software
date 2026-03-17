@@ -96,7 +96,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
   const fetchAwb = async () => {
     setSearchLoading(true);
     try {
-      console.log(awbNo);
+      // console.log(awbNo);
 
       // Check for alerts first
       const alertResult = await checkAlert(awbNo);
@@ -112,7 +112,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
         `${server}/shipment-query?awbNo=${awbNo.toUpperCase()}`
       );
       const run = response.data.response;
-      console.log(run);
+      // console.log(run);
 
       if (!run) {
         showNotification("error", "No shipment found for this AWB");
@@ -147,7 +147,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
 
       // Set child shipments data with bagging details
       if (run.childShipments && run.childShipments.length > 0) {
-        console.log("Child shipments with bagging data:", run.childShipments);
+        // console.log("Child shipments with bagging data:", run.childShipments);
         setChildShipmentsData(run.childShipments);
       } else {
         setChildShipmentsData([]);
@@ -264,7 +264,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
         });
       }
 
-      console.log("Forwarding data (deduplicated):", forwarding);
+      // console.log("Forwarding data (deduplicated):", forwarding);
       setForwardingData(forwarding);
     } catch (error) {
       console.error("Error fetching forwarding data:", error);
@@ -308,7 +308,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
           };
         });
 
-        console.log("Formatted event data for table:", allEvents);
+        // console.log("Formatted event data for table:", allEvents);
         setEventActivityData(allEvents);
 
         // Get the latest event (last entry in the arrays)
@@ -388,7 +388,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
           }
         );
 
-        console.log("Formatted complaint data:", formattedComplaints);
+        // console.log("Formatted complaint data:", formattedComplaints);
         setComplaintRowData(formattedComplaints);
       } else {
         setComplaintRowData([]);

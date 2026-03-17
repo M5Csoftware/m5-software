@@ -89,21 +89,21 @@ function RTOShipment() {
     }
 
     try {
-      console.log("Fetching customer for account code:", accountCode);
+      // console.log("Fetching customer for account code:", accountCode);
 
       const response = await axios.get(
         `${server}/customer-account?accountCode=${accountCode.toUpperCase()}`
       );
 
-      console.log("Customer Response:", response.data);
+      // console.log("Customer Response:", response.data);
 
       if (response.data && response.data.name) {
         const customerName = response.data.name || "";
-        console.log("Customer name found:", customerName);
+        // console.log("Customer name found:", customerName);
         setCustomerNameFromAccount(customerName);
         setValue("name", customerName);
       } else {
-        console.log("Customer not found or name is missing");
+        // console.log("Customer not found or name is missing");
         showNotification("error", "Customer name not found");
         setCustomerNameFromAccount("");
         setValue("name", "");
@@ -141,13 +141,13 @@ function RTOShipment() {
 
     try {
       setLoading(true);
-      console.log("Fetching data for AWB:", awbNumber);
+      // console.log("Fetching data for AWB:", awbNumber);
 
       const response = await axios.get(
         `${server}/rto-shipment?awbNo=${awbNumber.toUpperCase()}`
       );
 
-      console.log("Response:", response.data);
+      // console.log("Response:", response.data);
 
       if (response.data.success) {
         const data = response.data.data;
@@ -156,7 +156,7 @@ function RTOShipment() {
         setValue("consignorName", data.consignorName);
         setValue("consigneeName", data.consigneeName);
         setValue("email", data.email);
-        console.log("Data populated successfully");
+        // console.log("Data populated successfully");
       } else {
         showNotification(
           "error",
@@ -438,7 +438,7 @@ function RTOShipment() {
         updateInEvents: withEvents,
       };
 
-      console.log("Sending alert with payload:", payload);
+      // console.log("Sending alert with payload:", payload);
 
       const response = await axios.post(
         `${server}/rto-shipment/send-alert`,

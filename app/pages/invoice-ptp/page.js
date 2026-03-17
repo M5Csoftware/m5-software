@@ -88,7 +88,7 @@ function InvoicePtp() {
           bulkUploadBtn="hidden"
           codeListBtn={true}
           onRefresh={() => {
-            console.log("Refresh clicked");
+            // console.log("Refresh clicked");
             // or any refresh logic
           }}
           fullscreenBtn={false}

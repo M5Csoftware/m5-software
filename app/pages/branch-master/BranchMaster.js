@@ -936,7 +936,7 @@ function BranchMaster() {
 
   // Bulk upload handler
   const handleBulkUpload = () => {
-    console.log("Bulk upload functionality to be implemented");
+    // console.log("Bulk upload functionality to be implemented");
   };
 
   useEffect(() => {
@@ -991,7 +991,7 @@ function BranchMaster() {
       const response = await axios.post(`${server}/branch-master`, formData, {
         headers: { "Content-Type": "application/json" },
       });
-      console.log("Branch added:", response.data);
+      // console.log("Branch added:", response.data);
       showNotification("success", "New Branch Added Successfully");
       setDataUpdate(!dataUpdate);
       setAdded(!added);
@@ -1016,7 +1016,7 @@ function BranchMaster() {
           headers: { "Content-Type": "application/json" },
         }
       );
-      console.log("Branch updated:", response.data);
+      // console.log("Branch updated:", response.data);
       setDisabledInput(true);
       showNotification(
         "success",
@@ -1064,7 +1064,7 @@ function BranchMaster() {
       const response = await axios.delete(`${server}/branch-master`, {
         params: { code: matched.code },
       });
-      console.log("Branch deleted:", response);
+      // console.log("Branch deleted:", response);
 
       // Close modal first
       setShowDeleteModal(false);

@@ -38,7 +38,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
     axios
       .get(`${server}/entity-manager`, { params: { entityType: "Hub" } })
       .then((res) => {
-        console.log("Hub list data:", res.data);
+        // console.log("Hub list data:", res.data);
         setHubList(res.data);
       })
       .catch((err) => console.error(err));
@@ -98,8 +98,8 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
     const currentCode = watch("code");
     const currentClient = watch("client");
 
-    console.log("🔍 Current code:", currentCode);
-    console.log("🔍 Current client:", currentClient);
+    // console.log("🔍 Current code:", currentCode);
+    // console.log("🔍 Current client:", currentClient);
 
     const newRow = {
       mawbNumber: watch("mawbNumber") || "",
@@ -116,7 +116,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
       phoneNumber: watch("phoneNumber") || "",
     };
 
-    console.log("✅ Row data:", newRow);
+    // console.log("✅ Row data:", newRow);
 
     setRowData((prev) => [...prev, newRow]);
 
@@ -190,7 +190,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
         remarks: watch("remarks") || "",
       };
 
-      console.log("📧 Sending email with payload:", payload);
+      // console.log("📧 Sending email with payload:", payload);
 
       const res = await axios.post(
         `${server}/digital-tally/send-email`,
@@ -199,7 +199,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
 
       if (res.data.success) {
         alert("Alert sent successfully!");
-        console.log("✅ Email sent:", res.data);
+        // console.log("✅ Email sent:", res.data);
       } else {
         alert("Failed to send alert: " + (res.data.message || "Unknown error"));
       }
@@ -221,19 +221,19 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
       const entryUser = user?.userId || "Unknown";
       const entryUserName = user?.userName || "Unknown";
 
-      console.log("🔍 Current user:", { entryUser, entryUserName });
+      // console.log("🔍 Current user:", { entryUser, entryUserName });
 
-      console.log("🔍 Current form values:", {
-        cdNumber: watch("cdNumber"),
-        code: watch("code"),
-        client: watch("client"),
-        email: watch("email"),
-        phoneNumber: watch("phoneNumber"),
-        hubName: watch("hubName"),
-        hubCode: watch("hubCode"),
-      });
+      // console.log("🔍 Current form values:", {
+//         cdNumber: watch("cdNumber"),
+//         code: watch("code"),
+//         client: watch("client"),
+//         email: watch("email"),
+//         phoneNumber: watch("phoneNumber"),
+//         hubName: watch("hubName"),
+//         hubCode: watch("hubCode"),
+//       });
 
-      console.log("📊 Current rowData:", rowData);
+      // console.log("📊 Current rowData:", rowData);
 
       const payload = {
         cdNumber: watch("cdNumber") || "",
@@ -270,10 +270,10 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
         })),
       };
 
-      console.log(
-        "📤 Final payload being sent:",
-        JSON.stringify(payload, null, 2),
-      );
+      // console.log(
+//         "📤 Final payload being sent:",
+//         JSON.stringify(payload, null, 2),
+//       );
 
       const token = localStorage.getItem("token");
 
@@ -289,7 +289,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
 
       if (res.status === 200) {
         alert("Saved successfully!");
-        console.log("✅ Server response:", res.data);
+        // console.log("✅ Server response:", res.data);
         setRowData([]);
         setResetTally(!resetTally);
         // Clear form fields after save (except cdNumber)

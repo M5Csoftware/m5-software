@@ -152,7 +152,7 @@ function VendorMaster() {
   const handleAdd = async (formData) => {
     try {
       const res = await axios.post(`${server}/vendor-master`, formData);
-      console.log("Vendor added:", res.data);
+      // console.log("Vendor added:", res.data);
 
       showNotification("success", "New Vendor Added Successfully");
 
@@ -173,7 +173,7 @@ function VendorMaster() {
         `${server}/vendor-master?code=${selectedVendor.code}`,
         formData
       );
-      console.log("Vendor updated:", res.data);
+      // console.log("Vendor updated:", res.data);
 
       showNotification(
         "success",
@@ -219,7 +219,7 @@ function VendorMaster() {
       await axios.delete(`${server}/vendor-master`, {
         params: { code: selectedVendor.code },
       });
-      console.log("Vendor deleted");
+      // console.log("Vendor deleted");
 
       // Close modal first
       setShowDeleteModal(false);
@@ -253,7 +253,7 @@ function VendorMaster() {
   };
 
   const handleRefresh = () => {
-    console.log("Refreshing...");
+    // console.log("Refreshing...");
     setDataUpdate((prev) => !prev);
     reset({
       code: "",
@@ -876,7 +876,7 @@ function EmailSetting({
         bcc: bcc || "",
       };
 
-      console.log("Sending email data:", emailData);
+      // console.log("Sending email data:", emailData);
 
       const response = await axios.post(
         `${server}/vendor-master/save-email-data`,
@@ -888,7 +888,7 @@ function EmailSetting({
         }
       );
 
-      console.log("Response:", response.data);
+      // console.log("Response:", response.data);
 
       if (response.data.success) {
         showNotification("success", "Email settings saved successfully");

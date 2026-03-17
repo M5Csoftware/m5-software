@@ -66,7 +66,7 @@ function CreditLimitReport({
         setRowData(Array.isArray(res.data) ? res.data : []);
         setAllData(Array.isArray(res.data) ? res.data : []);
 
-        console.log("Auto-fetched credit limit entries:", res.data);
+        // console.log("Auto-fetched credit limit entries:", res.data);
       } catch (err) {
         console.error("Failed to fetch credit limit data", err);
         setRowData([]);

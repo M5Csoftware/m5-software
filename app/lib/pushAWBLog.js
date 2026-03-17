@@ -135,7 +135,7 @@ const pushAWBLog = async ({
 
     // Only log the hostname (single console.log)
     try {
-        console.log(actionSystemName);
+        // console.log(actionSystemName);
     } catch (e) {
         // ignore console errors
     }

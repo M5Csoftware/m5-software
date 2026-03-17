@@ -132,14 +132,14 @@ const AirwaybillLog = () => {
           showNotification("success", `Loaded ${mapped.length} Action Logs`);
         }
       } else {
-        console.log("Fetching log details for AWB:", queryAwbNo);
+        // console.log("Fetching log details for AWB:", queryAwbNo);
         const resp = await axios.get(
           `${server}/awb-log/log-details?awbNo=${encodeURIComponent(
             queryAwbNo
           )}`
         );
 
-        console.log("Response:", resp.data); // Add this line
+        // console.log("Response:", resp.data); // Add this line
 
         const data = resp.data;
         let detailsArray = [];
@@ -150,10 +150,10 @@ const AirwaybillLog = () => {
           detailsArray = [data];
         }
 
-        console.log("Processed array:", detailsArray); // Add this line
+        // console.log("Processed array:", detailsArray); // Add this line
 
         const mappedDetails = detailsArray.map((d) => {
-          console.log("Mapping object:", d); // Add this line
+          // console.log("Mapping object:", d); // Add this line
           return {
             awbNo: d.awbNo || "",
             shipmentDate: d.shipmentDate
@@ -186,7 +186,7 @@ const AirwaybillLog = () => {
           };
         });
 
-        console.log("Mapped details:", mappedDetails); // Add this line
+        // console.log("Mapped details:", mappedDetails); // Add this line
 
         setRowData(mappedDetails);
 

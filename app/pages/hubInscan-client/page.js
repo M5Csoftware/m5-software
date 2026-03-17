@@ -17,7 +17,7 @@ function HubInscanClient() {
   const [isPortalChecked, setPortalChecked] = useState(false);
 
   const onScan = (data) => {
-    console.log("Scanning data:", data);
+    // console.log("Scanning data:", data);
     setScanned([...scanned, data]);
   };
   const handleRefresh = () => {

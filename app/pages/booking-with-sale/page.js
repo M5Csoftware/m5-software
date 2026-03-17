@@ -186,7 +186,7 @@ function BookingWithSale() {
         url += `?${params.join("&")}`;
       }
 
-      console.log("Fetching from URL:", url);
+      // console.log("Fetching from URL:", url);
 
       const response = await axios.get(url);
       const shipments = response.data.data || [];

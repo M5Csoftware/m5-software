@@ -48,13 +48,13 @@ const CsbVReport = () => {
 
   const handleShow = () => {
     // Show logic will be added here
-    console.log("Show button clicked");
+    // console.log("Show button clicked");
     showNotification("success", "Data loaded successfully");
   };
 
   const handleDownload = () => {
     // Download logic will be added here
-    console.log("Download button clicked");
+    // console.log("Download button clicked");
   };
 
   const handleClose = () => {

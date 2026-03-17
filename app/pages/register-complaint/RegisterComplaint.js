@@ -67,7 +67,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
   };
 
   const onSubmit = async (data) => {
-    console.log("Register complaint data", data);
+    // console.log("Register complaint data", data);
     try {
       let response;
       if (registeredComplaint) {
@@ -97,7 +97,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
 
       setRegisteredComplaint(complaintData);
       showNotification("success", "Complaint registered successfully!");
-      console.log("Server Response:", response.data);
+      // console.log("Server Response:", response.data);
     } catch (error) {
       console.error("Error submitting data:", error);
       const errorMsg =
@@ -279,18 +279,18 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
   };
 
   useEffect(() => {
-    console.log("=== AWB EFFECT TRIGGERED ===");
-    console.log("awbNo:", awbNo);
-    console.log("manualSearch:", manualSearch);
-    console.log("server:", server);
+    // console.log("=== AWB EFFECT TRIGGERED ===");
+    // console.log("awbNo:", awbNo);
+    // console.log("manualSearch:", manualSearch);
+    // console.log("server:", server);
 
     if (!awbNo || manualSearch) {
-      console.log("⚠️ Exiting early - awbNo empty or manual search active");
+      // console.log("⚠️ Exiting early - awbNo empty or manual search active");
       return;
     }
 
     const checkAwbNo = async () => {
-      console.log("🔍 Starting AWB check for:", awbNo);
+      // console.log("🔍 Starting AWB check for:", awbNo);
 
       // UPDATED REGEX: Accept 1-3 letters followed by 6+ digits (changed from 7+)
       const regex = /^[A-Z]{1,3}\d{6,}$/i;
@@ -305,20 +305,20 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
         setResetFactor(!resetFactor);
         return;
       } else {
-        console.log("✅ AWB format validation passed");
+        // console.log("✅ AWB format validation passed");
         clearErrors("awbNo");
       }
 
       // Check shipment existence
       try {
-        console.log(
-          "📦 Fetching shipment from:",
-          `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`
-        );
+        // console.log(
+//           "📦 Fetching shipment from:",
+//           `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`
+//         );
         const shipmentResponse = await axios.get(
           `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`
         );
-        console.log("✅ Shipment verified:", shipmentResponse.data);
+        // console.log("✅ Shipment verified:", shipmentResponse.data);
       } catch (error) {
         console.error("❌ Error fetching AWB details:", error);
         console.error("Error response:", error.response?.data);
@@ -328,34 +328,34 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
 
       // Check complaint existence
       try {
-        console.log(
-          "🎫 Fetching complaint from:",
-          `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`
-        );
+        // console.log(
+//           "🎫 Fetching complaint from:",
+//           `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`
+//         );
         const response = await axios.get(
           `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`
         );
-        console.log("✅ Complaint API response:", response.data);
+        // console.log("✅ Complaint API response:", response.data);
 
         const complaintData = response.data.complaint;
-        console.log("📋 Raw complaint data:", complaintData);
+        // console.log("📋 Raw complaint data:", complaintData);
 
         if (complaintData.date) {
           complaintData.date = formatDDMMYYYY(complaintData.date);
-          console.log("📅 Formatted date:", complaintData.date);
+          // console.log("📅 Formatted date:", complaintData.date);
         }
 
         setRegisteredComplaint(complaintData);
-        console.log("✅ Registered complaint set successfully");
+        // console.log("✅ Registered complaint set successfully");
       } catch (error) {
         console.error("❌ Error fetching registered complaint:", error);
         console.error("Error response:", error.response?.data);
         console.error("Error status:", error.response?.status);
         console.error("Error message:", error.message);
         setRegisteredComplaint(null);
-        console.log(
-          "🔄 Registered complaint set to null (this is normal if no complaint exists yet)"
-        );
+        // console.log(
+//           "🔄 Registered complaint set to null (this is normal if no complaint exists yet)"
+//         );
       }
     };
 
@@ -382,7 +382,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
 
   //     try {
   //       await axios.get(`${server}/portal/get-shipments?awbNo=${awbNo}`);
-  //       console.log("Shipment verified");
+  //       // console.log("Shipment verified");
   //     } catch (error) {
   //       console.error("Error fetching AWB details:", error);
   //       setRegisteredComplaint(null);
@@ -397,7 +397,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
   //         complaintData.date = formatDDMMYYYY(complaintData.date);
   //       }
   //       setRegisteredComplaint(complaintData);
-  //       console.log("Registered Complaint Data:", complaintData);
+  //       // console.log("Registered Complaint Data:", complaintData);
   //     } catch (error) {
   //       setRegisteredComplaint(null);
   //       console.error("Error fetching registered complaint:", error);
@@ -483,7 +483,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
       });
 
       setRowData(formattedHistory);
-      console.log("setRowData called with:", formattedHistory);
+      // console.log("setRowData called with:", formattedHistory);
 
       setDate(new Date(registeredComplaint?.date));
       setComplaintNo(registeredComplaint?.complaintNo);
@@ -551,7 +551,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
     reset();
 
     // Reset to default values
-    console.log("🔄 Refresh triggered");
+    // console.log("🔄 Refresh triggered");
 
     // Toggle reset factors to trigger useEffect in child components
     setResetReassign(!resetReassign);
@@ -609,7 +609,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
     // Clear any form errors
     clearErrors();
 
-    console.log("✅ Refresh completed");
+    // console.log("✅ Refresh completed");
   };
 
   const handleSearch = async () => {

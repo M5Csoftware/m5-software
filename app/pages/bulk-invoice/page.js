@@ -170,7 +170,7 @@ const BulkInvoice = () => {
       setAllCustomers(formatted);
       setCustomerList(formatted);
     } catch (err) {
-      console.log(err);
+      // console.log(err);
       showNotification("error", "Failed to fetch customers");
       setCustomerList([]);
     }

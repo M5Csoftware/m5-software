@@ -255,7 +255,7 @@ const OrgShipper = ({
       );
 
       if (response.data.length > 0) {
-        console.log("Existing child shipments found:", response.data);
+        // console.log("Existing child shipments found:", response.data);
 
         const existingChildren = response.data.map((child) => ({
           _id: child._id,
@@ -303,7 +303,7 @@ const OrgShipper = ({
         `${server}/portal/create-shipment?awbNo=${awb}`
       );
       const data = res.data;
-      console.log(data);
+      // console.log(data);
 
       if (data) {
         // Auto-fetch and set destination
@@ -348,7 +348,7 @@ const OrgShipper = ({
         }
 
         setData(generatedRows);
-        console.log("Generated child rows (excluding master):", generatedRows);
+        // console.log("Generated child rows (excluding master):", generatedRows);
         setShowDisabled(generatedRows.length === 0);
       } else {
         if (!hasExistingChildren) {
@@ -416,7 +416,7 @@ const OrgShipper = ({
         destination: getValues("Destination"),
       });
 
-      console.log("Saved successfully:", response.data);
+      // console.log("Saved successfully:", response.data);
       showNotification("success", "Saved successfully");
       setRowData([]);
       setBoxCount(0);
@@ -435,7 +435,7 @@ const OrgShipper = ({
     <form
       className="flex flex-col gap-9"
       onSubmit={handleSubmit((data) => {
-        console.log(data);
+        // console.log(data);
       })}
     >
       <NotificationFlag

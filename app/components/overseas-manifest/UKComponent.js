@@ -383,16 +383,16 @@ const UKComponent = () => {
     let totalPCS = 0, totalWeight = 0, totalValue = 0;
     const nonMerged = [];
 
-    console.log("=== MERGE DEBUG START ===");
-    console.log("Bag numbers to merge:", bagNumbers);
-    console.log("Source rows count:", sourceRows.length);
+    // console.log("=== MERGE DEBUG START ===");
+    // console.log("Bag numbers to merge:", bagNumbers);
+    // console.log("Source rows count:", sourceRows.length);
 
     sourceRows.forEach((row, index) => {
       let bagField;
       switch (viewType) {
         case "csv-lhr":
           bagField = row.bag_numbers;
-          console.log(`Row ${index}: bag_numbers = "${bagField}"`);
+          // console.log(`Row ${index}: bag_numbers = "${bagField}"`);
           break;
         case "ts-manifest": bagField = row.bag_number; break;
         case "dpd-csv": bagField = row.clientrefrence1 || row.notes; break;
@@ -402,11 +402,11 @@ const UKComponent = () => {
       }
 
       const matches = bagField && bagNumbers.some(b => bagField.includes(b));
-      console.log(`Row ${index}: matches = ${matches}, bagField = "${bagField}"`);
+      // console.log(`Row ${index}: matches = ${matches}, bagField = "${bagField}"`);
 
       if (matches) {
         if (!mergedTemplate) {
-          console.log(`Creating template from row ${index}`);
+          // console.log(`Creating template from row ${index}`);
           mergedTemplate = { ...row };
         }
 
@@ -419,7 +419,7 @@ const UKComponent = () => {
         switch (viewType) {
           case "csv-lhr":
             rowWeight = Number(row.total_weight || row.weight || 0);
-            console.log(`Row ${index}: pieces = ${rowPieces}, weight = ${rowWeight}, total_weight = ${row.total_weight}`);
+            // console.log(`Row ${index}: pieces = ${rowPieces}, weight = ${rowWeight}, total_weight = ${row.total_weight}`);
             break;
           case "ts-manifest":
             rowWeight = Number(row.weight || 0);
@@ -449,24 +449,24 @@ const UKComponent = () => {
         const rowValue = Number(row.value || row.consignmentvalue || 0);
         totalValue += rowValue;
 
-        console.log(`Merging row ${index}: Pieces = ${rowPieces}, Weight = ${rowWeight}, Value = ${rowValue}, Running Total Weight = ${totalWeight.toFixed(2)}`);
+        // console.log(`Merging row ${index}: Pieces = ${rowPieces}, Weight = ${rowWeight}, Value = ${rowValue}, Running Total Weight = ${totalWeight.toFixed(2)}`);
 
       } else {
         nonMerged.push(row);
       }
     });
 
-    console.log("=== MERGE DEBUG END ===");
-    console.log(`Total Pieces: ${totalPCS}, Total Weight: ${totalWeight.toFixed(2)}, Total Value: ${totalValue.toFixed(2)}`);
+    // console.log("=== MERGE DEBUG END ===");
+    // console.log(`Total Pieces: ${totalPCS}, Total Weight: ${totalWeight.toFixed(2)}, Total Value: ${totalValue.toFixed(2)}`);
 
     if (!mergedTemplate) {
-      console.log("No matching rows found for merging");
+      // console.log("No matching rows found for merging");
       return sourceRows;
     }
 
     // Calculate value as 62% of total weight
     const mergeValue = (totalWeight * 0.62).toFixed(2);
-    console.log(`Calculated value (62% of ${totalWeight}): ${mergeValue}`);
+    // console.log(`Calculated value (62% of ${totalWeight}): ${mergeValue}`);
 
     switch (viewType) {
       case "csv-lhr":
@@ -475,7 +475,7 @@ const UKComponent = () => {
         mergedTemplate.weight = totalWeight.toFixed(2); // Also update weight field
         mergedTemplate.value = mergeValue;
         mergedTemplate.bag_numbers = bagNumbers.join(",");
-        console.log(`Updated CSV-LHR: pieces=${mergedTemplate.pieces}, total_weight=${mergedTemplate.total_weight}, value=${mergedTemplate.value}`);
+        // console.log(`Updated CSV-LHR: pieces=${mergedTemplate.pieces}, total_weight=${mergedTemplate.total_weight}, value=${mergedTemplate.value}`);
         break;
 
       case "ts-manifest":
@@ -516,7 +516,7 @@ const UKComponent = () => {
         break;
     }
 
-    console.log(`Final merged row:`, mergedTemplate);
+    // console.log(`Final merged row:`, mergedTemplate);
 
     // IMPORTANT: Create a new array with the merged row first, then non-merged rows
     const result = [mergedTemplate, ...nonMerged].map((r, i) => ({
@@ -524,7 +524,7 @@ const UKComponent = () => {
       id: i + 1,
     }));
 
-    console.log("Final result rows:", result);
+    // console.log("Final result rows:", result);
     return result;
   };
 
@@ -601,7 +601,7 @@ const UKComponent = () => {
 
     const bags = ["1", "2"];
     const result = applyMergedRows(testRows, bags);
-    console.log("Test Result:", result[0]);
+    // console.log("Test Result:", result[0]);
     // Should show: pieces: 2, total_weight: 80.00, value: 49.60 (80 * 0.62)
   };
 

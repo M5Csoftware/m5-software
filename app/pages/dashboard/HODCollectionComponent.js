@@ -331,7 +331,7 @@ export function OutstandingCard() {
           params: { entityType: "Hub" },
         });
 
-        console.log("Fetched hubs:", response.data);
+        // console.log("Fetched hubs:", response.data);
 
         setHubs(response.status === 200 ? response.data : []);
       } catch (error) {

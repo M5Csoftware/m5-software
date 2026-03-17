@@ -66,7 +66,7 @@ function VolumeWeight({
         `${server}/portal/create-shipment?awbNo=${awbNo}`
       );
       const data = response.data;
-      console.log("data", data);
+      // console.log("data", data);
 
       if (Array.isArray(data.boxes) && data.boxes.length > 0) {
         const boxes = data.boxes.map((box, i) => {

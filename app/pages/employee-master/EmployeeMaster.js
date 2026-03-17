@@ -502,7 +502,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
   // CONSOLIDATED: Load edit data when component mounts with editEmployeeData prop
   useEffect(() => {
     if (editEmployeeData) {
-      console.log("Loading editEmployeeData:", editEmployeeData);
+      // console.log("Loading editEmployeeData:", editEmployeeData);
 
       setEmployeeData(editEmployeeData);
       setDemoRadio("Edit");
@@ -542,10 +542,10 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
 
       // Extra safety: Set dashboard again after a brief delay
       setTimeout(() => {
-        console.log(
-          "Setting dashboard from editEmployeeData:",
-          editEmployeeData.dashboardAccess,
-        );
+        // console.log(
+//           "Setting dashboard from editEmployeeData:",
+//           editEmployeeData.dashboardAccess,
+//         );
         setValue("dashboard", editEmployeeData.dashboardAccess || []);
       }, 100);
     }
@@ -606,7 +606,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
         const { data } = await axios.get(
           `${server}/employee-master?userId=${userId}`,
         );
-        console.log("Fetched employee data:", data);
+        // console.log("Fetched employee data:", data);
 
         setEmployeeData(data);
 
@@ -643,10 +643,10 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
 
         // Extra safety: Set dashboard again
         setTimeout(() => {
-          console.log(
-            "Setting dashboard from fetched data:",
-            data.dashboardAccess,
-          );
+          // console.log(
+//             "Setting dashboard from fetched data:",
+//             data.dashboardAccess,
+//           );
           setValue("dashboard", data.dashboardAccess || []);
         }, 100);
       } catch (err) {
@@ -688,7 +688,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
 
     // ONLY run this logic in Create mode
     if (demoRadio === "Create") {
-      console.log("Department changed in Create mode:", department);
+      // console.log("Department changed in Create mode:", department);
 
       if (department === "Management") {
         setValue("role", "Admin");
@@ -698,7 +698,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
 
       const dashboard = departmentDashboardMap[department];
       if (dashboard) {
-        console.log("Setting dashboard for department:", dashboard);
+        // console.log("Setting dashboard for department:", dashboard);
         setValue(
           "dashboard",
           Array.isArray(dashboard) ? dashboard : [dashboard],
@@ -727,7 +727,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
   }, [department, demoRadio]);
 
   const onSubmit = async (data) => {
-    console.log("Form submitted with data:", data);
+    // console.log("Form submitted with data:", data);
 
     const allPermissions = Object.keys(checkboxStates).filter((key) =>
       key.startsWith("permission-"),
@@ -756,7 +756,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       delete payload.userId;
     }
 
-    console.log("Final payload:", payload);
+    // console.log("Final payload:", payload);
 
     try {
       const stored = sessionStorage.getItem("user");
@@ -823,7 +823,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
 
   const handleAction = async (action, rowData) => {
     if (action === "edit") {
-      console.log("Edit action triggered for:", rowData);
+      // console.log("Edit action triggered for:", rowData);
     } else if (action === "delete") {
       const { code } = rowData;
       if (!code) {
@@ -832,11 +832,11 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       }
 
       try {
-        console.log("Delete action triggered for code:", code);
+        // console.log("Delete action triggered for code:", code);
         const response = await axios.delete(`${server}/employee-master`, {
           params: { code },
         });
-        console.log("Deletion successful:", response.data);
+        // console.log("Deletion successful:", response.data);
       } catch (error) {
         console.error(
           "Error during deletion:",
@@ -878,7 +878,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
   };
 
   const handleBulkFileUpload = async (file) => {
-    console.log("Bulk file selected:", file);
+    // console.log("Bulk file selected:", file);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -892,7 +892,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
         },
       );
 
-      console.log("Bulk upload success:", res.data);
+      // console.log("Bulk upload success:", res.data);
       showNotification("success", "Bulk upload completed!");
 
       setShowUploadModal(false);
@@ -917,7 +917,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
 
   // Debug: Watch dashboard value
   useEffect(() => {
-    console.log("Dashboard value changed:", watch("dashboard"));
+    // console.log("Dashboard value changed:", watch("dashboard"));
   }, [watch("dashboard")]);
 
   useEffect(() => {

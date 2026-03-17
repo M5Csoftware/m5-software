@@ -391,7 +391,7 @@ const InvoicePTP = ({ fYear, onClose }) => {
       qrCodeData: qrCodeData,
     };
 
-    console.log("Generating PDF with data:", invoiceData);
+    // console.log("Generating PDF with data:", invoiceData);
 
     setPdfData(invoiceData);
   };
@@ -600,7 +600,7 @@ const InvoicePTP = ({ fYear, onClose }) => {
           return;
         }
 
-        console.log("Loaded invoice:", invoice);
+        // console.log("Loaded invoice:", invoice);
 
         setValue("branch", invoice.clientDetails.branch);
         setValue("customerCode", invoice.clientDetails.accountCode);
@@ -644,10 +644,10 @@ const InvoicePTP = ({ fYear, onClose }) => {
         setRowData(invoice.billItems);
 
         if (invoice.qrCodeData && invoice.qrCodeData.length > 0) {
-          console.log("QR Code data found:", invoice.qrCodeData);
+          // console.log("QR Code data found:", invoice.qrCodeData);
           setQrCodeData(invoice.qrCodeData);
         } else {
-          console.log("No QR Code data in invoice");
+          // console.log("No QR Code data in invoice");
           setQrCodeData(null);
         }
 

@@ -15,7 +15,7 @@ function HubInscan() {
   const [isChecked, setChecked] = useState(false);
 
   const onScan = (data) => {
-    console.log("Scanning data:", data);
+    // console.log("Scanning data:", data);
     setScanned([...scanned, data]);
   };
 

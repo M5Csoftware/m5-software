@@ -172,12 +172,12 @@ function BulkInvoiceDelete() {
 
       if (monthFile && selectedMonthFile) {
         params.append("monthFile", selectedMonthFile);
-        console.log("Month File selected:", selectedMonthFile);
+        // console.log("Month File selected:", selectedMonthFile);
       }
 
       if (customerCode && customerCode.trim() !== "") {
         params.append("customerCode", customerCode.trim());
-        console.log("Customer Code:", customerCode.trim());
+        // console.log("Customer Code:", customerCode.trim());
       }
 
       const fromISO = toISODate(fromDate);
@@ -196,17 +196,17 @@ function BulkInvoiceDelete() {
       params.append("fromDate", fromISO);
       params.append("toDate", toISO);
 
-      console.log("Fetching invoices with params:", params.toString());
+      // console.log("Fetching invoices with params:", params.toString());
 
       const response = await axios.get(
         `${server}/bulk-invoice-delete?${params.toString()}`
       );
 
-      console.log("Response:", response.data);
+      // console.log("Response:", response.data);
 
       if (response.data.success) {
         setRowData(response.data.data);
-        console.log("Row data set:", response.data.data);
+        // console.log("Row data set:", response.data.data);
         setNotification({
           type: "success",
           message:
@@ -256,7 +256,7 @@ function BulkInvoiceDelete() {
     try {
       const invoiceIds = selectedItems.map((item) => item._id);
 
-      console.log("Deleting invoice IDs:", invoiceIds);
+      // console.log("Deleting invoice IDs:", invoiceIds);
 
       const response = await axios.delete(`${server}/bulk-invoice-delete`, {
         data: { invoiceIds },

@@ -121,7 +121,7 @@ function RunSummary() {
 
       const response = await axios.get(`${url}?${params.toString()}`);
 
-      console.log("API Response:", response.data);
+      // console.log("API Response:", response.data);
 
       if (response.data.success) {
         const fetchedData = response.data.data || [];

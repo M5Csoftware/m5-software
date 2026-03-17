@@ -120,7 +120,7 @@ function UploadIrnNumber() {
         defval: "",
       });
 
-      console.log("Excel Raw Data:", jsonData); // Debug log
+      // console.log("Excel Raw Data:", jsonData); // Debug log
 
       if (!jsonData || jsonData.length === 0) {
         showNotification(
@@ -133,7 +133,7 @@ function UploadIrnNumber() {
 
       // Get the first row to check actual column names
       if (jsonData.length > 0) {
-        console.log("Excel Column Names:", Object.keys(jsonData[0]));
+        // console.log("Excel Column Names:", Object.keys(jsonData[0]));
       }
 
       // Map Excel data to table format with multiple possible column name variations
@@ -246,14 +246,14 @@ function UploadIrnNumber() {
 
         // Log individual row mapping for debugging
         if (index === 0) {
-          console.log("First Row Mapping:", mapped);
-          console.log("Raw Row Data:", row);
+          // console.log("First Row Mapping:", mapped);
+          // console.log("Raw Row Data:", row);
         }
 
         return mapped;
       });
 
-      console.log("Mapped Data:", mappedData); // Debug log
+      // console.log("Mapped Data:", mappedData); // Debug log
 
       setRowData(mappedData);
       showNotification(
@@ -339,7 +339,7 @@ function UploadIrnNumber() {
           console.log("Failed uploads:", result.results.failed);
         }
         if (result.results.success.length > 0) {
-          console.log("Successful uploads:", result.results.success);
+          // console.log("Successful uploads:", result.results.success);
         }
 
         // Keep the data in table after successful upload

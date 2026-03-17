@@ -78,7 +78,7 @@ function SalesDashboard() {
       const user = JSON.parse(userStr);
       const userId = user.userId;
 
-      console.log("🔍 Retrieved userId:", userId);
+      // console.log("🔍 Retrieved userId:", userId);
 
       if (!userId) {
         console.error("No userId found in user object");
@@ -93,7 +93,7 @@ function SalesDashboard() {
         }
       );
 
-      console.log("📦 Response from API:", response.data);
+      // console.log("📦 Response from API:", response.data);
 
       if (response.data) {
         setServiceWiseData(response.data);
@@ -680,7 +680,7 @@ function SalesDashboard() {
     try {
       await downloadHSSB(data.from, data.to, user.userId, setLoading);
     } catch (err) {
-      console.log(err);
+      // console.log(err);
     }
   };
 

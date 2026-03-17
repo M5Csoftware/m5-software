@@ -38,7 +38,7 @@ function SalesDashboardLayout() {
         const data = await res.json();
         setTargetRows(data);
       } catch (err) {
-        console.log("Failed to load targets:", err);
+        // console.log("Failed to load targets:", err);
       }
     };
 

@@ -25,27 +25,27 @@ const AssignCodeModal = ({ isOpen, onClose, user, onAssignSuccess }) => {
         return;
       }
 
-      console.log("=== Generating Account Code ===");
-      console.log("User state:", user.state);
+      // console.log("=== Generating Account Code ===");
+      // console.log("User state:", user.state);
 
       // Call the backend route to generate account code
       const response = await axios.post(`${server}/portal/auth/assign-code`, {
         state: user.state
       });
 
-      console.log("API Response:", response.data);
+      // console.log("API Response:", response.data);
 
       if (response.data.success) {
         const { accountCode, stateAbbreviation } = response.data;
         setSuggestedCode(accountCode);
-        console.log("Generated code:", accountCode);
-        console.log("State abbreviation:", stateAbbreviation);
+        // console.log("Generated code:", accountCode);
+        // console.log("State abbreviation:", stateAbbreviation);
       } else {
         setError(response.data.message || "Failed to generate account code");
         setSuggestedCode("");
       }
 
-      console.log("=== End Account Code Generation ===");
+      // console.log("=== End Account Code Generation ===");
     } catch (error) {
       console.error("Error generating account code:", error);
       console.error("Error details:", error.response?.data || error.message);
@@ -69,22 +69,22 @@ const AssignCodeModal = ({ isOpen, onClose, user, onAssignSuccess }) => {
         return;
       }
 
-      console.log("=== Assigning Account Code ===");
-      console.log("User:", user.fullName);
-      console.log("User ID:", user._id);
-      console.log("Email:", user.emailId);
-      console.log("Code:", suggestedCode);
+      // console.log("=== Assigning Account Code ===");
+      // console.log("User:", user.fullName);
+      // console.log("User ID:", user._id);
+      // console.log("Email:", user.emailId);
+      // console.log("Code:", suggestedCode);
 
       // Update user with account code in the database
-      console.log("Updating user record with account code...");
+      // console.log("Updating user record with account code...");
       await axios.put(`${server}/portal/auth/register?id=${user._id}`, {
         accountCode: suggestedCode,
       });
 
-      console.log("✅ Account code assigned successfully to user record!");
+      // console.log("✅ Account code assigned successfully to user record!");
 
       // Create initial customer account entry with basic info
-      console.log("Creating customer account entry...");
+      // console.log("Creating customer account entry...");
       try {
         await axios.post(`${server}/customer-account`, {
           accountCode: suggestedCode,
@@ -101,14 +101,14 @@ const AssignCodeModal = ({ isOpen, onClose, user, onAssignSuccess }) => {
           telNo: user.mobileNumber || "",
           gstNo: user.gstNumber || "",
         });
-        console.log("✅ Customer account entry created!");
+        // console.log("✅ Customer account entry created!");
       } catch (createError) {
         // If account already exists, that's okay - we'll update it later
-        console.log("Customer account might already exist, continuing...");
+        // console.log("Customer account might already exist, continuing...");
       }
 
-      console.log("=== Assignment Complete ===");
-      console.log("NO EMAIL SENT - will be sent when form is saved");
+      // console.log("=== Assignment Complete ===");
+      // console.log("NO EMAIL SENT - will be sent when form is saved");
 
       // Call success callback with code and user data
       // The parent component will open the customer form

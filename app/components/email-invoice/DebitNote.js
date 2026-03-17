@@ -154,12 +154,12 @@ function DebitNote() {
         `${server}/email-debit-note?${params.toString()}`
       );
 
-      console.log("API Response:", response.data);
+      // console.log("API Response:", response.data);
 
       if (response.data.success && response.data.debitNotes) {
         const debitNotes = response.data.debitNotes;
 
-        console.log(`Found ${debitNotes.length} debit note(s)`);
+        // console.log(`Found ${debitNotes.length} debit note(s)`);
 
         // Fetch customer emails in parallel
         const formattedData = await Promise.all(
@@ -331,7 +331,7 @@ function DebitNote() {
         });
 
         if (response.data.results) {
-          console.log("Email Results:", response.data.results);
+          // console.log("Email Results:", response.data.results);
         }
         if (response.data.errors && response.data.errors.length > 0) {
           console.error("Email Errors:", response.data.errors);

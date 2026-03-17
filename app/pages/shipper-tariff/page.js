@@ -151,7 +151,7 @@ const ShipperTariff = () => {
       return;
     }
 
-    console.log("🔍 Fetching zones for sector:", sector);
+    // console.log("🔍 Fetching zones for sector:", sector);
 
     try {
       // Send the sector as-is to the backend
@@ -160,14 +160,14 @@ const ShipperTariff = () => {
         `${server}/shipper-tariff/get-zones?sector=${encodeURIComponent(sector)}`
       );
 
-      console.log("✅ Zones response:", response.data);
+      // console.log("✅ Zones response:", response.data);
 
       // Transform the response data to match your UI needs
       const services = response.data?.services || [];
       const zoneMatrices = response.data?.zoneMatrix || [];
 
-      console.log("📋 Services found:", services);
-      console.log("📋 Zone Matrices found:", zoneMatrices);
+      // console.log("📋 Services found:", services);
+      // console.log("📋 Zone Matrices found:", zoneMatrices);
 
       setServiceOptions(services);
       setzoneMatrixOptions(zoneMatrices);
@@ -219,7 +219,7 @@ const ShipperTariff = () => {
       const response = await axios.get(
         `${server}/entity-manager?entityType=Network`
       );
-      console.log("Network response:", response.data);
+      // console.log("Network response:", response.data);
       setNetworkOptions(response.data || []);
     } catch (error) {
       console.error("Error fetching network data:", error);
@@ -344,12 +344,12 @@ const ShipperTariff = () => {
       const updatedRows = [...rowData];
       updatedRows[existsIndex] = { ...updatedRows[existsIndex], ...newRow };
       setRowData(updatedRows);
-      console.log("🔄 Modified existing tariff:", newRow);
+      // console.log("🔄 Modified existing tariff:", newRow);
       showNotification("success", "Tariff updated in table");
     } else {
       // ✅ Insert new row
       setRowData((prev) => [...prev, newRow]);
-      console.log("➕ Added new tariff:", newRow);
+      // console.log("➕ Added new tariff:", newRow);
       showNotification("success", "Tariff added to table");
     }
   };
@@ -361,10 +361,10 @@ const ShipperTariff = () => {
       return;
     }
 
-    console.log("Submitting data to server:", rowData);
+    // console.log("Submitting data to server:", rowData);
     try {
       const response = await axios.post(`${server}/shipper-tariff`, rowData);
-      console.log("Saved to database:", response.data);
+      // console.log("Saved to database:", response.data);
 
       // Reset form and clear data
       setRowData([]);
@@ -372,7 +372,7 @@ const ShipperTariff = () => {
       setzoneMatrixOptions([]);
       setSelectedRateTariff("");
       reset(); // Clear React Hook Form state
-      console.log("Data saved successfully!");
+      // console.log("Data saved successfully!");
       showNotification("success", "shipper tariff data added successfully!");
     } catch (error) {
       console.error("Error saving data:", error);
@@ -466,7 +466,7 @@ const ShipperTariff = () => {
   const handleDelete = (index) => {
     const newData = rowData.filter((_, i) => i !== index);
     // setRowData(newData);
-    console.log(newData);
+    // console.log(newData);
   };
 
   const handleEdit = (index) => {
@@ -500,7 +500,7 @@ const ShipperTariff = () => {
     const newData = [...rowData];
     newData.splice(index, 1);
     // setRowData(newData);
-    console.log(newData);
+    // console.log(newData);
   };
 
   //handle refresh btn

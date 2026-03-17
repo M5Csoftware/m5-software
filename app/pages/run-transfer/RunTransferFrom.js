@@ -38,7 +38,7 @@ const RunTransferForm = ({ setCurrentView }) => {
       const filteredData = response.data;
 
       if (filteredData.length === 0) {
-        console.log("No data found for the entered Run Number");
+        // console.log("No data found for the entered Run Number");
         setRunData([]);
         return;
       }
@@ -83,7 +83,7 @@ const RunTransferForm = ({ setCurrentView }) => {
       }));
 
       setRunData(transformedData);
-      console.log(transformedData);
+      // console.log(transformedData);
     } catch (error) {
       console.error("Error fetching data:", error);
       showNotification("error", "Error fetching data. Please try again.");
@@ -110,12 +110,12 @@ const RunTransferForm = ({ setCurrentView }) => {
         airwayBill: runData,
         // optional: runEntry: {...}
       };
-      console.log(payload);
+      // console.log(payload);
 
       const response = await axios.post(`${server}/run-transfer`, payload); // correct path
       setCurrentView("Run Report");
-      console.log("Run transfer successful!");
-      console.log("Transfer response:", response.data);
+      // console.log("Run transfer successful!");
+      // console.log("Transfer response:", response.data);
       setRunData([]); // Clear after transfer if needed
     } catch (error) {
       console.error("Transfer failed:", error);

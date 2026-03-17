@@ -130,7 +130,7 @@ const CreditLimit = ({
   // Initialize accountCode from customerData if available
   useEffect(() => {
     if (customerData?.accountCode) {
-      console.log("=== Setting initial accountCode from customerData:", customerData.accountCode);
+      // console.log("=== Setting initial accountCode from customerData:", customerData.accountCode);
       setValue("accountCode", customerData.accountCode);
     }
   }, [customerData?.accountCode, setValue]);
@@ -142,22 +142,22 @@ const CreditLimit = ({
       const accountCode = watchedAccountCode || customerData?.accountCode;
       
       if (!accountCode) {
-        console.log("=== No accountCode available, skipping payment entry fetch");
+        // console.log("=== No accountCode available, skipping payment entry fetch");
         return;
       }
 
       try {
         console.log("=== Fetching Customer Summary for accountCode:", accountCode);
-        console.log("Server URL:", server);
-        console.log("Full URL:", `${server}/payment-entry?accountCode=${accountCode}`);
+        // console.log("Server URL:", server);
+        // console.log("Full URL:", `${server}/payment-entry?accountCode=${accountCode}`);
         
         const response = await axios.get(
           `${server}/payment-entry?accountCode=${accountCode}`
         );
 
-        console.log("=== Payment Entry API Response:", response.data);
+        // console.log("=== Payment Entry API Response:", response.data);
         const summary = response.data.summary || {};
-        console.log("Customer Summary extracted:", summary);
+        // console.log("Customer Summary extracted:", summary);
 
         // Update totals state with raw numbers
         setTotals({
@@ -176,13 +176,13 @@ const CreditLimit = ({
         
         const calculatedOutstanding = (totalSales + totalDebit) - (totalReceipt + totalCredit);
         
-        console.log("=== Outstanding Calculation ===");
-        console.log("Total Sales:", totalSales);
-        console.log("Total Debit:", totalDebit);
-        console.log("Total Receipt:", totalReceipt);
-        console.log("Total Credit:", totalCredit);
-        console.log("Formula: (Sales + Debit) - (Receipt + Credit)");
-        console.log(`(${totalSales} + ${totalDebit}) - (${totalReceipt} + ${totalCredit}) = ${calculatedOutstanding}`);
+        // console.log("=== Outstanding Calculation ===");
+        // console.log("Total Sales:", totalSales);
+        // console.log("Total Debit:", totalDebit);
+        // console.log("Total Receipt:", totalReceipt);
+        // console.log("Total Credit:", totalCredit);
+        // console.log("Formula: (Sales + Debit) - (Receipt + Credit)");
+        // console.log(`(${totalSales} + ${totalDebit}) - (${totalReceipt} + ${totalCredit}) = ${calculatedOutstanding}`);
         
         setValue("outstanding", calculatedOutstanding.toFixed(2));
       } catch (error) {
@@ -210,11 +210,11 @@ const CreditLimit = ({
     const fetchRateSheets = async () => {
       try {
         console.log("=== Fetching Rate Sheets ===");
-        console.log("Server URL:", server);
-        console.log("Full URL:", `${server}/rate-sheet`);
+        // console.log("Server URL:", server);
+        // console.log("Full URL:", `${server}/rate-sheet`);
         
         const response = await axios.get(`${server}/rate-sheet`);
-        console.log("Rate sheets fetched:", response.data);
+        // console.log("Rate sheets fetched:", response.data);
 
         // Extract unique services from all rate sheets
         const services = [
@@ -222,7 +222,7 @@ const CreditLimit = ({
             response.data.map((sheet) => sheet.service).filter(Boolean)
           ),
         ];
-        console.log("Unique services:", services);
+        // console.log("Unique services:", services);
 
         setUniqueServices(services);
       } catch (error) {
@@ -240,7 +240,7 @@ const CreditLimit = ({
     if (creditLimit && outstanding) {
       const leftOver = parseFloat(creditLimit) - parseFloat(outstanding);
       setValue("leftOverBalance", leftOver.toFixed(2));
-      console.log("=== Left Over Balance calculated:", leftOver.toFixed(2));
+      // console.log("=== Left Over Balance calculated:", leftOver.toFixed(2));
     }
   }, [creditLimit, outstanding, setValue]);
 
@@ -260,7 +260,7 @@ const CreditLimit = ({
       divisible: divisible,
     };
 
-    console.log("Adding row:", newRow);
+    // console.log("Adding row:", newRow);
     setRowData((prevRowData) => [...prevRowData, newRow]);
 
     // Clear the input fields
@@ -277,7 +277,7 @@ const CreditLimit = ({
 
   const handlePasswordSuccess = () => {
     setCreditLimitUnlocked(true);
-    console.log("Credit limit unlocked");
+    // console.log("Credit limit unlocked");
   };
 
   useEffect(() => {

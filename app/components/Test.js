@@ -9,14 +9,14 @@ function Test() {
     const callApi = async () => {
         try {
             const response = await axios.get('/api/sample');
-            console.log(response.data.message); // Logs: "Hello from the App Router!"
+            // console.log(response.data.message); // Logs: "Hello from the App Router!"
         } catch (error) {
             console.error('Error calling the API:', error);
         }
     };
 
     const onSubmit = (data) => {
-        console.log(data); // Form values will include dropdown selections
+        // console.log(data); // Form values will include dropdown selections
         callApi()
     };
 

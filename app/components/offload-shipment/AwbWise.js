@@ -46,7 +46,7 @@ function AwbWise() {
     const awbNo = formValues.awbNo;
     const offloadReason = formValues.offloadReason;
 
-    console.log("Form Values:", { awbNo, offloadReason });
+    // console.log("Form Values:", { awbNo, offloadReason });
 
     if (!awbNo || !offloadReason) {
       showNotification("error","Please enter AWB Number and Offload Reason");
@@ -70,11 +70,11 @@ function AwbWise() {
       const url = `${server}/offload-shipment/awb-wise?awbNo=${encodeURIComponent(
         awbNo
       )}`;
-      console.log("Calling API:", url);
+      // console.log("Calling API:", url);
 
       const response = await axios.get(url);
 
-      console.log("API Response:", response.data);
+      // console.log("API Response:", response.data);
 
       if (response.data.success) {
         const newRow = {
@@ -85,11 +85,11 @@ function AwbWise() {
           email: response.data.data.email,
         };
 
-        console.log("New Row to Add:", newRow);
+        // console.log("New Row to Add:", newRow);
 
         setRowData((prev) => {
           const updated = [...prev, newRow];
-          console.log("Updated Row Data:", updated);
+          // console.log("Updated Row Data:", updated);
           return updated;
         });
 
@@ -142,7 +142,7 @@ function AwbWise() {
       if (withEvents) {
         try {
           const updateEventUrl = `${server}/offload-shipment/awb-wise/update-event`;
-          console.log("Updating events at:", updateEventUrl);
+          // console.log("Updating events at:", updateEventUrl);
 
           const eventResponse = await axios.post(updateEventUrl, {
             shipments: rowData,
@@ -151,7 +151,7 @@ function AwbWise() {
             updateInEvents: withEvents,
           });
 
-          console.log("Event Update Response:", eventResponse.data);
+          // console.log("Event Update Response:", eventResponse.data);
 
           if (eventResponse.data.success) {
             const { successful, failed, total } = eventResponse.data.results;
@@ -183,7 +183,7 @@ function AwbWise() {
       if (withEmail) {
         try {
           const emailUrl = `${server}/offload-shipment/awb-wise/send-alert`;
-          console.log("Sending email alerts to:", emailUrl);
+          // console.log("Sending email alerts to:", emailUrl);
 
           const emailResponse = await axios.post(emailUrl, {
             shipments: rowData,
@@ -192,7 +192,7 @@ function AwbWise() {
             updateInEvents: false, // Already handled above
           });
 
-          console.log("Email Alert Response:", emailResponse.data);
+          // console.log("Email Alert Response:", emailResponse.data);
 
           if (emailResponse.data.success && emailResponse.data.emailResults) {
             const { successful, failed, total } =
@@ -286,7 +286,7 @@ function AwbWise() {
 
   // Debug: Log rowData changes
   React.useEffect(() => {
-    console.log("Row Data Changed:", rowData);
+    // console.log("Row Data Changed:", rowData);
   }, [rowData]);
 
   return (

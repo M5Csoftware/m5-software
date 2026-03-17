@@ -235,7 +235,7 @@ export default function CustomerTable({
       managedBy: user.managedBy,
     };
 
-    console.log("Editing user with data:", userData);
+    // console.log("Editing user with data:", userData);
 
     if (onEditUser) {
       onEditUser(userData);
@@ -255,7 +255,7 @@ export default function CustomerTable({
       );
       const customerData = response.data;
 
-      console.log("Customer Data for Export:", customerData);
+      // console.log("Customer Data for Export:", customerData);
 
       if (!customerData) {
         showNotification("error", "Customer data not found");
@@ -365,7 +365,7 @@ export default function CustomerTable({
     try {
       const accountCode = user.accountCode || user._id;
 
-      console.log("Attempting to download Form-16 for account:", accountCode);
+      // console.log("Attempting to download Form-16 for account:", accountCode);
 
       // Get the Form-16 data from API
       const response = await axios.get(
@@ -379,11 +379,11 @@ export default function CustomerTable({
       ) {
         const form16Data = response.data.data;
 
-        console.log("Form-16 data received:", {
-          fileName: form16Data.fileName,
-          fileUrl: form16Data.fileUrl,
-          fileSize: form16Data.fileSize,
-        });
+        // console.log("Form-16 data received:", {
+//           fileName: form16Data.fileName,
+//           fileUrl: form16Data.fileUrl,
+//           fileSize: form16Data.fileSize,
+//         });
 
         // Fetch the file as blob with proper headers
         const fileResponse = await fetch(form16Data.fileUrl, {
@@ -406,10 +406,10 @@ export default function CustomerTable({
           throw new Error("Downloaded file is empty");
         }
 
-        console.log("Form-16 file downloaded as blob:", {
-          size: blob.size,
-          type: blob.type,
-        });
+        // console.log("Form-16 file downloaded as blob:", {
+//           size: blob.size,
+//           type: blob.type,
+//         });
 
         // Create blob URL
         const blobUrl = window.URL.createObjectURL(blob);
@@ -431,7 +431,7 @@ export default function CustomerTable({
 
         showNotification("success", "Form-16 downloaded successfully");
       } else {
-        console.log("No Form-16 available for this customer");
+        // console.log("No Form-16 available for this customer");
         showNotification("info", "No Form-16 available for this customer");
       }
 
@@ -485,12 +485,12 @@ export default function CustomerTable({
       // Determine new status: if currently active -> deactivate (true), if deactivated -> activate (false)
       const newStatus = !isCurrentlyDeactivated;
 
-      console.log(
-        "Toggle Status - Current:",
-        user.deactivateStatus,
-        "New:",
-        newStatus
-      );
+      // console.log(
+//         "Toggle Status - Current:",
+//         user.deactivateStatus,
+//         "New:",
+//         newStatus
+//       );
 
       // Validate: if deactivating (newStatus === true), reason is required
       if (
@@ -518,7 +518,7 @@ export default function CustomerTable({
         updateData
       );
 
-      console.log("API Response:", response.data);
+      // console.log("API Response:", response.data);
 
       const statusMessage = newStatus ? "deactivated" : "activated";
       showNotification(

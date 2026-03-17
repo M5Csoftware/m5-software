@@ -364,7 +364,7 @@ const CustomerAccount = ({ onBack, prefilledUserData, onSaveSuccess }) => {
         return;
       }
 
-      console.log(`Found ${parsedData.length} rows in file`);
+      // console.log(`Found ${parsedData.length} rows in file`);
 
       // Process each row and save to database
       let successCount = 0;
@@ -385,14 +385,14 @@ const CustomerAccount = ({ onBack, prefilledUserData, onSaveSuccess }) => {
             continue;
           }
 
-          console.log(`Processing row ${i + 1}:`, payload.accountCode);
+          // console.log(`Processing row ${i + 1}:`, payload.accountCode);
 
           // Save to database
           const response = await axios.post(`${server}/customer-account`, payload);
 
           if (response.status === 201) {
             successCount++;
-            console.log(`✓ Row ${i + 1} saved successfully`);
+            // console.log(`✓ Row ${i + 1} saved successfully`);
           }
         } catch (error) {
           errorCount++;

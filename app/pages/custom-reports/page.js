@@ -36,7 +36,7 @@ const CustomReports = () => {
     });
 
     const data = await res.json();
-    console.log("Result:", data);
+    // console.log("Result:", data);
   };
 
   return (

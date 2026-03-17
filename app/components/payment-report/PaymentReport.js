@@ -110,7 +110,7 @@ function PaymentReport({
         // Update the table data
         setRowData(res.data);
         setAllData(res.data);
-        console.log("Auto-fetched payment entries:", res.data);
+        // console.log("Auto-fetched payment entries:", res.data);
       } catch (err) {
         console.error("Failed to fetch payment data", err);
         setRowData([]);

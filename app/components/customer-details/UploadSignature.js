@@ -70,9 +70,9 @@ const UploadSignature = ({
     setUploading((prev) => ({ ...prev, [imageType]: true }));
 
     try {
-      console.log(`=== Uploading ${imageType} ===`);
-      console.log("Account Code:", accountCode);
-      console.log("File:", file.name);
+      // console.log(`=== Uploading ${imageType} ===`);
+      // console.log("Account Code:", accountCode);
+      // console.log("File:", file.name);
 
       const formData = new FormData();
       formData.append("file", file);
@@ -107,7 +107,7 @@ const UploadSignature = ({
             imageType === "signature" ? "Signature" : "Stamp"
           } uploaded successfully`
         );
-        console.log(`${imageType} uploaded:`, imageUrl);
+        // console.log(`${imageType} uploaded:`, imageUrl);
       } else {
         showNotification(
           "error",

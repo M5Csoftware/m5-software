@@ -56,7 +56,7 @@ export default function BranchManifestReport() {
     // Force re-render by updating refresh key
     setRefreshKey(prev => prev + 1);
     
-    console.log("Page refreshed");
+    // console.log("Page refreshed");
   };
 
   return (

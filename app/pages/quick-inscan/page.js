@@ -87,7 +87,7 @@ function QuickIncan() {
   // Handle New button click - log CD Number
   const handleNewClick = () => {
     if (watchCdNumber) {
-      console.log("CD Number:", watchCdNumber);
+      // console.log("CD Number:", watchCdNumber);
       setCdNumber(watchCdNumber);
       showNotification("success", "CD Number locked successfully");
     } else {
@@ -270,10 +270,10 @@ function QuickIncan() {
 
   // Send email to all clients and save to EventActivity + AWB Log
   const handleSendMail = async () => {
-    console.log("=== Send Mail Button Clicked ===");
-    console.log("CD Number:", cdNumber);
-    console.log("Row Data:", rowData);
-    console.log("All Clients Data:", allClientsData);
+    // console.log("=== Send Mail Button Clicked ===");
+    // console.log("CD Number:", cdNumber);
+    // console.log("Row Data:", rowData);
+    // console.log("All Clients Data:", allClientsData);
 
     if (!cdNumber) {
       showNotification("error", "Please enter CD Number and click New button");
@@ -308,7 +308,7 @@ function QuickIncan() {
         clientGroups[row.clientCode].rows.push(row);
       });
 
-      console.log("Client Groups:", clientGroups);
+      // console.log("Client Groups:", clientGroups);
 
       const emailData = {
         cdNumber: cdNumber,
@@ -319,15 +319,15 @@ function QuickIncan() {
         totalRows: rowData.length,
       };
 
-      console.log("Sending email data:", emailData);
-      console.log("API URL:", `${server}/quick-inscan/send-email`);
+      // console.log("Sending email data:", emailData);
+      // console.log("API URL:", `${server}/quick-inscan/send-email`);
 
       const response = await axios.post(
         `${server}/quick-inscan/send-email`,
         emailData
       );
 
-      console.log("Email response:", response.data);
+      // console.log("Email response:", response.data);
 
       if (response.data.success) {
         showNotification(
@@ -336,7 +336,7 @@ function QuickIncan() {
         );
 
         // ✅ PUSH AWB LOGS FOR EACH ROW
-        console.log("📝 Starting AWB log creation for all entries...");
+        // console.log("📝 Starting AWB log creation for all entries...");
 
         for (const row of rowData) {
           if (row.awbNo) {
@@ -351,11 +351,11 @@ function QuickIncan() {
                 actionUser: user?.userId || "System",
               };
 
-              console.log("📝 Pushing AWB log for:", row.awbNo, awbLogPayload);
+              // console.log("📝 Pushing AWB log for:", row.awbNo, awbLogPayload);
 
               const awbLogResponse = await pushAWBLog(awbLogPayload);
 
-              console.log("✅ AWB log created for:", row.awbNo, awbLogResponse);
+              // console.log("✅ AWB log created for:", row.awbNo, awbLogResponse);
             } catch (awbLogError) {
               console.error(
                 "❌ Failed to create AWB log for:",
@@ -367,7 +367,7 @@ function QuickIncan() {
           }
         }
 
-        console.log("✅ All AWB logs processed");
+        // console.log("✅ All AWB logs processed");
 
         // Refresh form after successful submission
         handleRefresh();

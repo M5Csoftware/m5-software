@@ -107,7 +107,7 @@ export default function CustomerManagementTable({
             : undefined,
       });
 
-      console.log("Email sent successfully:", response.data);
+      // console.log("Email sent successfully:", response.data);
       showNotification(
         "success",
         `${
@@ -138,7 +138,7 @@ export default function CustomerManagementTable({
         `${server}/portal/auth/register?id=${id}`,
         { status }
       );
-      console.log("Status updated:", response.data);
+      // console.log("Status updated:", response.data);
 
       showNotification("success", `User status updated to ${status}`);
 
@@ -174,9 +174,9 @@ export default function CustomerManagementTable({
   };
 
   const handleAssignSuccess = async (assignedCode, userData) => {
-    console.log("=== handleAssignSuccess called ===");
-    console.log("Assigned Code:", assignedCode);
-    console.log("User Data:", userData);
+    // console.log("=== handleAssignSuccess called ===");
+    // console.log("Assigned Code:", assignedCode);
+    // console.log("User Data:", userData);
     
     setAssignModal({ isOpen: false, user: null });
     
@@ -210,7 +210,7 @@ export default function CustomerManagementTable({
         turnover: userData.turnover || "",
       };
       
-      console.log("Opening customer form with mapped data:", mappedUserData);
+      // console.log("Opening customer form with mapped data:", mappedUserData);
       
       if (onEditCustomer) {
         onEditCustomer(mappedUserData);

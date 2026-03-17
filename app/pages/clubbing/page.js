@@ -128,7 +128,7 @@ const Clubbing = () => {
         );
 
         const data = response.data;
-        console.log(`Validate AWB response:`, data);
+        // console.log(`Validate AWB response:`, data);
 
         return {
           isValid: data.isValid,
@@ -159,7 +159,7 @@ const Clubbing = () => {
       }
 
       const trimmedAwb = awbNo.trim();
-      console.log(`Starting global AWB validation for: ${trimmedAwb}`);
+      // console.log(`Starting global AWB validation for: ${trimmedAwb}`);
 
       try {
         setIsValidatingAwb(true);
@@ -173,7 +173,7 @@ const Clubbing = () => {
         );
 
         if (localExists) {
-          console.log(`AWB ${trimmedAwb} found in current club rowData`);
+          // console.log(`AWB ${trimmedAwb} found in current club rowData`);
           setIsValidatingAwb(false);
           return {
             isValid: false,
@@ -194,7 +194,7 @@ const Clubbing = () => {
 
         // Check if locked
         if (validationCheck.isLocked) {
-          console.log(`AWB ${trimmedAwb} is locked (completeDataLock=true)`);
+          // console.log(`AWB ${trimmedAwb} is locked (completeDataLock=true)`);
           setIsValidatingAwb(false);
           return {
             isValid: false,
@@ -204,9 +204,9 @@ const Clubbing = () => {
 
         // Check if already clubbed
         if (validationCheck.isCubbed) {
-          console.log(
-            `AWB ${trimmedAwb} is already clubbed in Club ${validationCheck.clubNo}`
-          );
+          // console.log(
+//             `AWB ${trimmedAwb} is already clubbed in Club ${validationCheck.clubNo}`
+//           );
           setIsValidatingAwb(false);
           return {
             isValid: false,
@@ -220,7 +220,7 @@ const Clubbing = () => {
           !validationCheck.isCubbed &&
           !validationCheck.isLocked
         ) {
-          console.log(`AWB ${trimmedAwb} not found in shipments`);
+          // console.log(`AWB ${trimmedAwb} not found in shipments`);
           setIsValidatingAwb(false);
           return {
             isValid: false,
@@ -233,7 +233,7 @@ const Clubbing = () => {
         // Step 3: Check in all bagging data
         let allBagging = [];
         try {
-          console.log(`Fetching all bagging data from: ${server}/bagging`);
+          // console.log(`Fetching all bagging data from: ${server}/bagging`);
           const baggingResponse = await axios.get(`${server}/bagging`);
 
           if (baggingResponse.data) {
@@ -242,7 +242,7 @@ const Clubbing = () => {
               : [baggingResponse.data];
           }
 
-          console.log(`Found ${allBagging.length} bagging entries to check`);
+          // console.log(`Found ${allBagging.length} bagging entries to check`);
         } catch (baggingError) {
           console.log("No bagging data found or error:", baggingError.message);
         }
@@ -256,9 +256,9 @@ const Clubbing = () => {
             );
 
             if (awbExists) {
-              console.log(
-                `AWB ${trimmedAwb} found in Run ${bag.runNo} (Bagging)`
-              );
+              // console.log(
+//                 `AWB ${trimmedAwb} found in Run ${bag.runNo} (Bagging)`
+//               );
               setIsValidatingAwb(false);
               return {
                 isValid: false,
@@ -268,7 +268,7 @@ const Clubbing = () => {
           }
         }
 
-        console.log(`AWB ${trimmedAwb} is available for use`);
+        // console.log(`AWB ${trimmedAwb} is available for use`);
         setIsValidatingAwb(false);
         return { isValid: true, message: "AWB is available" };
       } catch (error) {
@@ -300,11 +300,11 @@ const Clubbing = () => {
       setIsValidatingRunNo(true);
 
       try {
-        console.log(`Validating run no: ${runNumber}`);
+        // console.log(`Validating run no: ${runNumber}`);
         const response = await axios.get(
           `${server}/run-entry?runNo=${runNumber.trim().toUpperCase()}`
         );
-        console.log("Run No validation response:", response);
+        // console.log("Run No validation response:", response);
 
         // Check if response has data and is successful
         if (response.status === 200 && response.data) {
@@ -792,7 +792,7 @@ const Clubbing = () => {
     }
 
     const validateAwbAsync = async () => {
-      console.log(`Real-time validating AWB: ${awbNo.trim()}`);
+      // console.log(`Real-time validating AWB: ${awbNo.trim()}`);
       const validation = await validateAwbGlobally(awbNo.trim());
 
       if (!validation.isValid) {
