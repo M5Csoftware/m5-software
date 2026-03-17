@@ -16,9 +16,14 @@ function MonthSale() {
   const { register, setValue, getValues } = useForm();
   const { server } = useContext(GlobalContext);
   const [rowData, setRowData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [fullscreen, setFullScreen] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
 
   const columns = useMemo(
     () => [
@@ -167,7 +172,7 @@ function MonthSale() {
     }
   };
 
-  const handleShow = async () => {
+  const handleShow = async (page = 1) => {
     const formData = getValues();
     const { salePerson, company, year } = formData;
 
@@ -183,24 +188,38 @@ function MonthSale() {
 
     setLoading(true);
     setError("");
+    setCurrentFilters(formData);
 
     try {
-      let url = `${server}/month-sale?salePerson=${encodeURIComponent(
-        salePerson
-      )}&year=${encodeURIComponent(year)}`;
+      const queryParams = new URLSearchParams({
+        salePerson: salePerson,
+        year: year,
+        page: page,
+        limit: pageLimit,
+      });
 
       if (company && company.trim() !== "") {
-        url += `&company=${encodeURIComponent(company.trim())}`;
+        queryParams.append("company", company.trim());
       }
 
-      const response = await axios.get(url);
+      const response = await axios.get(`${server}/month-sale?${queryParams.toString()}`);
 
       if (response.data.success) {
-        setRowData(response.data.data || []);
+        const records = response.data.data || [];
+        const pagination = response.data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalRecords: records.length,
+        };
+
+        setRowData(records);
+        setCurrentPage(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+        setTotalRecords(pagination.totalRecords);
+
         if (
-          response.data.data.length === 0 ||
-          (response.data.data.length === 1 &&
-            response.data.data[0].accountCode === "TOTAL")
+          records.length === 0 ||
+          (records.length === 1 && records[0].accountCode === "TOTAL")
         ) {
           setError("No customer data found for the specified criteria");
         }
@@ -220,12 +239,104 @@ function MonthSale() {
     }
   };
 
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    handleShow(newPage);
+  };
+
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    if (currentFilters) {
+      setCurrentPage(1);
+      handleShow(1);
+    }
+  };
+
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm bg-white"
+              disabled={loading}
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const handleReset = () => {
     setValue("salePerson", "");
     setValue("company", "");
     setValue("year", "");
     setRowData([]);
     setError("");
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
   };
 
   return (
@@ -269,7 +380,7 @@ function MonthSale() {
             <div>
               <OutlinedButtonRed
                 label={loading ? `Loading...` : `Show`}
-                onClick={handleShow}
+                onClick={() => handleShow(1)}
                 disabled={loading}
                 type="button"
               />
@@ -298,8 +409,9 @@ function MonthSale() {
           columns={columns}
           rowData={rowData}
           loading={loading}
-          className={`h-[55vh]`}
+          className={`h-[55vh] border-b-0 rounded-b-none`}
         />
+        <PaginationControls />
         {fullscreen && (
           <div className="fixed inset-0 z-50 bg-white p-10 flex flex-col">
             <div className="flex justify-between items-center mb-4">
@@ -315,8 +427,9 @@ function MonthSale() {
                 columns={columns}
                 rowData={rowData}
                 loading={loading}
-                className={`w-full h-[80vh]`}
+                className={`w-full h-[75vh] border-b-0 rounded-b-none`}
               />
+              <PaginationControls />
             </div>
           </div>
         )}
