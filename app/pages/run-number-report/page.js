@@ -10,7 +10,7 @@ import { useForm } from "react-hook-form";
 import axios from "axios";
 
 const RunNumberReport = () => {
-  const { register, setValue, watch } = useForm();
+  const { register, setValue, watch, getValues } = useForm();
   const { server } = useContext(GlobalContext);
   const [rowData, setRowData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -20,6 +20,13 @@ const RunNumberReport = () => {
     visible: false,
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   const dmyToYmd = (d) => {
     if (!d) return "";
     const [dd, mm, yyyy] = d.split("/");
@@ -27,6 +34,7 @@ const RunNumberReport = () => {
   };
 
   const columns = [
+    { key: "srNo", label: "Sr No." }, // Added Sr No column
     { key: "runNo", label: "Run No" },
     { key: "sector", label: "Sector" },
     { key: "date", label: "Date" },
@@ -47,10 +55,11 @@ const RunNumberReport = () => {
     }, 3000);
   };
 
-  const handleFetchData = async () => {
-    const fromDate = watch("from");
-    const toDate = watch("to");
-    const runNo = watch("runNo");
+  // Function to fetch data with pagination
+  const fetchDataWithPagination = async (filters, page = 1) => {
+    const fromDate = filters.from;
+    const toDate = filters.to;
+    const runNo = filters.runNo;
 
     // Validation - at least one filter must be provided
     if (!fromDate && !toDate && (!runNo || runNo.trim() === "")) {
@@ -67,7 +76,7 @@ const RunNumberReport = () => {
       return;
     }
 
-    if (fromDate && toDate && new Date(fromDate) > new Date(toDate)) {
+    if (fromDate && toDate && new Date(dmyToYmd(fromDate)) > new Date(dmyToYmd(toDate))) {
       showNotification("error", "From date cannot be after To date");
       return;
     }
@@ -89,15 +98,29 @@ const RunNumberReport = () => {
         params.append("runNo", runNo.trim().toUpperCase());
       }
 
+      // Add pagination parameters
+      params.append("page", page.toString());
+      params.append("limit", pageLimit.toString());
+
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
+
       const response = await axios.get(
         `${server}/run-number-report?${params.toString()}`
       );
 
       if (response.data.success) {
         setRowData(response.data.data);
+        
+        // Set pagination info
+        if (response.data.pagination) {
+          setCurrentPage(response.data.pagination.currentPage);
+          setTotalPages(response.data.pagination.totalPages);
+          setTotalRecords(response.data.pagination.totalRecords);
+        }
+
         showNotification(
           "success",
-          `Successfully fetched ${response.data.count} records`
+          `Successfully fetched ${response.data.data.length} records (Page ${response.data.pagination?.currentPage || page} of ${response.data.pagination?.totalPages || 1})`
         );
       } else {
         showNotification(
@@ -105,6 +128,8 @@ const RunNumberReport = () => {
           response.data.message || "Failed to fetch data"
         );
         setRowData([]);
+        setTotalRecords(0);
+        setTotalPages(1);
       }
     } catch (error) {
       console.error("Error fetching run number report:", error);
@@ -113,9 +138,51 @@ const RunNumberReport = () => {
         error.response?.data?.message || "Failed to fetch report data"
       );
       setRowData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchDataWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchDataWithPagination(currentFilters, 1);
+    }
+  };
+
+  const handleFetchData = async () => {
+    const filters = {
+      from: watch("from"),
+      to: watch("to"),
+      runNo: watch("runNo"),
+    };
+
+    // Store filters for pagination
+    setCurrentFilters(filters);
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page
+    await fetchDataWithPagination(filters, 1);
   };
 
   const handleDownloadCSV = () => {
@@ -163,6 +230,76 @@ const RunNumberReport = () => {
       console.error("Error downloading CSV:", error);
       showNotification("error", "Failed to download CSV");
     }
+  };
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -222,6 +359,18 @@ const RunNumberReport = () => {
           rowData={rowData}
           className="h-[450px]"
         />
+
+        {/* Pagination Controls */}
+        <PaginationControls />
+
+        {/* Total Records Display */}
+        <div className="flex justify-between mt-2">
+          <div className="text-sm text-gray-600">
+            {totalRecords > 0 && (
+              <span>Total Records: {totalRecords}</span>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="flex justify-end"></div>

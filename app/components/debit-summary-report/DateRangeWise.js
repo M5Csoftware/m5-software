@@ -30,6 +30,13 @@ const DateRangeWise = ({
     visible: false,
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   const parseDateDDMMYYYY = (str) => {
     if (!str) return null;
     const [d, m, y] = str.split("/");
@@ -129,19 +136,19 @@ const DateRangeWise = ({
     }
   };
 
-  // Fetch debit notes based on filters
-  const handleShow = async () => {
-    console.log("Form data:", formData);
+  // Function to fetch debit notes with pagination
+  const fetchDebitNotesWithPagination = async (filters, page = 1) => {
+    console.log("Form data:", filters);
 
-    if (!formData.startDate || !formData.endDate) {
+    if (!filters.startDate || !filters.endDate) {
       showNotification("error", "Please select both start and end dates");
       return;
     }
 
     setLoading(true);
     try {
-      const fromParsed = parseDateDDMMYYYY(formData.startDate);
-      const toParsed = parseDateDDMMYYYY(formData.endDate);
+      const fromParsed = parseDateDDMMYYYY(filters.startDate);
+      const toParsed = parseDateDDMMYYYY(filters.endDate);
 
       if (
         !fromParsed ||
@@ -160,19 +167,22 @@ const DateRangeWise = ({
       const payload = {
         startDate: fromParsed.toISOString(),
         endDate: toParsed.toISOString(),
+        page: page,
+        limit: pageLimit,
       };
 
       // Add customer/account code if provided
-      if (formData.customer) {
-        payload.accountCode = formData.customer;
+      if (filters.customer) {
+        payload.accountCode = filters.customer;
       }
 
       // Only add branch to payload if it's not "All" or empty
-      if (formData.branch && formData.branch !== "All") {
-        payload.branch = formData.branch;
+      if (filters.branch && filters.branch !== "All") {
+        payload.branch = filters.branch;
       }
 
       console.log("Sending payload:", payload);
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       const response = await axios.post(
         `${server}/debit-summary-report`,
@@ -180,11 +190,18 @@ const DateRangeWise = ({
       );
 
       if (response.data.success) {
-        // ✅ No need to format dates anymore - backend already returns formatted dates
         setRowData(response.data.data);
+        
+        // Set pagination info
+        if (response.data.pagination) {
+          setCurrentPage(response.data.pagination.currentPage);
+          setTotalPages(response.data.pagination.totalPages);
+          setTotalRecords(response.data.pagination.totalRecords);
+        }
+
         showNotification(
           "success",
-          `Found ${response.data.summary.totalRecords} records`
+          `Found ${response.data.data.length} records (Page ${response.data.pagination?.currentPage || page} of ${response.data.pagination?.totalPages || 1})`
         );
       }
     } catch (error) {
@@ -194,9 +211,45 @@ const DateRangeWise = ({
         error.response?.data?.error || "Failed to fetch debit summary data"
       );
       setRowData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchDebitNotesWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchDebitNotesWithPagination(currentFilters, 1);
+    }
+  };
+
+  const handleShow = async () => {
+    // Store filters for pagination
+    setCurrentFilters(formData);
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page
+    await fetchDebitNotesWithPagination(formData, 1);
   };
 
   // Download Excel
@@ -275,6 +328,76 @@ const DateRangeWise = ({
       console.error("Error downloading Excel:", error);
       showNotification("error", "Failed to download Excel file");
     }
+  };
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -356,13 +479,27 @@ const DateRangeWise = ({
 
           {/* Table */}
           {!isFullscreen && (
-            <TableWithSorting
-              register={register}
-              setValue={setValue}
-              rowData={rowData}
-              columns={columns}
-              className="h-[45vh]"
-            />
+            <>
+              <TableWithSorting
+                register={register}
+                setValue={setValue}
+                rowData={rowData}
+                columns={columns}
+                className="h-[45vh]"
+              />
+              
+              {/* Pagination Controls */}
+              <PaginationControls />
+
+              {/* Total Records Display */}
+              <div className="flex justify-between mt-2">
+                <div className="text-sm text-gray-600">
+                  {totalRecords > 0 && (
+                    <span>Total Records: {totalRecords}</span>
+                  )}
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -388,6 +525,13 @@ const DateRangeWise = ({
               columns={columns}
               className="h-full w-full"
             />
+          </div>
+          <div className="flex justify-between mt-4">
+            <div className="text-sm text-gray-600">
+              {totalRecords > 0 && (
+                <span>Total Records: {totalRecords}</span>
+              )}
+            </div>
           </div>
         </div>
       )}

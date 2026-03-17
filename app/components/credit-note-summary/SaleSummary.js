@@ -16,14 +16,15 @@ import Heading from "@/app/components/Heading";
 import InputBox, { DateInputBox } from "@/app/components/InputBox";
 import { TableWithSorting } from "@/app/components/Table";
 import { GlobalContext } from "@/app/lib/GlobalContext";
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useMemo, useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import DownloadCsvExcel from "../DownloadCsvExcel";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import NotificationFlag from "@/app/components/Notificationflag";
 
 function SaleSummary() {
-  const { register, setValue, handleSubmit, watch } = useForm();
+  const { register, setValue, handleSubmit, watch, getValues } = useForm();
   const [rowData, setRowData] = useState([]);
   const [withBookingDate, setBookingDate] = useState(false);
   const [withUnbilled, setUnbilled] = useState(false);
@@ -39,22 +40,51 @@ function SaleSummary() {
     totalDebit: 0,
     totalCredit: 0,
   });
+  const [notification, setNotification] = useState({
+    type: "",
+    message: "",
+    visible: false,
+  });
 
-  const handleShow = async (values) => {
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message, visible: true });
+  };
+
+  // Function to fetch sale summary with pagination
+  const fetchSaleSummaryWithPagination = async (filters, page = 1) => {
     try {
       setLoading(true);
 
+      // Validate required dates
+      if (!filters.from || !filters.to) {
+        showNotification("error", "Please select both From and To dates");
+        setLoading(false);
+        return;
+      }
+
       // Prepare all filter parameters
       const params = {
-        from: toISODate(values.from),
-        to: toISODate(values.to),
-        ...(values.branch && { branch: values.branch }),
-        ...(values.state && { state: values.state }),
-        ...(values.salePerson && { salePerson: values.salePerson }),
-        ...(values.accountManager && { accountManager: values.accountManager }),
-        ...(values.customerCode && { customerCode: values.customerCode }),
+        from: toISODate(filters.from),
+        to: toISODate(filters.to),
+        ...(filters.branch && { branch: filters.branch }),
+        ...(filters.state && { state: filters.state }),
+        ...(filters.salePerson && { salePerson: filters.salePerson }),
+        ...(filters.accountManager && { accountManager: filters.accountManager }),
+        ...(filters.customerCode && { customerCode: filters.customerCode }),
         ...(withUnbilled && { withUnbilled: true }),
+        // Add pagination parameters
+        page: page,
+        limit: pageLimit,
       };
+
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       const res = await axios.get(
         `${server}/credit-note-awb-wise/sale-summary`,
@@ -66,30 +96,75 @@ function SaleSummary() {
       const rows = res.data.data || [];
       setRowData(rows);
 
-      // Calculate footer totals
-      const footer = rows.reduce(
-        (acc, r) => {
-          acc.grandTotal += r.GrandTotal || 0;
-          acc.totalOutstanding += r.TotalOutStanding || 0;
-          acc.totalDebit += r.TotalDebit || 0;
-          acc.totalCredit += r.TotalCredit || 0;
-          return acc;
-        },
-        {
-          grandTotal: 0,
-          totalOutstanding: 0,
-          totalDebit: 0,
-          totalCredit: 0,
-        }
-      );
+      // Set pagination info
+      if (res.data.pagination) {
+        setCurrentPage(res.data.pagination.currentPage);
+        setTotalPages(res.data.pagination.totalPages);
+        setTotalRecords(res.data.pagination.totalRecords);
+      }
 
-      setTotals(footer);
+      // Calculate footer totals from the response
+      if (res.data.totals) {
+        setTotals(res.data.totals);
+      }
+
+      if (rows.length === 0) {
+        showNotification("info", "No records found");
+      } else {
+        showNotification(
+          "success",
+          `Found ${rows.length} records (Page ${res.data.pagination?.currentPage || page} of ${res.data.pagination?.totalPages || 1})`
+        );
+      }
     } catch (err) {
       console.error(err);
+      showNotification("error", "Failed to fetch data");
       setRowData([]);
+      setTotals({
+        grandTotal: 0,
+        totalOutstanding: 0,
+        totalDebit: 0,
+        totalCredit: 0,
+      });
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchSaleSummaryWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchSaleSummaryWithPagination(currentFilters, 1);
+    }
+  };
+
+  const handleShow = async (values) => {
+    // Store filters for pagination
+    setCurrentFilters(values);
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page
+    await fetchSaleSummaryWithPagination(values, 1);
   };
 
   const toISODate = (value) => {
@@ -147,6 +222,14 @@ function SaleSummary() {
       totalDebit: 0,
       totalCredit: 0,
     });
+
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
+
+    showNotification("success", "Filters reset successfully");
   };
 
   const columns = useMemo(
@@ -191,14 +274,14 @@ function SaleSummary() {
 
   const handleDownloadExcel = async () => {
     if (!rowData || rowData.length === 0) {
-      alert("No data to export");
+      showNotification("error", "No data to export");
       return;
     }
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Sale Summary");
 
-    /* ===== HEADER (SaleDetails style) ===== */
+    /* ===== HEADER ===== */
     worksheet.columns = columns.map((col) => ({
       header: col.label,
       key: col.key,
@@ -288,11 +371,13 @@ function SaleSummary() {
       }),
       "credit-note-sale-summary.xlsx"
     );
+
+    showNotification("success", "Excel downloaded successfully");
   };
 
   const handleDownloadCSV = () => {
     if (!rowData || rowData.length === 0) {
-      alert("No data to export");
+      showNotification("error", "No data to export");
       return;
     }
 
@@ -309,7 +394,7 @@ function SaleSummary() {
         .join(",")
     );
 
-    // Totals row (same logic as Excel)
+    // Totals row
     const totalRow = columns
       .map((c) => {
         if (c.key === "CustomerName") return `"TOTAL"`;
@@ -337,10 +422,100 @@ function SaleSummary() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    showNotification("success", "CSV downloaded successfully");
+  };
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
     <form className="flex flex-col gap-3">
+      <NotificationFlag
+        type={notification.type}
+        message={notification.message}
+        visible={notification.visible}
+        setVisible={(v) => setNotification({ ...notification, visible: v })}
+      />
+      
+      <Heading
+        title="Sale Summary"
+        bulkUploadBtn="hidden"
+        codeListBtn="hidden"
+        onRefresh={handleReset}
+        fullscreenBtn={true}
+        onClickFullscreenBtn={() => {
+          // Fullscreen functionality can be added here
+        }}
+      />
+
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-3">
           {/* Row 1 - 4 columns */}
@@ -479,7 +654,7 @@ function SaleSummary() {
             <div className="flex gap-2">
               <OutlinedButtonRed
                 type="button"
-                label="Show"
+                label={loading ? "Loading..." : "Show"}
                 onClick={handleSubmit(handleShow)}
                 disabled={loading}
               />
@@ -493,6 +668,7 @@ function SaleSummary() {
           </div>
         </div>
       </div>
+      
       <div className="flex justify-between items-center w-full">
         <RedCheckbox
           register={register}
@@ -553,30 +729,41 @@ function SaleSummary() {
           className="border-b-0 rounded-b-none h-[35vh]"
           loading={loading}
         />
-        <div className="flex justify-end border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2 gap-16">
-          <div>
-            Total Debit :
-            <span className="text-red ml-1">
-              {totals.totalDebit.toFixed(2)}
-            </span>
+
+        {/* Pagination Controls */}
+        <PaginationControls />
+
+        <div className="flex justify-between items-center border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2">
+          <div className="text-sm text-gray-600">
+            {totalRecords > 0 && (
+              <span>Total Records: {totalRecords}</span>
+            )}
           </div>
-          <div>
-            Total Credit :
-            <span className="text-red ml-1">
-              {totals.totalCredit.toFixed(2)}
-            </span>
-          </div>
-          <div>
-            Outstanding :
-            <span className="text-red ml-1">
-              {totals.totalOutstanding.toFixed(2)}
-            </span>
-          </div>
-          <div>
-            Grand Total :
-            <span className="text-red ml-1">
-              {totals.grandTotal.toFixed(2)}
-            </span>
+          <div className="flex gap-16">
+            <div>
+              Total Debit :
+              <span className="text-red ml-1">
+                {totals.totalDebit.toFixed(2)}
+              </span>
+            </div>
+            <div>
+              Total Credit :
+              <span className="text-red ml-1">
+                {totals.totalCredit.toFixed(2)}
+              </span>
+            </div>
+            <div>
+              Outstanding :
+              <span className="text-red ml-1">
+                {totals.totalOutstanding.toFixed(2)}
+              </span>
+            </div>
+            <div>
+              Grand Total :
+              <span className="text-red ml-1">
+                {totals.grandTotal.toFixed(2)}
+              </span>
+            </div>
           </div>
         </div>
       </div>

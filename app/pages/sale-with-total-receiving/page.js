@@ -27,7 +27,7 @@ import { X } from "lucide-react";
 import NotificationFlag from "@/app/components/Notificationflag";
 
 function SaleWithTotalReceiving() {
-  const { register, setValue, watch, reset } = useForm({
+  const { register, setValue, watch, reset, getValues } = useForm({
     defaultValues: {
       Code: "",
       State: "",
@@ -38,8 +38,8 @@ function SaleWithTotalReceiving() {
     },
   });
   const { server } = useContext(GlobalContext);
-  const [allRowData, setAllRowData] = useState([]); // Store all data
-  const [currentPageData, setCurrentPageData] = useState([]); // Store current page data
+  const [rowData, setRowData] = useState([]); // Store current page data
+  const [allData, setAllData] = useState([]); // Store all data for download
   const [withHoldAWB, setWithHoldAWB] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchingAccount, setFetchingAccount] = useState(false);
@@ -51,10 +51,13 @@ function SaleWithTotalReceiving() {
     totalCredit: 0,
   });
 
-  // Pagination states
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(50);
-  const [totalPages, setTotalPages] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   const [fullscreen, setFullScreen] = useState(false);
 
   // Watch for form field changes
@@ -72,46 +75,10 @@ function SaleWithTotalReceiving() {
     setNotification({ type, message, visible: true });
   };
 
-  // ✅ NEW: Helper function to convert DD/MM/YYYY to YYYY-MM-DD
-  const convertToISODate = (dateString) => {
-    if (!dateString) return null;
-
-    // Check if date is already in YYYY-MM-DD format
-    if (dateString.includes("-") && dateString.split("-")[0].length === 4) {
-      return dateString;
-    }
-
-    // Convert DD/MM/YYYY to YYYY-MM-DD
-    const parts = dateString.split("/");
-    if (parts.length === 3) {
-      const [day, month, year] = parts;
-      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-    }
-
-    return dateString;
-  };
-
-  // ✅ NEW: Helper function to convert YYYY-MM-DD to DD/MM/YYYY
-  const convertToDDMMYYYY = (dateString) => {
-    if (!dateString) return "";
-
-    // Check if date is already in DD/MM/YYYY format
-    if (dateString.includes("/")) {
-      return dateString;
-    }
-
-    // Convert YYYY-MM-DD to DD/MM/YYYY
-    const parts = dateString.split("-");
-    if (parts.length === 3) {
-      const [year, month, day] = parts;
-      return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
-    }
-
-    return dateString;
-  };
-
+  // Add Sr No column to columns
   const columns = useMemo(
     () => [
+      { key: "srNo", label: "Sr No." },
       { key: "awbNo", label: "AWB No" },
       { key: "accountCode", label: "Account Code" },
       { key: "shipmentType", label: "Service Type" },
@@ -139,6 +106,12 @@ function SaleWithTotalReceiving() {
     []
   );
 
+  const toYMD = (d) => {
+    if (!d) return "";
+    const [dd, mm, yyyy] = d.split("/");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   const parseDDMMYYYY = (str) => {
     if (!str) return null;
     const [d, m, y] = str.split("/");
@@ -159,6 +132,90 @@ function SaleWithTotalReceiving() {
       from: f.toISOString(),
       to: t.toISOString(),
     };
+  };
+
+  // Function to fetch data with pagination
+  const fetchDataWithPagination = async (filters, page = 1) => {
+    if (!filters.from || !filters.to) {
+      showNotification("error", "Please select both From Date and To Date");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const payload = {
+        fromDate: toYMD(filters.from),
+        toDate: toYMD(filters.to),
+        page: page,
+        limit: pageLimit,
+      };
+
+      if (filters.Code?.trim()) {
+        payload.accountCode = filters.Code.trim();
+      }
+
+      if (withHoldAWB) {
+        payload.withHoldAWB = true;
+      }
+
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
+
+      const response = await axios.post(
+        `${server}/sale-with-total-receiving`,
+        payload
+      );
+
+      const { shipments, totals, pagination } = response.data.data;
+
+      setRowData(shipments);
+      setAllData(shipments); // Keep for download if needed
+      setTotals(totals);
+
+      // Set pagination info
+      if (pagination) {
+        setCurrentPage(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+        setTotalRecords(pagination.totalRecords);
+      }
+
+      showNotification(
+        "success", 
+        `Loaded ${shipments.length} shipments (Page ${pagination?.currentPage || page} of ${pagination?.totalPages || 1})`
+      );
+    } catch (err) {
+      console.error(err);
+      showNotification("error", "Error fetching data");
+      setRowData([]);
+      setAllData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchDataWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchDataWithPagination(currentFilters, 1);
+    }
   };
 
   // Download utility functions
@@ -208,12 +265,12 @@ function SaleWithTotalReceiving() {
   // Handle CSV download
   const handleDownloadCSV = () => {
     try {
-      if (!allRowData || allRowData.length === 0) {
+      if (!rowData || rowData.length === 0) {
         showNotification("error", "No data available to download");
         return;
       }
 
-      const formattedData = prepareTableData(allRowData, columns);
+      const formattedData = prepareTableData(rowData, columns);
 
       // Convert to CSV using Papa Parse
       const csv = Papa.unparse(formattedData, {
@@ -244,12 +301,12 @@ function SaleWithTotalReceiving() {
   // Handle Excel download
   const handleDownloadExcel = () => {
     try {
-      if (!allRowData || allRowData.length === 0) {
+      if (!rowData || rowData.length === 0) {
         showNotification("error", "No data available to download");
         return;
       }
 
-      const formattedData = prepareTableData(allRowData, columns);
+      const formattedData = prepareTableData(rowData, columns);
 
       // Create workbook and worksheet
       const workbook = XLSX.utils.book_new();
@@ -328,61 +385,6 @@ function SaleWithTotalReceiving() {
     }
   };
 
-  // Update pagination when data changes
-  useEffect(() => {
-    const pages = Math.ceil(allRowData.length / itemsPerPage);
-    setTotalPages(pages);
-
-    // Reset to first page if current page is beyond available pages
-    if (currentPage > pages && pages > 0) {
-      setCurrentPage(1);
-    }
-  }, [allRowData.length, itemsPerPage, currentPage]);
-
-  // Update current page data when page changes or data changes
-  useEffect(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    setCurrentPageData(allRowData.slice(startIndex, endIndex));
-  }, [currentPage, allRowData, itemsPerPage]);
-
-  // Pagination handlers
-  const goToPage = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
-  };
-
-  const goToPrevious = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const goToNext = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages = [];
-    const showPages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
-    let endPage = Math.min(totalPages, startPage + showPages - 1);
-
-    if (endPage - startPage + 1 < showPages) {
-      startPage = Math.max(1, endPage - showPages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-
-    return pages;
-  };
-
   // Fetch account details when accountCode changes (GET request)
   useEffect(() => {
     const fetchAccountDetails = async () => {
@@ -433,67 +435,27 @@ function SaleWithTotalReceiving() {
     return () => clearTimeout(timeoutId);
   }, [accountCode, server, setValue]);
 
-  // ✅ UPDATED: Handle show button click with date conversion
+  // Handle show button click with pagination
   const handleShow = async () => {
-    if (!fromDate || !toDate) {
-      showNotification("error", "Please select both From Date and To Date");
-      return;
-    }
-
-    const toYMD = (d) => {
-      const [dd, mm, yyyy] = d.split("/");
-      return `${yyyy}-${mm}-${dd}`;
+    const filters = {
+      from: fromDate,
+      to: toDate,
+      Code: accountCode,
     };
 
-    setLoading(true);
+    // Store filters for pagination
+    setCurrentFilters(filters);
+
+    // Reset to page 1 for new search
     setCurrentPage(1);
 
-    try {
-      const payload = {
-        fromDate: toYMD(fromDate),
-        toDate: toYMD(toDate),
-      };
-
-      if (accountCode?.trim()) {
-        payload.accountCode = accountCode.trim();
-      }
-
-      if (withHoldAWB) {
-        payload.withHoldAWB = true;
-      }
-
-      console.log("POST PAYLOAD:", payload);
-
-      const response = await axios.post(
-        `${server}/sale-with-total-receiving`,
-        payload
-      );
-
-      const { shipments, totals, summary } = response.data.data;
-
-      setAllRowData(shipments);
-      setTotals(totals);
-
-      showNotification("success", `Loaded ${summary.totalRecords} shipments`);
-    } catch (err) {
-      console.error(err);
-      showNotification("error", "Error fetching data");
-    } finally {
-      setLoading(false);
-    }
+    // Fetch first page
+    await fetchDataWithPagination(filters, 1);
   };
 
   // Handle checkbox change
   const handleCheckboxChange = (checked) => {
     setWithHoldAWB(checked);
-
-    // If data is already loaded and we have date range, refresh with new filter
-    if (allRowData.length > 0 && fromDate && toDate) {
-      // Small delay to ensure state is updated before API call
-      setTimeout(() => {
-        handleShow();
-      }, 100);
-    }
   };
 
   // Format currency for display
@@ -504,9 +466,8 @@ function SaleWithTotalReceiving() {
   // Handle form refresh
   const handleRefresh = () => {
     // Clear all form data
-    setAllRowData([]);
-    setCurrentPageData([]);
-    setCurrentPage(1);
+    setRowData([]);
+    setAllData([]);
     setWithHoldAWB(false);
     setLoading(false);
     setFetchingAccount(false);
@@ -516,6 +477,12 @@ function SaleWithTotalReceiving() {
       totalDebit: 0,
       totalCredit: 0,
     });
+
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
 
     // Increment form key to force re-render of inputs
     setFormKey((prev) => prev + 1);
@@ -531,6 +498,76 @@ function SaleWithTotalReceiving() {
     });
 
     showNotification("success", "Page refreshed successfully");
+  };
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -652,7 +689,7 @@ function SaleWithTotalReceiving() {
           register={register}
           setValue={setValue}
           columns={columns}
-          rowData={currentPageData}
+          rowData={rowData}
           className={`border-b-0 rounded-b-none h-[45vh]`}
         />
 
@@ -671,37 +708,44 @@ function SaleWithTotalReceiving() {
                 register={register}
                 setValue={setValue}
                 columns={columns}
-                rowData={currentPageData}
+                rowData={rowData}
                 className={`border-b-0 rounded-b-none w-full h-[75vh]`}
               />
-              <div className="flex justify-end border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0  text-gray-900  bg-[#D0D5DDB8] rounded rounded-t-none  font-sans px-4 py-2 gap-16">
-                <div>
-                  <span className="font-sans ">Total Receiving :</span>
-                  <span className="text-red">
-                    {" "}
-                    ₹ {formatCurrency(totals.totalReceiving)}{" "}
-                  </span>
+              <div className="flex justify-between items-center border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 text-gray-900 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2">
+                <div className="text-sm text-gray-600">
+                  {totalRecords > 0 && (
+                    <span>Total Records: {totalRecords}</span>
+                  )}
                 </div>
-                <div>
-                  <span className="font-sans ">Total Sale :</span>
-                  <span className="text-red">
-                    {" "}
-                    ₹ {formatCurrency(totals.totalSale)}{" "}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-sans ">Total Debit :</span>
-                  <span className="text-red">
-                    {" "}
-                    ₹ {formatCurrency(totals.totalDebit)}{" "}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-sans ">Total Credit :</span>
-                  <span className="text-red">
-                    {" "}
-                    ₹ {formatCurrency(totals.totalCredit)}{" "}
-                  </span>
+                <div className="flex gap-16">
+                  <div>
+                    <span className="font-sans ">Total Receiving :</span>
+                    <span className="text-red">
+                      {" "}
+                      ₹ {formatCurrency(totals.totalReceiving)}{" "}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-sans ">Total Sale :</span>
+                    <span className="text-red">
+                      {" "}
+                      ₹ {formatCurrency(totals.totalSale)}{" "}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-sans ">Total Debit :</span>
+                    <span className="text-red">
+                      {" "}
+                      ₹ {formatCurrency(totals.totalDebit)}{" "}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-sans ">Total Credit :</span>
+                    <span className="text-red">
+                      {" "}
+                      ₹ {formatCurrency(totals.totalCredit)}{" "}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -709,78 +753,43 @@ function SaleWithTotalReceiving() {
         )}
 
         {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 border-b-0 bg-gray-50 px-4 py-3">
-            <div className="text-sm text-gray-700">
-              Showing{" "}
-              {Math.min(
-                (currentPage - 1) * itemsPerPage + 1,
-                allRowData.length
-              )}{" "}
-              to {Math.min(currentPage * itemsPerPage, allRowData.length)} of{" "}
-              {allRowData.length} results
+        <PaginationControls />
+
+        <div className="flex justify-between items-center border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 text-gray-900 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2">
+          <div className="text-sm text-gray-600">
+            {totalRecords > 0 && (
+              <span>Total Records: {totalRecords}</span>
+            )}
+          </div>
+          <div className="flex gap-16">
+            <div>
+              <span className="font-sans ">Total Receiving :</span>
+              <span className="text-red">
+                {" "}
+                ₹ {formatCurrency(totals.totalReceiving)}{" "}
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={goToPrevious}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                Previous
-              </button>
-
-              {getPageNumbers().map((pageNumber) => (
-                <button
-                  key={pageNumber}
-                  onClick={() => goToPage(pageNumber)}
-                  className={`px-3 py-1 border rounded text-sm ${currentPage === pageNumber
-                      ? "bg-red-500 text-white border-red-500"
-                      : "border-gray-300 hover:bg-gray-100"
-                    }`}
-                >
-                  {pageNumber}
-                </button>
-              ))}
-
-              <button
-                onClick={goToNext}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                Next
-              </button>
+            <div>
+              <span className="font-sans ">Total Sale :</span>
+              <span className="text-red">
+                {" "}
+                ₹ {formatCurrency(totals.totalSale)}{" "}
+              </span>
             </div>
-          </div>
-        )}
-
-        <div className="flex justify-end border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0  text-gray-900  bg-[#D0D5DDB8] rounded rounded-t-none  font-sans px-4 py-2 gap-16">
-          <div>
-            <span className="font-sans ">Total Receiving :</span>
-            <span className="text-red">
-              {" "}
-              ₹ {formatCurrency(totals.totalReceiving)}{" "}
-            </span>
-          </div>
-          <div>
-            <span className="font-sans ">Total Sale :</span>
-            <span className="text-red">
-              {" "}
-              ₹ {formatCurrency(totals.totalSale)}{" "}
-            </span>
-          </div>
-          <div>
-            <span className="font-sans ">Total Debit :</span>
-            <span className="text-red">
-              {" "}
-              ₹ {formatCurrency(totals.totalDebit)}{" "}
-            </span>
-          </div>
-          <div>
-            <span className="font-sans ">Total Credit :</span>
-            <span className="text-red">
-              {" "}
-              ₹ {formatCurrency(totals.totalCredit)}{" "}
-            </span>
+            <div>
+              <span className="font-sans ">Total Debit :</span>
+              <span className="text-red">
+                {" "}
+                ₹ {formatCurrency(totals.totalDebit)}{" "}
+              </span>
+            </div>
+            <div>
+              <span className="font-sans ">Total Credit :</span>
+              <span className="text-red">
+                {" "}
+                ₹ {formatCurrency(totals.totalCredit)}{" "}
+              </span>
+            </div>
           </div>
         </div>
       </div>

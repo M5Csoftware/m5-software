@@ -15,7 +15,7 @@ import axios from "axios";
 import * as XLSX from "xlsx";
 
 const RtoShipmentReport = () => {
-  const { register, setValue, watch } = useForm();
+  const { register, setValue, watch, getValues } = useForm();
   const { server } = useContext(GlobalContext);
 
   // Data states
@@ -28,15 +28,41 @@ const RtoShipmentReport = () => {
     visible: false,
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(30); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
+  // Add Sr No column to the columns array
+  const columns = useMemo(
+    () => [
+      { key: "srNo", label: "Sr No." },
+      { key: "awbNo", label: "AWB No" },
+      { key: "date", label: "Shipment Date" },
+      { key: "branch", label: "Branch" },
+      { key: "origin", label: "Origin" },
+      { key: "sector", label: "Sector" },
+      { key: "destination", label: "Destination" },
+      { key: "accountCode", label: "Customer Code" },
+      { key: "name", label: "Customer Name" },
+      { key: "receiverFullName", label: "Consignee Name" },
+      { key: "receiverAddressLine1", label: "Consignee Address" },
+      { key: "pcs", label: "PCS" },
+      { key: "goodstype", label: "Goods Description" },
+      { key: "totalActualWt", label: "Actual Weight" },
+      { key: "content", label: "Shipment Content" },
+      { key: "shipmentRemark", label: "Shipment Remark" },
+    ],
+    []
+  );
+
   const dmyToYmd = (d) => {
     if (!d) return "";
     const [dd, mm, yyyy] = d.split("/");
     return `${yyyy}-${mm}-${dd}`;
   };
-
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 30;
 
   // Watch accountCode for auto-population
   const accountCode = watch("code");
@@ -83,43 +109,22 @@ const RtoShipmentReport = () => {
     return () => clearTimeout(timeoutId);
   }, [accountCode, server, setValue]);
 
-  // Table columns
-  const columns = useMemo(
-    () => [
-      { key: "awbNo", label: "AWB No" },
-      { key: "date", label: "Shipment Date" },
-      { key: "branch", label: "Branch" },
-      { key: "origin", label: "Origin" },
-      { key: "sector", label: "Sector" },
-      { key: "destination", label: "Destination" },
-      { key: "accountCode", label: "Customer Code" },
-      { key: "name", label: "Customer Name" },
-      { key: "receiverFullName", label: "Consignee Name" },
-      { key: "receiverAddressLine1", label: "Consignee Address" },
-      { key: "pcs", label: "PCS" },
-      { key: "goodstype", label: "Goods Description" },
-      { key: "totalActualWt", label: "Actual Weight" },
-      { key: "content", label: "Shipment Content" },
-      { key: "shipmentRemark", label: "Shipment Remark" },
-    ],
-    []
-  );
-
-  const fetchShipments = async () => {
+  // Function to fetch shipments with pagination
+  const fetchShipmentsWithPagination = async (filters, page = 1) => {
     setLoading(true);
 
     try {
-      // Get form values
-      const branch = watch("branch") || "";
-      const origin = watch("origin") || "";
-      const sector = watch("sector") || "";
-      const destination = watch("destination") || "";
-      const code = watch("code") || "";
-      const from = watch("from") || "";
-      const to = watch("to") || "";
+      // Get form values from filters
+      const branch = filters.branch || "";
+      const origin = filters.origin || "";
+      const sector = filters.sector || "";
+      const destination = filters.destination || "";
+      const code = filters.code || "";
+      const from = filters.from || "";
+      const to = filters.to || "";
 
       // Validate date range
-      if (from && to && new Date(from) > new Date(to)) {
+      if (from && to && new Date(dmyToYmd(from)) > new Date(dmyToYmd(to))) {
         showNotification("error", "'From' date cannot be later than 'To' date");
         setLoading(false);
         return;
@@ -135,6 +140,12 @@ const RtoShipmentReport = () => {
       if (code) params.append("accountCode", code);
       if (from) params.append("from", dmyToYmd(from));
       if (to) params.append("to", dmyToYmd(to));
+      
+      // Add pagination parameters
+      params.append("page", page.toString());
+      params.append("limit", pageLimit.toString());
+
+      console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       const res = await axios.get(
         `${server}/rto-shipment-report?${params.toString()}`
@@ -142,24 +153,27 @@ const RtoShipmentReport = () => {
 
       if (res.data.success) {
         setTableData(res.data.data || []);
-        setCurrentPage(1); // Reset to first page when new data is fetched
+        
+        // Set pagination info
+        if (res.data.pagination) {
+          setCurrentPage(res.data.pagination.currentPage);
+          setTotalPages(res.data.pagination.totalPages);
+          setTotalRecords(res.data.pagination.totalRecords);
+        }
 
         if (res.data.data.length === 0) {
           showNotification("info", "No shipments found for the given criteria");
-        } else if (res.data.limited) {
-          showNotification(
-            "info",
-            `Results limited to ${res.data.count} records. Please use more specific filters for better results.`
-          );
         } else {
           showNotification(
             "success",
-            `Successfully loaded ${res.data.data.length} shipment(s)`
+            `Successfully loaded ${res.data.data.length} shipment(s) (Page ${res.data.pagination?.currentPage || page} of ${res.data.pagination?.totalPages || 1})`
           );
         }
       } else {
         showNotification("error", res.data.message || "Failed to fetch data");
         setTableData([]);
+        setTotalRecords(0);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error("Error fetching shipments:", err);
@@ -168,9 +182,56 @@ const RtoShipmentReport = () => {
         err.response?.data?.message || "Failed to fetch data"
       );
       setTableData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchShipmentsWithPagination(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchShipmentsWithPagination(currentFilters, 1);
+    }
+  };
+
+  const fetchShipments = async () => {
+    // Get current form values
+    const filters = {
+      branch: watch("branch") || "",
+      origin: watch("origin") || "",
+      sector: watch("sector") || "",
+      destination: watch("destination") || "",
+      code: watch("code") || "",
+      from: watch("from") || "",
+      to: watch("to") || "",
+    };
+
+    // Store filters for pagination
+    setCurrentFilters(filters);
+
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+
+    // Fetch first page
+    await fetchShipmentsWithPagination(filters, 1);
   };
 
   // Download Excel
@@ -183,6 +244,7 @@ const RtoShipmentReport = () => {
     try {
       // Prepare data for Excel
       const excelData = tableData.map((row) => ({
+        "Sr No.": row.srNo,
         "AWB No": row.awbNo,
         "Shipment Date": row.date,
         Branch: row.branch,
@@ -207,6 +269,7 @@ const RtoShipmentReport = () => {
 
       // Set column widths
       const colWidths = [
+        { wch: 8 },  // Sr No.
         { wch: 15 }, // AWB No
         { wch: 15 }, // Shipment Date
         { wch: 15 }, // Branch
@@ -217,7 +280,7 @@ const RtoShipmentReport = () => {
         { wch: 25 }, // Customer Name
         { wch: 25 }, // Consignee Name
         { wch: 35 }, // Consignee Address
-        { wch: 8 }, // PCS
+        { wch: 8 },  // PCS
         { wch: 20 }, // Goods Description
         { wch: 15 }, // Actual Weight
         { wch: 25 }, // Shipment Content
@@ -252,68 +315,79 @@ const RtoShipmentReport = () => {
     setTableData([]);
     setCustomerName("");
     setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
   };
 
-  // Pagination calculations
-  const totalPages = Math.ceil(tableData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentTableData = tableData.slice(startIndex, endIndex);
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && tableData.length === 0) return null;
 
-  // Pagination functions
-  const goToPage = (page) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{tableData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
 
-  const goToPrevious = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
 
-  const goToNext = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  };
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
 
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
 
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) {
-          pageNumbers.push(i);
-        }
-        pageNumbers.push("...");
-        pageNumbers.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pageNumbers.push(1);
-        pageNumbers.push("...");
-        for (let i = totalPages - 3; i <= totalPages; i++) {
-          pageNumbers.push(i);
-        }
-      } else {
-        pageNumbers.push(1);
-        pageNumbers.push("...");
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-          pageNumbers.push(i);
-        }
-        pageNumbers.push("...");
-        pageNumbers.push(totalPages);
-      }
-    }
-
-    return pageNumbers;
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -410,60 +484,24 @@ const RtoShipmentReport = () => {
         {/* Data Table */}
         <TableWithSorting
           columns={columns}
-          rowData={currentTableData}
+          rowData={tableData}
           register={register}
           setValue={setValue}
           name="rtoShipmentReport"
           className="h-[45vh]"
         />
 
-        {/* Pagination Controls - Commented out but preserved */}
-        {/* {totalPages > 1 && (
-          <div className="flex justify-between items-center border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 border-b-0 bg-gray-50 px-4 py-3">
-            <div className="text-sm text-gray-700">
-              Showing {Math.min((currentPage - 1) * itemsPerPage + 1, tableData.length)} to{" "}
-              {Math.min(currentPage * itemsPerPage, tableData.length)} of {tableData.length} results
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={goToPrevious}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                Previous
-              </button>
+        {/* Pagination Controls */}
+        <PaginationControls />
 
-              {getPageNumbers().map((pageNumber, index) => (
-                pageNumber === '...' ? (
-                  <span key={`ellipsis-${index}`} className="px-2 text-gray-500">...</span>
-                ) : (
-                  <button
-                    key={pageNumber}
-                    type="button"
-                    onClick={() => goToPage(pageNumber)}
-                    className={`px-3 py-1 border rounded text-sm ${
-                      currentPage === pageNumber
-                        ? "bg-red-500 text-white border-red-500"
-                        : "border-gray-300 hover:bg-gray-100"
-                    }`}
-                  >
-                    {pageNumber}
-                  </button>
-                )
-              ))}
-
-              <button
-                type="button"
-                onClick={goToNext}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                Next
-              </button>
-            </div>
+        {/* Total Records Display */}
+        <div className="flex justify-between mt-2">
+          <div className="text-sm text-gray-600">
+            {totalRecords > 0 && (
+              <span>Total Records: {totalRecords}</span>
+            )}
           </div>
-        )} */}
+        </div>
       </div>
     </div>
   );

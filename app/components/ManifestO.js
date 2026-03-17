@@ -12,7 +12,7 @@ import * as XLSX from "xlsx";
 import dayjs from "dayjs";
 
 const ManifestO = forwardRef((props, ref) => {
-  const { register, setValue, watch, reset } = useForm();
+  const { register, setValue, watch, reset, getValues } = useForm();
   const { server } = useContext(GlobalContext);
   const [rowData, setRowData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -22,6 +22,13 @@ const ManifestO = forwardRef((props, ref) => {
     message: "",
     visible: false,
   });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentRunNumber, setCurrentRunNumber] = useState(null); // Store run number for pagination
 
   const runNumber = watch("runNumber");
 
@@ -75,8 +82,9 @@ const ManifestO = forwardRef((props, ref) => {
     [],
   );
 
-  const fetchManifestData = async () => {
-    if (!runNumber || runNumber.trim() === "") {
+  // Function to fetch manifest data with pagination
+  const fetchManifestDataWithPagination = async (runNo, page = 1) => {
+    if (!runNo || runNo.trim() === "") {
       showNotification("error", "Please enter a run number");
       return;
     }
@@ -85,11 +93,15 @@ const ManifestO = forwardRef((props, ref) => {
       setLoading(true);
 
       const response = await axios.get(`${server}/branch-manifest/manifestO`, {
-        params: { runNo: runNumber.trim() },
+        params: { 
+          runNo: runNo.trim(),
+          page: page,
+          limit: pageLimit
+        },
       });
 
       if (response.data.success) {
-        const { runData, tableData } = response.data;
+        const { runData, tableData, pagination } = response.data;
 
         // Populate form fields from Run model - format the date
         setValue("date", formatDate(runData.date) || "");
@@ -101,10 +113,17 @@ const ManifestO = forwardRef((props, ref) => {
 
         // Set table data
         setRowData(tableData);
+        
+        // Set pagination info
+        if (pagination) {
+          setCurrentPage(pagination.currentPage);
+          setTotalPages(pagination.totalPages);
+          setTotalRecords(pagination.totalRecords);
+        }
 
         showNotification(
           "success",
-          `Found ${tableData.length} shipments for run ${runNumber} (${runData.accountType})`,
+          `Found ${tableData.length} shipments for run ${runNo} (Page ${pagination?.currentPage || page} of ${pagination?.totalPages || 1})`,
         );
       }
     } catch (error) {
@@ -113,6 +132,8 @@ const ManifestO = forwardRef((props, ref) => {
         error.response?.data?.error || "Failed to fetch manifest data";
       showNotification("error", errorMessage);
       setRowData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
 
       // Clear form fields on error
       setValue("date", "");
@@ -126,14 +147,53 @@ const ManifestO = forwardRef((props, ref) => {
     }
   };
 
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentRunNumber) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchManifestDataWithPagination(currentRunNumber, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have current run number, refetch with new limit (reset to page 1)
+    if (currentRunNumber) {
+      setCurrentPage(1);
+      fetchManifestDataWithPagination(currentRunNumber, 1);
+    }
+  };
+
   const handleShow = () => {
-    fetchManifestData();
+    if (!runNumber || runNumber.trim() === "") {
+      showNotification("error", "Please enter a run number");
+      return;
+    }
+    
+    // Store run number for pagination
+    setCurrentRunNumber(runNumber.trim());
+    
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+    
+    // Fetch first page
+    fetchManifestDataWithPagination(runNumber.trim(), 1);
   };
 
   const handleRefresh = () => {
     setRowData([]);
     setLoading(false);
     setFormKey((prev) => prev + 1);
+    setCurrentRunNumber(null);
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
 
     reset({
       runNumber: "",
@@ -277,13 +337,13 @@ const ManifestO = forwardRef((props, ref) => {
       
       // Right column
       doc.text(`Counter Part: ${watch("counterPart") || "N/A"}`, 220, 25);
-      doc.text(`Total Records: ${rowData.length}`, 220, 30);
+      doc.text(`Total Records: ${totalRecords}`, 220, 30);
       doc.text(`Generated: ${formattedDate}`, 220, 35);
       
       // Prepare data for table
-      const tableData = rowData.map((row, index) => {
+      const tableData = rowData.map((row) => {
         return [
-          (index + 1).toString(), // Sr.No.
+          row.srNo.toString(), // Use srNo from backend (global index)
           row.awbNo || "",
           row.consignorName || "",
           row.consignorAddress || "",
@@ -426,6 +486,76 @@ const ManifestO = forwardRef((props, ref) => {
     showNotification("info", "Email functionality coming soon");
   };
 
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || !currentRunNumber}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || !currentRunNumber}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || !currentRunNumber}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || !currentRunNumber}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
     handleRefresh: () => {
@@ -529,6 +659,18 @@ const ManifestO = forwardRef((props, ref) => {
             rowData={rowData}
             className="h-96"
           />
+          
+          {/* Pagination Controls */}
+          <PaginationControls />
+
+          {/* Total Records Display */}
+          <div className="flex justify-between mt-2">
+            <div className="text-sm text-gray-600">
+              {totalRecords > 0 && (
+                <span>Total Records: {totalRecords}</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </form>

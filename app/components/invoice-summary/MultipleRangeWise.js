@@ -25,6 +25,12 @@ function MultipleRangeWise() {
     visible: false,
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+
   const columns = useMemo(
     () => [
       { key: "srNo", label: "SR No" },
@@ -108,7 +114,92 @@ function MultipleRangeWise() {
     }
   };
 
-  // Fetch invoice data
+  // Clear all invoices
+  const clearAllInvoices = () => {
+    setInvoiceList([]);
+    setSelectedInvoice(null);
+    setRowData([]);
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || invoiceList.length === 0) return;
+
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Fetch new page
+    fetchInvoiceData(invoiceList, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+
+    // If we have invoice list, refetch with new limit (reset to page 1)
+    if (invoiceList.length > 0) {
+      setCurrentPage(1);
+      fetchInvoiceData(invoiceList, 1);
+    }
+  };
+
+  // Fetch invoice data with pagination
+  const fetchInvoiceData = async (invoices, page = 1) => {
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        `${server}/invoice-summary/multiple-invoice`,
+        {
+          invoiceNumbers: invoices,
+          page: page,
+          limit: pageLimit,
+        }
+      );
+
+      if (response.data.success) {
+        setRowData(response.data.data);
+        
+        // Set pagination info
+        if (response.data.pagination) {
+          setCurrentPage(response.data.pagination.currentPage);
+          setTotalPages(response.data.pagination.totalPages);
+          setTotalRecords(response.data.pagination.totalRecords);
+        }
+
+        setNotification({
+          type: "success",
+          message: `Found ${response.data.data.length} invoice(s) (Page ${response.data.pagination?.currentPage || page} of ${response.data.pagination?.totalPages || 1})`,
+          visible: true,
+        });
+      } else {
+        setRowData([]);
+        setTotalRecords(0);
+        setTotalPages(1);
+        setNotification({
+          type: "error",
+          message: response.data.message || "No data found",
+          visible: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching invoice data:", error);
+      setRowData([]);
+      setTotalRecords(0);
+      setTotalPages(1);
+      setNotification({
+        type: "error",
+        message: error.response?.data?.message || "Failed to fetch data",
+        visible: true,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleShow = async () => {
     if (invoiceList.length === 0) {
       setNotification({
@@ -119,41 +210,11 @@ function MultipleRangeWise() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const response = await axios.post(
-        `${server}/invoice-summary/multiple-invoice`,
-        {
-          invoiceNumbers: invoiceList,
-        }
-      );
-
-      if (response.data.success) {
-        setRowData(response.data.data);
-        setNotification({
-          type: "success",
-          message: `Found ${response.data.count} invoice(s)`,
-          visible: true,
-        });
-      } else {
-        setRowData([]);
-        setNotification({
-          type: "error",
-          message: response.data.message || "No data found",
-          visible: true,
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching invoice data:", error);
-      setRowData([]);
-      setNotification({
-        type: "error",
-        message: error.response?.data?.message || "Failed to fetch data",
-        visible: true,
-      });
-    } finally {
-      setLoading(false);
-    }
+    // Reset to page 1 for new search
+    setCurrentPage(1);
+    
+    // Fetch first page
+    await fetchInvoiceData(invoiceList, 1);
   };
 
   const handleDownloadCSV = () => {
@@ -238,6 +299,76 @@ function MultipleRangeWise() {
     });
   };
 
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading || invoiceList.length === 0}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading || invoiceList.length === 0}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading || invoiceList.length === 0}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading || invoiceList.length === 0}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <NotificationFlag
@@ -254,8 +385,17 @@ function MultipleRangeWise() {
         <div className="flex gap-4 h-[450px]">
           {/* Left Side: Invoice List */}
           <div className="w-64 flex flex-col border border-gray-300 rounded h-full">
-            <div className="p-3 border-b border-gray-300 bg-gray-100 font-semibold">
-              Invoice Numbers
+            <div className="p-3 border-b border-gray-300 bg-gray-100 font-semibold flex justify-between items-center">
+              <span>Invoice Numbers</span>
+              {invoiceList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAllInvoices}
+                  className="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                >
+                  Clear All
+                </button>
+              )}
             </div>
 
             {/* Input for pasting/typing invoice numbers */}
@@ -272,6 +412,11 @@ function MultipleRangeWise() {
               <p className="text-xs text-gray-500 mt-1">
                 Paste multiple or press Enter
               </p>
+            </div>
+
+            {/* Invoice List with count */}
+            <div className="px-3 py-2 border-b border-gray-300 bg-gray-50 text-sm font-medium">
+              Total: {invoiceList.length} invoice(s)
             </div>
 
             {/* Invoice List */}
@@ -331,9 +476,16 @@ function MultipleRangeWise() {
           </div>
         </div>
 
-        {/* Bottom Actions */}
+        {/* Pagination Controls */}
+        <PaginationControls />
+
+        {/* Total Records Display */}
         <div className="flex justify-between">
-          <div></div>
+          <div className="text-sm text-gray-600">
+            {totalRecords > 0 && (
+              <span>Total Records: {totalRecords}</span>
+            )}
+          </div>
           <div className="flex gap-2">
             <DownloadCsvExcel
               handleDownloadExcel={handleDownloadExcel}

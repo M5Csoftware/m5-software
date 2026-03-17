@@ -28,9 +28,16 @@ const NewBookingReport = () => {
   const [balanceShipment, setBalanceShipmet] = useState(false);
   const [added, setAdded] = useState(false);
   const [csbV, setcsbV] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Loading state
+  const [isLoading, setIsLoading] = useState(false);
   const { server } = useContext(GlobalContext);
   const [reports, setReports] = useState([]);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
 
   // Watch the code field for changes
   const codeValue = watch("code");
@@ -154,9 +161,97 @@ const NewBookingReport = () => {
     return new Date(year, month, day);
   };
 
-  // Update the onSubmit function to use GET instead of POST
+  // Function to fetch reports with pagination
+  const fetchReports = async (filters, page = 1) => {
+    setIsLoading(true);
+    try {
+      // Build query parameters for GET request
+      const params = new URLSearchParams({
+        code: filters.code || "",
+        runNumber: filters.runNumber || "",
+        origin: filters.origin || "",
+        sector: filters.sector || "",
+        salePerson: filters.salePerson || "",
+        branch: filters.branch || "",
+        destination: filters.destination || "",
+        service: filters.service || "",
+        from: filters.from,
+        to: filters.to,
+        holdShipments: filters.holdShipments.toString(),
+        skipMum: filters.skipMum.toString(),
+        skipAmd: filters.skipAmd.toString(),
+        csbV: filters.csbV.toString(),
+        includeChild: filters.includeChild.toString(),
+        balanceShipment: filters.balanceShipment.toString(),
+        page: page.toString(),
+        limit: pageLimit.toString(),
+      });
+
+      console.log("Fetching reports with pagination:", { page, limit: pageLimit });
+
+      // Use GET request
+      const response = await axios.get(
+        `${server}/reports/new-booking-report?${params.toString()}`,
+      );
+
+      console.log("API Response:", response.data);
+
+      // Handle response with pagination
+      const responseData = response.data.data || [];
+      const pagination = response.data.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: responseData.length,
+        limit: pageLimit,
+      };
+
+      // Filter only available columns and remove empty/null values
+      const allowedKeys = columns.map((col) => col.key);
+      const filteredData = responseData.map((item) => {
+        let filtered = {};
+        allowedKeys.forEach((key) => {
+          if (
+            item[key] !== undefined &&
+            item[key] !== null &&
+            item[key] !== ""
+          ) {
+            if (typeof item[key] === "boolean") {
+              filtered[key] = item[key] ? "Yes" : "No";
+            } else filtered[key] = item[key];
+          }
+        });
+        return filtered;
+      });
+
+      setReports(filteredData);
+      setCurrentPage(pagination.currentPage);
+      setTotalPages(pagination.totalPages);
+      setTotalRecords(pagination.totalRecords);
+
+      if (filteredData.length > 0) {
+        showNotification(
+          "success",
+          `New booking report generated (${filteredData.length} records, Page ${pagination.currentPage} of ${pagination.totalPages})`,
+        );
+      } else {
+        showNotification("error", "No records found for selected criteria");
+      }
+
+      return filteredData;
+    } catch (error) {
+      console.error("Error Downloading report:", error);
+      const errorMessage =
+        error.response?.data?.error || "Error downloading booking report";
+      setReports([]);
+      showNotification("error", errorMessage);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update the onSubmit function to use the new fetchReports function
   const onSubmit = async (data) => {
-    setIsLoading(true); // Start loading
     try {
       console.log("Form data received:", data);
 
@@ -190,63 +285,40 @@ const NewBookingReport = () => {
       fromDate.setHours(0, 0, 0, 0);
       toDate.setHours(23, 59, 59, 999);
 
-      // Build query parameters for GET request
-      const params = new URLSearchParams({
-        code: data.code || "",
-        runNumber: data.runNumber || "",
-        origin: data.origin || "",
-        sector: data.sector || "",
-        salePerson: data.salePerson || "",
-        branch: data.branch || "",
-        destination: data.destination || "",
-        service: data.service || "",
+      // Build filters object
+      const filters = {
+        code: data.code?.toUpperCase() || "",
+        runNumber: data.runNumber?.toUpperCase() || "",
+        origin: data.origin?.toUpperCase() || "",
+        sector: data.sector?.toUpperCase() || "",
+        salePerson: data.salePerson?.toUpperCase() || "",
+        branch: data.branch?.toUpperCase() || "",
+        destination: data.destination?.toUpperCase() || "",
+        service: data.service?.toUpperCase() || "",
         from: fromDate.toISOString(),
         to: toDate.toISOString(),
-        holdShipments: holdShipments.toString(),
-        skipMum: skipMum.toString(),
-        skipAmd: skipAmd.toString(),
-        csbV: csbV.toString(),
-        includeChild: includeChild.toString(),
-        balanceShipment: balanceShipment.toString(),
-      });
+        holdShipments,
+        skipMum,
+        skipAmd,
+        csbV,
+        includeChild,
+        balanceShipment,
+      };
 
-      console.log("Submitting data with params:", params.toString());
+      console.log("Submitting filters:", filters);
 
-      // Use GET request instead of POST
-      const response = await axios.get(
-        `${server}/reports/new-booking-report?${params.toString()}`,
-      );
-
-      console.log("API Response count:", response.data?.length || 0);
-
-      // Filter only available columns and remove empty/null values
-      const allowedKeys = columns.map((col) => col.key);
-      const filteredData = (response.data || []).map((item) => {
-        let filtered = {};
-        allowedKeys.forEach((key) => {
-          if (
-            item[key] !== undefined &&
-            item[key] !== null &&
-            item[key] !== ""
-          ) {
-            if (typeof item[key] === "boolean") {
-              filtered[key] = item[key] ? "Yes" : "No";
-            } else filtered[key] = item[key];
-          }
-        });
-        return filtered;
-      });
-
-      setReports(filteredData);
-      showNotification("", "");
+      // Store filters for pagination
+      setCurrentFilters(filters);
+      
+      // Reset to page 1 for new search
+      setCurrentPage(1);
+      
+      // Fetch first page
+      await fetchReports(filters, 1);
 
       // Populate client input from API response only if code was provided
-      if (
-        data.code &&
-        Array.isArray(response.data) &&
-        response.data.length > 0
-      ) {
-        const first = response.data[0];
+      if (data.code && reports.length > 0) {
+        const first = reports[0];
         const clientName =
           first.name ||
           first.customer ||
@@ -257,23 +329,31 @@ const NewBookingReport = () => {
       } else if (!data.code) {
         setValue("client", "");
       }
-
-      if (filteredData.length > 0) {
-        showNotification(
-          "success",
-          `New booking report generated (${filteredData.length} records)`,
-        );
-      } else {
-        showNotification("error", "No records found for selected criteria");
-      }
     } catch (error) {
-      console.error("Error Downloading report:", error);
-      const errorMessage =
-        error.response?.data?.error || "Error downloading booking report";
-      setReports([]);
-      showNotification("error", errorMessage);
-    } finally {
-      setIsLoading(false); // Stop loading
+      console.error("Error in form submission:", error);
+    }
+  };
+
+  // Handle page change
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Fetch new page
+    fetchReports(currentFilters, newPage);
+  };
+
+  // Handle limit change
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    
+    // If we have current filters, refetch with new limit (reset to page 1)
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchReports(currentFilters, 1);
     }
   };
 
@@ -311,7 +391,82 @@ const NewBookingReport = () => {
     setcsbV(false);
     setBalanceShipmet(false);
     setIncludeChild(false);
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
     showNotification("success", "Refreshed");
+  };
+
+  // Pagination component
+  const PaginationControls = () => {
+    if (totalPages <= 1 && reports.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{reports.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm"
+              disabled={isLoading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Previous
+          </button>
+          
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -514,8 +669,16 @@ const NewBookingReport = () => {
           rowData={reports}
           className={`h-72`}
         />
+        
+        {/* Pagination Controls */}
+        <PaginationControls />
+        
         <div className="flex justify-between items-center">
-          <div></div>
+          <div className="text-sm text-gray-600">
+            {totalRecords > 0 && (
+              <span>Total Records: {totalRecords}</span>
+            )}
+          </div>
 
           <div>
             <SimpleButton
