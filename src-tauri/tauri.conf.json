@@ -23,7 +23,8 @@
         "all": true,
         "scope": [
           "https://m5clogs.com/*",
-          "https://m5c-server.vercel.app/*"
+          "https://m5c-server.vercel.app/*",
+          "https://raw.githubusercontent.com/*"
         ]
       },
       "shell": {
@@ -32,7 +33,12 @@
       },
       "window": {
         "all": true
-      }
+      },
+      "process": {
+        "all": true,
+        "relaunch": true
+      },
+      "updater": true
     },
     "bundle": {
       "active": true,
@@ -71,7 +77,7 @@
       "csp": null
     },
     "updater": {
-      "active": false,
+      "active": true,
       "dialog": false,
       "endpoints": [
         "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json"
