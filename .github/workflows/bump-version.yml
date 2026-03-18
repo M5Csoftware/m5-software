@@ -102,9 +102,9 @@ jobs:
           echo "MSI: $MSI"
           echo "SIG: $SIG"
           echo "ZIP: $ZIP"
-          [ -z "$MSI" ] && echo "ERROR: MSI not found!" && exit 1
-          [ -z "$SIG" ] && echo "ERROR: SIG not found! Check TAURI_PRIVATE_KEY secret" && exit 1
-          [ -z "$ZIP" ] && echo "ERROR: ZIP not found!" && exit 1
+          if [ -z "$MSI" ]; then echo "ERROR: MSI not found!"; exit 1; fi
+          if [ -z "$SIG" ]; then echo "ERROR: SIG not found! Check TAURI_PRIVATE_KEY secret"; exit 1; fi
+          if [ -z "$ZIP" ]; then echo "ERROR: ZIP not found!"; exit 1; fi
 
       # ── 6. Write version.json with signature for silent updater ───────
       # Tauri updater expects: version, notes, pub_date, platforms
