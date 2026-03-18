@@ -32,14 +32,24 @@ export default function UpdateNotification() {
       return;
     }
 
-    const load = async () => {
+    const load = () => {
       try {
-        const { invoke } = await import("@tauri-apps/api/tauri");
-        const { open }   = await import("@tauri-apps/api/shell");
-        invokeRef.current = invoke;
-        shellRef.current  = open;
-        console.log("[updater] Tauri API ready");
-        setApiReady(true);
+        if (window.__TAURI__) {
+          invokeRef.current = window.__TAURI__.tauri?.invoke || window.__TAURI__.invoke;
+          shellRef.current  = window.__TAURI__.shell?.open || window.__TAURI__.open;
+          
+          if (invokeRef.current && shellRef.current) {
+            console.log("[updater] Tauri API ready");
+            setApiReady(true);
+          } else {
+            // Fallback for different global struct versions
+            const { invoke } = window.__TAURI__;
+            const { open } = window.__TAURI__.shell || {};
+            if (invoke) invokeRef.current = invoke;
+            if (open) shellRef.current = open;
+            if (invokeRef.current) setApiReady(true);
+          }
+        }
       } catch (e) {
         console.log("[updater] Tauri API not available (browser?)", e.message);
       }

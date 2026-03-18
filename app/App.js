@@ -385,42 +385,119 @@ const App = () => {
     "Delete Shipment": 134,
   };
 
+  // State for LRU tracking
+  const [tabHistory, setTabHistory] = useState([0]); // 0 is Dashboard
+  const MAX_MOUNTED_TABS = 10;
+
   // Update view and track mounted tabs when currentTab changes
   useEffect(() => {
     const newView = tabMapping[currentTab] || 0;
     setView(newView);
 
+    // LRU Tracking: Move current tab to the front of history
+    setTabHistory((prev) => {
+      const filtered = prev.filter((id) => id !== newView);
+      const newHistory = [newView, ...filtered];
+      
+      // If we exceed the limit, unmount the oldest tab that isn't active or dashboard
+      if (mountedTabs.size > MAX_MOUNTED_TABS) {
+        // Find a tab to unmount: oldest in history, not current, not dashboard
+        const tabToUnmount = [...newHistory]
+          .reverse()
+          .find((id) => id !== newView && id !== 0 && mountedTabs.has(id));
+
+        if (tabToUnmount !== undefined) {
+          console.log(`=== Smart Memory: Unmounting Tab ${tabToUnmount} (LRU) ===`);
+          setMountedTabs((prevSet) => {
+            const nextSet = new Set(prevSet);
+            nextSet.delete(tabToUnmount);
+            return nextSet;
+          });
+        }
+      }
+
+      return newHistory;
+    });
+
     // Add this tab to mounted tabs
     setMountedTabs((prev) => new Set([...prev, newView]));
   }, [currentTab]);
 
-  // Remove closed tabs from mountedTabs
+  // Sync mountedTabs with activeTabs (handling tab closures)
   useEffect(() => {
     const activeViews = new Set(
       activeTabs.map((tab) => tabMapping[tab.subfolder] || 0)
     );
     activeViews.add(0); // Always keep dashboard mounted
 
-    setMountedTabs(activeViews);
+    // Filter mountedTabs to only include those that are still active
+    setMountedTabs((prev) => {
+      const nextSet = new Set();
+      prev.forEach((id) => {
+        if (activeViews.has(id)) nextSet.add(id);
+      });
+      // Also ensure current view is mounted
+      const currentView = tabMapping[currentTab] || 0;
+      nextSet.add(currentView);
+      return nextSet;
+    });
+
+    // Clean up history for closed tabs
+    setTabHistory((prev) => prev.filter((id) => activeViews.has(id)));
   }, [activeTabs]);
 
-  // Fetch entity data - REPLACE instead of append
+  // Fetch entity data - With PERSISTENT CACHING (24h TTL)
   useEffect(() => {
     const controller = new AbortController();
+    const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
     const fetchEntity = async (entityType, setter) => {
       try {
+        const cacheKey = `entity_cache_${entityType.replace(/\s+/g, "_")}`;
+        
+        // 1. Try Loading from LocalStorage first
+        const cachedData = localStorage.getItem(cacheKey);
+        if (cachedData) {
+          try {
+            const { data, timestamp } = JSON.parse(cachedData);
+            const isFresh = Date.now() - timestamp < CACHE_TTL;
+            
+            if (isFresh && Array.isArray(data)) {
+              console.log(`=== Loading ${entityType} from Persistent Cache ===`);
+              if (entityType === "Event") {
+                setter((prev) => {
+                  const merged = [...defaultEventCodes];
+                  data.forEach(s => {
+                    if (!merged.find(m => m.code.toLowerCase() === s.code.toLowerCase())) {
+                      merged.push(s);
+                    }
+                  });
+                  return merged;
+                });
+              } else {
+                setter(data);
+              }
+              return; // Skip network call
+            }
+          } catch (e) {
+            console.warn(`Cache parse error for ${entityType}, fetching fresh.`, e);
+          }
+        }
+
+        // 2. Network Fetch if cache misses or expired
+        console.log(`=== Fetching Fresh ${entityType} from Server ===`);
         const { data } = await axios.get(`${server}/entity-manager`, {
-          params: { entityType },
+          params: { entityType, fields: "code,name" },
           signal: controller.signal,
         });
-        // ⚡ REPLACE data, don't append
+
+        const mapped = data.map((item) => ({ code: item.code, name: item.name }));
+
+        // 3. Update State
         if (entityType === "Event") {
           setter((prev) => {
-            const serverData = data.map((item) => ({ code: item.code, name: item.name }));
-            // Merge: Prefer local defaultEventCodes, add server ones that don't exist
             const merged = [...defaultEventCodes];
-            serverData.forEach(s => {
+            mapped.forEach(s => {
               if (!merged.find(m => m.code.toLowerCase() === s.code.toLowerCase())) {
                 merged.push(s);
               }
@@ -428,15 +505,22 @@ const App = () => {
             return merged;
           });
         } else {
-          setter(data.map((item) => ({ code: item.code, name: item.name })));
+          setter(mapped);
         }
+
+        // 4. Update LocalStorage
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data: mapped,
+          timestamp: Date.now()
+        }));
+
       } catch (err) {
         if (err.name !== "CanceledError") {
           console.error(`Error fetching ${entityType}:`, err);
           if (entityType === "Event") {
-            setter(defaultEventCodes); // Reset to defaults on error
+            setter(defaultEventCodes);
           } else {
-            setter([]); // Clear on error
+            setter([]);
           }
         }
       }
@@ -450,7 +534,6 @@ const App = () => {
     fetchEntity("Counter Part", setCounterPart);
     fetchEntity("Event", setEventCode);
 
-    // Cleanup: Cancel requests if component unmounts or refetch changes
     return () => controller.abort();
   }, [refetch, server]);
 

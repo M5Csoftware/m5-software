@@ -61,7 +61,7 @@ function TaxSettings() {
           const formattedDate = date.toISOString().split("T")[0];
           setValue("effectiveDate", formattedDate);
 
-          console.log("Loaded existing tax setting:", existingSetting);
+          // console.log("Loaded existing tax setting:", existingSetting);
         } else {
           // Clear fields if no existing setting found
           setValue("taxAmount", "");
@@ -80,7 +80,7 @@ function TaxSettings() {
   }, [taxValue, server, setValue]);
 
   const onSubmit = async (data) => {
-    console.log("Form data before conversion:", data);
+    // console.log("Form data before conversion:", data);
 
     // Convert taxAmount to decimal (e.g., 18 → 0.18)
     const formattedData = {
@@ -88,12 +88,12 @@ function TaxSettings() {
       taxAmount: parseFloat(data.taxAmount) / 100,
     };
 
-    console.log("Form data after conversion:", formattedData);
+    // console.log("Form data after conversion:", formattedData);
 
     try {
       const res = await axios.post(`${server}/tax-settings`, formattedData);
 
-      console.log("Tax settings saved:", res.data);
+      // console.log("Tax settings saved:", res.data);
       showNotification("success", "Tax settings data saved successfully!");
     } catch (error) {
       console.error(

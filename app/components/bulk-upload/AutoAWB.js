@@ -772,7 +772,7 @@ function AutoAWB() {
           }
 
           setExcelData(jsonData);
-          console.log("Excel data loaded:", jsonData.length, "rows");
+          // console.log("Excel data loaded:", jsonData.length, "rows");
         } catch (error) {
           console.error("Error reading Excel file:", error);
           showNotification(
@@ -918,7 +918,7 @@ function AutoAWB() {
         );
       }
 
-      console.log("Valid shipments:", validShipments.length);
+      // console.log("Valid shipments:", validShipments.length);
 
       // Only proceed if we have valid shipments
       if (validShipments.length === 0) {
@@ -945,7 +945,7 @@ function AutoAWB() {
       if (response.data.success) {
         const { assignedShipments, awbInfo } = response.data;
 
-        console.log("AWB assignments received:", awbInfo);
+        // console.log("AWB assignments received:", awbInfo);
         setRowData(assignedShipments);
         setAwbInfo(awbInfo);
 
@@ -1067,10 +1067,10 @@ function AutoAWB() {
         csbChecked: isChecked,
       };
 
-      console.log("Uploading shipments:", {
-        totalShipments: rowData.length,
-        awbRange: `${rowData[0].awbNo} - ${rowData[rowData.length - 1].awbNo}`,
-      });
+      // console.log("Uploading shipments:", {
+      //   totalShipments: rowData.length,
+      //   awbRange: `${rowData[0].awbNo} - ${rowData[rowData.length - 1].awbNo}`,
+      // });
 
       const response = await axios.post(
         `${server}/bulk-upload/auto-awb`,

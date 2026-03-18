@@ -31,7 +31,7 @@ export default function BagReport() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [pageLimit, setPageLimit] = useState(50); // Records per page
-  const [paginatedData, setPaginatedData] = useState([]);
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
 
   const showNotification = (type, message) => {
     setNotification({ type, message, visible: true });
@@ -79,17 +79,6 @@ export default function BagReport() {
     ],
   };
 
-  // Update paginated data whenever tableData, currentPage, or pageLimit changes
-  useEffect(() => {
-    const startIndex = (currentPage - 1) * pageLimit;
-    const endIndex = startIndex + pageLimit;
-    setPaginatedData(tableData.slice(startIndex, endIndex));
-    
-    // Reset to page 1 if current page is beyond available pages
-    if (tableData.length > 0 && currentPage > Math.ceil(tableData.length / pageLimit)) {
-      setCurrentPage(1);
-    }
-  }, [tableData, currentPage, pageLimit]);
 
   const formatDate = (d) => {
     if (!d) return "";
@@ -114,19 +103,22 @@ export default function BagReport() {
 
   // Handle page change
   const handlePageChange = (newPage) => {
-    if (newPage < 1 || newPage > totalPages) return;
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
     
     // Scroll to top of table
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
-    setCurrentPage(newPage);
+    handleShowData(currentFilters, newPage);
   };
 
   // Handle limit change
   const handleLimitChange = (e) => {
     const newLimit = parseInt(e.target.value, 10);
     setPageLimit(newLimit);
-    setCurrentPage(1); // Reset to first page when changing limit
+    if (currentFilters) {
+      setCurrentPage(1);
+      handleShowData(currentFilters, 1);
+    }
   };
 
   // CSV Download Function
@@ -196,15 +188,11 @@ export default function BagReport() {
     return response.data;
   };
 
-  const fetchShipmentData = async (runNo) => {
+  const fetchShipmentData = async (runNo, page = 1) => {
     const response = await axios.get(
-      `${server}/portal/create-shipment?runNo=${runNo.toUpperCase()}`
+      `${server}/portal/create-shipment?runNo=${runNo.toUpperCase()}&page=${page}&limit=${pageLimit}`
     );
-    return Array.isArray(response.data)
-      ? response.data.filter((item) => item.runNo === runNo)
-      : response.data
-      ? [response.data]
-      : [];
+    return response.data;
   };
 
   const fetchBaggingData = async (runNo) => {
@@ -346,32 +334,44 @@ export default function BagReport() {
   };
 
   // Main data fetching function
-  const handleShowData = async () => {
-    if (!runNumber?.trim()) {
-      console.log("Run number is empty");
+  const handleShowData = async (runNum = runNumber, page = 1) => {
+    const queryRunNo = runNum?.trim();
+    if (!queryRunNo) {
       showNotification("error", "Please enter a run number");
       return;
     }
 
     try {
       setLoading(true);
-      console.log("Fetching data for run number:", runNumber);
+      setCurrentFilters(queryRunNo);
 
       let newTableData = [];
+      let pagination = { currentPage: 1, totalPages: 1, totalRecords: 0 };
 
       if (reportType === "Summary") {
+        // Summary might not support server-side pagination yet in backend, but we'll try passing params
         const [baggingData, branchBaggingData] = await Promise.all([
-          fetchBaggingData(runNumber).catch(() => null),
-          fetchBranchBaggingData(runNumber).catch(() => null),
+          fetchBaggingData(queryRunNo).catch(() => null),
+          fetchBranchBaggingData(queryRunNo).catch(() => null),
         ]);
         newTableData = mapSummaryData(baggingData, branchBaggingData);
+        pagination.totalRecords = newTableData.length;
+        pagination.totalPages = Math.ceil(newTableData.length / pageLimit);
+        pagination.currentPage = page;
       } else {
-        const [shipmentData, baggingData, branchBaggingData] =
+        const [shipmentRes, baggingData, branchBaggingData] =
           await Promise.all([
-            fetchShipmentData(runNumber),
-            fetchBaggingData(runNumber).catch(() => null),
-            fetchBranchBaggingData(runNumber).catch(() => null),
+            fetchShipmentData(queryRunNo, page),
+            fetchBaggingData(queryRunNo).catch(() => null),
+            fetchBranchBaggingData(queryRunNo).catch(() => null),
           ]);
+
+        const shipmentData = shipmentRes.data || (Array.isArray(shipmentRes) ? shipmentRes : []);
+        const respPagination = shipmentRes.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalRecords: shipmentData.length,
+        };
 
         const baggingLookup = createBaggingLookup(
           baggingData,
@@ -383,14 +383,16 @@ export default function BagReport() {
         } else {
           newTableData = mapConsigneeData(shipmentData, baggingLookup);
         }
+        
+        pagination = respPagination;
       }
 
       setTableData(newTableData);
-      setTotalRecords(newTableData.length);
-      setTotalPages(Math.ceil(newTableData.length / pageLimit));
-      setCurrentPage(1); // Reset to first page
+      setTotalRecords(pagination.totalRecords);
+      setTotalPages(pagination.totalPages);
+      setCurrentPage(pagination.currentPage);
 
-      showNotification("success", `Found ${newTableData.length} records`);
+      showNotification("success", `Found ${pagination.totalRecords} records (Page ${pagination.currentPage} of ${pagination.totalPages})`);
     } catch (error) {
       console.error("Error fetching data:", error);
       setTableData([]);
@@ -464,7 +466,7 @@ export default function BagReport() {
       <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">{paginatedData.length}</span> of{" "}
+            Showing <span className="font-medium">{tableData.length}</span> of{" "}
             <span className="font-medium">{totalRecords}</span> records
           </div>
 
@@ -642,7 +644,7 @@ export default function BagReport() {
               {/* Data Table */}
               <Table
                 columns={getFilteredColumns()}
-                rowData={paginatedData} // Use paginated data
+                rowData={tableData} // Use paginated data
                 register={register}
                 setValue={setValue}
                 name="begReportTable"

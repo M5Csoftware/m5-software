@@ -522,12 +522,12 @@ const CustomInvoice = () => {
           "The above mentioned items are not for commercial use and value declared only for custom purpose.",
       };
 
-      console.log("📦 Invoice Ready:", {
-        awbNo: invoiceData.awbNo,
-        itemsCount: invoiceData.items.length,
-        total: invoiceData.total,
-        date: invoiceData.date,
-      });
+      // console.log("📦 Invoice Ready:", {
+//         awbNo: invoiceData.awbNo,
+//         itemsCount: invoiceData.items.length,
+//         total: invoiceData.total,
+//         date: invoiceData.date,
+//       });
 
       // Render invoice in hidden container
       const tempDiv = document.createElement("div");

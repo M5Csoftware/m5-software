@@ -43,7 +43,7 @@ function Tabs() {
   // Handle logout confirmation
   const handleLogoutConfirm = () => {
     // Add your logout logic here
-    console.log("User logged out");
+    // console.log("User logged out");
 
     // Example logout actions:
     // - Clear user session

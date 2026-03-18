@@ -37,7 +37,7 @@ function BookingDashboard() {
 
   const [demoRadio, setDemoRadio] = useState("Client");
 
-  console.log;
+  // console.log;
 
   const handleRadioChange = async (value) => {
     setDemoRadio(value);
@@ -94,14 +94,14 @@ function BookingDashboard() {
     setLoading(true);
 
     try {
-      console.log(user);
+      // console.log(user);
 
       const res = await axios.get(
         `${server}/branch-bagging/getAll-runs?branch=${user.branch}`
       );
       const data = [res.data] || [];
 
-      console.log(data);
+      // console.log(data);
 
       // Transform for your table format
       const transformed = data.map((run) => ({

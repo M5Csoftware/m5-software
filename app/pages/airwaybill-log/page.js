@@ -27,6 +27,13 @@ const AirwaybillLog = () => {
   const [formKey, setFormKey] = useState(0);
   const awbNo = watch("awbNo");
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
   const [notification, setNotification] = useState({
     type: "success",
     message: "",
@@ -41,6 +48,9 @@ const AirwaybillLog = () => {
     setReportType(value);
     setRowData([]); // Clear table data when switching report types
     setNoRecords(false);
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
   };
 
   const columns = {
@@ -80,7 +90,7 @@ const AirwaybillLog = () => {
   const currentColumns = columns[reportType];
 
   // Fetch AWB Log by awbNo and populate rowData depending on reportType
-  const fetchAwbLog = async (queryAwbNo) => {
+  const fetchAwbLog = async (queryAwbNo, page = 1) => {
     if (!queryAwbNo) {
       showNotification("error", "Please enter an AWB Number first");
       return;
@@ -93,11 +103,17 @@ const AirwaybillLog = () => {
     try {
       if (reportType === "Action") {
         const resp = await axios.get(
-          `${server}/awb-log/action?awbNo=${encodeURIComponent(queryAwbNo)}`
+          `${server}/awb-log/action?awbNo=${encodeURIComponent(queryAwbNo)}&page=${page}&limit=${pageLimit}`
         );
         const doc = resp.data;
+        const data = doc.logs || doc.data || [];
+        const pagination = doc.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalRecords: data.length,
+        };
 
-        const mapped = (doc.logs || []).map((log) => {
+        const mapped = (Array.isArray(data) ? data : []).map((log) => {
           const systemName =
             log.actionSystemName ||
             log.actionSystemname ||
@@ -114,46 +130,42 @@ const AirwaybillLog = () => {
             actionLogDate: log.actionLogDate
               ? new Date(log.actionLogDate).toLocaleString()
               : "",
-            awbNo: doc.awbNo || "",
+            awbNo: doc.awbNo || log.awbNo || queryAwbNo || "",
             action: log.action || "",
             actionUser: log.actionUser || "",
             actionSystemIP: `${systemName} - ${ip}`,
-            accountCode: doc.accountCode || "",
-            customerName: doc.customer || doc.customerName || "",
+            accountCode: doc.accountCode || log.accountCode || "",
+            customerName: doc.customer || doc.customerName || log.customer || log.customerName || "",
           };
         });
 
         setRowData(mapped);
+        setCurrentPage(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+        setTotalRecords(pagination.totalRecords);
 
         if (!mapped.length) {
           setNoRecords(true);
           showNotification("error", "No Action Logs found");
         } else {
-          showNotification("success", `Loaded ${mapped.length} Action Logs`);
+          showNotification("success", `Loaded ${mapped.length} Action Logs (Page ${pagination.currentPage} of ${pagination.totalPages})`);
         }
       } else {
-        console.log("Fetching log details for AWB:", queryAwbNo);
         const resp = await axios.get(
           `${server}/awb-log/log-details?awbNo=${encodeURIComponent(
             queryAwbNo
-          )}`
+          )}&page=${page}&limit=${pageLimit}`
         );
 
-        console.log("Response:", resp.data); // Add this line
-
-        const data = resp.data;
-        let detailsArray = [];
-
-        if (Array.isArray(data)) {
-          detailsArray = data;
-        } else if (data && typeof data === "object") {
-          detailsArray = [data];
-        }
-
-        console.log("Processed array:", detailsArray); // Add this line
+        const responseData = resp.data;
+        const detailsArray = responseData.data || (Array.isArray(responseData) ? responseData : [responseData]);
+        const pagination = responseData.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalRecords: detailsArray.length,
+        };
 
         const mappedDetails = detailsArray.map((d) => {
-          console.log("Mapping object:", d); // Add this line
           return {
             awbNo: d.awbNo || "",
             shipmentDate: d.shipmentDate
@@ -186,20 +198,20 @@ const AirwaybillLog = () => {
           };
         });
 
-        console.log("Mapped details:", mappedDetails); // Add this line
-
         setRowData(mappedDetails);
+        setCurrentPage(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+        setTotalRecords(pagination.totalRecords);
 
         if (!mappedDetails.length) {
           setNoRecords(true);
           showNotification("error", "No Log Details found");
         } else {
-          showNotification("success", `Found ${mappedDetails.length} AWB Logs`);
+          showNotification("success", `Found ${mappedDetails.length} AWB Logs (Page ${pagination.currentPage} of ${pagination.totalPages})`);
         }
       }
     } catch (err) {
       console.error("Error fetching AWB log:", err);
-      console.error("Error details:", err.response?.data); // Add this line
       showNotification("error", "Error Fetching AWB Log");
       setRowData([]);
       setNoRecords(true);
@@ -208,28 +220,119 @@ const AirwaybillLog = () => {
     }
   };
 
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    fetchAwbLog(currentFilters, newPage);
+  };
+
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    if (currentFilters) {
+      setCurrentPage(1);
+      fetchAwbLog(currentFilters, 1);
+    }
+  };
+
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm bg-white"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // This function handles form submission (Enter key)
   const onSubmit = async (data) => {
-    const query = data.awbNo;
+    const query = data.awbNo?.trim();
 
-    if (!query || query.trim() === "") {
+    if (!query) {
       showNotification("error", "Enter an AWB Number");
       return;
     }
 
-    await fetchAwbLog(query.trim());
+    setCurrentFilters(query);
+    setCurrentPage(1);
+    await fetchAwbLog(query, 1);
   };
 
   // Button click handler (same functionality)
   const handleShow = async () => {
-    const query = awbNo;
+    const query = awbNo?.trim();
 
-    if (!query || query.trim() === "") {
+    if (!query) {
       showNotification("error", "Enter an AWB Number");
       return;
     }
 
-    await fetchAwbLog(query.trim());
+    setCurrentFilters(query);
+    setCurrentPage(1);
+    await fetchAwbLog(query, 1);
   };
 
   const handleClose = () => {
@@ -318,6 +421,7 @@ const AirwaybillLog = () => {
               rowData={rowData}
               className={loading ? "opacity-75 pointer-events-none" : ""}
             />
+            <PaginationControls />
           </div>
         </div>
       </div>

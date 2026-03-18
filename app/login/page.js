@@ -47,7 +47,18 @@ export default function LoginPage() {
         setIsLoading(false);
       }
     } catch (err) {
-      setErrorMessage(err.response?.data?.message || "Server error");
+      const remaining = err.response?.headers?.['x-ratelimit-remaining'];
+      const retryAfter = err.response?.headers?.['retry-after'];
+      
+      let msg = err.response?.data?.message || "Server error";
+      
+      if (err.response?.status === 429) {
+        msg = `Too many attempts. Please try again in ${Math.ceil(retryAfter / 60)} minutes.`;
+      } else if (remaining !== undefined) {
+        msg += `. ${remaining} attempts left.`;
+      }
+      
+      setErrorMessage(msg);
       setIsLoading(false);
     }
   };

@@ -65,8 +65,8 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
       header: true,
       skipEmptyLines: true,
       complete: (result) => {
-        console.log("Raw parsed data:", result.data[0]); // Debug log
-        console.log("CSV headers:", result.meta.fields); // Debug log
+        // console.log("Raw parsed data:", result.data[0]); // Debug log
+        // console.log("CSV headers:", result.meta.fields); // Debug log
         
         const parsedData = result.data.map((row, index) => {
           // Build the JSON object with the correct column mapping
@@ -97,7 +97,7 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
           return jsonData;
         });
 
-        console.log("Processed CSV Data:", parsedData);
+        // console.log("Processed CSV Data:", parsedData);
         setRowData(parsedData);
         setSearchFilteredData(parsedData);
         setSelectedRows([]); // Clear selection
@@ -140,7 +140,7 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
   }, [debouncedSearchQuery, selectedShipper, rowData, columns]);
 
   useEffect(() => {
-    console.log("Current rowData:", rowData);
+    // console.log("Current rowData:", rowData);
   }, [rowData]);
 
   // Handle Edit button click
@@ -200,7 +200,7 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
     // Remove temporary IDs before sending to backend
     const dataToSave = rowData.map(({ _tempId, ...rest }) => rest);
 
-    console.log("Saving data:", dataToSave);
+    // console.log("Saving data:", dataToSave);
     onSubmit(dataToSave); // Call the handleUploadData function passed as a prop
   };
 

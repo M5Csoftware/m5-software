@@ -164,7 +164,7 @@ const ComplaintReport = () => {
         },
       });
 
-      console.log("API Response:", complaintsRes.data);
+      // console.log("API Response:", complaintsRes.data);
 
       // Get reports and pagination from API response
       const reportsFromAPI = complaintsRes.data?.reports || [];

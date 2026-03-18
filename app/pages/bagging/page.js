@@ -512,13 +512,13 @@ const Bagging = () => {
           }
         );
 
-        console.log("Run entry response:", response.data);
+        // console.log("Run entry response:", response.data);
         return response.data;
       } catch (error) {
         console.error("Error fetching run entry:", error);
 
         if (error.response?.status === 404) {
-          console.log(`Run ${runNo} not found in database`);
+          // console.log(`Run ${runNo} not found in database`);
         } else if (error.code === "ECONNABORTED") {
           console.error("Request timeout for run entry");
           showNotification("error", "Request timeout. Please try again.");
@@ -577,9 +577,9 @@ const Bagging = () => {
         calculateAndSetClubDetails(data);
       } catch (error) {
         if (error.response?.status === 404) {
-          console.log(
-            `No clubbing data found for run ${runNo} - this is normal`
-          );
+          // console.log(
+//             `No clubbing data found for run ${runNo} - this is normal`
+//           );
           setClubbingData([]);
           resetClubDetails();
         } else {
@@ -1161,7 +1161,7 @@ const Bagging = () => {
           // Get the actual AWB number - handle both master AWB and child AWB
           const oldAwbNo = oldRow.childShipment || oldRow.awbNo;
 
-          console.log("Editing mode - removing old AWB:", oldAwbNo);
+          // console.log("Editing mode - removing old AWB:", oldAwbNo);
 
           // Remove old AWB (works for both master and child AWBs)
           await axios.put(
@@ -1174,7 +1174,7 @@ const Bagging = () => {
             axiosConfig
           );
 
-          console.log("Adding updated AWB:", trimmedAwb);
+          // console.log("Adding updated AWB:", trimmedAwb);
 
           // Add updated AWB
           const response = await axios.put(
@@ -1187,7 +1187,7 @@ const Bagging = () => {
             axiosConfig
           );
 
-          console.log("Update response:", response.data);
+          // console.log("Update response:", response.data);
 
           setRowData(response.data.rowData || rowData);
           setExistingBaggingData(response.data);
@@ -1210,7 +1210,7 @@ const Bagging = () => {
           if (rowData.length === 0 && !existingBaggingData) {
             const formData = getValues();
 
-            console.log("Creating new bagging record for first item");
+            // console.log("Creating new bagging record for first item");
 
             let parsedDate = new Date();
             if (formData.date) {
@@ -1244,7 +1244,7 @@ const Bagging = () => {
               rowData: [newRow],
             };
 
-            console.log("Creating bagging with data:", baggingData);
+            // console.log("Creating bagging with data:", baggingData);
 
             const response = await axios.post(
               `${server}/bagging`,
@@ -1252,7 +1252,7 @@ const Bagging = () => {
               axiosConfig
             );
 
-            console.log("Bagging created successfully:", response.data);
+            // console.log("Bagging created successfully:", response.data);
 
             setExistingBaggingData(response.data);
             setRowData(response.data.rowData || [newRow]);
@@ -1262,7 +1262,7 @@ const Bagging = () => {
               `AWB ${trimmedAwb} added to Bag ${data.bagNo} successfully!`
             );
           } else {
-            console.log("Adding item to existing bagging");
+            // console.log("Adding item to existing bagging");
 
             const saveData = {
               runNo: data.runNo.toString(),
@@ -1270,7 +1270,7 @@ const Bagging = () => {
               item: newRow,
             };
 
-            console.log("Adding item with data:", saveData);
+            // console.log("Adding item with data:", saveData);
 
             const response = await axios.put(
               `${server}/bagging`,
@@ -1278,7 +1278,7 @@ const Bagging = () => {
               axiosConfig
             );
 
-            console.log("Item added successfully:", response.data);
+            // console.log("Item added successfully:", response.data);
 
             setRowData(response.data.rowData || [...rowData, newRow]);
             setExistingBaggingData(response.data);

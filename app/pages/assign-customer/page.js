@@ -280,12 +280,12 @@ const AssignCustomer = () => {
 
   const fetchSalePersons = async (query) => {
     if (!query) return setSalePersons([]);
-    console.log("🔍 calling API:", `${server}/assign-customer?q=${query}`);
+    // console.log("🔍 calling API:", `${server}/assign-customer?q=${query}`);
     try {
       const res = await axios.get(`${server}/assign-customer`, {
         params: { q: query },
       });
-      console.log("SalePersons API response:", res.data);
+      // console.log("SalePersons API response:", res.data);
       setSalePersons(res.data || []);
     } catch (err) {
       console.error("Search failed:", err);
@@ -423,7 +423,7 @@ const AssignCustomer = () => {
       });
 
       showNotification("Sales Target Assigned Successfully!", "success");
-      console.log("Sales target saved:", res.data);
+      // console.log("Sales target saved:", res.data);
     } catch (err) {
       console.error("Failed to save target:", err);
       showNotification("Failed to save target", "error");

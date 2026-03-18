@@ -181,7 +181,7 @@ function BookingReportWithAmount() {
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       saveAs(blob, filename);
 
-      console.log(`CSV file downloaded: ${filename}`);
+      // console.log(`CSV file downloaded: ${filename}`);
     } catch (error) {
       console.error("Error downloading CSV:", error);
       showNotification(
@@ -281,7 +281,7 @@ function BookingReportWithAmount() {
       // Write and save the file
       XLSX.writeFile(workbook, filename);
 
-      console.log(`Excel file downloaded: ${filename}`);
+      // console.log(`Excel file downloaded: ${filename}`);
     } catch (error) {
       console.error("Error downloading Excel:", error);
       showNotification("error", "Failed to download Excel file");

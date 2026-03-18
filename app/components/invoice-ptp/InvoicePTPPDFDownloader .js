@@ -281,7 +281,7 @@ export default function InvoicePTPPDFDownloader({ invoiceData, onDownloadComplet
               errorCorrectionLevel: 'H'
             });
             setQrCodeImageUrl(qrDataUrl);
-            console.log("✅ QR Code generated successfully");
+            // console.log("✅ QR Code generated successfully");
           } catch (error) {
             console.error("❌ Error generating QR code from database:", error);
           }

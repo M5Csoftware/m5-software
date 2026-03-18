@@ -29,7 +29,7 @@ const CustomerDetails = ({
       try {
         console.log("=== Fetching Branches ===");
         const response = await axios.get(`${server}/branch-master`);
-        console.log("Branches fetched:", response.data);
+        // console.log("Branches fetched:", response.data);
         setAllBranches(response.data);
       } catch (error) {
         console.error("Error fetching branches:", error);
@@ -44,17 +44,17 @@ const CustomerDetails = ({
     const codeToFind = selectedBranch || customerData?.branch;
 
     if (codeToFind && allBranches.length > 0) {
-      console.log("=== Branch Selected ===");
-      console.log("Selected branch code:", codeToFind);
+      // console.log("=== Branch Selected ===");
+      // console.log("Selected branch code:", codeToFind);
 
       const branch = allBranches.find((b) => b.code === codeToFind);
 
       if (branch) {
-        console.log("Branch found:", branch);
+        // console.log("Branch found:", branch);
         setBranchName(branch.companyName);
         setValue("branchName", branch.companyName);
       } else {
-        console.log("Branch not found for code:", codeToFind);
+        // console.log("Branch not found for code:", codeToFind);
         setBranchName("");
         setValue("branchName", "");
       }

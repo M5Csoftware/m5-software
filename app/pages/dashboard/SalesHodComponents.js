@@ -39,7 +39,7 @@ export function ClientsCard() {
           nonWorking: data.nonWorking || 0,
         });
       } catch (err) {
-        console.log(err);
+        // console.log(err);
       } finally {
         setLoading(false);
       }
@@ -150,7 +150,7 @@ export function ClientsCard() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.log(err);
+      // console.log(err);
     } finally {
       setDownloading(false);
     }
@@ -431,7 +431,7 @@ export function OutstandingCard() {
           params: { entityType: "Hub" },
         });
 
-        console.log("Fetched hubs:", response.data);
+        // console.log("Fetched hubs:", response.data);
 
         setHubs(response.status === 200 ? response.data : []);
       } catch (error) {
@@ -835,11 +835,11 @@ export function HSSBReport({ setNotification }) {
       const data = await res.json();
 
       // DEBUG: Log the structure
-      console.log("API Response:", {
-        months: data.months,
-        firstCustomer: data.masterCustomers?.[0],
-        firstCustomerRegions: data.masterCustomers?.[0]?.regions,
-      });
+      // console.log("API Response:", {
+//         months: data.months,
+//         firstCustomer: data.masterCustomers?.[0],
+//         firstCustomerRegions: data.masterCustomers?.[0]?.regions,
+//       });
 
       downloadStateHSSB(data);
     } catch (error) {

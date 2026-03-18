@@ -93,7 +93,7 @@ const RateHike = () => {
   // Fetch country when both rate tariff and service are selected
   useEffect(() => {
     if (selectedRateTariff && selectedService) {
-      console.log("Both selected, fetching country...");
+      // console.log("Both selected, fetching country...");
       fetchCountryFromShipperTariff(selectedRateTariff, selectedService);
     } else {
       setCountryValue("");
@@ -105,7 +105,7 @@ const RateHike = () => {
   useEffect(() => {
     const currentZone = zoneRef.current;
     if (currentZone && currentZone.trim()) {
-      console.log("Zone tariff available, fetching zone list:", currentZone);
+      // console.log("Zone tariff available, fetching zone list:", currentZone);
       fetchZoneList();
     }
   }, [zoneRef.current]);
@@ -113,10 +113,10 @@ const RateHike = () => {
   // Watch for zoneTariffValue changes
   useEffect(() => {
     if (zoneTariffValue && zoneTariffValue.trim()) {
-      console.log(
-        "zoneTariffValue changed, fetching zone list:",
-        zoneTariffValue
-      );
+      // console.log(
+//         "zoneTariffValue changed, fetching zone list:",
+//         zoneTariffValue
+//       );
       zoneRef.current = zoneTariffValue;
       fetchZoneList();
     }
@@ -129,11 +129,11 @@ const RateHike = () => {
       const cleanRateTariff = rateTariff.trim();
       const cleanService = service.trim();
 
-      console.log("Fetching country for:", {
-        customerCode,
-        rateTariff: cleanRateTariff,
-        service: cleanService,
-      });
+      // console.log("Fetching country for:", {
+//         customerCode,
+//         rateTariff: cleanRateTariff,
+//         service: cleanService,
+//       });
 
       const res = await axios.get(`${server}/rate-hike/country`, {
         params: {
@@ -144,7 +144,7 @@ const RateHike = () => {
       });
 
       const country = res.data || "";
-      console.log("Country API Response:", country);
+      // console.log("Country API Response:", country);
 
       setCountryValue(country);
       setValue("country", country);
@@ -184,7 +184,7 @@ const RateHike = () => {
       });
 
       const zone = res.data || "";
-      console.log("Zone from ShipperTariff:", zone);
+      // console.log("Zone from ShipperTariff:", zone);
 
       zoneRef.current = zone;
       setZoneTariffValue(zone);
@@ -201,15 +201,15 @@ const RateHike = () => {
     const currentZone = zoneRef.current;
 
     if (!currentZone || !currentZone.trim()) {
-      console.log("No zone tariff available for zone list fetch");
+      // console.log("No zone tariff available for zone list fetch");
       setZoneListData([]);
       return;
     }
 
     try {
       setIsLoading(true);
-      console.log("=== FETCHING ZONE LIST ===");
-      console.log("Zone Tariff to search:", `"${currentZone}"`);
+      // console.log("=== FETCHING ZONE LIST ===");
+      // console.log("Zone Tariff to search:", `"${currentZone}"`);
 
       const res = await axios.get(`${server}/rate-hike/zone-list`, {
         params: {
@@ -217,21 +217,21 @@ const RateHike = () => {
         },
       });
 
-      console.log("Zone list API response:", {
-        status: res.status,
-        dataLength: res.data?.length || 0,
-        sample: res.data?.[0],
-      });
+      // console.log("Zone list API response:", {
+//         status: res.status,
+//         dataLength: res.data?.length || 0,
+//         sample: res.data?.[0],
+//       });
 
       setZoneListData(res.data || []);
 
       if (res.data && res.data.length > 0) {
-        console.log(
-          `✅ Loaded ${res.data.length} zone entries for zoneMatrix: "${currentZone}"`
-        );
-        console.log("Sample zone entry:", res.data[0]);
+        // console.log(
+//           `✅ Loaded ${res.data.length} zone entries for zoneMatrix: "${currentZone}"`
+//         );
+        // console.log("Sample zone entry:", res.data[0]);
       } else {
-        console.log(`❌ No zone data found for zoneMatrix: "${currentZone}"`);
+        // console.log(`❌ No zone data found for zoneMatrix: "${currentZone}"`);
       }
     } catch (error) {
       console.error("Error fetching zone list:", error);
@@ -256,7 +256,7 @@ const RateHike = () => {
         ...new Set(allData.map((item) => item.service)),
       ].filter(Boolean);
 
-      console.log("Available services:", uniqueServices);
+      // console.log("Available services:", uniqueServices);
       setServices(uniqueServices);
     } catch (error) {
       console.error("Error fetching services:", error);
@@ -280,7 +280,7 @@ const RateHike = () => {
         ...new Set(allData.map((item) => item.network)),
       ].filter(Boolean);
 
-      console.log("Available networks:", uniqueNetworks);
+      // console.log("Available networks:", uniqueNetworks);
       return uniqueNetworks;
     } catch (error) {
       console.error("Error fetching networks:", error);
@@ -348,15 +348,15 @@ const RateHike = () => {
   }, [zoneListData.length, filteredZoneList.length, searchZone]);
 
   const handleShow = async () => {
-    console.log("=== handleShow clicked ===");
-    console.log("Current values:", {
-      customerCode,
-      selectedRateTariff,
-      selectedService,
-      zoneTariffFromShipper: zoneRef.current,
-      branch: branchValue,
-      country: countryValue,
-    });
+    // console.log("=== handleShow clicked ===");
+    // console.log("Current values:", {
+//       customerCode,
+//       selectedRateTariff,
+//       selectedService,
+//       zoneTariffFromShipper: zoneRef.current,
+//       branch: branchValue,
+//       country: countryValue,
+//     });
 
     if (!selectedRateTariff) {
       showNotification("error", "Please select rate tariff");
@@ -378,26 +378,26 @@ const RateHike = () => {
         params.service = selectedService;
       }
 
-      console.log("Fetching rate sheet:", params);
+      // console.log("Fetching rate sheet:", params);
 
       const res = await axios.get(`${server}/rate-sheet`, {
         params,
         timeout: 10000,
       });
 
-      console.log("Rate sheet response:", {
-        status: res.status,
-        dataLength: res.data?.length || 0,
-      });
+      // console.log("Rate sheet response:", {
+//         status: res.status,
+//         dataLength: res.data?.length || 0,
+//       });
 
       const ratesData = res.data || [];
 
       if (ratesData.length > 0) {
-        console.log("Sample row:", {
-          shipper: ratesData[0].shipper,
-          service: ratesData[0].service,
-          network: ratesData[0].network,
-        });
+        // console.log("Sample row:", {
+//           shipper: ratesData[0].shipper,
+//           service: ratesData[0].service,
+//           network: ratesData[0].network,
+//         });
       }
 
       const sortedData = [...ratesData].sort(
@@ -555,11 +555,11 @@ const RateHike = () => {
   const confirmSaveTariff = async () => {
     try {
       setIsLoading(true);
-      console.log(
-        "Bulk saving hiked tariff updates for",
-        hikedTableData.length,
-        "rows"
-      );
+      // console.log(
+//         "Bulk saving hiked tariff updates for",
+//         hikedTableData.length,
+//         "rows"
+//       );
 
       showNotification(
         "info",
@@ -578,11 +578,11 @@ const RateHike = () => {
         return update;
       });
 
-      console.log("Sending bulk update with data structure:", updates[0]);
+      // console.log("Sending bulk update with data structure:", updates[0]);
 
       const res = await axios.put(`${server}/rate-hike`, updates);
 
-      console.log("Bulk save response:", res.data);
+      // console.log("Bulk save response:", res.data);
 
       if (res.data.modifiedCount > 0) {
         setTableData(hikedTableData);
@@ -611,7 +611,7 @@ const RateHike = () => {
               priority: "medium",
             });
           }
-          console.log(`✅ Sent notifications to ${pendingSaveData.affectedCustomers.length} customers`);
+          // console.log(`✅ Sent notifications to ${pendingSaveData.affectedCustomers.length} customers`);
         }
       } else {
         showNotification(
@@ -676,7 +676,7 @@ const RateHike = () => {
   // rate tariff → fetch services and zone
   useEffect(() => {
     if (selectedRateTariff) {
-      console.log("Rate tariff selected:", selectedRateTariff);
+      // console.log("Rate tariff selected:", selectedRateTariff);
       fetchAvailableServices(selectedRateTariff);
       fetchZone(selectedRateTariff);
 

@@ -65,20 +65,20 @@ const RateCalculator = () => {
       try {
         // First, check if account exists in GlobalContext accounts
         if (accounts && Array.isArray(accounts)) {
-          console.log(
-            "🔍 Checking GlobalContext accounts:",
-            accounts.length,
-            "accounts available",
-          );
+          // console.log(
+//             "🔍 Checking GlobalContext accounts:",
+//             accounts.length,
+//             "accounts available",
+//           );
           const customerAccount = accounts.find(
             (account) => account.accountCode?.toUpperCase() === accountCode,
           );
 
           if (customerAccount) {
-            console.log(
-              "✅ Found customer in GlobalContext:",
-              customerAccount.name,
-            );
+            // console.log(
+//               "✅ Found customer in GlobalContext:",
+//               customerAccount.name,
+//             );
             setCustomerName(customerAccount.name);
             setValue("customerName", customerAccount.name);
             setLoadingCustomerName(false);
@@ -86,9 +86,9 @@ const RateCalculator = () => {
           }
         }
 
-        console.log(
-          "⚠️ Customer not found in GlobalContext, fetching from API...",
-        );
+        // console.log(
+//           "⚠️ Customer not found in GlobalContext, fetching from API...",
+//         );
 
         // If not found in context, try API call
         const response = await axios.get(`${server}/accounts`);
@@ -99,11 +99,11 @@ const RateCalculator = () => {
           );
 
           if (customerAccount) {
-            console.log("✅ Found customer via API:", customerAccount.name);
+            // console.log("✅ Found customer via API:", customerAccount.name);
             setCustomerName(customerAccount.name);
             setValue("customerName", customerAccount.name);
           } else {
-            console.log("❌ Customer not found in API response");
+            // console.log("❌ Customer not found in API response");
             setCustomerName("Customer not found");
             setValue("customerName", "Customer not found");
           }
@@ -188,7 +188,7 @@ const RateCalculator = () => {
           });
 
           setAvailableServices(allServices);
-          console.log("✅ Available services loaded:", allServices);
+          // console.log("✅ Available services loaded:", allServices);
         }
       } catch (error) {
         console.error("❌ Error fetching customer services:", error);
@@ -217,12 +217,12 @@ const RateCalculator = () => {
       return;
     }
 
-    console.log("🔍 Filtering services for sector:", watchSector);
+    // console.log("🔍 Filtering services for sector:", watchSector);
     const filtered = availableServices.filter(
       (s) => s.sector?.toUpperCase() === watchSector.toUpperCase(),
     );
 
-    console.log("✅ Filtered services:", filtered);
+    // console.log("✅ Filtered services:", filtered);
     setFilteredServices(filtered);
 
     // Reset dependent fields
@@ -252,11 +252,11 @@ const RateCalculator = () => {
           return;
         }
 
-        console.log("🔍 Fetching destinations for:", {
-          sector: watchSector,
-          service: watchService,
-          zoneMatrix: selectedServiceDetails.zoneMatrix,
-        });
+        // console.log("🔍 Fetching destinations for:", {
+//           sector: watchSector,
+//           service: watchService,
+//           zoneMatrix: selectedServiceDetails.zoneMatrix,
+//         });
 
         const response = await axios.get(`${server}/zones/destinations`, {
           params: {
@@ -274,7 +274,7 @@ const RateCalculator = () => {
             .sort();
 
           setAvailableDestinations(destinations);
-          console.log("✅ Available destinations:", destinations);
+          // console.log("✅ Available destinations:", destinations);
 
           if (destinations.length === 1) {
             setValue("destination", destinations[0]);
@@ -377,7 +377,7 @@ const RateCalculator = () => {
         },
       );
 
-      console.log("✅ Rate calculation response:", response.data);
+      // console.log("✅ Rate calculation response:", response.data);
 
       if (response.data.success && response.data.results) {
         const calculatedRatesData = response.data.results

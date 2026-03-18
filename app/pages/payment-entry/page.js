@@ -131,7 +131,7 @@ function PaymentEntry({ }) {
         entryUser,
       });
 
-      console.log("Modify response:", res.data);
+      // console.log("Modify response:", res.data);
       showNotification("success", "Record updated successfully ✏️");
       setRefetch(!refetch);
     } catch (error) {
@@ -204,7 +204,7 @@ function PaymentEntry({ }) {
 
       await axios.post(`${server}/ledger`, ledgerPayload);
 
-      console.log("Payment API response:", res.data);
+      // console.log("Payment API response:", res.data);
       showNotification("success", "Payment saved successfully ✅");
       setRefetch(!refetch);
     } catch (error) {
@@ -248,19 +248,19 @@ function PaymentEntry({ }) {
   const handleReceiptSearch = async (receiptNo) => {
     if (!receiptNo) return;
 
-    console.log("🔍 Frontend: Searching for receipt:", receiptNo);
+    // console.log("🔍 Frontend: Searching for receipt:", receiptNo);
 
     try {
       const res = await axios.get(
         `${server}/payment-entry?receiptNo=${receiptNo}`
       );
 
-      console.log("✅ API Response:", res.data);
+      // console.log("✅ API Response:", res.data);
 
       const payment = res.data.payment;
       const summary = res.data.summary;
 
-      console.log("📊 Summary data:", summary);
+      // console.log("📊 Summary data:", summary);
 
       // ✅ Update totals state correctly
       setTotals({

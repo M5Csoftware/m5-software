@@ -66,10 +66,10 @@ const GrrmSmse = ({
         return false;
       }
 
-      console.log("=== Sending Welcome Email ===");
-      console.log("Email:", userEmail);
-      console.log("Name:", user.fullName || user.name);
-      console.log("Account Code:", user.accountCode);
+      // console.log("=== Sending Welcome Email ===");
+      // console.log("Email:", userEmail);
+      // console.log("Name:", user.fullName || user.name);
+      // console.log("Account Code:", user.accountCode);
 
       // Call the email API route
       const response = await axios.post(`${server}/send-account-email`, {
@@ -78,7 +78,7 @@ const GrrmSmse = ({
         accountCode: user.accountCode,
       });
 
-      console.log("Email API response:", response.data);
+      // console.log("Email API response:", response.data);
 
       if (response.data.success) {
         showNotification(
@@ -117,7 +117,7 @@ const GrrmSmse = ({
 
       if (getValues && typeof getValues === "function") {
         allFormData = getValues();
-        console.log("✅ Data from getValues:", allFormData);
+        // console.log("✅ Data from getValues:", allFormData);
       } else {
         showNotification(
           "error",
@@ -131,15 +131,15 @@ const GrrmSmse = ({
       // Merge with customerData for any missing fields (edit mode)
       if (customerData && Object.keys(customerData).length > 0) {
         allFormData = { ...customerData, ...allFormData };
-        console.log("✅ Merged with customerData");
+        // console.log("✅ Merged with customerData");
       }
 
-      console.log("=== Saving Customer Account ===");
-      console.log("Mode:", mode);
-      console.log("Account Code:", allFormData.accountCode);
-      console.log("Name:", allFormData.name);
-      console.log("Send Email:", sendEmail);
-      console.log("Full Form Data:", allFormData);
+      // console.log("=== Saving Customer Account ===");
+      // console.log("Mode:", mode);
+      // console.log("Account Code:", allFormData.accountCode);
+      // console.log("Name:", allFormData.name);
+      // console.log("Send Email:", sendEmail);
+      // console.log("Full Form Data:", allFormData);
 
       // Validate required fields
       if (!allFormData.accountCode || allFormData.accountCode.trim() === "") {
@@ -284,36 +284,36 @@ const GrrmSmse = ({
         accountClass: allFormData.accountClass || "",
       };
 
-      console.log("Payload to send:", payload);
+      // console.log("Payload to send:", payload);
 
       let response;
       let isNewAccount = false;
 
       if (mode === "edit" || (customerData && customerData._id)) {
         // Update existing customer
-        console.log(
-          "Updating customer with accountCode:",
-          allFormData.accountCode
-        );
+        // console.log(
+        //   "Updating customer with accountCode:",
+        //   allFormData.accountCode
+        // );
         response = await axios.put(`${server}/customer-account`, payload);
-        console.log("Update response:", response.data);
+        // console.log("Update response:", response.data);
 
         if (response.status === 200) {
           showNotification("success", "Customer account updated successfully!");
-          console.log("=== Update Successful ===");
+          // console.log("=== Update Successful ===");
         } else {
           throw new Error("Failed to update customer account");
         }
       } else {
         // Create new customer
-        console.log("Creating new customer");
+        // console.log("Creating new customer");
         response = await axios.post(`${server}/customer-account`, payload);
-        console.log("Create response:", response.data);
+        // console.log("Create response:", response.data);
 
         if (response.status === 201) {
           isNewAccount = true;
           showNotification("success", "Customer account created successfully!");
-          console.log("=== Creation Successful ===");
+          // console.log("=== Creation Successful ===");
         } else {
           throw new Error("Failed to create customer account");
         }
@@ -321,7 +321,7 @@ const GrrmSmse = ({
 
       // Send email if checkbox is checked (only for new accounts or updates)
       if (sendEmail) {
-        console.log("Preparing to send email...");
+        // console.log("Preparing to send email...");
         await sendCustomerEmail({
           emailId: allFormData.email || allFormData.emailId,
           fullName: allFormData.name,
@@ -362,7 +362,7 @@ const GrrmSmse = ({
 
   // Function to reset/clear all form fields
   const resetForm = () => {
-    console.log("=== Resetting Form ===");
+    // console.log("=== Resetting Form ===");
 
     if (reset && typeof reset === "function") {
       // Use react-hook-form reset if available
@@ -370,7 +370,7 @@ const GrrmSmse = ({
         accountType: "agent",
         // Reset all other fields to empty/default values
       });
-      console.log("Form reset using react-hook-form reset()");
+      // console.log("Form reset using react-hook-form reset()");
     } else {
       // Manual reset using setValue
       const fields = [
@@ -496,7 +496,7 @@ const GrrmSmse = ({
         }
       });
 
-      console.log("Form reset using setValue()");
+      // console.log("Form reset using setValue()");
     }
 
     // Reset email checkbox to default (checked)
@@ -505,7 +505,7 @@ const GrrmSmse = ({
     // Go back to first step
     if (setStep && typeof setStep === "function") {
       setStep(0);
-      console.log("Navigated to first step");
+      // console.log("Navigated to first step");
     }
 
     // Call success callback if provided
@@ -513,7 +513,7 @@ const GrrmSmse = ({
       onSaveSuccess();
     }
 
-    console.log("=== Form Reset Complete ===");
+    // console.log("=== Form Reset Complete ===");
   };
 
   return (

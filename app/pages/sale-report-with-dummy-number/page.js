@@ -20,8 +20,28 @@ function SaleReportWithDummyNumber() {
   const { server } = useContext(GlobalContext);
   const { register, setValue, watch } = useForm();
   const [allRowData, setAllRowData] = useState([]);
+  const [notification, setNotification] = useState({
+    type: "",
+    message: "",
+    visible: false,
+  });
+
+  // Pagination state
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+
+  // Dropdown options
+  const [paymentOptions] = useState(["COD", "Prepaid", "To Pay", "Credit"]);
+  const [salePersonOptions, setSalePersonOptions] = useState([]);
+  const [accountManagerOptions, setAccountManagerOptions] = useState([]);
+  const [counterPartOptions, setCounterPartOptions] = useState([]);
+  const [companyOptions, setCompanyOptions] = useState([]);
+
+  const customerCode = watch("customerCode");
+
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(20);
   const [totals, setTotals] = useState({
     totalBagWeight: 0,
     totalWeight: 0,
@@ -33,72 +53,6 @@ function SaleReportWithDummyNumber() {
   const [withDate, setDate] = useState(false);
   const [withBranchWise, setBrnachWise] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [notification, setNotification] = useState({
-    type: "",
-    message: "",
-    visible: false,
-  });
-
-  // Dropdown options
-  const [paymentOptions] = useState(["COD", "Prepaid", "To Pay", "Credit"]);
-  const [salePersonOptions, setSalePersonOptions] = useState([]);
-  const [accountManagerOptions, setAccountManagerOptions] = useState([]);
-  const [counterPartOptions, setCounterPartOptions] = useState([]);
-  const [companyOptions, setCompanyOptions] = useState([]);
-
-  const customerCode = watch("customerCode");
-
-  // Pagination calculations
-  const totalPages = Math.ceil(allRowData.length / itemsPerPage);
-  const currentPageData = allRowData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  // Pagination functions
-  const goToPage = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
-
-  const goToPrevious = (e) => {
-    e.preventDefault();
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const goToNext = (e) => {
-    e.preventDefault();
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-    
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 5; i++) {
-          pages.push(i);
-        }
-      } else if (currentPage >= totalPages - 2) {
-        for (let i = totalPages - 4; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        for (let i = currentPage - 2; i <= currentPage + 2; i++) {
-          pages.push(i);
-        }
-      }
-    }
-    return pages;
-  };
 
   // Fetch dropdown options on mount
   useEffect(() => {
@@ -164,10 +118,9 @@ function SaleReportWithDummyNumber() {
     }
   };
 
-  const handleShow = async () => {
+  const handleShow = async (page = 1) => {
     const formData = watch();
 
-    // Validate required fields
     if (!formData.from || !formData.to) {
       setNotification({
         type: "error",
@@ -178,6 +131,7 @@ function SaleReportWithDummyNumber() {
     }
 
     setLoading(true);
+    setCurrentFilters(formData);
 
     try {
       const queryParams = new URLSearchParams({
@@ -186,6 +140,8 @@ function SaleReportWithDummyNumber() {
         withBookingDate: withBookingDate.toString(),
         withUnbilled: withUnbilled.toString(),
         withDHL: withDHL.toString(),
+        page: page,
+        limit: pageLimit,
       });
 
       // Add optional filters
@@ -208,12 +164,19 @@ function SaleReportWithDummyNumber() {
       );
 
       if (response.data.success) {
-        setAllRowData(response.data.data);
-        setCurrentPage(1);
-        setTotals(response.data.totals);
+        setAllRowData(response.data.data || []);
+        const pagination = response.data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalRecords: (response.data.data || []).length,
+        };
+        setCurrentPage(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+        setTotalRecords(pagination.totalRecords);
+        setTotals(response.data.totals || { totalBagWeight: 0, totalWeight: 0, grandTotal: 0 });
         setNotification({
           type: "success",
-          message: `Found ${response.data.data.length} records`,
+          message: `Found ${pagination.totalRecords} records (Page ${pagination.currentPage} of ${pagination.totalPages})`,
           visible: true,
         });
       } else {
@@ -233,6 +196,94 @@ function SaleReportWithDummyNumber() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    handleShow(newPage);
+  };
+
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    if (currentFilters) {
+      setCurrentPage(1);
+      handleShow(1);
+    }
+  };
+
+  const PaginationControls = () => {
+    if (totalPages <= 1 && allRowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{allRowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm bg-white"
+              disabled={loading}
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   // Print functionality
@@ -741,11 +792,14 @@ function SaleReportWithDummyNumber() {
         title={`Sale Report With Child Number`}
         bulkUploadBtn
         codeListBtn
-        onRefresh={() => {
-          setAllRowData([]);
-          setCurrentPage(1);
-          setTotals({ totalBagWeight: 0, totalWeight: 0, grandTotal: 0 });
-        }}
+          onRefresh={() => {
+            setAllRowData([]);
+            setCurrentPage(1);
+            setTotalPages(1);
+            setTotalRecords(0);
+            setCurrentFilters(null);
+            setTotals({ totalBagWeight: 0, totalWeight: 0, grandTotal: 0 });
+          }}
         fullscreenBtn={false}
       />
       
@@ -866,7 +920,7 @@ function SaleReportWithDummyNumber() {
                 label={loading ? "Loading..." : "Show"} 
                 onClick={(e) => {
                   e.preventDefault();
-                  handleShow();
+                  handleShow(1);
                 }}
                 disabled={loading}
               />
@@ -919,59 +973,15 @@ function SaleReportWithDummyNumber() {
       </div>
 
       <div>
-        <TableWithSorting
+        <Table
           register={register}
           setValue={setValue}
           columns={columns}
-          rowData={currentPageData}
+          rowData={allRowData}
           className={`border-b-0 rounded-b-none h-[45vh]`}
         />
         
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 border-b-0 bg-gray-50 px-4 py-3">
-            <div className="text-sm text-gray-700">
-              Showing {Math.min((currentPage - 1) * itemsPerPage + 1, allRowData.length)} to {Math.min(currentPage * itemsPerPage, allRowData.length)} of {allRowData.length} results
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={goToPrevious}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                Previous
-              </button>
-              
-              {getPageNumbers().map((pageNumber) => (
-                <button
-                  type="button"
-                  key={pageNumber}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    goToPage(pageNumber);
-                  }}
-                  className={`px-3 py-1 border rounded text-sm ${
-                    currentPage === pageNumber
-                      ? 'bg-red-500 text-white border-red-500'
-                      : 'border-gray-300 hover:bg-gray-100'
-                  }`}
-                >
-                  {pageNumber}
-                </button>
-              ))}
-              
-              <button
-                type="button"
-                onClick={goToNext}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <PaginationControls />
         
         <div className="flex justify-end border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 text-gray-900 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2 gap-16">
           <div>

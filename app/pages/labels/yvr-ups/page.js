@@ -253,8 +253,8 @@ const YvrUpsPage = () => {
           return `${dd}-${mm}-${yyyy}`;
         };
 
-        console.log("API DATA:", data);
-        console.log("API DATE:", data.date);
+        // console.log("API DATA:", data);
+        // console.log("API DATE:", data.date);
 
         setValue("date", data.date ? formatDDMMYYYY(data.date) : "");
 

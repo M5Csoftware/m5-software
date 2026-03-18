@@ -253,7 +253,7 @@ const NewBookingReport = () => {
   // Update the onSubmit function to use the new fetchReports function
   const onSubmit = async (data) => {
     try {
-      console.log("Form data received:", data);
+      // console.log("Form data received:", data);
 
       // Validate dates before submission
       if (!data.from || !data.to) {
@@ -265,7 +265,7 @@ const NewBookingReport = () => {
       const fromDate = parseDateDDMMYYYY(data.from);
       const toDate = parseDateDDMMYYYY(data.to);
 
-      console.log("Parsed dates:", { fromDate, toDate });
+      // console.log("Parsed dates:", { fromDate, toDate });
 
       // Check if dates are valid
       if (
@@ -306,7 +306,7 @@ const NewBookingReport = () => {
       };
 
       console.log("Submitting filters:", filters);
-
+      
       // Store filters for pagination
       setCurrentFilters(filters);
       

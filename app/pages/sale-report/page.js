@@ -38,6 +38,21 @@ const SalesReport = () => {
     visible: false,
   });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pageLimit, setPageLimit] = useState(50); // Records per page
+  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+  const [loading, setLoading] = useState(false);
+
+  // Totals state (if backend provides them for the full dataset)
+  const [overallTotals, setOverallTotals] = useState({
+    totalActualWeight: 0,
+    totalChargeableWeight: 0,
+    grandTotal: 0
+  });
+
   const showNotification = (type, message) => {
     setNotification({ type, message, visible: true });
   };
@@ -112,7 +127,7 @@ const SalesReport = () => {
     summaryRow[last6Keys[2]] = "Total Chargeable Weight";
     summaryRow[last6Keys[3]] = totalChargeableWeight + "Kg";
     summaryRow[last6Keys[4]] = "Grand Total";
-    summaryRow[last6Keys[5]] = "Rs " + grandTotal;
+    summaryRow[last6Keys[5]] = "Rs " + grandTotalValue;
     wsData.push(summaryRow);
 
     const XLSX = await import("xlsx");
@@ -228,39 +243,31 @@ const SalesReport = () => {
     []
   );
 
-  const handleSearch = async () => {
+  const handleSearch = async (page = 1) => {
     try {
-      const values = debouncedValues;
+      setLoading(true);
+      const values = getValues(); // Use direct values for search
 
       const { from, to } = values;
 
       if (!from || !to) {
         showNotification("error", "Please select both From and To dates.");
+        setLoading(false);
         return;
       }
 
-      const params = new URLSearchParams();
+      setCurrentFilters(values);
 
-      // Always include dates
+      const params = new URLSearchParams();
       params.append("from", from);
       params.append("to", to);
+      params.append("page", page);
+      params.append("limit", pageLimit);
 
-      // Dynamically include filters if filled
       const filterKeys = [
-        "runNumber",
-        "customer",
-        "branch",
-        "origin",
-        "sector",
-        "destination",
-        "network",
-        "counterPart",
-        "company",
-        "state",
-        "payment",
-        "accountManager",
-        "salePerson",
-        "saleRefPerson",
+        "runNumber", "customer", "branch", "origin", "sector", "destination",
+        "network", "counterPart", "company", "state", "payment",
+        "accountManager", "salePerson", "saleRefPerson",
       ];
 
       filterKeys.forEach((key) => {
@@ -273,7 +280,6 @@ const SalesReport = () => {
         }
       });
 
-      // Checkbox filters → pass as flags
       if (bookingDate) params.append("bookingDate", "true");
       if (unBilledShipment) params.append("unBilledShipment", "true");
       if (skipDHL) params.append("skipDHL", "true");
@@ -284,25 +290,142 @@ const SalesReport = () => {
       const json = await res.json();
 
       if (json.success) {
-        const mapped = json.data.map((item) => ({
+        const records = json.data || [];
+        const pagination = json.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalRecords: records.length,
+        };
+
+        const mapped = records.map((item) => ({
           ...item,
           bookingDate: item.bookingDate || item.date,
           flightDate: item.flightDate || item.date,
           createdDate: item.createdAt,
         }));
-        setRowData(mapped);
 
-        setFilteredData(mapped); // filteredData = rowData since backend filters
-        showNotification(
-          "success",
-          `Found ${mapped.length} rows of sale report`
-        );
+        setRowData(mapped);
+        setFilteredData(mapped);
+        setCurrentPage(pagination.currentPage);
+        setTotalPages(pagination.totalPages);
+        setTotalRecords(pagination.totalRecords);
+
+        // Update overall totals if provided, otherwise calculate from page
+        if (json.totals) {
+          setOverallTotals({
+            totalActualWeight: json.totals.totalActualWeight || 0,
+            totalChargeableWeight: json.totals.totalChargeableWeight || 0,
+            grandTotal: json.totals.grandTotal || 0,
+          });
+        } else {
+          // Fallback if backend doesn't provide overall totals
+          const pageActualWeight = mapped.reduce((sum, row) => sum + (row.actWeight || 0), 0);
+          const pageChargeableWeight = mapped.reduce((sum, row) => sum + (row.chgWeight || 0), 0);
+          const pageGrandTotal = mapped.reduce((sum, row) => sum + (row.grandTotal || 0), 0);
+          setOverallTotals({
+            totalActualWeight: pageActualWeight,
+            totalChargeableWeight: pageChargeableWeight,
+            grandTotal: pageGrandTotal
+          });
+        }
+
+        showNotification("success", `Found ${pagination.totalRecords} rows (Page ${pagination.currentPage} of ${pagination.totalPages})`);
       } else {
         showNotification("error", `Failed to fetch: ${json.message}`);
       }
     } catch (err) {
       showNotification("error", `Failed to fetch report: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages || !currentFilters) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    handleSearch(newPage);
+  };
+
+  const handleLimitChange = (e) => {
+    const newLimit = parseInt(e.target.value, 10);
+    setPageLimit(newLimit);
+    if (currentFilters) {
+      setCurrentPage(1);
+      handleSearch(1);
+    }
+  };
+
+  const PaginationControls = () => {
+    if (totalPages <= 1 && rowData.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{rowData.length}</span> of{" "}
+            <span className="font-medium">{totalRecords}</span> records
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="limit" className="text-sm text-gray-600">
+              Rows per page:
+            </label>
+            <select
+              id="limit"
+              value={pageLimit}
+              onChange={handleLimitChange}
+              className="border rounded px-2 py-1 text-sm bg-white"
+              disabled={loading}
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            First
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1 || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Previous
+          </button>
+
+          <span className="px-3 py-1 text-sm">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Next
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages || loading}
+            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            type="button"
+          >
+            Last
+          </button>
+        </div>
+      </div>
+    );
   };
 
   const handleRefresh = () => {
@@ -336,26 +459,25 @@ const SalesReport = () => {
     setRowData([]);
     setFilteredData([]);
 
-    // Reset selected radio
-    setDemoRadio("Sale Details");
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
+    setOverallTotals({
+      totalActualWeight: 0,
+      totalChargeableWeight: 0,
+      grandTotal: 0
+    });
 
     // Reset notifications
     setNotification({ type: "success", message: "", visible: false });
     showNotification("success", "Reset successful");
   };
 
-  const totalActualWeight = rowData.reduce(
-    (sum, row) => sum + (row.actWeight || 0),
-    0
-  );
-  const totalChargeableWeight = rowData.reduce(
-    (sum, row) => sum + (row.chgWeight || 0),
-    0
-  );
-  const grandTotal = rowData.reduce(
-    (sum, row) => sum + (row.grandTotal || 0),
-    0
-  );
+  const totalActualWeight = overallTotals.totalActualWeight;
+  const totalChargeableWeight = overallTotals.totalChargeableWeight;
+  const grandTotalValue = overallTotals.grandTotal;
 
   useEffect(() => {
     const fetchDropdownOptions = async () => {
@@ -380,8 +502,8 @@ const SalesReport = () => {
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
-      e.preventDefault(); // prevents native HTML validation
-      handleSearch(); // calls your custom validation
+      e.preventDefault();
+      handleSearch(1);
     }
   };
 
@@ -433,7 +555,7 @@ const SalesReport = () => {
       ].includes(demoRadio) && (
         <form
           className="flex flex-col"
-          onSubmit={handleSubmit(handleSearch)}
+          onSubmit={handleSubmit(() => handleSearch(1))}
           noValidate
         >
           <div className=" flex  flex-col gap-3">
@@ -591,9 +713,8 @@ const SalesReport = () => {
                   setValue={setValue}
                   label={"Consignor Detail Wise"}
                 />
-              </div>
-              <div className="w-[200px]">
-                <SimpleButton name={"Search"} type="submit" />
+              </div>               <div className="w-[200px]">
+                <SimpleButton name={loading ? "Searching..." : "Search"} type="submit" disabled={loading} />
               </div>
             </div>
           </div>
@@ -607,7 +728,7 @@ const SalesReport = () => {
               rowData={filteredData}
               className={"h-[40vh] rounded-b-none border-b-0"}
             />
-            <div className="flex text-sm bg-[#D0D5DDB8] font-semibold justify-end items-center gap-6 tracking-wide w-full px-3 py-2 rounded-md rounded-t-none border-t-0 border border-battleship-gray mb-3">
+            <div className="flex text-sm bg-[#D0D5DDB8] font-semibold justify-end items-center gap-6 tracking-wide w-full px-3 py-2 rounded-md rounded-t-none border-t-0 border border-battleship-gray mb-1">
               <div>
                 Total Actual Weight:{" "}
                 <span className="text-[#EA1B40] tracking-wider">
@@ -623,11 +744,13 @@ const SalesReport = () => {
               <div className="pr-3">
                 Grand Total:{" "}
                 <span className="text-[#EA1B40] tracking-wider pr-3">
-                  {grandTotal}
+                  {grandTotalValue}
                 </span>
               </div>
             </div>
+            <PaginationControls />
           </div>
+
 
           {isFullScreen && (
             <div className="fixed inset-0 z-50 p-10 bg-white">
@@ -666,16 +789,17 @@ const SalesReport = () => {
                       {totalChargeableWeight}Kg
                     </span>
                   </div>
-                  <div className="pr-3">
-                    Grand Total:{" "}
-                    <span className="text-[#EA1B40] tracking-wider pr-3">
-                      {grandTotal}
-                    </span>
+                    <div className="pr-3">
+                      Grand Total:{" "}
+                      <span className="text-[#EA1B40] tracking-wider pr-3">
+                        {grandTotalValue}
+                      </span>
+                    </div>
                   </div>
+                  <PaginationControls />
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           <div className="flex  justify-between">
             <div className="w-36">

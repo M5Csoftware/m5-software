@@ -157,7 +157,7 @@ const PaymentReceiptSummary = () => {
         ];
 
         setRowData(formattedData);
-        console.log(`Processed ${data.rawData.length} payment entries`);
+        // console.log(`Processed ${data.rawData.length} payment entries`);
       } else {
         console.error("API Error:", data.error);
         showNotification("error", data.error);
@@ -313,7 +313,7 @@ const PaymentReceiptSummary = () => {
   };
 
   const onSubmit = (data) => {
-    console.log("data :", data);
+    // console.log("data :", data);
     handleShow();
   };
 

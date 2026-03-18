@@ -202,11 +202,11 @@ const MessageCircular = () => {
     try {
       const formData = new FormData();
       validFiles.forEach((file) => {
-        console.log("Adding file to FormData:", file.name, file.size);
+        // console.log("Adding file to FormData:", file.name, file.size);
         formData.append("files", file);
       });
 
-      console.log("Uploading to Cloudinary via /helper/uploadFiles...");
+      // console.log("Uploading to Cloudinary via /helper/uploadFiles...");
 
       const response = await axios.post(
         `${server}/helper/uploadFiles`,
@@ -218,7 +218,7 @@ const MessageCircular = () => {
         }
       );
 
-      console.log("Cloudinary upload response:", response.data);
+      // console.log("Cloudinary upload response:", response.data);
 
       if (response.data.success) {
         const newUploadedFiles = [...uploadedFiles, ...response.data.files];
@@ -234,7 +234,7 @@ const MessageCircular = () => {
           "success",
           `Successfully uploaded ${response.data.files.length} files to Cloudinary`
         );
-        console.log("Cloudinary files stored:", response.data.files);
+        // console.log("Cloudinary files stored:", response.data.files);
       } else {
         console.error("Cloudinary upload failed:", response.data);
         showNotification("error", `Upload failed: ${response.data.error}`);
@@ -311,10 +311,10 @@ const MessageCircular = () => {
     }
 
     try {
-      console.log(
-        "Fetching targeted recipients with options:",
-        targetingOptions
-      );
+      // console.log(
+//         "Fetching targeted recipients with options:",
+//         targetingOptions
+//       );
 
       const response = await axios.get(`${server}/customer-account`);
       if (!Array.isArray(response.data)) {
@@ -385,10 +385,10 @@ const MessageCircular = () => {
           status: "Valid",
         }));
 
-      console.log(
-        `Found ${mappedRecipients.length} targeted recipients:`,
-        mappedRecipients
-      );
+      // console.log(
+//         `Found ${mappedRecipients.length} targeted recipients:`,
+//         mappedRecipients
+//       );
       return mappedRecipients;
     } catch (error) {
       console.error("Error fetching targeted recipients:", error);
@@ -414,7 +414,7 @@ const MessageCircular = () => {
     // Check if we should use ShipperTable recipients or Targeting Options recipients
     if (shippers.length > 0) {
       emailRecipients = shippers.filter((shipper) => shipper.isValid);
-      console.log("Using ShipperTable recipients:", emailRecipients.length);
+      // console.log("Using ShipperTable recipients:", emailRecipients.length);
     } else {
       const { selectedCategory, selectedStates, selectedHubs } =
         targetingOptions;
@@ -426,10 +426,10 @@ const MessageCircular = () => {
       ) {
         try {
           emailRecipients = await fetchTargetedRecipients();
-          console.log(
-            "Using Targeting Options recipients:",
-            emailRecipients.length
-          );
+          // console.log(
+//             "Using Targeting Options recipients:",
+//             emailRecipients.length
+//           );
         } catch (error) {
           showNotification(
             "error",
@@ -483,14 +483,14 @@ const MessageCircular = () => {
 
     // If scheduling, prepare and send to API with schedule parameters
     if (isScheduled && scheduledDateTime) {
-      console.log(`Scheduling email for: ${scheduledDateTime}`);
-      console.log(`Recipients: ${emailRecipients.length}`);
+      // console.log(`Scheduling email for: ${scheduledDateTime}`);
+      // console.log(`Recipients: ${emailRecipients.length}`);
 
       try {
-        console.log(
-          "Using Cloudinary public IDs for scheduled attachments:",
-          cloudinaryPublicIds
-        );
+        // console.log(
+//           "Using Cloudinary public IDs for scheduled attachments:",
+//           cloudinaryPublicIds
+//         );
 
         // Parse the scheduled date and time
         const [date, time] = scheduledDateTime.split(" at ");
@@ -503,10 +503,10 @@ const MessageCircular = () => {
           emailData: emailData,
         };
 
-        console.log(
-          "Sending schedule request:",
-          JSON.stringify(schedulePayload, null, 2)
-        );
+        // console.log(
+//           "Sending schedule request:",
+//           JSON.stringify(schedulePayload, null, 2)
+//         );
 
         const response = await axios.post(
           `${server}/helper/sendEmail`,
@@ -518,9 +518,9 @@ const MessageCircular = () => {
           }
         );
 
-        console.log("Schedule API response:", response.data);
-        console.log("Response status:", response.status);
-        console.log("Response success flag:", response.data.success);
+        // console.log("Schedule API response:", response.data);
+        // console.log("Response status:", response.status);
+        // console.log("Response success flag:", response.data.success);
 
         // FIXED: Check response structure properly
         if (response.data.success === true) {
@@ -582,12 +582,12 @@ const MessageCircular = () => {
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     try {
-      console.log(
-        "Using Cloudinary public IDs for attachments:",
-        cloudinaryPublicIds
-      );
+      // console.log(
+//         "Using Cloudinary public IDs for attachments:",
+//         cloudinaryPublicIds
+//       );
 
-      console.log("Sending emails with Cloudinary attachments:", emailData);
+      // console.log("Sending emails with Cloudinary attachments:", emailData);
 
       for (let i = 0; i < emailData.length; i++) {
         setCurrentSendingFile(`Sending to ${emailData[i].email}...`);
@@ -606,7 +606,7 @@ const MessageCircular = () => {
         }
       );
 
-      console.log("Email API response:", response.data);
+      // console.log("Email API response:", response.data);
 
       window.removeEventListener("beforeunload", handleBeforeUnload);
 
@@ -643,9 +643,9 @@ const MessageCircular = () => {
           handleRefresh();
         }, 1000);
 
-        console.log("Email Results:", response.data.results);
+        // console.log("Email Results:", response.data.results);
         if (response.data.cleanup) {
-          console.log("Cloudinary Cleanup:", response.data.cleanup);
+          // console.log("Cloudinary Cleanup:", response.data.cleanup);
         }
 
         const failedEmails =
@@ -718,7 +718,7 @@ const MessageCircular = () => {
   // Handler for targeting options updates
   const handleTargetingOptionsUpdate = useCallback((options) => {
     setTargetingOptions(options);
-    console.log("Targeting options updated:", options);
+    // console.log("Targeting options updated:", options);
   }, []);
 
   return (

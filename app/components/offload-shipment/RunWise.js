@@ -48,7 +48,7 @@ function RunWise() {
     const runNoValue = formValues.runNo;
     const offloadReason = formValues.offloadReason;
 
-    console.log("Form Values:", { runNo: runNoValue, offloadReason });
+    // console.log("Form Values:", { runNo: runNoValue, offloadReason });
 
     if (!runNoValue || !offloadReason) {
       toast.error("Please enter Run Number and Offload Reason");
@@ -71,11 +71,11 @@ function RunWise() {
       const url = `${server}/offload-shipment/run-wise?runNo=${encodeURIComponent(
         runNoValue
       )}`;
-      console.log("Calling API:", url);
+      // console.log("Calling API:", url);
 
       const response = await axios.get(url);
 
-      console.log("API Response:", response.data);
+      // console.log("API Response:", response.data);
 
       if (response.data.success) {
         // Store the run number for later use
@@ -87,7 +87,7 @@ function RunWise() {
           offloadReason: offloadReason.trim(),
         }));
 
-        console.log("New Rows to Add:", newRows);
+        // console.log("New Rows to Add:", newRows);
 
         // Check for duplicates and add only new AWBs
         const existingAwbs = rowData.map((row) => row.awbNo);
@@ -112,7 +112,7 @@ function RunWise() {
 
         setRowData((prev) => {
           const updated = [...prev, ...uniqueNewRows];
-          console.log("Updated Row Data:", updated);
+          // console.log("Updated Row Data:", updated);
           return updated;
         });
 
@@ -175,7 +175,7 @@ function RunWise() {
       if (withEvents) {
         try {
           const updateEventUrl = `${server}/offload-shipment/run-wise/update-event`;
-          console.log("Updating events at:", updateEventUrl);
+          // console.log("Updating events at:", updateEventUrl);
 
           const eventResponse = await axios.post(updateEventUrl, {
             shipments: rowData,
@@ -185,7 +185,7 @@ function RunWise() {
             runNo: runNo,
           });
 
-          console.log("Event Update Response:", eventResponse.data);
+          // console.log("Event Update Response:", eventResponse.data);
 
           if (eventResponse.data.success) {
             const { successful, failed, total } = eventResponse.data.results;
@@ -217,7 +217,7 @@ function RunWise() {
       if (withEmail) {
         try {
           const emailUrl = `${server}/offload-shipment/run-wise/send-alert`;
-          console.log("Sending email alerts to:", emailUrl);
+          // console.log("Sending email alerts to:", emailUrl);
 
           const emailResponse = await axios.post(emailUrl, {
             shipments: rowData,
@@ -226,7 +226,7 @@ function RunWise() {
             updateInEvents: false, // Already handled above
           });
 
-          console.log("Email Alert Response:", emailResponse.data);
+          // console.log("Email Alert Response:", emailResponse.data);
 
           if (emailResponse.data.success && emailResponse.data.emailResults) {
             const { successful, failed, total } =
@@ -318,7 +318,7 @@ function RunWise() {
 
   // Debug: Log rowData changes
   React.useEffect(() => {
-    console.log("Row Data Changed:", rowData);
+    // console.log("Row Data Changed:", rowData);
   }, [rowData]);
 
   return (

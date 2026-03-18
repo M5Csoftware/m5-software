@@ -69,7 +69,7 @@ const MessageSheet = () => {
       const response = await axios.get(
         `${server}/portal/create-shipment?runNo=${runNo.toUpperCase()}`
       );
-      console.log("API Response:", response.data);
+      // console.log("API Response:", response.data);
       return Array.isArray(response.data) ? response.data : [response.data];
     } catch (error) {
       console.error("Error fetching shipment data:", error);
@@ -81,7 +81,7 @@ const MessageSheet = () => {
   const fetchBaggingDataByRunNo = async (runNo) => {
     try {
       const response = await axios.get(`${server}/bagging?runNo=${runNo.toUpperCase()}`);
-      console.log("Bagging API Response:", response.data);
+      // console.log("Bagging API Response:", response.data);
       return Array.isArray(response.data) ? response.data : [response.data];
     } catch (error) {
       console.error("Error fetching bagging data:", error);
@@ -92,18 +92,18 @@ const MessageSheet = () => {
 
   // Data Processing Functions
   const processShipmentData = (shipmentData, baggingData = []) => {
-    console.log("Processing shipment data:", shipmentData);
+    // console.log("Processing shipment data:", shipmentData);
     const processedData = [];
 
     if (!Array.isArray(shipmentData)) {
-      console.log("Shipment data is not array, converting...");
+      // console.log("Shipment data is not array, converting...");
       shipmentData = [shipmentData];
     }
 
     shipmentData.forEach((shipment, index) => {
       if (!shipment) return;
 
-      console.log("Processing shipment:", shipment);
+      // console.log("Processing shipment:", shipment);
 
       // Find corresponding bagging data for this shipment
       const baggingInfo = baggingData.find(
@@ -154,12 +154,12 @@ const MessageSheet = () => {
         service: shipment.service || "",
       };
 
-      console.log("Created table row:", tableRow);
+      // console.log("Created table row:", tableRow);
       processedData.push(tableRow);
       showNotification("success", "Data loaded successfully");
     });
 
-    console.log("Final processed data:", processedData);
+    // console.log("Final processed data:", processedData);
     return processedData;
   };
 
@@ -208,50 +208,50 @@ const MessageSheet = () => {
 
     try {
       setLoading(true);
-      console.log("=== Starting data fetch for run number:", runNo, "===");
+      // console.log("=== Starting data fetch for run number:", runNo, "===");
 
       // Fetch shipment data from create-shipment API
-      console.log("Fetching shipment data...");
+      // console.log("Fetching shipment data...");
       const shipmentData = await fetchShipmentDataByRunNo(runNo);
-      console.log("✓ Shipment data fetched:", shipmentData);
+      // console.log("✓ Shipment data fetched:", shipmentData);
 
       // Fetch bagging data from bagging API
-      console.log("Fetching bagging data...");
+      // console.log("Fetching bagging data...");
       const baggingData = await fetchBaggingDataByRunNo(runNo);
-      console.log("✓ Bagging data fetched:", baggingData);
+      // console.log("✓ Bagging data fetched:", baggingData);
 
       // Check if we have shipment data
       if (
         !shipmentData ||
         (Array.isArray(shipmentData) && shipmentData.length === 0)
       ) {
-        console.log("❌ No shipment data found");
+        // console.log("❌ No shipment data found");
         showNotification("error", "No shipment data found");
         setTableData([]);
         return;
       }
 
       // Process the data to create table rows
-      console.log("Processing data...");
+      // console.log("Processing data...");
       const processedData = processShipmentData(shipmentData, baggingData);
-      console.log("✓ Data processed:", processedData);
+      // console.log("✓ Data processed:", processedData);
 
       if (processedData.length === 0) {
-        console.log("❌ No processed data available");
+        // console.log("❌ No processed data available");
         showNotification("error", "No valid data found to display");
         return;
       }
 
       // Apply filters and sorting
-      console.log("Applying filters and sorting...");
+      // console.log("Applying filters and sorting...");
       const finalData = applyFiltersAndSorting(processedData);
-      console.log("✓ Final data ready:", finalData);
+      // console.log("✓ Final data ready:", finalData);
 
       // Update table
       setTableData(finalData);
       setAllShipmentData(processedData); // Store unfiltered data for re-filtering
 
-      console.log("✅ Table updated successfully!");
+      // console.log("✅ Table updated successfully!");
       showNotification("success", "Data loaded successfully");
     } catch (error) {
       console.error("❌ Error in handleShowData:", error);
@@ -265,12 +265,12 @@ const MessageSheet = () => {
   // Form auto-fill from run data (following BagReport pattern)
   const fillFormFromRunData = (runData) => {
     if (!runData || typeof runData !== "object") {
-      console.log("Invalid run data for auto-fill:", runData);
+      // console.log("Invalid run data for auto-fill:", runData);
       showNotification("error", "Invalid run data for auto-fill");
       return;
     }
 
-    console.log("Auto-filling form with data:", runData);
+    // console.log("Auto-filling form with data:", runData);
 
     const fields = {
       sector: runData.sector || "",
@@ -323,9 +323,9 @@ const MessageSheet = () => {
     const fetchAndFillRunData = async () => {
       if (runNumber?.trim()) {
         try {
-          console.log("Fetching run data for:", runNumber);
+          // console.log("Fetching run data for:", runNumber);
           const fetchedRunData = await fetchRunData(runNumber);
-          console.log("Run data fetched:", fetchedRunData);
+          // console.log("Run data fetched:", fetchedRunData);
           setRunData(fetchedRunData);
           fillFormFromRunData(fetchedRunData);
         } catch (error) {

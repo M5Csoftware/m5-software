@@ -160,12 +160,12 @@ function CreditNote() {
         `${server}/email-credit-note?${params.toString()}`
       );
 
-      console.log("API Response:", response.data);
+      // console.log("API Response:", response.data);
 
       if (response.data.success && response.data.creditNotes) {
         const creditNotes = response.data.creditNotes;
 
-        console.log(`Found ${creditNotes.length} credit note(s)`);
+        // console.log(`Found ${creditNotes.length} credit note(s)`);
 
         // Fetch customer emails in parallel
         const formattedData = await Promise.all(
@@ -338,7 +338,7 @@ function CreditNote() {
         });
 
         if (response.data.results) {
-          console.log("Email Results:", response.data.results);
+          // console.log("Email Results:", response.data.results);
         }
         if (response.data.errors && response.data.errors.length > 0) {
           console.error("Email Errors:", response.data.errors);

@@ -198,9 +198,9 @@ function AccountLedgerMail() {
         setGeneratedFiles(files);
 
         // Log file names to console
-        console.log("Generated Excel Files:");
+        // console.log("Generated Excel Files:");
         files.forEach((file) => {
-          console.log(`- ${file.fileName}`);
+          // console.log(`- ${file.fileName}`);
         });
 
         showNotification(
@@ -264,7 +264,7 @@ function AccountLedgerMail() {
           );
         }
 
-        console.log("Email sending result:", response.data);
+        // console.log("Email sending result:", response.data);
       } else {
         showNotification(
           "error",

@@ -79,7 +79,7 @@ const BranchManifest = () => {
     }
 
     setRowData(filteredData);
-    console.log("Saved Data:", filteredData);
+    // console.log("Saved Data:", filteredData);
   };
 
   useEffect(() => {

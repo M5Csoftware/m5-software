@@ -64,9 +64,9 @@ const DigitalTally = () => {
     const fetchBranch = async () => {
       try {
         const response = await axios.get(`${server}/customer-account`);
-        console.log("customet data", response.data);
+        // console.log("customet data", response.data);
         if (response.status === 200) {
-          console.log(response.data);
+          // console.log(response.data);
           setData(response.data);
         } else {
           console.error(
@@ -100,7 +100,7 @@ const DigitalTally = () => {
       ConsignorDetails: watch("ConsignorDetails"),
     };
 
-    console.log("📤 Sending to server:", combinedData);
+    // console.log("📤 Sending to server:", combinedData);
     showNotification("success", "Saved successfully");
 
     try {
@@ -153,7 +153,7 @@ const DigitalTally = () => {
         console.error("AWB log failed:", err);
         showNotification("error", "AWB log failed");
       }
-      console.log("📥 Received from server:", resp);
+      // console.log("📥 Received from server:", resp);
       isLoading(false);
       showNotification("success", "Saved successfully");
     } catch (error) {
@@ -178,7 +178,7 @@ const DigitalTally = () => {
     if (action === "edit") {
       setSelectedTally(rowData);
       setToggleCodeList(false);
-      console.log(selectedTally);
+      // console.log(selectedTally);
       // Add your edit logic here
     } else if (action === "delete") {
       const { accountCode } = rowData; // ✅ Use accountCode (not code)
@@ -190,11 +190,11 @@ const DigitalTally = () => {
       }
 
       try {
-        console.log("Delete action triggered for accountCode:", accountCode);
+        // console.log("Delete action triggered for accountCode:", accountCode);
         const response = await axios.delete(`${server}/customer-account`, {
           params: { code: accountCode }, // ✅ Send as ?code=... in query param
         });
-        console.log("Deletion successful:", response.data);
+        // console.log("Deletion successful:", response.data);
         showNotification("success", "Deletion successful");
       } catch (error) {
         showNotification("error", "Deletion failed");

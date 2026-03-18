@@ -748,7 +748,7 @@ function ManualAWB() {
           }
 
           setExcelData(jsonData);
-          console.log("Excel data loaded:", jsonData.length, "rows");
+          // console.log("Excel data loaded:", jsonData.length, "rows");
         } catch (error) {
           console.error("Error reading Excel file:", error);
           showNotification(

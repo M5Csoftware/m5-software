@@ -237,7 +237,7 @@ const BookingReport = () => {
 
   const onSubmit = async (data) => {
     try {
-      console.log("Form data received:", data);
+      // console.log("Form data received:", data);
 
       // Validate dates before submission
       if (!data.from || !data.to) {
@@ -249,7 +249,7 @@ const BookingReport = () => {
       const fromDate = parseDateDDMMYYYY(data.from);
       const toDate = parseDateDDMMYYYY(data.to);
 
-      console.log("Parsed dates:", { fromDate, toDate });
+      // console.log("Parsed dates:", { fromDate, toDate });
 
       // Check if dates are valid
       if (

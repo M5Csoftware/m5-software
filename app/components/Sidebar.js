@@ -20,7 +20,7 @@ function Sidebar() {
   const { user } = useAuth();
 
   // useEffect(() => {
-  //   console.log("User Permissions:", user?.permissions);
+  //   // console.log("User Permissions:", user?.permissions);
   // }, [user]);
 
   const toggleFolder = (folder) => {
@@ -35,15 +35,15 @@ function Sidebar() {
     const tab = { folder, subfolder };
     if (folder === "Customer Care" && subfolder === "Report") {
       toggleReportOpen(!reportOpen);
-      console.log(reportOpen);
+      // console.log(reportOpen);
       return;
     } else if (folder === "Operations" && subfolder === "Report") {
       setOperationreportOpen(!operationreportOpen);
-      console.log(operationreportOpen);
+      // console.log(operationreportOpen);
       return;
     } else if (folder === "Booking" && subfolder === "Report") {
       setBranchreportOpen(!branchreportOpen);
-      console.log(branchreportOpen);
+      // console.log(branchreportOpen);
       return;
     }
     setActiveTabs((prev) =>
