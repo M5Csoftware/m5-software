@@ -37,8 +37,7 @@
       "process": {
         "all": true,
         "relaunch": true
-      },
-      "updater": true
+      }
     },
     "bundle": {
       "active": true,
