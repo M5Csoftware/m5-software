@@ -15,13 +15,14 @@ jobs:
       contents: write
 
     steps:
+      # ── 1. Checkout ───────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── Bump version numbers ──────────────────────────────────────────
+      # ── 2. Bump version numbers ───────────────────────────────────────
       - name: Read current version
         id: read
         shell: bash
@@ -49,32 +50,21 @@ jobs:
           ESCAPED=$(echo "$MSG" | sed 's/"/\\"/g')
           echo "notes=$ESCAPED" >> $GITHUB_OUTPUT
 
-      - name: Update version.json
+      - name: Update Cargo.toml and tauri.conf.json versions
         shell: bash
         run: |
           NEW_VERSION="${{ steps.bump.outputs.new_version }}"
-          NOTES="${{ steps.msg.outputs.notes }}"
-          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          printf '{\n  "version": "%s",\n  "notes": "%s",\n  "pub_date": "%s"\n}\n' \
-            "$NEW_VERSION" "$NOTES" "$PUB_DATE" > version.json
-          cat version.json
 
-      - name: Update Cargo.toml version
-        shell: bash
-        run: |
-          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          # Cargo.toml — only first occurrence (package version, not deps)
           sed -i "0,/^version = \".*\"/{s/^version = \".*\"/version = \"$NEW_VERSION\"/}" src-tauri/Cargo.toml
-          grep '^version' src-tauri/Cargo.toml | head -1
+          echo "Cargo version:"; grep '^version' src-tauri/Cargo.toml | head -1
 
-      - name: Update tauri.conf.json version
-        shell: bash
-        run: |
-          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          # tauri.conf.json
           jq --arg v "$NEW_VERSION" '.package.version = $v' src-tauri/tauri.conf.json > tmp.json
           mv tmp.json src-tauri/tauri.conf.json
-          jq '.package.version' src-tauri/tauri.conf.json
+          echo "tauri.conf version:"; jq '.package.version' src-tauri/tauri.conf.json
 
-      # ── Setup build environment ───────────────────────────────────────
+      # ── 3. Setup build environment ────────────────────────────────────
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -83,44 +73,53 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
       - name: Install Node dependencies
         run: npm install
 
-      # ── Build signed Tauri app ────────────────────────────────────────
+      # ── 4. Build signed Tauri app ─────────────────────────────────────
       - name: Build Tauri app
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         run: npm run tauri build
 
-      # ── Find built files ──────────────────────────────────────────────
+      # ── 5. Find built files ───────────────────────────────────────────
       - name: Find installer files
         id: files
         shell: bash
         run: |
-          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
           MSI=$(find src-tauri/target/release/bundle/msi -name "*.msi" | head -1)
           SIG=$(find src-tauri/target/release/bundle/msi -name "*.msi.zip.sig" | head -1)
           ZIP=$(find src-tauri/target/release/bundle/msi -name "*.msi.zip" | head -1)
           echo "msi=$MSI" >> $GITHUB_OUTPUT
           echo "sig=$SIG" >> $GITHUB_OUTPUT
           echo "zip=$ZIP" >> $GITHUB_OUTPUT
-          echo "Found MSI: $MSI"
-          echo "Found SIG: $SIG"
-          echo "Found ZIP: $ZIP"
+          echo "MSI: $MSI"
+          echo "SIG: $SIG"
+          echo "ZIP: $ZIP"
+          if [ -z "$MSI" ]; then echo "ERROR: MSI not found!"; exit 1; fi
+          if [ -z "$SIG" ]; then echo "ERROR: SIG not found! Check TAURI_PRIVATE_KEY secret"; exit 1; fi
+          if [ -z "$ZIP" ]; then echo "ERROR: ZIP not found!"; exit 1; fi
 
-      # ── Create update.json for Tauri silent updater ───────────────────
-      - name: Create update.json
+      # ── 6. Write version.json with signature for silent updater ───────
+      # Tauri updater expects: version, notes, pub_date, platforms
+      # Our Rust check_for_update also reads: version, notes, pub_date
+      # Both work from the same version.json ✅
+      - name: Write version.json
         shell: bash
         run: |
           NEW_VERSION="${{ steps.bump.outputs.new_version }}"
           NOTES="${{ steps.msg.outputs.notes }}"
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          SIG_FILE="${{ steps.files.outputs.sig }}"
-          SIGNATURE=$(cat "$SIG_FILE")
+          SIGNATURE=$(cat "${{ steps.files.outputs.sig }}")
           ZIP_NAME=$(basename "${{ steps.files.outputs.zip }}")
 
-          cat > update.json << EOF
+          cat > version.json << JSONEOF
           {
             "version": "$NEW_VERSION",
             "notes": "$NOTES",
@@ -132,22 +131,22 @@ jobs:
               }
             }
           }
-          EOF
-          echo "update.json:"
-          cat update.json
+          JSONEOF
 
-      # ── Commit version bumps back to main ─────────────────────────────
-      - name: Commit version bump
+          echo "version.json:"; cat version.json
+
+      # ── 7. Commit all version files back to main ──────────────────────
+      - name: Commit and push
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add version.json update.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
+          git add version.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
           git diff --staged --quiet && echo "Nothing to commit" && exit 0
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]"
           git push
 
-      # ── Create GitHub Release with installer attached ─────────────────
+      # ── 8. Create GitHub Release ──────────────────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

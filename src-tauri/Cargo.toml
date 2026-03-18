@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.1.14"
+version = "0.1.15"
 description = "A Tauri App"
 authors = ["you"]
 license = ""
@@ -17,7 +17,7 @@ tauri-build = { version = "1.5.5", features = [] }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.8.0", features = [ "window-all", "http-all", "fs-all", "shell-all"] }
+tauri = { version = "1.8.0", features = [ "updater", "process-all", "window-all", "http-all", "fs-all", "shell-all"] }
 hostname = "0.3"
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
 tokio = { version = "1", features = ["full"] }
