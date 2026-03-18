@@ -21,7 +21,8 @@ const ChildAwbNoReport = () => {
   const [pageLimit, setPageLimit] = useState(50); // Records per page
   const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
   const [loading, setLoading] = useState(false);
-
+  const [rowData, setRowData] = useState([]);
+  const [currDate, setCurrDate] = useState([]);
   const columns = [
     { key: "childAwbNo", label: "AWB No." },
     { key: "createdAt", label: "Shipment Date" },
