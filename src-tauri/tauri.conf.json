@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "M5C Logs",
-    "version": "0.1.14"
+    "version": "0.1.15"
   },
   "tauri": {
     "allowlist": {
