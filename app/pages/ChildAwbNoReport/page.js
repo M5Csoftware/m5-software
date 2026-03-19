@@ -23,6 +23,7 @@ const ChildAwbNoReport = () => {
   const [loading, setLoading] = useState(false);
   const [rowData, setRowData] = useState([]);
   const [currDate, setCurrDate] = useState([]);
+
   const columns = [
     { key: "childAwbNo", label: "AWB No." },
     { key: "createdAt", label: "Shipment Date" },

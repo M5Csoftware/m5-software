@@ -18,7 +18,7 @@ function MonthSale() {
   const [fullscreen, setFullScreen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
