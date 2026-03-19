@@ -233,7 +233,7 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
   const [lineWidth, setLineWidth] = useState(0);
   const [selectedIds, setSelectedIds] = useState([]);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const lineRef = useRef(null);
+  const lineRef = useRef(null); // ✅ Only one declaration — duplicate removed
   const [appliedFilters, setAppliedFilters] = useState({});
   const lineRef = useRef(null);
   const [filterOptions, setFilterOptions] = useState({
@@ -344,14 +344,10 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
     try {
       const cacheKey = "CustomerManagement";
       
-      // Check cache first if not forcing refresh
       if (!forceRefresh && isCacheValid(cacheKey)) {
         const cached = getCachedData(cacheKey);
         if (cached && cached.data) {
-          // console.log("=== Using Cached Customer Data ===");
           setUsers(cached.data);
-          
-          // Still need to update filter options from cached data
           updateFilterOptions(cached.data);
           return;
         }
@@ -373,13 +369,10 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
       }));
 
       setUsers(mappedData);
-      
-      // Update cache
       setCachedData(cacheKey, mappedData);
-
       updateFilterOptions(mappedData);
-    } catch (error) {
-      console.error("Error fetching users:", error);
+    } catch (err) {
+      console.error("Error fetching users:", err);
     }
   };
 
@@ -422,11 +415,9 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
     fetchUsers();
   }, [server]);
 
-  // In your useEffect that filters users
   useEffect(() => {
     let filtered = [...users];
 
-    // Apply department filter based on accountType
     const internalKey = departmentMap[selectedDepartment];
     if (internalKey === "Agents") {
       filtered = filtered.filter(
@@ -443,54 +434,23 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
       filtered = filtered.filter((user) => !!user.deactivateReason);
     }
 
-    // Apply search filter - now searches name AND account code
     const query = debouncedSearchQuery.toLowerCase().trim();
     if (query !== "") {
       filtered = filtered.filter((user) => {
-        // Check name
-        if (user.name && user.name.toLowerCase().includes(query)) {
-          return true;
-        }
-        // Check account code
-        if (
-          user.accountCode &&
-          user.accountCode.toLowerCase().includes(query)
-        ) {
-          return true;
-        }
-        // Check email
-        if (user.email && user.email.toLowerCase().includes(query)) {
-          return true;
-        }
-        // Check contact person
-        if (
-          user.contactPerson &&
-          user.contactPerson.toLowerCase().includes(query)
-        ) {
-          return true;
-        }
-        // Check phone number
-        if (user.telNo && user.telNo.includes(query)) {
-          return true;
-        }
-        // Check branch/city if needed
-        if (user.city && user.city.toLowerCase().includes(query)) {
-          return true;
-        }
-        if (user.branchName && user.branchName.toLowerCase().includes(query)) {
-          return true;
-        }
+        if (user.name && user.name.toLowerCase().includes(query)) return true;
+        if (user.accountCode && user.accountCode.toLowerCase().includes(query)) return true;
+        if (user.email && user.email.toLowerCase().includes(query)) return true;
+        if (user.contactPerson && user.contactPerson.toLowerCase().includes(query)) return true;
+        if (user.telNo && user.telNo.includes(query)) return true;
+        if (user.city && user.city.toLowerCase().includes(query)) return true;
+        if (user.branchName && user.branchName.toLowerCase().includes(query)) return true;
         return false;
       });
     }
 
-    // Apply advanced filters
     if (appliedFilters.accountType) {
-      filtered = filtered.filter(
-        (user) => user.accountType === appliedFilters.accountType
-      );
+      filtered = filtered.filter((user) => user.accountType === appliedFilters.accountType);
     }
-    // ... rest of your advanced filters remain the same
     if (appliedFilters.city) {
       filtered = filtered.filter((user) => user.city === appliedFilters.city);
     }
@@ -498,19 +458,13 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
       filtered = filtered.filter((user) => user.state === appliedFilters.state);
     }
     if (appliedFilters.country) {
-      filtered = filtered.filter(
-        (user) => user.country === appliedFilters.country
-      );
+      filtered = filtered.filter((user) => user.country === appliedFilters.country);
     }
     if (appliedFilters.branchCode) {
-      filtered = filtered.filter(
-        (user) => user.branchCode === appliedFilters.branchCode
-      );
+      filtered = filtered.filter((user) => user.branchCode === appliedFilters.branchCode);
     }
     if (appliedFilters.gstNumber) {
-      filtered = filtered.filter(
-        (user) => user.gstNumber === appliedFilters.gstNumber
-      );
+      filtered = filtered.filter((user) => user.gstNumber === appliedFilters.gstNumber);
     }
     if (appliedFilters.hub) {
       filtered = filtered.filter((user) => user.hub === appliedFilters.hub);
@@ -563,14 +517,12 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
       const row = {};
       columns.forEach((col) => {
         let value = user[col.key];
-
         if (col.key === "code") value = user.accountCode;
         if (col.key === "type") value = user.accountType;
         if (col.key === "address1") value = user.address1;
         if (col.key === "address2") value = user.address2;
         if (col.key === "emailId") value = user.email;
         if (col.key === "telPhone") value = user.telNo;
-
         row[col.label] = value || "";
       });
       return row;
@@ -593,27 +545,23 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
     setAppliedFilters(filters);
   };
 
-  // ✅ NEW: Handler when user clicks "Edit details" in kebab menu
+  // ✅ Handler when user clicks "Edit details" in kebab menu
   const handleEditUser = (userData) => {
-    // console.log("Opening form with user data:", userData);
     setEditingUser(userData);
     setCurrentView("form");
   };
 
-  // ✅ NEW: Handler to go back to table view
+  // ✅ Handler to go back to table view
   const handleBackToTable = () => {
     setCurrentView("table");
     setEditingUser(null);
-    // Refresh the users list - can use cache here as it's just a back button
     fetchUsers();
   };
 
-  // ✅ NEW: Handler after successful save
+  // ✅ Handler after successful save
   const handleSaveSuccess = () => {
-    // console.log("Save successful, returning to table and forcing refresh");
     setCurrentView("table");
     setEditingUser(null);
-    // Force refresh the users list after a save
     fetchUsers(true);
   };
 
@@ -654,7 +602,7 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
 
           <div className="flex gap-2 justify-center items-center">
             <button
-              className="px-4 py-2.5  text-red border border-red rounded flex gap-2"
+              className="px-4 py-2.5 text-red border border-red rounded flex gap-2"
               onClick={() => setUserManagementForm(true)}
             >
               User Management
@@ -761,8 +709,8 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
             sortConfig={sortConfig}
             selectedIds={selectedIds}
             setSelectedIds={setSelectedIds}
-            refetchUsers={() => fetchUsers(true)} // ✅ Force refresh on manual triggers
-            onEditUser={handleEditUser} // ✅ Pass edit handler
+            refetchUsers={() => fetchUsers(true)}
+            onEditUser={handleEditUser}
           />
           {filteredUsers.length > 0 ? (
             ""

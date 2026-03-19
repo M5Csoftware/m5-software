@@ -1,9 +1,8 @@
 "use client";
 import { OutlinedButtonRed } from "@/app/components/Buttons";
-import { RedCheckbox } from "@/app/components/Checkbox";
 import DownloadCsvExcel from "@/app/components/DownloadCsvExcel";
 import Heading from "@/app/components/Heading";
-import InputBox, { DateInputBox } from "@/app/components/InputBox";
+import InputBox from "@/app/components/InputBox";
 import { TableWithSorting } from "@/app/components/Table";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import React, { useContext, useMemo, useState } from "react";
@@ -24,10 +23,8 @@ function MonthSale() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [pageLimit, setPageLimit] = useState(50); // Records per page
-  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [pageLimit, setPageLimit] = useState(50);
+  const [currentFilters, setCurrentFilters] = useState(null);
 
   const columns = useMemo(
     () => [
@@ -57,7 +54,6 @@ function MonthSale() {
     []
   );
 
-  // Helper function to format data for export
   const formatDataForExport = () => {
     return rowData.map((row) => {
       const formattedRow = {};
@@ -68,7 +64,6 @@ function MonthSale() {
     });
   };
 
-  // CSV Download Handler
   const handleDownloadCSV = () => {
     try {
       if (!rowData || rowData.length === 0) {
@@ -77,8 +72,6 @@ function MonthSale() {
       }
 
       const formattedData = formatDataForExport();
-
-      // Convert data to CSV string
       const headers = columns.map((col) => col.label);
       const csvContent = [
         headers.join(","),
@@ -86,7 +79,6 @@ function MonthSale() {
           headers
             .map((header) => {
               const value = row[header];
-              // Handle values with commas, quotes, or line breaks
               if (
                 typeof value === "string" &&
                 (value.includes(",") ||
@@ -101,7 +93,6 @@ function MonthSale() {
         ),
       ].join("\n");
 
-      // Create and download CSV file
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
@@ -115,13 +106,12 @@ function MonthSale() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading CSV:", error);
+    } catch (err) {
+      console.error("Error downloading CSV:", err);
       alert("Failed to download CSV file");
     }
   };
 
-  // Excel Download Handler
   const handleDownloadExcel = () => {
     try {
       if (!rowData || rowData.length === 0) {
@@ -130,12 +120,9 @@ function MonthSale() {
       }
 
       const formattedData = formatDataForExport();
-
-      // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(formattedData);
 
-      // Set column widths
       const colWidths = columns.map((col) => {
         const maxLength = Math.max(
           col.label.length,
@@ -145,7 +132,6 @@ function MonthSale() {
       });
       ws["!cols"] = colWidths;
 
-      // Style headers
       const headerRange = XLSX.utils.decode_range(ws["!ref"]);
       for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
         const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
@@ -157,10 +143,7 @@ function MonthSale() {
         };
       }
 
-      // Add worksheet to workbook
       XLSX.utils.book_append_sheet(wb, ws, "Month Sale Report");
-
-      // Add metadata
       wb.Props = {
         Title: "Month Sale Report",
         Subject: `Sales data for ${getValues("year") || "N/A"}`,
@@ -168,10 +151,9 @@ function MonthSale() {
         CreatedDate: new Date(),
       };
 
-      // Download file
       XLSX.writeFile(wb, `month-sale-${getValues("year") || "data"}.xlsx`);
-    } catch (error) {
-      console.error("Error downloading Excel:", error);
+    } catch (err) {
+      console.error("Error downloading Excel:", err);
       alert("Failed to download Excel file");
     }
   };
@@ -206,7 +188,9 @@ function MonthSale() {
         queryParams.append("company", company.trim());
       }
 
-      const response = await axios.get(`${server}/month-sale?${queryParams.toString()}`);
+      const response = await axios.get(
+        `${server}/month-sale?${queryParams.toString()}`
+      );
 
       if (response.data.success) {
         const records = response.data.data || [];
@@ -230,13 +214,12 @@ function MonthSale() {
       } else {
         setError(response.data.message || "Failed to fetch data");
       }
-    } catch (error) {
+    } catch (err) {
       const errorMessage =
-        error.response?.data?.error ||
-        error.response?.data?.details ||
-        error.message ||
+        err.response?.data?.error ||
+        err.response?.data?.details ||
+        err.message ||
         "Failed to fetch data";
-
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -245,7 +228,7 @@ function MonthSale() {
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
     handleShow(newPage);
   };
 
@@ -268,7 +251,6 @@ function MonthSale() {
             Showing <span className="font-medium">{rowData.length}</span> of{" "}
             <span className="font-medium">{totalRecords}</span> records
           </div>
-
           <div className="flex items-center gap-2">
             <label htmlFor="limit" className="text-sm text-gray-600">
               Rows per page:
@@ -305,11 +287,9 @@ function MonthSale() {
           >
             Previous
           </button>
-
           <span className="px-3 py-1 text-sm">
             Page {currentPage} of {totalPages}
           </span>
-
           <button
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages || loading}
@@ -351,9 +331,7 @@ function MonthSale() {
         codeListBtn={true}
         onRefresh={handleReset}
         fullscreenBtn={true}
-        onClickFullscreenBtn={() => {
-          setFullScreen(true);
-        }}
+        onClickFullscreenBtn={() => setFullScreen(true)}
       />
       <div className="flex flex-col gap-3 mt-6">
         <div className="flex flex-col gap-3">
@@ -400,12 +378,11 @@ function MonthSale() {
             </div>
           </div>
           {error && (
-            <div className="text-red text-sm bg-red-50 rounded">
-              {error}
-            </div>
+            <div className="text-red text-sm bg-red-50 rounded">{error}</div>
           )}
         </div>
       </div>
+
       <div>
         <TableWithSorting
           register={register}
@@ -438,14 +415,9 @@ function MonthSale() {
           </div>
         )}
       </div>
+
       <div className="flex justify-between">
-        <div>
-          {/* <OutlinedButtonRed 
-            type="button" 
-            label={"Close"} 
-            onClick={() => window.history.back()}
-          /> */}
-        </div>
+        <div></div>
       </div>
     </form>
   );
