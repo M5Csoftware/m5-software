@@ -16,6 +16,88 @@ import { useForm } from "react-hook-form";
 import axios from "axios";
 import * as XLSX from 'xlsx';
 
+const PaginationControls = ({
+  totalPages,
+  allRowData,
+  totalRecords,
+  pageLimit,
+  handleLimitChange,
+  loading,
+  handlePageChange,
+  currentPage,
+}) => {
+  if (totalPages <= 1 && allRowData.length === 0) return null;
+
+  return (
+    <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+      <div className="flex items-center gap-4">
+        <div className="text-sm text-gray-700">
+          Showing <span className="font-medium">{allRowData.length}</span> of{" "}
+          <span className="font-medium">{totalRecords}</span> records
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label htmlFor="limit" className="text-sm text-gray-600">
+            Rows per page:
+          </label>
+          <select
+            id="limit"
+            value={pageLimit}
+            onChange={handleLimitChange}
+            className="border rounded px-2 py-1 text-sm bg-white"
+            disabled={loading}
+          >
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={200}>200</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => handlePageChange(1)}
+          disabled={currentPage === 1 || loading}
+          className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          type="button"
+        >
+          First
+        </button>
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1 || loading}
+          className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          type="button"
+        >
+          Previous
+        </button>
+
+        <span className="px-3 py-1 text-sm">
+          Page {currentPage} of {totalPages}
+        </span>
+
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages || loading}
+          className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          type="button"
+        >
+          Next
+        </button>
+        <button
+          onClick={() => handlePageChange(totalPages)}
+          disabled={currentPage === totalPages || loading}
+          className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          type="button"
+        >
+          Last
+        </button>
+      </div>
+    </div>
+  );
+};
+
 function SaleReportWithDummyNumber() {
   const { server } = useContext(GlobalContext);
   const { register, setValue, watch } = useForm();
@@ -213,78 +295,6 @@ function SaleReportWithDummyNumber() {
     }
   };
 
-  const PaginationControls = () => {
-    if (totalPages <= 1 && allRowData.length === 0) return null;
-
-    return (
-      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
-        <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">{allRowData.length}</span> of{" "}
-            <span className="font-medium">{totalRecords}</span> records
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label htmlFor="limit" className="text-sm text-gray-600">
-              Rows per page:
-            </label>
-            <select
-              id="limit"
-              value={pageLimit}
-              onChange={handleLimitChange}
-              className="border rounded px-2 py-1 text-sm bg-white"
-              disabled={loading}
-            >
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value={200}>200</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handlePageChange(1)}
-            disabled={currentPage === 1 || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            type="button"
-          >
-            First
-          </button>
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1 || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            type="button"
-          >
-            Previous
-          </button>
-
-          <span className="px-3 py-1 text-sm">
-            Page {currentPage} of {totalPages}
-          </span>
-
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            type="button"
-          >
-            Next
-          </button>
-          <button
-            onClick={() => handlePageChange(totalPages)}
-            disabled={currentPage === totalPages || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            type="button"
-          >
-            Last
-          </button>
-        </div>
-      </div>
-    );
-  };
 
   // Print functionality
   const handlePrint = () => {
@@ -981,7 +991,16 @@ function SaleReportWithDummyNumber() {
           className={`border-b-0 rounded-b-none h-[45vh]`}
         />
         
-        <PaginationControls />
+        <PaginationControls 
+          totalPages={totalPages}
+          allRowData={allRowData}
+          totalRecords={totalRecords}
+          pageLimit={pageLimit}
+          handleLimitChange={handleLimitChange}
+          loading={loading}
+          handlePageChange={handlePageChange}
+          currentPage={currentPage}
+        />
         
         <div className="flex justify-end border-[#D0D5DD] border-opacity-75 border-[1px] border-t-0 text-gray-900 bg-[#D0D5DDB8] rounded rounded-t-none font-sans px-4 py-2 gap-16">
           <div>

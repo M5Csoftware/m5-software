@@ -25,6 +25,26 @@ function UserManagement({
   const { server } = React.useContext(GlobalContext);
   const [fetching, setFetching] = useState(false);
 
+  // Memoize handleSort to avoid scoping issues during build
+  const handleSort = React.useCallback(
+    (key) => {
+      let direction = "asc";
+      if (sortConfig.key === key && sortConfig.direction === "asc") {
+        direction = "desc";
+      }
+      setSortConfig({ key, direction });
+
+      const sortedUsers = [...filteredUsers].sort((a, b) => {
+        if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
+        if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
+        return 0;
+      });
+
+      setFilteredUsers(sortedUsers);
+    },
+    [filteredUsers, sortConfig]
+  );
+
   // Filter states
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [selectedAccountType, setSelectedAccountType] = useState("All");
@@ -147,6 +167,7 @@ function UserManagement({
   ]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const selectedElement = document.querySelector(
       `.department-tabs > li[data-dept='${selectedDepartment}']`
     );
@@ -157,21 +178,7 @@ function UserManagement({
     }
   }, [selectedDepartment]);
 
-  const handleSort = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
 
-    const sortedUsers = [...filteredUsers].sort((a, b) => {
-      if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
-      if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
-      return 0;
-    });
-
-    setFilteredUsers(sortedUsers);
-  };
 
   const handleClearFilters = () => {
     setSelectedAccountType("All");
