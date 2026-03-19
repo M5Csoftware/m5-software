@@ -235,7 +235,6 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const lineRef = useRef(null); // ✅ Only one declaration — duplicate removed
   const [appliedFilters, setAppliedFilters] = useState({});
-  const lineRef = useRef(null);
   const [filterOptions, setFilterOptions] = useState({
     accountTypes: [],
     cities: [],
