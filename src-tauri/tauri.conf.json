@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "M5C Logs",
-    "version": "0.1.12"
+    "version": "0.1.15"
   },
   "tauri": {
     "allowlist": {
@@ -23,7 +23,8 @@
         "all": true,
         "scope": [
           "https://m5clogs.com/*",
-          "https://m5c-server.vercel.app/*"
+          "https://m5c-server.vercel.app/*",
+          "https://raw.githubusercontent.com/*"
         ]
       },
       "shell": {
@@ -32,6 +33,10 @@
       },
       "window": {
         "all": true
+      },
+      "process": {
+        "all": true,
+        "relaunch": true
       }
     },
     "bundle": {
@@ -71,12 +76,12 @@
       "csp": null
     },
     "updater": {
-      "active": false,
+      "active": true,
       "dialog": false,
       "endpoints": [
         "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json"
       ],
-      "pubkey": ""
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDczQzdGOUMxQzZCOTNEQ0IKUldUTFBibkd3Zm5IYzh3dXpWeUVjbmF5YWRNU0RSV2VLa0hSb0c3KzFkbVFsYVpjOE1SNXg1UHgK"
     },
     "windows": [
       {

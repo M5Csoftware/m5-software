@@ -1,5 +1,4 @@
 "use client";
-// UpdateNotification.jsx — v2 (no direct GitHub fetch, Tauri invoke only)
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
@@ -15,71 +14,62 @@ function formatDate(isoString) {
 }
 
 export default function UpdateNotification() {
-  const [updateInfo, setUpdateInfo] = useState(null);
-  const [showModal, setShowModal]   = useState(false);
-  const [dismissed, setDismissed]   = useState(false);
-  const [apiReady, setApiReady]     = useState(false);
-  const invokeRef = useRef(null);
-  const shellRef  = useRef(null);
+  const [updateInfo, setUpdateInfo]     = useState(null);
+  const [showModal, setShowModal]       = useState(false);
+  const [dismissed, setDismissed]       = useState(false);
+  const [apiReady, setApiReady]         = useState(false);
+  const [installing, setInstalling]     = useState(false);
+  const [installStatus, setInstallStatus] = useState(""); // progress message
+  const invokeRef   = useRef(null);
+  const updaterRef  = useRef(null); // tauri updater module
+  const shellRef    = useRef(null);
 
-  // ── 1. Load Tauri API (client-side only) ──────────────────────────────
+  // ── Load Tauri APIs ───────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
-
-    // Skip entirely in Next.js dev mode
     if (process.env.NODE_ENV === "development") {
-      console.log("[updater] Dev mode — update checks disabled");
+      console.log("[updater] Dev mode — skipped");
       return;
     }
 
-    const load = () => {
+    const load = async () => {
       try {
-        if (window.__TAURI__) {
-          invokeRef.current = window.__TAURI__.tauri?.invoke || window.__TAURI__.invoke;
-          shellRef.current  = window.__TAURI__.shell?.open || window.__TAURI__.open;
-          
-          if (invokeRef.current && shellRef.current) {
-            console.log("[updater] Tauri API ready");
-            setApiReady(true);
-          } else {
-            // Fallback for different global struct versions
-            const { invoke } = window.__TAURI__;
-            const { open } = window.__TAURI__.shell || {};
-            if (invoke) invokeRef.current = invoke;
-            if (open) shellRef.current = open;
-            if (invokeRef.current) setApiReady(true);
-          }
-        }
+        const { invoke }  = await import("@tauri-apps/api/tauri");
+        const { open }    = await import("@tauri-apps/api/shell");
+        const updater     = await import("@tauri-apps/api/updater");
+        const { relaunch } = await import("@tauri-apps/api/process");
+
+        invokeRef.current  = invoke;
+        shellRef.current   = open;
+        updaterRef.current = { ...updater, relaunch };
+
+        console.log("[updater] Tauri API ready");
+        setApiReady(true);
       } catch (e) {
-        console.log("[updater] Tauri API not available (browser?)", e.message);
+        console.log("[updater] Tauri API not available", e.message);
       }
     };
     load();
   }, []);
 
-  // ── 2. Check via Rust command ONLY — no direct fetch() to GitHub ──────
+  // ── Check for update via Rust command ────────────────────────────────
   const checkUpdate = useCallback(async () => {
     if (!invokeRef.current) return;
     try {
-      console.log("[updater] Calling check_for_update...");
       const info = await invokeRef.current("check_for_update");
-      console.log("[updater] check_for_update result:", JSON.stringify(info));
-
+      console.log("[updater] Result:", info);
       if (info?.has_update) {
-        const dismissed = localStorage.getItem(STORAGE_KEY);
-        if (dismissed !== info.remote_version) {
+        const dismissedVer = localStorage.getItem(STORAGE_KEY);
+        if (dismissedVer !== info.remote_version) {
           setUpdateInfo(info);
           setDismissed(false);
-          console.log("[updater] Showing banner for v" + info.remote_version);
         }
       }
     } catch (err) {
-      // Only the Rust command can fail here (network issue etc.) — no fetch() errors
-      console.warn("[updater] check_for_update error:", err);
+      console.warn("[updater] check failed:", err);
     }
   }, []);
 
-  // ── 3. Run after API ready ────────────────────────────────────────────
   useEffect(() => {
     if (!apiReady) return;
     const t = setTimeout(checkUpdate, 3000);
@@ -87,17 +77,44 @@ export default function UpdateNotification() {
     return () => { clearTimeout(t); clearInterval(i); };
   }, [apiReady, checkUpdate]);
 
-  // ── Actions ───────────────────────────────────────────────────────────
-  const handleDismiss = (e) => {
-    e?.stopPropagation();
-    if (updateInfo?.remote_version) {
-      localStorage.setItem(STORAGE_KEY, updateInfo.remote_version);
+  // ── Silent install using Tauri updater ───────────────────────────────
+  const handleInstall = async () => {
+    // If Tauri updater is available → silent install
+    if (updaterRef.current?.checkUpdate) {
+      try {
+        setInstalling(true);
+        setInstallStatus("Checking update...");
+
+        const { shouldUpdate, manifest } = await updaterRef.current.checkUpdate();
+
+        if (shouldUpdate) {
+          setInstallStatus("Downloading update...");
+          await updaterRef.current.installUpdate();
+          setInstallStatus("Restarting app...");
+          // Small delay so user sees the message
+          await new Promise(r => setTimeout(r, 1500));
+          await updaterRef.current.relaunch();
+        } else {
+          setInstallStatus("Already up to date!");
+          setTimeout(() => {
+            setInstalling(false);
+            setInstallStatus("");
+          }, 2000);
+        }
+      } catch (err) {
+        console.error("[updater] Silent install failed:", err);
+        // Fallback to GitHub releases page
+        setInstalling(false);
+        setInstallStatus("");
+        openReleasesPage();
+      }
+    } else {
+      // Fallback — open GitHub releases in browser
+      openReleasesPage();
     }
-    setDismissed(true);
-    setShowModal(false);
   };
 
-  const handleDownload = async () => {
+  const openReleasesPage = async () => {
     const url = "https://github.com/M5Csoftware/m5-software/releases/latest";
     try {
       if (shellRef.current) await shellRef.current(url);
@@ -105,6 +122,15 @@ export default function UpdateNotification() {
     } catch {
       window.open(url, "_blank");
     }
+    setShowModal(false);
+  };
+
+  const handleDismiss = (e) => {
+    e?.stopPropagation();
+    if (updateInfo?.remote_version) {
+      localStorage.setItem(STORAGE_KEY, updateInfo.remote_version);
+    }
+    setDismissed(true);
     setShowModal(false);
   };
 
@@ -154,7 +180,7 @@ export default function UpdateNotification() {
 
       {/* ── Modal ──────────────────────────────────────────────────────── */}
       {showModal && (
-        <div onClick={() => setShowModal(false)} style={{
+        <div onClick={() => !installing && setShowModal(false)} style={{
           position:"fixed", inset:0, zIndex:9999,
           display:"flex", alignItems:"center", justifyContent:"center",
           background:"rgba(0,0,0,.5)", backdropFilter:"blur(5px)", padding:"16px",
@@ -165,108 +191,119 @@ export default function UpdateNotification() {
             boxShadow:"0 24px 64px rgba(0,0,0,.22)",
             position:"relative", animation:"modal-in .2s ease-out",
           }}>
-            <button onClick={() => setShowModal(false)} style={{
-              position:"absolute", top:"14px", right:"16px",
-              background:"#f3f4f6", border:"none", width:"28px", height:"28px",
-              borderRadius:"50%", fontSize:"16px", cursor:"pointer",
-              color:"#6b7280", display:"flex", alignItems:"center",
-              justifyContent:"center", lineHeight:1,
-            }}>×</button>
+            {!installing && (
+              <button onClick={() => setShowModal(false)} style={{
+                position:"absolute", top:"14px", right:"16px",
+                background:"#f3f4f6", border:"none", width:"28px", height:"28px",
+                borderRadius:"50%", fontSize:"16px", cursor:"pointer",
+                color:"#6b7280", display:"flex", alignItems:"center",
+                justifyContent:"center", lineHeight:1,
+              }}>×</button>
+            )}
 
             <div style={{
               width:"56px", height:"56px", borderRadius:"16px",
-              background:"linear-gradient(135deg,#fef3c7,#fde68a)",
+              background: installing
+                ? "linear-gradient(135deg,#dbeafe,#bfdbfe)"
+                : "linear-gradient(135deg,#fef3c7,#fde68a)",
               display:"flex", alignItems:"center", justifyContent:"center",
               marginBottom:"20px",
             }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-                stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="16 16 12 12 8 16"/>
-                <line x1="12" y1="12" x2="12" y2="21"/>
-                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
-              </svg>
-            </div>
-
-            <h2 style={{ margin:"0 0 4px", fontSize:"22px", fontWeight:"800", color:"#111827" }}>
-              Update Available
-            </h2>
-            <p style={{ margin:"0 0 22px", color:"#6b7280", fontSize:"13px" }}>
-              A new version of M5C Logs is ready to install.
-            </p>
-
-            <div style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"20px" }}>
-              <span style={{ padding:"5px 12px", borderRadius:"20px", background:"#f3f4f6", color:"#374151", fontSize:"12px", fontWeight:"600" }}>
-                v{updateInfo.current_version}
-              </span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"/>
-                <polyline points="12 5 19 12 12 19"/>
-              </svg>
-              <span style={{ padding:"5px 12px", borderRadius:"20px", background:"#d1fae5", color:"#065f46", fontSize:"12px", fontWeight:"700" }}>
-                v{updateInfo.remote_version}
-              </span>
-              {updateInfo.pub_date && (
-                <span style={{ color:"#9ca3af", fontSize:"11px", marginLeft:"auto" }}>
-                  {formatDate(updateInfo.pub_date)}
-                </span>
+              {installing ? (
+                // Spinner
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                  stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"
+                  style={{ animation:"spin 1s linear infinite" }}>
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                </svg>
+              ) : (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                  stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="16 16 12 12 8 16"/>
+                  <line x1="12" y1="12" x2="12" y2="21"/>
+                  <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                </svg>
               )}
             </div>
 
-            {updateInfo.notes && (
-              <div style={{
-                background:"#f9fafb", border:"1px solid #e5e7eb",
-                borderRadius:"12px", padding:"14px 16px", marginBottom:"24px",
-              }}>
-                <div style={{ display:"flex", alignItems:"center", gap:"6px", marginBottom:"8px" }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                  <span style={{ fontWeight:"700", fontSize:"12px", color:"#374151" }}>What&apos;s new</span>
-                </div>
-                <div style={{
-                  fontSize:"13px", color:"#4b5563", lineHeight:"1.65",
-                  maxHeight:"100px", overflowY:"auto", whiteSpace:"pre-wrap",
-                }}>
-                  {updateInfo.notes}
-                </div>
-              </div>
-            )}
-
-            <div style={{ display:"flex", gap:"10px" }}>
-              <button onClick={handleDownload} style={{
-                flex:1, padding:"12px", borderRadius:"12px", border:"none",
-                background:"linear-gradient(135deg,#f59e0b,#d97706)",
-                color:"white", fontWeight:"700", fontSize:"14px", cursor:"pointer",
-                boxShadow:"0 4px 14px rgba(245,158,11,.45)",
-                display:"flex", alignItems:"center", justifyContent:"center", gap:"8px",
-              }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                  stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                Download Update
-              </button>
-              <button onClick={handleDismiss} style={{
-                padding:"12px 18px", borderRadius:"12px",
-                border:"1px solid #e5e7eb", background:"white",
-                color:"#374151", fontWeight:"600", fontSize:"14px", cursor:"pointer",
-              }}>
-                Later
-              </button>
-            </div>
-
-            <p style={{ margin:"16px 0 0", textAlign:"center", fontSize:"11px", color:"#9ca3af" }}>
-              Download from{" "}
-              <span onClick={handleDownload}
-                style={{ color:"#f59e0b", cursor:"pointer", textDecoration:"underline" }}>
-                GitHub Releases
-              </span>
+            <h2 style={{ margin:"0 0 4px", fontSize:"22px", fontWeight:"800", color:"#111827" }}>
+              {installing ? "Installing Update..." : "Update Available"}
+            </h2>
+            <p style={{ margin:"0 0 22px", color:"#6b7280", fontSize:"13px" }}>
+              {installing
+                ? installStatus
+                : "A new version of M5C Logs is ready to install."}
             </p>
+
+            {!installing && (
+              <>
+                <div style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"20px" }}>
+                  <span style={{ padding:"5px 12px", borderRadius:"20px", background:"#f3f4f6", color:"#374151", fontSize:"12px", fontWeight:"600" }}>
+                    v{updateInfo.current_version}
+                  </span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="#9ca3af" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                  </svg>
+                  <span style={{ padding:"5px 12px", borderRadius:"20px", background:"#d1fae5", color:"#065f46", fontSize:"12px", fontWeight:"700" }}>
+                    v{updateInfo.remote_version}
+                  </span>
+                  {updateInfo.pub_date && (
+                    <span style={{ color:"#9ca3af", fontSize:"11px", marginLeft:"auto" }}>
+                      {formatDate(updateInfo.pub_date)}
+                    </span>
+                  )}
+                </div>
+
+                {updateInfo.notes && (
+                  <div style={{
+                    background:"#f9fafb", border:"1px solid #e5e7eb",
+                    borderRadius:"12px", padding:"14px 16px", marginBottom:"24px",
+                  }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:"6px", marginBottom:"8px" }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                        stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                      </svg>
+                      <span style={{ fontWeight:"700", fontSize:"12px", color:"#374151" }}>What&apos;s new</span>
+                    </div>
+                    <div style={{
+                      fontSize:"13px", color:"#4b5563", lineHeight:"1.65",
+                      maxHeight:"100px", overflowY:"auto", whiteSpace:"pre-wrap",
+                    }}>
+                      {updateInfo.notes}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display:"flex", gap:"10px" }}>
+                  <button onClick={handleInstall} style={{
+                    flex:1, padding:"12px", borderRadius:"12px", border:"none",
+                    background:"linear-gradient(135deg,#f59e0b,#d97706)",
+                    color:"white", fontWeight:"700", fontSize:"14px", cursor:"pointer",
+                    boxShadow:"0 4px 14px rgba(245,158,11,.45)",
+                    display:"flex", alignItems:"center", justifyContent:"center", gap:"8px",
+                  }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                      stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Install Update
+                  </button>
+                  <button onClick={handleDismiss} style={{
+                    padding:"12px 18px", borderRadius:"12px",
+                    border:"1px solid #e5e7eb", background:"white",
+                    color:"#374151", fontWeight:"600", fontSize:"14px", cursor:"pointer",
+                  }}>
+                    Later
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -279,6 +316,10 @@ export default function UpdateNotification() {
         @keyframes modal-in {
           from { opacity:0; transform:scale(.95) translateY(8px); }
           to   { opacity:1; transform:scale(1) translateY(0); }
+        }
+        @keyframes spin {
+          from { transform:rotate(0deg); }
+          to   { transform:rotate(360deg); }
         }
       `}</style>
     </>
