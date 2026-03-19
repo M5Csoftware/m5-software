@@ -81,9 +81,21 @@ export default function UpdateNotification() {
   const handleInstall = async () => {
     // If Tauri updater is available → silent install
     if (updaterRef.current?.checkUpdate) {
+      let unlisten = null;
       try {
         setInstalling(true);
         setInstallStatus("Checking update...");
+
+        if (updaterRef.current.onUpdaterEvent) {
+          unlisten = await updaterRef.current.onUpdaterEvent(({ error, status }) => {
+            console.log("[updater] event:", error, status);
+            if (status === "PENDING") {
+              setInstallStatus("Downloading update...");
+            } else if (status === "DOWNLOADED") {
+              setInstallStatus("Installing update...");
+            }
+          });
+        }
 
         const { shouldUpdate, manifest } = await updaterRef.current.checkUpdate();
 
@@ -93,9 +105,11 @@ export default function UpdateNotification() {
           setInstallStatus("Restarting app...");
           // Small delay so user sees the message
           await new Promise(r => setTimeout(r, 1500));
+          if (unlisten) unlisten();
           await updaterRef.current.relaunch();
         } else {
           setInstallStatus("Already up to date!");
+          if (unlisten) unlisten();
           setTimeout(() => {
             setInstalling(false);
             setInstallStatus("");
@@ -103,26 +117,21 @@ export default function UpdateNotification() {
         }
       } catch (err) {
         console.error("[updater] Silent install failed:", err);
-        // Fallback to GitHub releases page
-        setInstalling(false);
-        setInstallStatus("");
-        openReleasesPage();
+        if (unlisten) unlisten();
+        setInstallStatus("Update Failed: " + (err.message || err.toString()));
+        setTimeout(() => {
+          setInstalling(false);
+          setInstallStatus("");
+        }, 4000);
       }
     } else {
-      // Fallback — open GitHub releases in browser
-      openReleasesPage();
+      setInstalling(true);
+      setInstallStatus("Updater is not supported in this environment.");
+      setTimeout(() => {
+        setInstalling(false);
+        setInstallStatus("");
+      }, 4000);
     }
-  };
-
-  const openReleasesPage = async () => {
-    const url = "https://github.com/M5Csoftware/m5-software/releases/latest";
-    try {
-      if (shellRef.current) await shellRef.current(url);
-      else window.open(url, "_blank");
-    } catch {
-      window.open(url, "_blank");
-    }
-    setShowModal(false);
   };
 
   const handleDismiss = (e) => {
