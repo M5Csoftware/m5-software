@@ -14,39 +14,35 @@ function formatDate(isoString) {
 }
 
 export default function UpdateNotification() {
-  const [updateInfo, setUpdateInfo]     = useState(null);
-  const [showModal, setShowModal]       = useState(false);
-  const [dismissed, setDismissed]       = useState(false);
-  const [apiReady, setApiReady]         = useState(false);
-  const [installing, setInstalling]     = useState(false);
-  const [installStatus, setInstallStatus] = useState(""); // progress message
-  const invokeRef   = useRef(null);
-  const updaterRef  = useRef(null); // tauri updater module
-  const shellRef    = useRef(null);
+  const [updateInfo, setUpdateInfo]       = useState(null);
+  const [showModal, setShowModal]         = useState(false);
+  const [dismissed, setDismissed]         = useState(false);
+  const [apiReady, setApiReady]           = useState(false);
+  const [installing, setInstalling]       = useState(false);
+  const [installStatus, setInstallStatus] = useState("");
+  const [progress, setProgress]           = useState(0); // 0-100
+  const [installError, setInstallError]   = useState("");
+  const invokeRef  = useRef(null);
+  const updaterRef = useRef(null);
 
   // ── Load Tauri APIs ───────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (process.env.NODE_ENV === "development") {
-      console.log("[updater] Dev mode — skipped");
-      return;
-    }
+    if (process.env.NODE_ENV === "development") return;
 
     const load = async () => {
       try {
-        const { invoke }  = await import("@tauri-apps/api/tauri");
-        const { open }    = await import("@tauri-apps/api/shell");
-        const updater     = await import("@tauri-apps/api/updater");
+        const { invoke }   = await import("@tauri-apps/api/tauri");
+        const updater      = await import("@tauri-apps/api/updater");
         const { relaunch } = await import("@tauri-apps/api/process");
 
         invokeRef.current  = invoke;
-        shellRef.current   = open;
         updaterRef.current = { ...updater, relaunch };
 
         console.log("[updater] Tauri API ready");
         setApiReady(true);
       } catch (e) {
-        console.log("[updater] Tauri API not available", e.message);
+        console.log("[updater] Tauri API not available:", e.message);
       }
     };
     load();
@@ -77,60 +73,95 @@ export default function UpdateNotification() {
     return () => { clearTimeout(t); clearInterval(i); };
   }, [apiReady, checkUpdate]);
 
-  // ── Silent install using Tauri updater ───────────────────────────────
+  // ── Silent install with progress ──────────────────────────────────────
   const handleInstall = async () => {
-    // If Tauri updater is available → silent install
-    if (updaterRef.current?.checkUpdate) {
-      let unlisten = null;
-      try {
-        setInstalling(true);
-        setInstallStatus("Checking update...");
+    if (!updaterRef.current?.checkUpdate) {
+      setInstallError("Updater not available. Please restart the app and try again.");
+      return;
+    }
 
-        if (updaterRef.current.onUpdaterEvent) {
-          unlisten = await updaterRef.current.onUpdaterEvent(({ error, status }) => {
-            console.log("[updater] event:", error, status);
-            if (status === "PENDING") {
-              setInstallStatus("Downloading update...");
-            } else if (status === "DOWNLOADED") {
-              setInstallStatus("Installing update...");
-            }
-          });
-        }
+    setInstalling(true);
+    setInstallError("");
+    setProgress(5);
+    setInstallStatus("Checking for update...");
 
-        const { shouldUpdate, manifest } = await updaterRef.current.checkUpdate();
+    let unlisten = null;
 
-        if (shouldUpdate) {
-          setInstallStatus("Downloading update...");
-          await updaterRef.current.installUpdate();
-          setInstallStatus("Restarting app...");
-          // Small delay so user sees the message
-          await new Promise(r => setTimeout(r, 1500));
-          if (unlisten) unlisten();
-          await updaterRef.current.relaunch();
-        } else {
-          setInstallStatus("Already up to date!");
-          if (unlisten) unlisten();
-          setTimeout(() => {
-            setInstalling(false);
-            setInstallStatus("");
-          }, 2000);
-        }
-      } catch (err) {
-        console.error("[updater] Silent install failed:", err);
-        if (unlisten) unlisten();
-        setInstallStatus("Update Failed: " + (err.message || err.toString()));
+    try {
+      // Listen to download progress events
+      if (updaterRef.current.onUpdaterEvent) {
+        unlisten = await updaterRef.current.onUpdaterEvent(({ error, status }) => {
+          console.log("[updater] event:", status, error);
+          if (error) {
+            setInstallError(error);
+            return;
+          }
+          if (status === "PENDING") {
+            setInstallStatus("Downloading update...");
+            setProgress(30);
+          } else if (status === "DOWNLOADED") {
+            setInstallStatus("Download complete. Installing...");
+            setProgress(80);
+          } else if (status === "DONE") {
+            setInstallStatus("Update installed! Restarting...");
+            setProgress(100);
+          }
+        });
+      }
+
+      setProgress(15);
+      const { shouldUpdate } = await updaterRef.current.checkUpdate();
+
+      if (!shouldUpdate) {
+        setInstallStatus("Already up to date!");
+        setProgress(100);
         setTimeout(() => {
           setInstalling(false);
           setInstallStatus("");
-        }, 4000);
+          setProgress(0);
+          setShowModal(false);
+        }, 2000);
+        if (unlisten) unlisten();
+        return;
       }
-    } else {
-      setInstalling(true);
-      setInstallStatus("Updater is not supported in this environment.");
-      setTimeout(() => {
-        setInstalling(false);
-        setInstallStatus("");
-      }, 4000);
+
+      setInstallStatus("Downloading update...");
+      setProgress(30);
+
+      // This downloads AND installs
+      await updaterRef.current.installUpdate();
+
+      setInstallStatus("Download complete. Installing...");
+      setProgress(85);
+
+      await new Promise(r => setTimeout(r, 1000));
+
+      setInstallStatus("Restarting app...");
+      setProgress(100);
+
+      await new Promise(r => setTimeout(r, 1500));
+
+      if (unlisten) unlisten();
+      await updaterRef.current.relaunch();
+
+    } catch (err) {
+      console.error("[updater] install failed:", err);
+      if (unlisten) unlisten();
+
+      // Show specific error message
+      let errMsg = err?.message || err?.toString() || "Unknown error";
+      if (errMsg.includes("signature")) {
+        errMsg = "Signature verification failed. Please contact support.";
+      } else if (errMsg.includes("network") || errMsg.includes("fetch")) {
+        errMsg = "Network error. Please check your internet connection.";
+      } else if (errMsg.includes("No updates")) {
+        errMsg = "No update package found. Please try again later.";
+      }
+
+      setInstallError(errMsg);
+      setInstalling(false);
+      setProgress(0);
+      setInstallStatus("");
     }
   };
 
@@ -141,6 +172,7 @@ export default function UpdateNotification() {
     }
     setDismissed(true);
     setShowModal(false);
+    setInstallError("");
   };
 
   if (!updateInfo || dismissed) return null;
@@ -210,6 +242,7 @@ export default function UpdateNotification() {
               }}>×</button>
             )}
 
+            {/* Icon */}
             <div style={{
               width:"56px", height:"56px", borderRadius:"16px",
               background: installing
@@ -219,7 +252,6 @@ export default function UpdateNotification() {
               marginBottom:"20px",
             }}>
               {installing ? (
-                // Spinner
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
                   stroke="#3b82f6" strokeWidth="2" strokeLinecap="round"
                   style={{ animation:"spin 1s linear infinite" }}>
@@ -238,12 +270,49 @@ export default function UpdateNotification() {
             <h2 style={{ margin:"0 0 4px", fontSize:"22px", fontWeight:"800", color:"#111827" }}>
               {installing ? "Installing Update..." : "Update Available"}
             </h2>
-            <p style={{ margin:"0 0 22px", color:"#6b7280", fontSize:"13px" }}>
+            <p style={{ margin:"0 0 16px", color:"#6b7280", fontSize:"13px" }}>
               {installing
-                ? installStatus
+                ? installStatus || "Please wait..."
                 : "A new version of M5C Logs is ready to install."}
             </p>
 
+            {/* ── Progress bar (shown while installing) ── */}
+            {installing && (
+              <div style={{ marginBottom: "24px" }}>
+                <div style={{
+                  width: "100%", height: "8px",
+                  background: "#e5e7eb", borderRadius: "999px", overflow: "hidden",
+                }}>
+                  <div style={{
+                    height: "100%",
+                    width: `${progress}%`,
+                    background: "linear-gradient(90deg,#3b82f6,#6366f1)",
+                    borderRadius: "999px",
+                    transition: "width 0.4s ease",
+                  }} />
+                </div>
+                <div style={{
+                  display: "flex", justifyContent: "space-between",
+                  marginTop: "6px", fontSize: "11px", color: "#9ca3af",
+                }}>
+                  <span>{installStatus}</span>
+                  <span>{progress}%</span>
+                </div>
+              </div>
+            )}
+
+            {/* ── Error message ── */}
+            {installError && (
+              <div style={{
+                background: "#fef2f2", border: "1px solid #fecaca",
+                borderRadius: "10px", padding: "12px 14px", marginBottom: "16px",
+                fontSize: "13px", color: "#dc2626",
+              }}>
+                ⚠️ {installError}
+              </div>
+            )}
+
+            {/* ── Version info + notes (shown when not installing) ── */}
             {!installing && (
               <>
                 <div style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"20px" }}>

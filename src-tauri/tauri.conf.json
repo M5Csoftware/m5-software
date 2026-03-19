@@ -24,7 +24,9 @@
         "scope": [
           "https://m5clogs.com/*",
           "https://m5c-server.vercel.app/*",
-          "https://raw.githubusercontent.com/*"
+          "https://raw.githubusercontent.com/*",
+          "https://github.com/*",
+          "https://objects.githubusercontent.com/*"
         ]
       },
       "shell": {
