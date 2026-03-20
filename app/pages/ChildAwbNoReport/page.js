@@ -10,6 +10,88 @@ import axios from "axios";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import NotificationFlag from "@/app/components/Notificationflag";
 
+const PaginationControls = ({
+  totalPages,
+  rowData,
+  totalRecords,
+  pageLimit,
+  handleLimitChange,
+  loading,
+  handlePageChange,
+  currentPage,
+}) => {
+  if (totalPages <= 1 && rowData.length === 0) return null;
+
+  return (
+    <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
+      <div className="flex items-center gap-4">
+        <div className="text-sm text-gray-700">
+          Showing <span className="font-medium">{rowData.length}</span> of{" "}
+          <span className="font-medium">{totalRecords}</span> records
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label htmlFor="limit" className="text-sm text-gray-600">
+            Rows per page:
+          </label>
+          <select
+            id="limit"
+            value={pageLimit}
+            onChange={handleLimitChange}
+            className="border rounded px-2 py-1 text-sm bg-white"
+            disabled={loading}
+          >
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={200}>200</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => handlePageChange(1)}
+          disabled={currentPage === 1 || loading}
+          className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          type="button"
+        >
+          First
+        </button>
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1 || loading}
+          className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          type="button"
+        >
+          Previous
+        </button>
+
+        <span className="px-3 py-1 text-sm">
+          Page {currentPage} of {totalPages}
+        </span>
+
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages || loading}
+          className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          type="button"
+        >
+          Next
+        </button>
+        <button
+          onClick={() => handlePageChange(totalPages)}
+          disabled={currentPage === totalPages || loading}
+          className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+          type="button"
+        >
+          Last
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const ChildAwbNoReport = () => {
   const { register, setValue, handleSubmit, getValues } = useForm();
   const { server } = useContext(GlobalContext);
@@ -222,7 +304,7 @@ const ChildAwbNoReport = () => {
       
       // Let's assume the first major response defines the pagination for now
       // (This is a bit of a placeholder logic depending on backend response structure)
-      const firstRes = runNumber ? (await axios.get(`${server}/bagging?runNo=${runNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`)).data : null;
+      // const firstRes = runNumber ? (await axios.get(`${server}/bagging?runNo=${runNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`)).data : null;
       // Re-fetching just for pagination info is suboptimal, but ChildAwbNoReport logic is complex.
       // Ideally, the backend would return a consistent pagination object.
       
@@ -263,91 +345,15 @@ const ChildAwbNoReport = () => {
     }
   };
 
-  const PaginationControls = () => {
-    if (totalPages <= 1 && rowData.length === 0) return null;
-
-    return (
-      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
-        <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">{rowData.length}</span> of{" "}
-            <span className="font-medium">{totalRecords}</span> records
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label htmlFor="limit" className="text-sm text-gray-600">
-              Rows per page:
-            </label>
-            <select
-              id="limit"
-              value={pageLimit}
-              onChange={handleLimitChange}
-              className="border rounded px-2 py-1 text-sm bg-white"
-              disabled={loading}
-            >
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value={200}>200</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => handlePageChange(1)}
-            disabled={currentPage === 1 || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            type="button"
-          >
-            First
-          </button>
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1 || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            type="button"
-          >
-            Previous
-          </button>
-
-          <span className="px-3 py-1 text-sm">
-            Page {currentPage} of {totalPages}
-          </span>
-
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            type="button"
-          >
-            Next
-          </button>
-          <button
-            onClick={() => handlePageChange(totalPages)}
-            disabled={currentPage === totalPages || loading}
-            className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-            type="button"
-          >
-            Last
-          </button>
-        </div>
-      </div>
-    );
-  };
-
   const getDate = () => {
     const today = new Date();
     const formattedToday = today.toISOString().split("T")[0];
 
-    const from = getValues("from");
-    const to = getValues("to");
-
-    // console.log(from, to);
-    setCurrDate([from, to]);
-
+    const { from, to } = getValues();
     if (!from) setValue("from", formattedToday);
     if (!to) setValue("to", formattedToday);
+    
+    setCurrDate([from || formattedToday, to || formattedToday]);
   };
 
   useEffect(() => {
@@ -456,7 +462,17 @@ const ChildAwbNoReport = () => {
         rowData={formattedData}
         className="h-[450px] border-b-0 rounded-b-none"
       />
-      <PaginationControls />
+      
+      <PaginationControls 
+        totalPages={totalPages}
+        rowData={rowData}
+        totalRecords={totalRecords}
+        pageLimit={pageLimit}
+        handleLimitChange={handleLimitChange}
+        loading={loading}
+        handlePageChange={handlePageChange}
+        currentPage={currentPage}
+      />
 
       <div className="flex justify-between">
         <div></div>

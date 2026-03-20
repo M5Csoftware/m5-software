@@ -23,7 +23,27 @@ function UserManagement({
   const lineRef = useRef(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const { server } = React.useContext(GlobalContext);
-  const [fetching, setFetching] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Memoize handleSort to avoid scoping issues during build
+  const handleSort = React.useCallback(
+    (key) => {
+      let direction = "asc";
+      if (sortConfig.key === key && sortConfig.direction === "asc") {
+        direction = "desc";
+      }
+      setSortConfig({ key, direction });
+
+      const sortedUsers = [...filteredUsers].sort((a, b) => {
+        if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
+        if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
+        return 0;
+      });
+
+      setFilteredUsers(sortedUsers);
+    },
+    [filteredUsers, sortConfig]
+  );
 
   // Filter states
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
@@ -86,7 +106,7 @@ function UserManagement({
     };
 
     fetchUsers();
-  }, [fetching, server]);
+  }, [refreshKey, server]);
 
   useEffect(() => {
     let filtered = [...users];
@@ -147,6 +167,7 @@ function UserManagement({
   ]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const selectedElement = document.querySelector(
       `.department-tabs > li[data-dept='${selectedDepartment}']`
     );
@@ -157,21 +178,7 @@ function UserManagement({
     }
   }, [selectedDepartment]);
 
-  const handleSort = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
 
-    const sortedUsers = [...filteredUsers].sort((a, b) => {
-      if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
-      if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
-      return 0;
-    });
-
-    setFilteredUsers(sortedUsers);
-  };
 
   const handleClearFilters = () => {
     setSelectedAccountType("All");
@@ -346,7 +353,7 @@ function UserManagement({
               />
             </div>
             <div className="flex items-center gap-2 ">
-              <div className="flex items-center gap-2 bg-white rounded-lg border border-[#D0D5DD]"></div>
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDownloadExcel}
@@ -510,7 +517,7 @@ function UserManagement({
             users={filteredUsers}
             onSort={handleSort}
             sortConfig={sortConfig}
-            refetchUsers={setFetching}
+            refetchUsers={() => setRefreshKey(prev => prev + 1)}
             onCreateAccount={handleCreateAccount}
             selectedIds={selectedIds}
             setSelectedIds={setSelectedIds}

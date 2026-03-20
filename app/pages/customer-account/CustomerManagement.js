@@ -256,6 +256,26 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
     isCacheValid 
   } = React.useContext(GlobalContext);
 
+  // Memoize handleSort to avoid scoping issues during build
+  const handleSort = React.useCallback(
+    (key) => {
+      let direction = "asc";
+      if (sortConfig.key === key && sortConfig.direction === "asc") {
+        direction = "desc";
+      }
+      setSortConfig({ key, direction });
+
+      const sortedUsers = [...filteredUsers].sort((a, b) => {
+        if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
+        if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
+        return 0;
+      });
+
+      setFilteredUsers(sortedUsers);
+    },
+    [filteredUsers, sortConfig]
+  );
+
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
   const departmentMap = {
@@ -473,6 +493,7 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
   }, [users, selectedDepartment, searchQuery, appliedFilters]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const selectedElement = document.querySelector(
       `.department-tabs > li[data-dept='${selectedDepartment}']`
     );
@@ -483,21 +504,7 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
     }
   }, [selectedDepartment]);
 
-  const handleSort = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
 
-    const sortedUsers = [...filteredUsers].sort((a, b) => {
-      if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
-      if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
-      return 0;
-    });
-
-    setFilteredUsers(sortedUsers);
-  };
 
   const handleDownloadExcel = async () => {
     const dataToExport =
