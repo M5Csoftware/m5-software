@@ -23,7 +23,7 @@ function UserManagement({
   const lineRef = useRef(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const { server } = React.useContext(GlobalContext);
-  const [fetching, setFetching] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Memoize handleSort to avoid scoping issues during build
   const handleSort = React.useCallback(
@@ -106,7 +106,7 @@ function UserManagement({
     };
 
     fetchUsers();
-  }, [fetching, server]);
+  }, [refreshKey, server]);
 
   useEffect(() => {
     let filtered = [...users];
@@ -353,7 +353,7 @@ function UserManagement({
               />
             </div>
             <div className="flex items-center gap-2 ">
-              <div className="flex items-center gap-2 bg-white rounded-lg border border-[#D0D5DD]"></div>
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDownloadExcel}
@@ -517,7 +517,7 @@ function UserManagement({
             users={filteredUsers}
             onSort={handleSort}
             sortConfig={sortConfig}
-            refetchUsers={setFetching}
+            refetchUsers={() => setRefreshKey(prev => prev + 1)}
             onCreateAccount={handleCreateAccount}
             selectedIds={selectedIds}
             setSelectedIds={setSelectedIds}

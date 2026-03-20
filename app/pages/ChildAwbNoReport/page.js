@@ -349,14 +349,11 @@ const ChildAwbNoReport = () => {
     const today = new Date();
     const formattedToday = today.toISOString().split("T")[0];
 
-    const from = getValues("from");
-    const to = getValues("to");
-
-    // console.log(from, to);
-    setCurrDate([from, to]);
-
+    const { from, to } = getValues();
     if (!from) setValue("from", formattedToday);
     if (!to) setValue("to", formattedToday);
+    
+    setCurrDate([from || formattedToday, to || formattedToday]);
   };
 
   useEffect(() => {

@@ -108,8 +108,6 @@ function MonthSale() {
   const [totalRecords, setTotalRecords] = useState(0);
   const [pageLimit, setPageLimit] = useState(50); // Records per page
   const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const columns = useMemo(
     () => [

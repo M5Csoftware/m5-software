@@ -133,7 +133,7 @@ function SaleReportWithDummyNumber() {
   const [withUnbilled, setUnbilled] = useState(false);
   const [withDHL, setDHL] = useState(false);
   const [withDate, setDate] = useState(false);
-  const [withBranchWise, setBrnachWise] = useState(false);
+  const [withBranchWise, setBranchWise] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Fetch dropdown options on mount
@@ -978,7 +978,7 @@ function SaleReportWithDummyNumber() {
           label="Special Report Branch Wise"
           id="branchWise"
           isChecked={withBranchWise}
-          setChecked={setBrnachWise}
+          setChecked={setBranchWise}
         />
       </div>
 
