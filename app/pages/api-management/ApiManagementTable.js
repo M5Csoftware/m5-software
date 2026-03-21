@@ -13,8 +13,7 @@ export default function ApiManagementTable({
     const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [showConfirmDeactivateModal, setShowConfirmDeactivateModal] =
-        useState(false);
+    const [showConfirmDeactivateModal, setShowConfirmDeactivateModal] = useState(false);
     const [userToDeactivate, setUserToDeactivate] = useState(null);
     const [isDeactivating, setIsDeactivating] = useState(false);
     const [showUseCasesModal, setShowUseCasesModal] = useState(false);
@@ -39,7 +38,6 @@ export default function ApiManagementTable({
     const handleMenuAction = (action, user, event) => {
         event?.preventDefault();
         event?.stopPropagation();
-
         setActiveMenu(null);
 
         switch (action) {
@@ -74,10 +72,25 @@ export default function ApiManagementTable({
         }
     };
 
-    // Show all use cases modal
+    // Helper: normalize apiUseCase to array
+    const getUseCases = (user) => {
+        let useCaseData = user.apiUseCase;
+        if (Array.isArray(useCaseData)) return useCaseData;
+        if (typeof useCaseData === "string") {
+            try {
+                const parsed = JSON.parse(useCaseData);
+                if (Array.isArray(parsed)) return parsed;
+            } catch {
+                if (useCaseData.includes(","))
+                    return useCaseData.split(",").map((s) => s.trim()).filter(Boolean);
+                return useCaseData.trim() ? [useCaseData.trim()] : [];
+            }
+        }
+        return [];
+    };
+
     const showAllUseCases = (user) => {
-        const useCases = getUseCases(user);
-        setSelectedUserUseCases(useCases);
+        setSelectedUserUseCases(getUseCases(user));
         setSelectedUserName(user.customerName || "Customer");
         setShowUseCasesModal(true);
     };
@@ -132,7 +145,6 @@ export default function ApiManagementTable({
         }
     };
 
-    // Close menu when clicking outside
     useEffect(() => {
         const handler = (e) => {
             if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -147,14 +159,11 @@ export default function ApiManagementTable({
         };
     }, []);
 
-    // Close menu on Escape
     useEffect(() => {
         const handleEscape = (e) => {
             if (e.key === "Escape") {
                 setActiveMenu(null);
-                if (showUseCasesModal) {
-                    setShowUseCasesModal(false);
-                }
+                if (showUseCasesModal) setShowUseCasesModal(false);
             }
         };
         document.addEventListener("keydown", handleEscape);
@@ -167,74 +176,13 @@ export default function ApiManagementTable({
         return "";
     };
 
-    // Helper function to normalize apiUseCase data
-    const getUseCases = (user) => {
-        let useCaseData = user.apiUseCase;
-        
-        // If it's already an array, return it
-        if (Array.isArray(useCaseData)) {
-            return useCaseData;
-        }
-        
-        // If it's a string, try to parse it
-        if (typeof useCaseData === 'string') {
-            // Try to parse as JSON first
-            try {
-                const parsed = JSON.parse(useCaseData);
-                if (Array.isArray(parsed)) {
-                    return parsed;
-                }
-            } catch (e) {
-                // Not JSON, check if it's a comma-separated string
-                if (useCaseData.includes(',')) {
-                    return useCaseData.split(',').map(item => item.trim()).filter(item => item);
-                }
-                // Single string value
-                return [useCaseData.trim()];
-            }
-        }
-        
-        // Return empty array for null/undefined
-        return [];
-    };
-
     const headers = [
-        {
-            key: "customerName",
-            label: "Customer Name",
-            width: "w-[250px]",
-            sortable: true,
-        },
-        {
-            key: "contact",
-            label: "Contact",
-            width: "w-[150px]",
-            sortable: false,
-        },
-        {
-            key: "branch",
-            label: "Branch",
-            width: "w-[150px]",
-            sortable: true,
-        },
-        {
-            key: "useCase",
-            label: "Use Case",
-            width: "w-[200px]",
-            sortable: false,
-        },
-        {
-            key: "appliedOn",
-            label: "Applied On",
-            width: "w-[150px]",
-            sortable: true,
-        },
-        {
-            key: "status",
-            label: "Status",
-            width: "w-[150px]",
-            sortable: true,
-        },
+        { key: "customerName", label: "Customer Name", width: "w-[250px]", sortable: true },
+        { key: "contact", label: "Contact", width: "w-[150px]", sortable: false },
+        { key: "branch", label: "Branch", width: "w-[150px]", sortable: true },
+        { key: "useCase", label: "Use Case", width: "w-[200px]", sortable: false },
+        { key: "appliedOn", label: "Applied On", width: "w-[150px]", sortable: true },
+        { key: "status", label: "Status", width: "w-[150px]", sortable: true },
     ];
 
     return (
@@ -246,14 +194,11 @@ export default function ApiManagementTable({
                         <div className="w-[30px]">
                             <input
                                 type="checkbox"
-                                checked={
-                                    apiUsers.length > 0 && selectedIds.length === apiUsers.length
-                                }
+                                checked={apiUsers.length > 0 && selectedIds.length === apiUsers.length}
                                 onChange={toggleSelectAll}
                                 className="accent-[#EA1B40] w-4 h-4"
                             />
                         </div>
-
                         {headers.map((col) => (
                             <div
                                 key={col.key}
@@ -272,7 +217,6 @@ export default function ApiManagementTable({
                                 <span className="text-gray-400">{getSortIcon(col.key)}</span>
                             </div>
                         ))}
-
                         <div className="w-[30px]"></div>
                     </div>
                 </div>
@@ -287,7 +231,7 @@ export default function ApiManagementTable({
                         return (
                             <div
                                 key={userId}
-                                className={`border-b border-gray-200 px-6 py-4 text-sm text-[#18181B] transition-colors relative bg-white hover:bg-gray-50`}
+                                className="border-b border-gray-200 px-6 py-4 text-sm text-[#18181B] transition-colors relative bg-white hover:bg-gray-50"
                             >
                                 <div className="flex items-center gap-6">
                                     {/* Checkbox */}
@@ -300,82 +244,73 @@ export default function ApiManagementTable({
                                         />
                                     </div>
 
-                                    {/* Customer */}
+                                    {/* Customer Name + Code */}
                                     <div className="w-[250px]">
                                         <div className="text-gray-900 text-sm font-semibold">
-                                            {user.customerName || "Customer Name"}
+                                            {user.customerName || "—"}
                                         </div>
                                         <div className="text-gray-500 truncate text-xs">
-                                            {user.customerCode || "CG***"}
+                                            {user.customerCode || "—"}
                                         </div>
                                     </div>
 
                                     {/* Contact */}
                                     <div className="w-[150px] text-gray-700 text-sm">
-                                        {user.phone || user.contact || "+91 7458961230"}
+                                        {user.contact || user.phone || "—"}
                                     </div>
 
                                     {/* Branch */}
                                     <div className="w-[150px] text-gray-700 text-sm">
-                                        {user.branch || "Delhi"}
+                                        {user.branch || "—"}
                                     </div>
 
-                                    {/* Use Case */}
+                                    {/* Use Cases */}
                                     <div className="w-[200px]">
-                                        <div className="text-gray-700 text-sm">
-                                            {useCases.length === 0 ? (
-                                                <span className="text-gray-400">No use case</span>
-                                            ) : (
-                                                <div className="flex flex-col gap-1">
-                                                    <span className="truncate" title={useCases[0]}>
-                                                        {useCases[0]}
-                                                    </span>
-                                                    {useCases.length > 1 && (
-                                                        <button
-                                                            onClick={() => showAllUseCases(user)}
-                                                            className="text-xs text-blue-600 hover:text-blue-800 hover:underline text-left"
-                                                            title="Click to view all use cases"
-                                                            type="button"
-                                                        >
-                                                            +{useCases.length - 1} more
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
+                                        {useCases.length === 0 ? (
+                                            <span className="text-gray-400 text-sm">No use case</span>
+                                        ) : (
+                                            <div className="flex flex-col gap-1">
+                                                <span className="text-gray-700 text-sm truncate" title={useCases[0]}>
+                                                    {useCases[0]}
+                                                </span>
+                                                {useCases.length > 1 && (
+                                                    <button
+                                                        onClick={() => showAllUseCases(user)}
+                                                        className="text-xs text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                                        type="button"
+                                                    >
+                                                        +{useCases.length - 1} more
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Applied On */}
-                                    <div className="w-[150px] text-gray-700 text-xs">
-                                        {user.appliedOn
-                                            ? new Date(user.appliedOn).toLocaleDateString("en-US", {
-                                                month: "short",
-                                                day: "numeric",
-                                                year: "numeric",
-                                            })
-                                            : new Date(
-                                                user.createdAt || Date.now()
-                                            ).toLocaleDateString("en-US", {
-                                                month: "short",
-                                                day: "numeric",
-                                                year: "numeric",
-                                            })}
+                                    <div className="w-[150px] text-gray-700 text-sm flex items-center">
+                                        {new Date(
+                                            user.appliedOn || user.createdAt || Date.now()
+                                        ).toLocaleDateString("en-US", {
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                        })}
                                     </div>
 
-                                    {/* Status */}
+                                    {/* Status Badge */}
                                     <div className="w-[150px]">
                                         <ApiStatusBadge
                                             status={user.status || user.Status}
                                             user={user}
-                                            onAction={(action, user) => handleMenuAction(action, user)}
+                                            onAction={(action, u) => handleMenuAction(action, u)}
                                         />
                                     </div>
 
-                                    {/* Menu */}
+                                    {/* 3-dot Menu */}
                                     <div className="relative w-[30px]">
                                         <button
                                             onClick={(e) => handleMenuToggle(userId, e)}
-                                            className="p-2 hover:bg-gray-200 rounded-full transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-300 focus:bg-gray-200"
+                                            className="p-2 hover:bg-gray-200 rounded-full transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-300"
                                             aria-label="More options"
                                             type="button"
                                         >
@@ -391,43 +326,35 @@ export default function ApiManagementTable({
                                                 <div
                                                     className="fixed inset-0 z-10 md:hidden"
                                                     onClick={() => setActiveMenu(null)}
-                                                ></div>
-
+                                                />
                                                 <div
                                                     ref={menuRef}
                                                     className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-2"
                                                     role="menu"
-                                                    aria-orientation="vertical"
                                                 >
                                                     {/* Edit */}
                                                     <button
-                                                        onClick={(e) =>
-                                                            handleMenuAction("edit", user, e)
-                                                        }
+                                                        onClick={(e) => handleMenuAction("edit", user, e)}
                                                         className="w-full text-left px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 flex items-center gap-3"
                                                         type="button"
                                                     >
-                                                        <span>Edit API user</span>
+                                                        Edit API user
                                                     </button>
 
-                                                    {/* Approve / Reject only if pending */}
+                                                    {/* Approve/Reject for pending */}
                                                     {normalizedStatus === "pending" && (
                                                         <>
-                                                            <div className="border-t border-gray-100"></div>
+                                                            <div className="border-t border-gray-100" />
                                                             <button
-                                                                onClick={(e) =>
-                                                                    handleMenuAction("approve", user, e)
-                                                                }
-                                                                className="w-full text-left px-4 py-3 hover:bg-green-100 text-sm text-green-600 flex items-center gap-3"
+                                                                onClick={(e) => handleMenuAction("approve", user, e)}
+                                                                className="w-full text-left px-4 py-3 hover:bg-green-50 text-sm text-green-600 flex items-center gap-3"
                                                                 type="button"
                                                             >
                                                                 ✔ Approve
                                                             </button>
                                                             <button
-                                                                onClick={(e) =>
-                                                                    handleMenuAction("reject", user, e)
-                                                                }
-                                                                className="w-full text-left px-4 py-3 hover:bg-red-100 text-sm text-red-600 flex items-center gap-3"
+                                                                onClick={(e) => handleMenuAction("reject", user, e)}
+                                                                className="w-full text-left px-4 py-3 hover:bg-red-50 text-sm text-red-600 flex items-center gap-3"
                                                                 type="button"
                                                             >
                                                                 ✖ Reject
@@ -435,51 +362,44 @@ export default function ApiManagementTable({
                                                         </>
                                                     )}
 
-                                                    {/* Divider */}
-                                                    <div className="border-t border-gray-100"></div>
+                                                    <div className="border-t border-gray-100" />
 
-                                                    {/* Activate / De-activate */}
-                                                    {normalizedStatus === "active" ||
-                                                        normalizedStatus === "approved" ? (
-                                                        <div>
+                                                    {/* Active or Approved → show deactivate + regenerate */}
+                                                    {(normalizedStatus === "active" || normalizedStatus === "approved") ? (
+                                                        <>
                                                             <button
-                                                                onClick={(e) =>
-                                                                    handleMenuAction("deactivate", user, e)
-                                                                }
-                                                                className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-red-100 text-sm text-red flex items-center gap-3"
+                                                                onClick={(e) => handleMenuAction("deactivate", user, e)}
+                                                                className="w-full text-left px-4 py-3 hover:bg-red-50 text-sm text-red-500 flex items-center gap-3"
                                                                 type="button"
                                                             >
                                                                 De-activate API access
                                                             </button>
-                                                            {/* Regenerate */}
                                                             <button
-                                                                onClick={(e) =>
-                                                                    handleMenuAction("regenerate", user, e)
-                                                                }
+                                                                onClick={(e) => handleMenuAction("regenerate", user, e)}
                                                                 className="w-full text-left px-4 py-3 hover:bg-gray-50 text-sm text-gray-700 flex items-center gap-3"
                                                                 type="button"
                                                             >
-                                                                <span>Regenerate API key</span>
+                                                                Regenerate API key
                                                             </button>
-                                                        </div>
+                                                        </>
                                                     ) : (
-                                                        <button
-                                                            onClick={(e) =>
-                                                                handleMenuAction("activate", user, e)
-                                                            }
-                                                            className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-green-100 text-sm text-green-600 flex items-center gap-3"
-                                                            type="button"
-                                                        >
-                                                            Activate API access
-                                                        </button>
+                                                        /* All other statuses → show activate */
+                                                        normalizedStatus !== "pending" && (
+                                                            <button
+                                                                onClick={(e) => handleMenuAction("activate", user, e)}
+                                                                className="w-full text-left px-4 py-3 hover:bg-green-50 text-sm text-green-600 flex items-center gap-3"
+                                                                type="button"
+                                                            >
+                                                                Activate API access
+                                                            </button>
+                                                        )
                                                     )}
 
                                                     {/* Delete */}
+                                                    <div className="border-t border-gray-100" />
                                                     <button
-                                                        onClick={(e) =>
-                                                            handleMenuAction("delete", user, e)
-                                                        }
-                                                        className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-red-100 text-sm text-red flex items-center gap-3"
+                                                        onClick={(e) => handleMenuAction("delete", user, e)}
+                                                        className="w-full text-left px-4 py-3 hover:bg-red-50 text-sm text-red-500 flex items-center gap-3"
                                                         type="button"
                                                     >
                                                         Delete API user
@@ -495,13 +415,12 @@ export default function ApiManagementTable({
                 </div>
             </div>
 
-            {/* Delete Modal */}
+            {/* Delete Confirmation Modal */}
             {showConfirmDeleteModal && (
                 <ConfirmationModal
                     onConfirm={confirmDelete}
                     onCancel={cancelDelete}
-                    message={`Are you sure you want to delete ${userToDelete?.customerName || "this API user"
-                        }? This action cannot be undone.`}
+                    message={`Are you sure you want to delete ${userToDelete?.customerName || "this API user"}? This action cannot be undone.`}
                     title="Delete API User"
                     confirmText="Delete User"
                     cancelText="Cancel"
@@ -509,13 +428,12 @@ export default function ApiManagementTable({
                 />
             )}
 
-            {/* Deactivate Modal */}
+            {/* Deactivate Confirmation Modal */}
             {showConfirmDeactivateModal && (
                 <ConfirmationModal
                     onConfirm={confirmDeactivate}
                     onCancel={cancelDeactivate}
-                    message={`Are you sure you want to deactivate ${userToDeactivate?.customerName || "this API user"
-                        }? They won't be able to access the API until reactivated.`}
+                    message={`Are you sure you want to deactivate ${userToDeactivate?.customerName || "this API user"}? They won't be able to access the API until reactivated.`}
                     title="Deactivate API Access"
                     confirmText="Deactivate"
                     cancelText="Cancel"
@@ -527,51 +445,35 @@ export default function ApiManagementTable({
             {showUseCasesModal && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div
-                        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300"
+                        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
                         onClick={() => setShowUseCasesModal(false)}
-                        aria-hidden="true"
-                    ></div>
-
-                    <div className="flex min-h-full items-center justify-center p-4 text-center">
+                    />
+                    <div className="flex min-h-full items-center justify-center p-4">
                         <div
-                            className="relative transform overflow-hidden rounded-2xl bg-white px-6 pb-6 pt-5 text-left shadow-xl transition-all duration-300 w-full max-w-md"
-                            role="dialog"
-                            aria-modal="true"
-                            style={{ animation: "modalSlideIn 0.3s ease-out" }}
+                            className="relative bg-white rounded-2xl px-6 pb-6 pt-5 shadow-xl w-full max-w-md"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="mb-4">
-                                <h3 className="text-lg font-semibold leading-6 text-gray-900 mb-1">
-                                    All Use Cases
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                    {selectedUserName}
-                                </p>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-1">All Use Cases</h3>
+                                <p className="text-sm text-gray-500">{selectedUserName}</p>
                             </div>
-
                             <div className="border-t border-gray-200 pt-4">
                                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                                     {selectedUserUseCases.map((useCase, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
-                                        >
+                                        <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                                             <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 text-xs font-semibold">
                                                 {index + 1}
                                             </div>
-                                            <div className="flex-1">
-                                                <p className="text-sm text-gray-800">{useCase}</p>
-                                            </div>
+                                            <p className="text-sm text-gray-800">{useCase}</p>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-
                             <div className="mt-6 flex justify-end">
                                 <button
                                     type="button"
                                     onClick={() => setShowUseCasesModal(false)}
-                                    className="inline-flex justify-center rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-200 transition-colors"
+                                    className="rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-200 transition-colors"
                                 >
                                     Close
                                 </button>
@@ -584,67 +486,74 @@ export default function ApiManagementTable({
     );
 }
 
-// ==========================
-// Status Badge
-// ==========================
+// ─────────────────────────────────────────────
+// Status Badge  –  distinct styles per status
+// ─────────────────────────────────────────────
 function ApiStatusBadge({ status, user, onAction }) {
-    const normalized = status?.toLowerCase();
+    const normalized = (status || "").toLowerCase();
 
+    // APPROVED  – green
     if (normalized === "approved") {
         return (
-            <div className="inline-flex items-center justify-center px-4 py-1 rounded-md bg-[#00A86B] text-white text-xs font-semibold">
+            <span className="inline-flex items-center justify-center px-3 py-1 rounded-md bg-[#00A86B] text-white text-xs font-semibold whitespace-nowrap">
                 Approved
-            </div>
+            </span>
         );
     }
 
-    if (normalized === "non-approved" || normalized === "rejected") {
-        return (
-            <div className="inline-flex items-center justify-center px-4 py-1 rounded-md bg-[#E50914] text-white text-xs font-semibold">
-                Non-Approved
-            </div>
-        );
-    }
-
+    // ACTIVE  – blue (distinct from approved)
     if (normalized === "active") {
         return (
-            <div className="inline-flex items-center justify-center px-4 py-1 rounded-md bg-[#FACC15] text-white text-xs font-semibold">
+            <span className="inline-flex items-center justify-center px-3 py-1 rounded-md bg-[#2563EB] text-white text-xs font-semibold whitespace-nowrap">
                 Active
-            </div>
+            </span>
         );
     }
 
+    // NON-APPROVED / REJECTED  – red
+    if (normalized === "non-approved" || normalized === "rejected") {
+        return (
+            <span className="inline-flex items-center justify-center px-3 py-1 rounded-md bg-[#E50914] text-white text-xs font-semibold whitespace-nowrap">
+                Non-Approved
+            </span>
+        );
+    }
+
+    // DEACTIVATED / INACTIVE  – dark gray
     if (normalized === "deactivated" || normalized === "inactive") {
         return (
-            <div className="inline-flex items-center justify-center px-4 py-1 rounded-md bg-[#E50914] text-white text-xs font-semibold">
+            <span className="inline-flex items-center justify-center px-3 py-1 rounded-md bg-gray-500 text-white text-xs font-semibold whitespace-nowrap">
                 De-activated
-            </div>
+            </span>
         );
     }
 
-    // Pending / Unknown
+    // PENDING  – inline approve / reject icons
     return (
-        <div className="flex gap-4 items-center">
-            <span
+        <div className="flex gap-3 items-center">
+            <button
+                type="button"
                 onClick={() => onAction("approve", user)}
-                title="Approve user"
+                title="Approve"
+                className="hover:scale-110 transition-transform"
             >
                 <Image src="/right_green.svg" alt="approve" width={26} height={26} />
-            </span>
-
-            <span
+            </button>
+            <button
+                type="button"
                 onClick={() => onAction("reject", user)}
-                title="Reject user"
+                title="Reject"
+                className="hover:scale-110 transition-transform"
             >
                 <Image src="/wrong_red.svg" alt="reject" width={26} height={26} />
-            </span>
+            </button>
         </div>
     );
 }
 
-// ==========================
+// ─────────────────────────────────────────────
 // Confirmation Modal
-// ==========================
+// ─────────────────────────────────────────────
 function ConfirmationModal({
     onConfirm,
     onCancel,
@@ -664,15 +573,8 @@ function ConfirmationModal({
                 onCancel();
             }
         };
-
         document.addEventListener("keydown", handleEscape, { passive: false });
-
-        const timer = setTimeout(() => {
-            if (cancelButtonRef.current) {
-                cancelButtonRef.current.focus();
-            }
-        }, 100);
-
+        const timer = setTimeout(() => cancelButtonRef.current?.focus(), 100);
         return () => {
             document.removeEventListener("keydown", handleEscape);
             clearTimeout(timer);
@@ -681,123 +583,64 @@ function ConfirmationModal({
 
     const handleBackdropClick = (e) => {
         if (modalRef.current && !modalRef.current.contains(e.target) && !isLoading) {
-            e.preventDefault();
             onCancel();
         }
     };
 
     useEffect(() => {
-        const originalStyle = document.body.style.overflow;
+        const original = document.body.style.overflow;
         document.body.style.overflow = "hidden";
-        return () => {
-            document.body.style.overflow = originalStyle;
-        };
+        return () => { document.body.style.overflow = original; };
     }, []);
-
-    const handleConfirm = async (e) => {
-        e.preventDefault();
-        if (!isLoading) {
-            try {
-                await onConfirm();
-            } catch (error) {
-                console.error("Confirmation action failed:", error);
-            }
-        }
-    };
-
-    const handleCancel = (e) => {
-        e.preventDefault();
-        if (!isLoading) {
-            onCancel();
-        }
-    };
 
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
             <div
-                className="fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300"
+                className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
                 onClick={handleBackdropClick}
-                aria-hidden="true"
-            ></div>
-
-            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            />
+            <div className="flex min-h-full items-center justify-center p-4">
                 <div
                     ref={modalRef}
-                    className="relative transform overflow-hidden rounded-2xl bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all duration-300 sm:my-8 sm:w-full sm:max-w-lg sm:p-6"
+                    className="relative bg-white rounded-2xl px-6 pb-6 pt-5 shadow-xl w-full max-w-lg"
                     role="dialog"
                     aria-modal="true"
-                    style={{ animation: "modalSlideIn 0.3s ease-out" }}
                 >
-                    <div className="sm:flex sm:items-start">
-                        <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                            <svg
-                                className="w-6 h-6 text-red-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
+                    <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                         </div>
-
-                        <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
-                            <h3 className="text-lg font-semibold leading-6 text-gray-900 mb-2">
-                                {title}
-                            </h3>
-                            <div className="mt-2">
-                                <p className="text-sm text-gray-600 leading-relaxed">
-                                    {message}
-                                </p>
-                            </div>
+                        <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-1">{title}</h3>
+                            <p className="text-sm text-gray-600 leading-relaxed">{message}</p>
                         </div>
                     </div>
-
-                    <div className="mt-6 sm:mt-4 sm:flex sm:flex-row-reverse gap-3">
+                    <div className="mt-6 flex flex-row-reverse gap-3">
                         <button
                             type="button"
                             disabled={isLoading}
-                            onClick={handleConfirm}
-                            className="inline-flex w-full justify-center items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white bg-[#E91B40] shadow-sm transition-all duration-200 sm:w-auto min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed bg-red-600 hover:bg-red-700 focus:ring-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                            onClick={(e) => { e.preventDefault(); if (!isLoading) onConfirm(); }}
+                            className="inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white bg-red hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors min-w-[100px] justify-center"
                         >
                             {isLoading ? (
                                 <>
-                                    <svg
-                                        className="animate-spin h-4 w-4"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <circle
-                                            className="opacity-25"
-                                            cx="12"
-                                            cy="12"
-                                            r="10"
-                                            stroke="currentColor"
-                                            strokeWidth="4"
-                                        ></circle>
-                                        <path
-                                            className="opacity-75"
-                                            fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                        ></path>
+                                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
                                     <span>{confirmText}...</span>
                                 </>
-                            ) : (
-                                confirmText
-                            )}
+                            ) : confirmText}
                         </button>
-
                         <button
                             ref={cancelButtonRef}
                             type="button"
                             disabled={isLoading}
-                            onClick={handleCancel}
-                            className="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={(e) => { e.preventDefault(); if (!isLoading) onCancel(); }}
+                            className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors"
                         >
                             {cancelText}
                         </button>

@@ -22,8 +22,8 @@ const EdiReport = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [pageLimit, setPageLimit] = useState(50); // Records per page
-  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+  const [pageLimit, setPageLimit] = useState(50);
+  const [currentFilters, setCurrentFilters] = useState(null);
 
   const [notification, setNotification] = useState({
     type: "success",
@@ -76,7 +76,6 @@ const EdiReport = () => {
 
   const [loadingShipments, setLoadingShipments] = useState(false);
 
-  // Function to fetch data based on runNo using axios
   const fetchDataByRunNo = async (page = 1) => {
     if (!runNumber || runNumber.trim() === "") {
       showNotification("error", "Please enter a Run Number");
@@ -92,7 +91,7 @@ const EdiReport = () => {
         page: page,
         limit: pageLimit,
       });
-      
+
       if (csbFile) {
         queryParams.append("csb", "true");
       }
@@ -160,7 +159,10 @@ const EdiReport = () => {
       setCurrentPage(pagination.currentPage);
       setTotalPages(pagination.totalPages);
       setTotalRecords(pagination.totalRecords);
-      showNotification("success", `Found ${pagination.totalRecords} shipments (Page ${pagination.currentPage} of ${pagination.totalPages})`);
+      showNotification(
+        "success",
+        `Found ${pagination.totalRecords} shipments (Page ${pagination.currentPage} of ${pagination.totalPages})`
+      );
     } catch (error) {
       console.error("Error fetching data:", error);
       showNotification("error", "Error fetching data. Please try again.");
@@ -174,7 +176,7 @@ const EdiReport = () => {
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
     fetchDataByRunNo(newPage);
   };
 
@@ -197,7 +199,6 @@ const EdiReport = () => {
             Showing <span className="font-medium">{rowData.length}</span> of{" "}
             <span className="font-medium">{totalRecords}</span> records
           </div>
-
           <div className="flex items-center gap-2">
             <label htmlFor="limit" className="text-sm text-gray-600">
               Rows per page:
@@ -234,11 +235,9 @@ const EdiReport = () => {
           >
             Previous
           </button>
-
           <span className="px-3 py-1 text-sm">
             Page {currentPage} of {totalPages}
           </span>
-
           <button
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages || loading}
@@ -260,9 +259,9 @@ const EdiReport = () => {
     );
   };
 
-  // Function to download data as CSV
+  // Fix: was referencing undefined `filteredData` — now uses `rowData`
   const downloadCSV = () => {
-    if (filteredData.length === 0) {
+    if (rowData.length === 0) {
       showNotification("error", "No data available to download");
       return;
     }
@@ -270,71 +269,66 @@ const EdiReport = () => {
     // Create CSV headers
     const headers = columns.map((col) => col.label).join(",");
 
-    // Create CSV rows from ALL filtered data (not just paginated)
-    const csvRows = filteredData.map((row) =>
+    // Create CSV rows from rowData
+    const csvRows = rowData.map((row) =>
       columns
         .map((col) => {
-          const value = row[col.key] || "";
-          // Escape commas and quotes in values
-          const escapedValue =
-            value.toString().includes(",") || value.toString().includes('"')
-              ? `"${value.toString().replace(/"/g, '""')}"`
-              : value;
-          return escapedValue;
+          const value = row[col.key] ?? "";
+          const str = String(value);
+          // Wrap in quotes if the value contains commas, quotes, or newlines
+          if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
         })
         .join(",")
     );
 
-    // Combine headers and rows
     const csvContent = [headers, ...csvRows].join("\n");
 
-    // Create and download the file
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute(
-        "download",
-        `EDI_Report_${runNumber || "data"}_${
-          new Date().toISOString().split("T")[0]
-        }.csv`
-      );
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `EDI_Report_${runNumber || "data"}_${
+        new Date().toISOString().split("T")[0]
+      }.csv`
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     showNotification("success", "Downloaded successfully");
   };
 
   const handleRefresh = () => {
     setResetFactor((prev) => prev + 1);
-    setRowData([]); // Clear the table data
-    setCsbFile(false); // Reset checkbox
-    setCurrentPage(1); // Reset pagination
+    setRowData([]);
+    setCsbFile(false);
+    setCurrentPage(1);
     setTotalPages(1);
     setTotalRecords(0);
     setCurrentFilters(null);
     showNotification("success", "Refreshed successfully");
   };
 
-  // Handle form submission (prevents default page reload)
-  const onSubmit = (data) => {
+  const onSubmit = () => {
     fetchDataByRunNo(1);
   };
 
-  // Handle CSB checkbox change
   const handleCsbChange = (checked) => {
     setCsbFile(checked);
-    setCurrentPage(1); // Reset to page 1 when filtering changes
+    setCurrentPage(1);
   };
 
-  const [temp, setTemp] = useState(null);
-
   return (
-    <form className="flex flex-col gap-[34px]" onSubmit={handleSubmit(onSubmit)}>
+    <form
+      className="flex flex-col gap-[34px]"
+      onSubmit={handleSubmit(onSubmit)}
+    >
       <NotificationFlag
         type={notification.type}
         message={notification.message}
@@ -392,14 +386,12 @@ const EdiReport = () => {
             setValue={setValue}
             name="ediReportTable"
             columns={columns}
-            rowData={rowData} // Use rowData directly
+            rowData={rowData}
             className={`h-[50vh]`}
           />
 
-          {/* Pagination Controls */}
           <PaginationControls />
 
-          {/* Total Records Display */}
           <div className="flex justify-between mt-2">
             <div className="text-sm text-gray-600">
               {totalRecords > 0 && (
@@ -410,11 +402,10 @@ const EdiReport = () => {
         </div>
 
         <div className="flex justify-between">
-          <div>{/* <OutlinedButtonRed label={"Close"} /> */}</div>
-
+          <div></div>
           <div>
             <div className="flex gap-3">
-              <div>{/* <OutlinedButtonRed label={"Print"} /> */}</div>
+              <div></div>
             </div>
           </div>
         </div>

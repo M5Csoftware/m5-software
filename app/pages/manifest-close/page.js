@@ -149,11 +149,11 @@ function ManifestClose() {
       <Heading
         title="Manifest Close"
         bulkUploadBtn="hidden"
-        codeListBtn={true}
+        codeListBtn={false}
       />
       <div>
         <div className="flex justify-between mb-2 mt-3 items-center">
-          <RedLabelHeading label={"List of Closed Manifests"} />
+          <RedLabelHeading label={"List of Unclosed Manifests"} />
           <div>
             <SimpleButton
               type="button"

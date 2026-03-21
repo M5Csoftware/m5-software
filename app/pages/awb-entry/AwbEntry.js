@@ -1183,7 +1183,7 @@ const handleAWBEntry = async (data) => {
   }, [filteredServices, applicableRates, serviceMasterList]);
 
   // fetching amount details
-  const debouncedRatesInputs = useDebounce({
+  const ratesInputs = useMemo(() => ({
     selectedService,
     chargeableWt,
     pcs,
@@ -1191,7 +1191,17 @@ const handleAWBEntry = async (data) => {
     selectedSector,
     selectedDestination,
     consigneeZipcode,
-  }, 800);
+  }), [
+    selectedService,
+    chargeableWt,
+    pcs,
+    actualWt,
+    selectedSector,
+    selectedDestination,
+    consigneeZipcode,
+  ]);
+
+  const debouncedRatesInputs = useDebounce(ratesInputs, 800);
 
   useEffect(() => {
     if (!selectedService || !applicableRates || !finalServices) return;

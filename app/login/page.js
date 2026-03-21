@@ -50,14 +50,24 @@ export default function LoginPage() {
       const remaining = err.response?.headers?.['x-ratelimit-remaining'];
       const retryAfter = err.response?.headers?.['retry-after'];
       
-      let msg = err.response?.data?.message || "Server error";
-      
-      if (err.response?.status === 429) {
-        msg = `Too many attempts. Please try again in ${Math.ceil(retryAfter / 60)} minutes.`;
-      } else if (remaining !== undefined) {
+      let msg = err.response?.data?.message;
+
+      if (err.response?.status === 401) {
+        msg = "Wrong password or User ID";
+      } else if (!msg) {
+        if (err.response?.status === 429) {
+          msg = `Too many attempts. Please try again in ${Math.ceil(
+            retryAfter / 60
+          )} minutes.`;
+        } else {
+          msg = "Server error";
+        }
+      }
+
+      if (remaining !== undefined && err.response?.status !== 429) {
         msg += `. ${remaining} attempts left.`;
       }
-      
+
       setErrorMessage(msg);
       setIsLoading(false);
     }
