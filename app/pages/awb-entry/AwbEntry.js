@@ -1,8 +1,17 @@
 "use client";
 import dynamic from "next/dynamic";
-const HoldHistory = dynamic(() => import("@/app/components/awb-entry/HoldHistory"), { ssr: false });
-const InvoiceDetails = dynamic(() => import("@/app/components/awb-entry/InvoiceDetails"), { ssr: false });
-const VolumeWeight = dynamic(() => import("@/app/components/awb-entry/VolumeWeight"), { ssr: false });
+const HoldHistory = dynamic(
+  () => import("@/app/components/awb-entry/HoldHistory"),
+  { ssr: false },
+);
+const InvoiceDetails = dynamic(
+  () => import("@/app/components/awb-entry/InvoiceDetails"),
+  { ssr: false },
+);
+const VolumeWeight = dynamic(
+  () => import("@/app/components/awb-entry/VolumeWeight"),
+  { ssr: false },
+);
 import { sendNotification } from "../../lib/sendNotifications";
 import { OutlinedButtonRed } from "@/app/components/Buttons";
 import {
@@ -129,7 +138,7 @@ function AwbEntry() {
   const [zoneAlertData, setZoneAlertData] = useState({
     isOpen: false,
     message: "",
-    zoneType: "", // "remote" or "unserviceable"
+    zoneType: "",
     destination: "",
     zone: "",
   });
@@ -137,6 +146,10 @@ function AwbEntry() {
 
   // Refresh functionality state
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Manual account entry tracking
+  const [isManualAccountEntry, setIsManualAccountEntry] = useState(false);
+  const [lastEnteredCode, setLastEnteredCode] = useState("");
 
   const showNotification = (type, message) => {
     setNotification({ type, message, visible: true });
@@ -162,16 +175,16 @@ function AwbEntry() {
   const volWt = useWatch({ control, name: "volWt" });
   const chargeableWt = useWatch({ control, name: "chargeableWt" });
   const invoiceValue = useWatch({ control, name: "invoiceValue" });
+  const currentCustomer = watch("customer");
+  const currentAccountBalance = watch("accountBalance");
 
-  //holdreason dynamic rendering - FIXED
   const [holdReason, setHoldReason] = useState("");
   const grandTotal = watch("grandTotal");
-  const actualWtValue = watch("actualWt");
   const [holdEdit, setHoldEdit] = useState(false);
   const volDisc = watch("volDisc");
   const holdReasonValue = watch("holdReason");
 
-  // FIXED: Automatically clear hold reasons when isHold is false
+  // Automatically clear hold reasons when isHold is false
   useEffect(() => {
     if (!isHold) {
       setHoldReason("");
@@ -182,9 +195,7 @@ function AwbEntry() {
 
   //payment type
   const [showFOCPasswordModal, setShowFOCPasswordModal] = useState(false);
-  const [prevPayment, setPrevPayment] = useState(
-    fetchedAwbData?.payment || "Credit",
-  );
+  const [prevPayment, setPrevPayment] = useState("Credit");
   const [focUnlocked, setFocUnlocked] = useState(false);
   const selectedPayment = watch("payment");
 
@@ -193,17 +204,14 @@ function AwbEntry() {
   const [awbLoading, setAwbLoading] = useState(false);
   const consigneeZipcode = useWatch({ control, name: "consignee-zipcode" });
 
-  // FIXED: Enhanced hold logic - Only set holdEdit for auto-hold from credit check, not for manual hold
-  // AFTER — skip credit check entirely for existing shipments
- // In the credit check useEffect, add hold logging:
-
-useEffect(() => {
+  // Credit check useEffect
+  useEffect(() => {
     if (newShipment === "old") {
-        return;
+      return;
     }
 
     if (!account || !grandTotal || Number(grandTotal) === 0) {
-        return;
+      return;
     }
 
     const leftOverBalance = account.leftOverBalance || 0;
@@ -216,54 +224,42 @@ useEffect(() => {
     const creditExceeded = Number(grandTotal) > netAvailable;
 
     if (creditExceeded) {
-        setHoldReason("Credit Limit Exceeded");
-        setIsHold(true);
-        setHoldEdit(true);
-        setValue("isHold", true);
-        setValue("holdReason", "Credit Limit Exceeded");
-        
-        // Log the auto-hold immediately
-        if (account?.accountCode && awbNo) {
-            pushHoldLog({
-                awbNo: awbNo,
-                accountCode: account.accountCode,
-                customer: account.name || "",
-                action: "Auto Hold",
-                actionUser: "System",
-                departmentName: "System",
-                holdReason: "Credit Limit Exceeded",
-                actionSystemName: "CreditCheck",
-            }).catch(err => console.error("Failed to log auto-hold:", err));
-        }
-        
-        // console.log("Credit Limit Exceeded - Auto Hold");
-        showNotification("error", "Credit Limit Exceeded");
-    } else {
-        if (holdEdit) {
-            setHoldEdit(false);
-        }
-        // console.log("Credit OK");
-    }
-}, [grandTotal, account, newShipment, awbNo]);
+      setHoldReason("Credit Limit Exceeded");
+      setIsHold(true);
+      setHoldEdit(true);
+      setValue("isHold", true);
+      setValue("holdReason", "Credit Limit Exceeded");
 
-  // FIXED: Initialize hold state from fetched data
+      if (account?.accountCode && awbNo) {
+        pushHoldLog({
+          awbNo: awbNo,
+          accountCode: account.accountCode,
+          customer: account.name || "",
+          action: "Auto Hold",
+          actionUser: "System",
+          departmentName: "System",
+          holdReason: "Credit Limit Exceeded",
+          actionSystemName: "CreditCheck",
+        }).catch((err) => console.error("Failed to log auto-hold:", err));
+      }
+
+      showNotification("error", "Credit Limit Exceeded");
+    } else {
+      if (holdEdit) {
+        setHoldEdit(false);
+      }
+    }
+  }, [grandTotal, account, newShipment, awbNo]);
+
+  // Initialize hold state from fetched data
   useEffect(() => {
     if (fetchedAwbData && Object.keys(fetchedAwbData).length > 0) {
-      // Set hold state from fetched data
       setIsHold(fetchedAwbData.isHold || false);
       setHoldReason(fetchedAwbData.holdReason || "");
       setValue("isHold", fetchedAwbData.isHold || false);
       setValue("holdReason", fetchedAwbData.holdReason || "");
       setValue("otherHoldReason", fetchedAwbData.otherHoldReason || "");
-
-      // Don't set holdEdit for existing holds - allow modification
       setHoldEdit(false);
-
-      // console.log("Loaded hold data:", {
-//         isHold: fetchedAwbData.isHold,
-//         holdReason: fetchedAwbData.holdReason,
-//         otherHoldReason: fetchedAwbData.otherHoldReason,
-//       });
     }
   }, [fetchedAwbData, setValue]);
 
@@ -274,7 +270,6 @@ useEffect(() => {
     }
 
     try {
-      // Find the zone data for the selected destination and service
       const zoneData = zones.find(
         (zone) =>
           zone.destination === destination &&
@@ -328,7 +323,6 @@ useEffect(() => {
 
   // Function to handle zone alert cancellation
   const handleZoneAlertCancel = () => {
-    // Clear the destination if user cancels
     setValue("destination", "");
     setSelectedDestinations("");
     setZoneAlertData({ ...zoneAlertData, isOpen: false });
@@ -372,17 +366,14 @@ useEffect(() => {
       );
       setServiceValidation(response.data);
 
-      // Show warnings as notifications
       if (response.data.warnings?.length > 0) {
         response.data.warnings.forEach((warning) => {
           showNotification("warning", warning);
         });
       }
 
-      // Set errors on form fields
       if (response.data.errors?.length > 0) {
         response.data.errors.forEach((error) => {
-          // Map error messages to appropriate fields
           if (error.includes("PCS") || error.includes("pieces")) {
             setError("pcs", { type: "manual", message: error });
           } else if (error.includes("actual weight")) {
@@ -413,7 +404,6 @@ useEffect(() => {
 
     const errors = [];
 
-    // Multiple PCS validation (AWB-level)
     if (!serviceData.multiplePcsAllow && pcs > 1) {
       errors.push({
         field: "pcs",
@@ -432,7 +422,6 @@ useEffect(() => {
       });
     }
 
-    // Max PCS per AWB
     if (serviceData.maxPcsPerAWB && pcs > serviceData.maxPcsPerAWB) {
       errors.push({
         field: "pcs",
@@ -440,7 +429,6 @@ useEffect(() => {
       });
     }
 
-    // Average weight validation (AWB-level)
     if (serviceData.averageWeightAllow && serviceData.averageLimit > 0) {
       if (actualWt > serviceData.averageLimit) {
         errors.push({
@@ -462,7 +450,6 @@ useEffect(() => {
       }
     }
 
-    // Max shipment value (AWB-level)
     if (
       serviceData.maxShipmentValue &&
       invoiceValue > serviceData.maxShipmentValue
@@ -473,7 +460,6 @@ useEffect(() => {
       });
     }
 
-    // Per AWB validation - ONLY check perAWB rules here
     const perAWB = serviceData.perAWB || {};
     if (perAWB.minActualWeight && actualWt < perAWB.minActualWeight) {
       errors.push({
@@ -531,7 +517,6 @@ useEffect(() => {
       try {
         const res = await axios.get(`${server}/service-master`);
         setServiceMasterList(res.data || []);
-        // console.log("Service Master List:", res.data);
       } catch (err) {
         console.error("Error fetching service list:", err);
         setServiceMasterList([]);
@@ -541,7 +526,7 @@ useEffect(() => {
     fetchServices();
   }, [server]);
 
-  // Effect 2: Calculate chargeableWt dynamically on user changes
+  // Calculate chargeableWt dynamically
   useEffect(() => {
     const actual = Number(actualWt) || 0;
     const vol = Number(volWt) || 0;
@@ -559,7 +544,6 @@ useEffect(() => {
         setValue("chargeableWt", Math.ceil(chargable));
       }
     } else if (actual > 0) {
-      // If only actual weight exists, use it
       setValue(
         "chargeableWt",
         actual < 1 ? actual.toFixed(2) : Math.ceil(actual),
@@ -578,39 +562,34 @@ useEffect(() => {
     setGlobalTotalPcs(watch("pcs"));
   }, [watch("pcs")]);
 
-  //handle awbEntry all Operations
- // Complete handleAWBEntry function for AwbEntry component
-
-const handleAWBEntry = async (data) => {
-    // Check if shipment is already assigned to a run
+  // handleAWBEntry all Operations
+  const handleAWBEntry = async (data) => {
     if (fetchedAwbData?.runNo) {
-        showNotification(
-            "error",
-            `Shipment is already assigned to Run No: ${fetchedAwbData.runNo}. Modification not allowed.`,
-        );
-        return;
+      showNotification(
+        "error",
+        `Shipment is already assigned to Run No: ${fetchedAwbData.runNo}. Modification not allowed.`,
+      );
+      return;
     }
 
-    // Check service validation before submission
     if (selectedService && serviceValidation && !serviceValidation.valid) {
-        showNotification(
-            "error",
-            "Service validation failed. Please check errors.",
-        );
-        return;
+      showNotification(
+        "error",
+        "Service validation failed. Please check errors.",
+      );
+      return;
     }
 
-    // Check for warnings and ask for confirmation
     if (serviceValidation.warnings?.length > 0) {
-        const shouldProceed = window.confirm(
-            `Service has ${serviceValidation.warnings.length} warnings:\n` +
-            serviceValidation.warnings.join("\n") +
-            "\n\nDo you want to proceed?",
-        );
+      const shouldProceed = window.confirm(
+        `Service has ${serviceValidation.warnings.length} warnings:\n` +
+          serviceValidation.warnings.join("\n") +
+          "\n\nDo you want to proceed?",
+      );
 
-        if (!shouldProceed) {
-            return;
-        }
+      if (!shouldProceed) {
+        return;
+      }
     }
 
     const { code, ...fillterData } = data;
@@ -618,262 +597,244 @@ const handleAWBEntry = async (data) => {
     const insertUser = user?.userId;
     const updateUser = user?.userId;
 
-    // Ensure hold reason is properly set in payload - cleared if not on hold
     const payload = {
-        accountCode,
-        ...fillterData,
-        isHold: isHold,
-        holdReason: isHold ? (holdReason || fillterData.holdReason || "") : "",
-        otherHoldReason: isHold ? (fillterData.otherHoldReason || "") : "",
+      accountCode,
+      ...fillterData,
+      isHold: isHold,
+      holdReason: isHold ? holdReason || fillterData.holdReason || "" : "",
+      otherHoldReason: isHold ? fillterData.otherHoldReason || "" : "",
     };
 
-    // console.log("payload: ", payload, newShipment);
-
-    // Helper function to safely fetch customer name
     const getCustomerName = async (accountCode) => {
-        try {
-            if (!accountCode) return "";
-            const customerResponse = await axios.get(
-                `${server}/customer-account?accountCode=${accountCode}`,
-            );
-            return customerResponse.data?.name || "";
-        } catch (err) {
-            console.warn("Failed to fetch customer name:", err);
-            return "";
-        }
+      try {
+        if (!accountCode) return "";
+        const customerResponse = await axios.get(
+          `${server}/customer-account?accountCode=${accountCode}`,
+        );
+        return customerResponse.data?.name || "";
+      } catch (err) {
+        console.warn("Failed to fetch customer name:", err);
+        return "";
+      }
     };
 
-    // Helper function to log hold actions
     const logHoldAction = async (action, reason, additionalData = {}) => {
-        try {
-            const customer = await getCustomerName(accountCode);
-            const holdLogPayload = {
-                awbNo: payload.awbNo || awbNo,
-                accountCode,
-                customer,
-                action: action,
-                actionUser: user?.userId || "System",
-                departmentName: user?.department || "Operations",
-                holdReason: reason,
-                actionSystemName: "AwbEntry",
-                ...additionalData
-            };
+      try {
+        const customer = await getCustomerName(accountCode);
+        const holdLogPayload = {
+          awbNo: payload.awbNo || awbNo,
+          accountCode,
+          customer,
+          action: action,
+          actionUser: user?.userId || "System",
+          departmentName: user?.department || "Operations",
+          holdReason: reason,
+          actionSystemName: "AwbEntry",
+          ...additionalData,
+        };
 
-            // console.log(`Logging hold action: ${action}`, holdLogPayload);
-            
-            // Call the API route directly
-            const response = await axios.post(`${server}/hold-log/action`, holdLogPayload);
-            
-            // console.log("Hold log response:", response.data);
-            
-            // Send notification for hold actions
-            if (action === "Hold" || action === "Auto Hold") {
-                await sendNotification({
-                    accountCode,
-                    name: customer,
-                    awbNo: payload.awbNo || awbNo,
-                    event: "Shipment Hold",
-                    description: `Shipment ${payload.awbNo || awbNo} on hold`,
-                    message: `Shipment ${payload.awbNo || awbNo} is placed on hold. Reason: ${reason}`,
-                    priority: "high",
-                });
-            } else if (action === "Unhold") {
-                await sendNotification({
-                    accountCode,
-                    name: customer,
-                    awbNo: payload.awbNo || awbNo,
-                    event: "Shipment Unhold",
-                    description: `Shipment ${payload.awbNo || awbNo} removed from hold`,
-                    message: `Shipment ${payload.awbNo || awbNo} has been taken off hold.`,
-                    priority: "medium",
-                });
-            }
-            
-            return response.data;
-        } catch (error) {
-            console.error(`Error logging hold action (${action}):`, error);
-            // Don't throw - we don't want to block the main flow if logging fails
-            return null;
+        const response = await axios.post(
+          `${server}/hold-log/action`,
+          holdLogPayload,
+        );
+
+        if (action === "Hold" || action === "Auto Hold") {
+          await sendNotification({
+            accountCode,
+            name: customer,
+            awbNo: payload.awbNo || awbNo,
+            event: "Shipment Hold",
+            description: `Shipment ${payload.awbNo || awbNo} on hold`,
+            message: `Shipment ${payload.awbNo || awbNo} is placed on hold. Reason: ${reason}`,
+            priority: "high",
+          });
+        } else if (action === "Unhold") {
+          await sendNotification({
+            accountCode,
+            name: customer,
+            awbNo: payload.awbNo || awbNo,
+            event: "Shipment Unhold",
+            description: `Shipment ${payload.awbNo || awbNo} removed from hold`,
+            message: `Shipment ${payload.awbNo || awbNo} has been taken off hold.`,
+            priority: "medium",
+          });
         }
+
+        return response.data;
+      } catch (error) {
+        console.error(`Error logging hold action (${action}):`, error);
+        return null;
+      }
     };
 
-    // Helper function to log AWB actions
     const logAwbAction = async (action, department = "Booking") => {
-        try {
-            const customer = await getCustomerName(accountCode);
-            await pushAWBLog({
-                awbNo: payload.awbNo || awbNo,
-                accountCode,
-                customer,
-                action: action,
-                actionUser: user?.userId,
-                department: department,
-            });
-        } catch (error) {
-            console.error("Error logging AWB action:", error);
-        }
+      try {
+        const customer = await getCustomerName(accountCode);
+        await pushAWBLog({
+          awbNo: payload.awbNo || awbNo,
+          accountCode,
+          customer,
+          action: action,
+          actionUser: user?.userId,
+          department: department,
+        });
+      } catch (error) {
+        console.error("Error logging AWB action:", error);
+      }
     };
 
     // NEW SHIPMENT
     if (newShipment == "new" && btnAction == "save") {
-        try {
-            setIsSubmitting(true);
+      try {
+        setIsSubmitting(true);
 
-            const response = await axios.post(`${server}/portal/create-shipment`, {
-                ...payload,
-                insertUser,
-            });
+        const response = await axios.post(`${server}/portal/create-shipment`, {
+          ...payload,
+          insertUser,
+        });
 
-            if (response.data?.status == 201) {
-                const createdAwbNo = response.data?.awbNo || payload?.awbNo;
-                
-                // Log shipment creation
-                await logAwbAction("Shipment created on post");
-                
-                // Log hold if applicable
-                if (payload.isHold) {
-                    await logHoldAction(
-                        payload.holdReason === "Credit Limit Exceeded" ? "Auto Hold" : "Hold",
-                        payload.holdReason || "Initial Creation"
-                    );
-                }
+        if (response.data?.status == 201) {
+          const createdAwbNo = response.data?.awbNo || payload?.awbNo;
 
-                showNotification("success", "Data Saved Successfully");
-                handleRefresh();
-            }
-        } catch (error) {
-            console.error(error);
-            showNotification("error", "Error saving AWB Entry");
-        } finally {
-            setIsSubmitting(false);
-            setBtnAction(null);
+          await logAwbAction("Shipment created on post");
+
+          if (payload.isHold) {
+            await logHoldAction(
+              payload.holdReason === "Credit Limit Exceeded"
+                ? "Auto Hold"
+                : "Hold",
+              payload.holdReason || "Initial Creation",
+            );
+          }
+
+          showNotification("success", "Data Saved Successfully");
+          handleRefresh();
         }
+      } catch (error) {
+        console.error(error);
+        showNotification("error", "Error saving AWB Entry");
+      } finally {
+        setIsSubmitting(false);
+        setBtnAction(null);
+      }
     }
-    
+
     // EXISTING SHIPMENT - UPDATE
     else if (newShipment == "old" && btnAction == "save" && isEdit == false) {
-        try {
-            setIsSubmitting(true);
+      try {
+        setIsSubmitting(true);
 
-            const response = await axios.put(
-                `${server}/portal/create-shipment?awbNo=${awbNo}`,
-                { ...payload, updateUser },
+        const response = await axios.put(
+          `${server}/portal/create-shipment?awbNo=${awbNo}`,
+          { ...payload, updateUser },
+        );
+
+        if (response?.status === 200) {
+          if (isHold && !fetchedAwbData?.isHold) {
+            await logHoldAction(
+              payload.holdReason === "Credit Limit Exceeded"
+                ? "Auto Hold"
+                : "Hold",
+              payload.holdReason || "Manual Hold",
             );
+            await logAwbAction("Shipment put on hold");
+          } else if (!isHold && fetchedAwbData?.isHold) {
+            await logHoldAction("Unhold", "Hold Removed");
+            await logAwbAction("Shipment put on Unhold");
+          } else {
+            await logAwbAction("Shipment Modified");
+          }
 
-            if (response?.status === 200) {
-                // Check for hold status changes
-                if (isHold && !fetchedAwbData?.isHold) {
-                    // Shipment put on hold
-                    await logHoldAction(
-                        payload.holdReason === "Credit Limit Exceeded" ? "Auto Hold" : "Hold",
-                        payload.holdReason || "Manual Hold"
-                    );
-                    
-                    await logAwbAction("Shipment put on hold");
-                    
-                } else if (!isHold && fetchedAwbData?.isHold) {
-                    // Shipment taken off hold
-                    await logHoldAction("Unhold", "Hold Removed");
-                    
-                    await logAwbAction("Shipment put on Unhold");
-                    
-                } else {
-                    // General modification
-                    await logAwbAction("Shipment Modified");
-                }
-
-                showNotification("success", "AWB Updated Successfully");
-                handleRefresh();
-            }
-        } catch (error) {
-            console.error(error);
-            showNotification("error", "Error updating AWB Entry");
-        } finally {
-            setIsSubmitting(false);
-            setBtnAction(null);
+          showNotification("success", "AWB Updated Successfully");
+          handleRefresh();
         }
+      } catch (error) {
+        console.error(error);
+        showNotification("error", "Error updating AWB Entry");
+      } finally {
+        setIsSubmitting(false);
+        setBtnAction(null);
+      }
     }
-    
+
     // DELETE SHIPMENT
     else if (newShipment == "old" && btnAction == "delete") {
-        // Check if user has permission
-        if (!user?.permissions?.includes("Booking Deletion")) {
-            showNotification("error", "You don't have permission to delete shipments");
-            setBtnAction(null);
-            return;
+      if (!user?.permissions?.includes("Booking Deletion")) {
+        showNotification(
+          "error",
+          "You don't have permission to delete shipments",
+        );
+        setBtnAction(null);
+        return;
+      }
+
+      const confirmDelete = window.confirm(
+        `Are you sure you want to delete AWB: ${awbNo}?`,
+      );
+      if (!confirmDelete) {
+        setBtnAction(null);
+        return;
+      }
+
+      try {
+        const response = await axios.delete(
+          `${server}/portal/create-shipment?awbNo=${awbNo}`,
+        );
+
+        if (response?.status == 200) {
+          await logAwbAction("Shipment Deleted");
+
+          if (fetchedAwbData?.isHold) {
+            await logHoldAction("System", "Shipment deleted while on hold", {
+              actionSystemName: "Deletion",
+            });
+          }
+
+          await sendNotification({
+            accountCode: fetchedAwbData?.accountCode,
+            name: fetchedAwbData?.name,
+            awbNo,
+            event: "Shipment Deleted",
+            description: `Shipment ${awbNo} deleted`,
+            message: `Shipment ${awbNo} has been deleted from system.`,
+            priority: "high",
+          });
+
+          showNotification("success", "AWB Entry deleted successfully");
+          handleRefresh();
         }
-
-        // Confirm deletion
-        const confirmDelete = window.confirm(`Are you sure you want to delete AWB: ${awbNo}?`);
-        if (!confirmDelete) {
-            setBtnAction(null);
-            return;
-        }
-
-        try {
-            const response = await axios.delete(
-                `${server}/portal/create-shipment?awbNo=${awbNo}`,
-            );
-            
-            // console.log("awb deleted:", response.data);
-
-            if (response?.status == 200) {
-                // Log deletion
-                await logAwbAction("Shipment Deleted");
-
-                // If shipment was on hold, log that it was deleted while on hold
-                if (fetchedAwbData?.isHold) {
-                    await logHoldAction(
-                        "System",
-                        "Shipment deleted while on hold",
-                        { actionSystemName: "Deletion" }
-                    );
-                }
-
-                await sendNotification({
-                    accountCode: fetchedAwbData?.accountCode,
-                    name: fetchedAwbData?.name,
-                    awbNo,
-                    event: "Shipment Deleted",
-                    description: `Shipment ${awbNo} deleted`,
-                    message: `Shipment ${awbNo} has been deleted from system.`,
-                    priority: "high",
-                });
-
-                showNotification("success", "AWB Entry deleted successfully");
-                handleRefresh();
-            }
-        } catch (error) {
-            console.error("Error deleting AWB:", error);
-            showNotification("error", `Error deleting AWB: ${error.response?.data?.message || error.message}`);
-        } finally {
-            setBtnAction(null);
-        }
+      } catch (error) {
+        console.error("Error deleting AWB:", error);
+        showNotification(
+          "error",
+          `Error deleting AWB: ${error.response?.data?.message || error.message}`,
+        );
+      } finally {
+        setBtnAction(null);
+      }
     }
-};
+  };
 
-  //handle VolumeWt Window
+  // Window handlers
   const openVolumeWtWindow = () => {
     setHoldHistoryWindow(false);
     setInvoiceDetailsWindow(false);
     setVolumeWtWindow(true);
   };
 
-  //handle Invoice Window
   const openInvoiceDetailsWindow = () => {
     setHoldHistoryWindow(false);
     setVolumeWtWindow(false);
     setInvoiceDetailsWindow(true);
   };
 
-  //handle HoldHistory Window
   const openHoldHistoryWindow = () => {
     setHoldHistoryWindow(true);
     setVolumeWtWindow(false);
     setInvoiceDetailsWindow(false);
   };
 
-  //handle Windows in Shortcut Key used
+  // Window shortcuts
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "F8" && !isEdit) {
@@ -889,78 +850,101 @@ const handleAWBEntry = async (data) => {
       }
     };
 
-    // Attach the event listener
     window.addEventListener("keydown", handleKeyDown);
-
-    // Cleanup the event listener on unmount
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isEdit]);
 
-  //handle Windows in Styling
+  // Window styling
   useEffect(() => {
     if (holdHistoryWindow || invoiceDetailsWindow || volumeWtWindow) {
-      // Disable body scrolling
       document.body.style.overflow = "hidden";
     } else {
-      // Enable body scrolling
       document.body.style.overflow = "";
     }
 
-    // Cleanup effect on unmount or when holdHistoryWindow changes
     return () => {
       document.body.style.overflow = "";
     };
   }, [holdHistoryWindow, invoiceDetailsWindow, volumeWtWindow]);
 
-  // customer account details fetching
+  // customer account details fetching - FIXED with manual entry tracking
   const debouncedCode = useDebounce(watch("code"), 500);
 
   useEffect(() => {
-    if (!debouncedCode) return;
+    if (!debouncedCode || !server) return;
 
     const fetchAccount = async () => {
       try {
+        setIsManualAccountEntry(true);
+        setLastEnteredCode(debouncedCode.toUpperCase());
+
         const response = await axios.get(
           `${server}/customer-account?accountCode=${debouncedCode.toUpperCase()}`,
         );
-        setAccount(response.data);
-        // console.log("customer-account", response.data);
 
         if (response.data) {
-          setValue("customer", response.data?.name);
-          setValue("accountBalance", response.data?.leftOverBalance.toFixed(2));
+          setAccount(response.data);
+          setValue("customer", response.data?.name || "");
+          setValue(
+            "accountBalance",
+            response.data?.leftOverBalance?.toFixed(2) || "0.00",
+          );
+          setValue("code", debouncedCode.toUpperCase());
+
+          // Store in localStorage for persistence
+          localStorage.setItem(
+            `customer_${debouncedCode.toUpperCase()}`,
+            JSON.stringify({
+              name: response.data?.name || "",
+              balance: response.data?.leftOverBalance?.toFixed(2) || "0.00",
+              timestamp: Date.now(),
+            }),
+          );
         } else {
-          setValue("customer", null);
-          setValue("accountBalance", null);
+          setAccount(null);
+          setValue("customer", "");
+          setValue("accountBalance", "");
+          setError("code", {
+            type: "manual",
+            message: "Customer account not found",
+          });
         }
       } catch (error) {
         console.error("Failed to fetch account:", error);
-        setValue("customer", null);
-        setValue("accountBalance", null);
+        setAccount(null);
+        setValue("customer", "");
+        setValue("accountBalance", "");
       }
     };
 
     fetchAccount();
-  }, [debouncedCode, server]);
+  }, [debouncedCode, server, setValue, setError]);
 
-  //getting amount sections data
+  // Reset manual entry flag when code field is cleared
+  useEffect(() => {
+    const currentCode = watch("code");
+    if (!currentCode) {
+      setIsManualAccountEntry(false);
+      setLastEnteredCode("");
+    }
+  }, [watch("code")]);
+
+  // getting amount sections data
   const [airwayBills, setAirwayBills] = useState([]);
 
   useEffect(() => {
     const fetchAirwayBills = async () => {
       try {
         const response = await axios.get(`${server}/rate-sheet`);
-        // console.log("awb billing data", response.data);
         setAirwayBills(response.data);
       } catch (err) {
         console.error("Error fetching airway bills:", err);
-        // console.log("Failed to fetch data.");
       }
     };
     fetchAirwayBills();
-  }, []);
+  }, [server]);
 
   const debouncedAwbNo = useDebounce(watch("awbNo"), 800);
 
@@ -996,29 +980,33 @@ const handleAWBEntry = async (data) => {
         setValue(key, matchedAwb[key] ?? "");
       });
     } else {
-      setValue("manualAmount", "");
-      setValue("cashRecvAmount", "");
-      setValue("balanceAmount", "");
-      setValue("handlingAmount", "");
-      setValue("miscChg", "");
-      setValue("miscChgReason", "");
-      setValue("duty", "");
-      setValue("overWtHandling", "");
-      setValue("hikeAmt", "");
-      setValue("fuelPercentage", "");
-      setValue("fuelAmt", "");
-      setValue("discount", "");
-      setValue("sgst", "");
-      setValue("cgst", "");
-      setValue("igst", "");
-      setValue("currency", "");
+      const keys = [
+        "manualAmount",
+        "cashRecvAmount",
+        "balanceAmount",
+        "handlingAmount",
+        "miscChg",
+        "miscChgReason",
+        "duty",
+        "overWtHandling",
+        "hikeAmt",
+        "fuelPercentage",
+        "fuelAmt",
+        "discount",
+        "sgst",
+        "cgst",
+        "igst",
+        "currency",
+      ];
+      keys.forEach((key) => {
+        setValue(key, "");
+      });
     }
   }, [watch("awbNo"), airwayBills, setValue]);
 
-  //Find sector
+  // Find sector
   useEffect(() => {
     const selectedSectorName = watch("sector");
-    // console.log("Watched sector:", selectedSectorName);
 
     if (!sectors || !Array.isArray(sectors)) {
       console.error("Sectors data is missing or not an array");
@@ -1032,7 +1020,6 @@ const handleAWBEntry = async (data) => {
     );
     const selectedSectorCode = selectedSector ? selectedSector.code : null;
 
-    // console.log("Selected sector code:", selectedSectorCode);
     setSelectedSector(selectedSectorCode);
 
     if (!selectedSectorCode) {
@@ -1048,7 +1035,6 @@ const handleAWBEntry = async (data) => {
 
         const zoneData = response.data || [];
         setZones(zoneData);
-        // console.log("Zones fetched:", zoneData);
 
         if (!Array.isArray(zoneData)) {
           console.error("Zones data is missing or not an array");
@@ -1061,7 +1047,6 @@ const handleAWBEntry = async (data) => {
           .filter((zone) => zone.sector === selectedSectorCode)
           .map((zone) => zone.destination);
 
-        // console.log("Filtered Destinations:", filteredDestinations);
         setDestinations(filteredDestinations);
       } catch (error) {
         console.error("Error fetching zones:", error);
@@ -1070,7 +1055,7 @@ const handleAWBEntry = async (data) => {
     };
 
     fetchZoneData();
-  }, [watch("sector")]);
+  }, [watch("sector"), sectors, server]);
 
   useEffect(() => {
     setResetServiceAndDestination((prev) => !prev);
@@ -1080,11 +1065,8 @@ const handleAWBEntry = async (data) => {
     setSelectedDestinations(watch("destination"));
   }, [watch("destination")]);
 
-  //filtering services based on sector and destination
+  // filtering services based on sector and destination
   useEffect(() => {
-    // console.log("Selected Destination:", selectedDestination);
-    // console.log("Selected Sector:", selectedSector);
-
     if (!zones || !Array.isArray(zones)) {
       console.error("Zones data is missing or not an array");
       return;
@@ -1107,7 +1089,6 @@ const handleAWBEntry = async (data) => {
       }));
 
     setFilteredServices(filteredResults);
-    // console.log("Filtered Results:", filteredResults);
   }, [watch("destination"), selectedSector, selectedDestination, zones]);
 
   // getting applicable rates
@@ -1117,7 +1098,6 @@ const handleAWBEntry = async (data) => {
         const response = await axios.get(
           `${server}/shipper-tariff?accountCode=${account.accountCode}`,
         );
-        // console.log("ApplicableRates", response.data);
         setApplicableRates(response.data);
       } catch (error) {
         setApplicableRates(null);
@@ -1128,9 +1108,9 @@ const handleAWBEntry = async (data) => {
     if (account) {
       getApplicableRates();
     }
-  }, [account]);
+  }, [account, server]);
 
-  // filtering final services based on applicable rates AND removing In-Active services
+  // filtering final services
   useEffect(() => {
     if (filteredServices.length > 0 && applicableRates) {
       const applicableList = Array.isArray(applicableRates)
@@ -1155,8 +1135,6 @@ const handleAWBEntry = async (data) => {
         ),
       );
 
-      // ✅ FIX: Create unique services by service name only, not by service+zone
-      // This prevents duplicate service names in the dropdown
       const uniqueServiceNames = new Map();
       commonServices.forEach((item) => {
         const normalizedName = normalizeService(item.service);
@@ -1178,31 +1156,34 @@ const handleAWBEntry = async (data) => {
       );
 
       setFinalServices(onlyActiveServices);
-      // console.log("Active Final Services (Unique):", onlyActiveServices);
     }
   }, [filteredServices, applicableRates, serviceMasterList]);
 
   // fetching amount details
-  const ratesInputs = useMemo(() => ({
-    selectedService,
-    chargeableWt,
-    pcs,
-    actualWt,
-    selectedSector,
-    selectedDestination,
-    consigneeZipcode,
-  }), [
-    selectedService,
-    chargeableWt,
-    pcs,
-    actualWt,
-    selectedSector,
-    selectedDestination,
-    consigneeZipcode,
-  ]);
+  const ratesInputs = useMemo(
+    () => ({
+      selectedService,
+      chargeableWt,
+      pcs,
+      actualWt,
+      selectedSector,
+      selectedDestination,
+      consigneeZipcode,
+    }),
+    [
+      selectedService,
+      chargeableWt,
+      pcs,
+      actualWt,
+      selectedSector,
+      selectedDestination,
+      consigneeZipcode,
+    ],
+  );
 
   const debouncedRatesInputs = useDebounce(ratesInputs, 800);
 
+  // fetching amount details - with rate preservation
   useEffect(() => {
     if (!selectedService || !applicableRates || !finalServices) return;
 
@@ -1223,14 +1204,12 @@ const handleAWBEntry = async (data) => {
 
     const fetchAmountDetails = async () => {
       try {
-        // Check if this is a Canada shipment
         const isCanadaSector = selectedSector?.toLowerCase().includes("canada");
         const isCanadaDestination = selectedDestination
           ?.toLowerCase()
           .includes("canada");
         const isCanadaShipment = isCanadaSector && isCanadaDestination;
 
-        // Check if this is an Australia shipment
         const isAustraliaSector = selectedSector
           ?.toLowerCase()
           .includes("australia");
@@ -1239,23 +1218,18 @@ const handleAWBEntry = async (data) => {
           .includes("australia");
         const isAustraliaShipment = isAustraliaSector && isAustraliaDestination;
 
-        // For Canada shipments, we need proper postal code format
         if (isCanadaShipment) {
           if (!consigneeZipcode || consigneeZipcode.trim().length < 3) {
-            // console.log("Waiting for valid Canadian postal code...");
             return;
           }
         }
 
-        // For Australia shipments, we need proper postcode format
         if (isAustraliaShipment) {
           if (!consigneeZipcode || consigneeZipcode.trim().length < 1) {
-            // console.log("Waiting for valid Australian postcode...");
             return;
           }
         }
 
-        // Build query parameters
         const params = new URLSearchParams({
           service: selectedService,
           rateTariff: rateTariff,
@@ -1266,18 +1240,14 @@ const handleAWBEntry = async (data) => {
           sector: selectedSector,
         });
 
-        // Add zone parameter
         if (zone) {
           params.append("zone", zone);
         }
 
-        // Add zipcode for Canada or Australia shipments
         if ((isCanadaShipment || isAustraliaShipment) && consigneeZipcode) {
           const cleanedZip = consigneeZipcode.replace(/\s+/g, "").toUpperCase();
           params.append("zipcode", cleanedZip);
         }
-
-        // console.log("Fetching amount details...");
 
         const response = await axios.get(
           `${server}/portal/create-shipment/get-rates?${params.toString()}`,
@@ -1285,7 +1255,10 @@ const handleAWBEntry = async (data) => {
 
         setAmountDetails(response.data);
 
-        // Show appropriate notification based on shipment type
+        if (isEdit && response.data) {
+          setValue("chargeableWt", chargeableWt);
+        }
+
         if (response.data.isCanadaShipment) {
           showNotification(
             "info",
@@ -1298,7 +1271,6 @@ const handleAWBEntry = async (data) => {
           );
         }
 
-        // Show zone details if available
         if (response.data.zoneDetails) {
           const { matchType, isRemote, isUnserviceable } =
             response.data.zoneDetails;
@@ -1323,12 +1295,9 @@ const handleAWBEntry = async (data) => {
         }
       } catch (error) {
         console.log("Error fetching amount details:", error);
-        setAmountDetails(null);
-
         if (error.response?.data?.error) {
           showNotification("error", error.response.data.error);
 
-          // Provide more specific guidance for Australia/Canada
           if (
             error.response.data.details?.sector
               ?.toLowerCase()
@@ -1353,40 +1322,37 @@ const handleAWBEntry = async (data) => {
     };
 
     fetchAmountDetails();
-  }, [debouncedRatesInputs, applicableRates, finalServices, server]);
+  }, [debouncedRatesInputs, applicableRates, finalServices, server, isEdit]);
 
-  // Fetch Customer, Branch, and Tax Settings from backend
+  // Fetch Customer, Branch, and Tax Settings - FIXED
   useEffect(() => {
     const fetchData = async () => {
       try {
+        if (!account || !account.branch) {
+          console.log("No branch data available yet");
+          return;
+        }
+
         const [branchRes, taxRes] = await Promise.all([
           axios.get(
-            `${server}/branch-master/get-branch?code=${account?.branch}`,
+            `${server}/branch-master/get-branch?code=${account.branch}`,
           ),
           axios.get(`${server}/tax-settings`),
         ]);
 
         setBranch(branchRes.data);
         setTaxSettings(taxRes.data);
-        // console.log("Fetched Branch:", branchRes.data);
-        // console.log("Fetched Tax Settings:", taxRes.data);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching branch/tax data:", error);
       }
     };
 
     fetchData();
-  }, [account]);
+  }, [account, server]);
 
-  // Calculate base amount and GST once (on amountDetails change)
+  // Calculate base amount and GST
   useEffect(() => {
     if (amountDetails && account && branch && taxSettings) {
-      // console.log(
-//         "Updating form with amount details:",
-//         amountDetails,
-//         taxSettings,
-//       );
-
       if (
         !amountDetails.rate ||
         Number(amountDetails.rate) <= 0 ||
@@ -1431,16 +1397,6 @@ const handleAWBEntry = async (data) => {
       const cgstRate = sameState ? cgstObj?.taxAmount || 0 : 0;
       const igstRate = !sameState ? igstObj?.taxAmount || 0 : 0;
 
-      // console.log("GST Applicability:", gstApplicable);
-      // console.log(
-//         "Tax Rates - SGST:",
-//         sgstRate,
-//         "CGST:",
-//         cgstRate,
-//         "IGST:",
-//         igstRate,
-//       );
-
       const sgstAmt = gstApplicable ? basicAmount * sgstRate : 0;
       const cgstAmt = gstApplicable ? basicAmount * cgstRate : 0;
       const igstAmt = gstApplicable ? basicAmount * igstRate : 0;
@@ -1463,8 +1419,6 @@ const handleAWBEntry = async (data) => {
       setValue("igst", igstAmt);
       setValue("baseGrandTotal", baseGrandTotal);
       setValue("grandTotal", baseGrandTotal);
-
-      // console.log("Calculated baseGrandTotal:", baseGrandTotal);
     }
   }, [
     amountDetails,
@@ -1473,9 +1427,10 @@ const handleAWBEntry = async (data) => {
     taxSettings,
     chargeableWt,
     selectedPayment,
+    setValue,
   ]);
 
-  // Calculate GRAND TOTAL with adjustments (without re-adding GST)
+  // Calculate GRAND TOTAL with adjustments
   const isUpdatingRef = useRef(false);
 
   useEffect(() => {
@@ -1557,10 +1512,9 @@ const handleAWBEntry = async (data) => {
 
   const round = (num) => Math.round((Number(num) + Number.EPSILON) * 100) / 100;
 
-  //extracting zone from filtered services
+  // extracting zone from filtered services
   useEffect(() => {
     const selectedServiceLocal = watch("service");
-    // console.log("Selected Service:", selectedServiceLocal);
     setSelectedService(selectedServiceLocal);
 
     if (!filteredServices || !Array.isArray(filteredServices)) {
@@ -1573,10 +1527,9 @@ const handleAWBEntry = async (data) => {
     );
 
     const zoneNumber = matchedZone ? matchedZone.zone : null;
-    // console.log("Extracted Zone:", zoneNumber);
   }, [watch("service"), filteredServices]);
 
-  //handle date formatting
+  // handle date formatting
   useEffect(() => {
     if (fetchedAwbData?.createdAt) {
       setDate(formatDate(fetchedAwbData.createdAt));
@@ -1587,7 +1540,6 @@ const handleAWBEntry = async (data) => {
 
   // Enhanced handle refresh function
   const handleRefresh = () => {
-    // Reset form completely
     reset({
       awbNo: "",
       code: "",
@@ -1656,7 +1608,6 @@ const handleAWBEntry = async (data) => {
       obc: "",
     });
 
-    // Clear all state variables
     setFetchedAwbData({});
     setAccount(null);
     setAmountDetails(null);
@@ -1686,13 +1637,13 @@ const handleAWBEntry = async (data) => {
       warnings: [],
       serviceDetails: null,
     });
+    setIsManualAccountEntry(false);
+    setLastEnteredCode("");
 
-    // Close all windows
     setHoldHistoryWindow(false);
     setVolumeWtWindow(false);
     setInvoiceDetailsWindow(false);
 
-    // Reset date
     const today = new Date();
     const formattedDate =
       today.getDate().toString().padStart(2, "0") +
@@ -1702,14 +1653,11 @@ const handleAWBEntry = async (data) => {
       today.getFullYear().toString();
     setDate(formattedDate);
 
-    // Force re-render
     setRefreshKey((prev) => prev + 1);
-
-    // Show success message
     showNotification("success", "Page refreshed successfully");
   };
 
-  //handle codelist
+  // handle codelist
   const columns = useMemo(() => {
     const columnMapping = {
       "Airway Bill Entry": [
@@ -1720,7 +1668,7 @@ const handleAWBEntry = async (data) => {
     return columnMapping["Airway Bill Entry"] || [];
   }, []);
 
-  //fetching data in shipments
+  // fetching data in shipments
   useEffect(() => {
     if (!awbNo) {
       clearErrors("awbNo");
@@ -1748,7 +1696,7 @@ const handleAWBEntry = async (data) => {
           setFetchedAwbData(response.data.shipments[0]);
           setIsEdit(true);
 
-          if (user.role.toLowerCase() === "admin") {
+          if (user?.role?.toLowerCase() === "admin") {
             setNewShipment("old");
           }
         }
@@ -1769,9 +1717,26 @@ const handleAWBEntry = async (data) => {
       clearTimeout(debounceTimer);
       controller.abort();
     };
-  }, [awbNo]);
+  }, [awbNo, server, user, clearErrors, setValue]);
 
-  //fetching data in bagging
+  // Add effect to preserve customer data when loading AWB
+  useEffect(() => {
+    if (fetchedAwbData && Object.keys(fetchedAwbData).length > 0) {
+      // If this is an existing shipment and we're not in the middle of manual entry
+      if (
+        !isManualAccountEntry ||
+        lastEnteredCode !== fetchedAwbData.accountCode
+      ) {
+        setValue("customer", fetchedAwbData.name || "");
+        setValue(
+          "accountBalance",
+          fetchedAwbData.accountBalance || fetchedAwbData.leftOverBalance || 0,
+        );
+      }
+    }
+  }, [fetchedAwbData, setValue, isManualAccountEntry, lastEnteredCode]);
+
+  // fetching data in bagging
   const [fetchedBaggingData, setFetchedBaggingData] = useState({});
 
   useEffect(() => {
@@ -1780,10 +1745,8 @@ const handleAWBEntry = async (data) => {
       if (regex.test(awbNo)) {
         try {
           const response = await axios.get(`${server}/bagging`);
-          // console.log("Bagging API response:", response.data);
 
           if (!response.data || response.data.length === 0) {
-            // console.log("No bagging data found");
             setFetchedBaggingData({});
             return;
           }
@@ -1816,10 +1779,8 @@ const handleAWBEntry = async (data) => {
           }
 
           if (foundAwbData) {
-            // console.log("Found AWB in bagging data:", foundAwbData);
             setFetchedBaggingData(foundAwbData);
           } else {
-            // console.log(`AWB ${awbNo} not found in any bagging record`);
             setFetchedBaggingData({});
           }
         } catch (error) {
@@ -1832,49 +1793,54 @@ const handleAWBEntry = async (data) => {
     };
 
     fetchBaggingData();
-  }, [awbNo]);
+  }, [awbNo, server]);
 
   // Add handler for content changes
   const handleSetInvoiceContent = useCallback((data) => {
     setInvoiceContent(data);
-    // console.log(invoiceContent);
   }, []);
 
   // Sync invoiceContent with form state
   useEffect(() => {
     setValue("invoiceContent", invoiceContent);
-    // console.log("Invoice Content Updated:", invoiceContent);
-  }, [invoiceContent]);
+  }, [invoiceContent, setValue]);
 
   // Add handler for volume content changes
   const handleSetVolumeContent = useCallback((data) => {
     const cleanedData = data.map(({ volumeWeightTable, ...rest }) => rest);
     setVolumeContent(cleanedData);
-    // console.log("Clean Volume Content Updated:", cleanedData);
   }, []);
 
   // Sync volumeContent with form state
   useEffect(() => {
     setValue("volumeContent", volumeContent);
-    // console.log("Volume Content Updated:", volumeContent);
-  }, [volumeContent]);
+  }, [volumeContent, setValue]);
 
-  // Populate form when fetchedAwbData changes
+  // Populate form when fetchedAwbData changes - FIXED with rate preservation
   useEffect(() => {
     if (fetchedAwbData && Object.keys(fetchedAwbData).length > 0) {
-      // Basic shipment details
+      const currentAmountDetails = amountDetails;
+
       setValue("referenceNo", fetchedAwbData.reference || "");
       setValue("origin", fetchedAwbData.origin || "");
       setValue("sector", fetchedAwbData.sector || "");
       setValue("destination", fetchedAwbData.destination || "");
       setValue("service", fetchedAwbData.service || "");
 
-      // Customer details
       setValue("code", fetchedAwbData.accountCode || "");
-      setValue("customer", fetchedAwbData.name || "");
-      setValue("accountBalance", fetchedAwbData.accountBalance || "");
 
-      // Consignor details
+      // Only set customer fields if not manually entered
+      if (
+        !isManualAccountEntry ||
+        lastEnteredCode !== fetchedAwbData.accountCode
+      ) {
+        setValue("customer", fetchedAwbData.name || "");
+        setValue(
+          "accountBalance",
+          fetchedAwbData.accountBalance || fetchedAwbData.leftOverBalance || 0,
+        );
+      }
+
       setValue("consignor", fetchedAwbData.shipperFullName || "");
       setValue(
         "consignor-addressLine1",
@@ -1891,7 +1857,6 @@ const handleAWBEntry = async (data) => {
       setValue("consignor-idType", fetchedAwbData.shipperKycType || "");
       setValue("consignor-idNumber", fetchedAwbData.shipperKycNumber || "");
 
-      // Consignee details
       setValue("consignee", fetchedAwbData.receiverFullName || "");
       setValue(
         "consignee-addressLine1",
@@ -1907,42 +1872,29 @@ const handleAWBEntry = async (data) => {
       setValue("consignee-telephone", fetchedAwbData.receiverPhoneNumber || "");
       setValue("consignee-emailID", fetchedAwbData.receiverEmail || "");
 
-      // Weight details
       setValue("goodstype", fetchedAwbData.goodstype || "");
       setValue("pcs", fetchedAwbData.boxes?.length || 0);
       setValue("actualWt", fetchedAwbData.totalActualWt || 0);
       setValue("chargeableWt", fetchedAwbData.chargeableWt || 0);
       setValue("volWt", fetchedAwbData.totalVolWt || 0);
 
-      // ✅ FIXED: Set volume discount from fetched data with proper priority
-      // Priority: Saved AWB discount > Service Master discount
       if (
         fetchedAwbData.volDiscount !== undefined &&
         fetchedAwbData.volDiscount !== null
       ) {
         setValue("volDisc", fetchedAwbData.volDiscount);
-        // console.log(
-//           `✅ Volume discount loaded from saved AWB: ${fetchedAwbData.volDiscount}%`,
-//         );
       } else if (
         fetchedAwbData.volDisc !== undefined &&
         fetchedAwbData.volDisc !== null
       ) {
-        // Fallback to volDisc field if volDiscount doesn't exist
         setValue("volDisc", fetchedAwbData.volDisc);
-        // console.log(
-//           `✅ Volume discount loaded from saved AWB (volDisc): ${fetchedAwbData.volDisc}%`,
-//         );
       }
 
       setValue("payment", fetchedAwbData.payment || "Credit");
-
-      // Invoice details
       setValue("currencys", fetchedAwbData.currencys || "INR");
       setValue("currency", fetchedAwbData.currency || "INR");
       setValue("invoiceValue", fetchedAwbData.totalInvoiceValue || 0);
 
-      // Run details
       setValue("mawbNo", fetchedAwbData.awbNo || "");
       setValue("bag", fetchedAwbData.bag || "");
       setValue("billNo", fetchedAwbData.billNo || "");
@@ -1956,13 +1908,35 @@ const handleAWBEntry = async (data) => {
         fetchedAwbData.runDate ? formatDate(fetchedAwbData.runDate) : "",
       );
 
-      // Amount details
-      setValue("basicAmount", fetchedAwbData.basicAmt || 0);
-      setValue("discount", fetchedAwbData.volDiscount || 0);
-      setValue("sgst", fetchedAwbData.sgst || 0);
-      setValue("cgst", fetchedAwbData.cgst || 0);
-      setValue("igst", fetchedAwbData.igst || 0);
-      setValue("grandTotal", fetchedAwbData.totalAmt || 0);
+      // Amount details - PRESERVE existing values if available
+      if (
+        currentAmountDetails &&
+        Object.keys(currentAmountDetails).length > 0
+      ) {
+        setValue(
+          "basicAmount",
+          currentAmountDetails.basicAmount || fetchedAwbData.basicAmt || 0,
+        );
+        setValue(
+          "discount",
+          currentAmountDetails.discount || fetchedAwbData.volDiscount || 0,
+        );
+        setValue("sgst", currentAmountDetails.sgst || fetchedAwbData.sgst || 0);
+        setValue("cgst", currentAmountDetails.cgst || fetchedAwbData.cgst || 0);
+        setValue("igst", currentAmountDetails.igst || fetchedAwbData.igst || 0);
+        setValue(
+          "grandTotal",
+          currentAmountDetails.grandTotal || fetchedAwbData.totalAmt || 0,
+        );
+      } else {
+        setValue("basicAmount", fetchedAwbData.basicAmt || 0);
+        setValue("discount", fetchedAwbData.volDiscount || 0);
+        setValue("sgst", fetchedAwbData.sgst || 0);
+        setValue("cgst", fetchedAwbData.cgst || 0);
+        setValue("igst", fetchedAwbData.igst || 0);
+        setValue("grandTotal", fetchedAwbData.totalAmt || 0);
+      }
+
       setValue(
         "currency",
         fetchedAwbData.currency || fetchedAwbData.currencys || "INR",
@@ -1979,10 +1953,8 @@ const handleAWBEntry = async (data) => {
       setValue("cashRecvAmount", fetchedAwbData.cashRecvAmount || 0);
       setValue("balanceAmount", fetchedAwbData?.balanceAmt || 0);
 
-      // Invoice content
       setValue("content", fetchedAwbData.content || []);
 
-      // Hold details
       setIsHold(fetchedAwbData.isHold || false);
       setValue("holdReason", fetchedAwbData.holdReason || " ");
       setValue("otherHoldReason", fetchedAwbData.otherHoldReason || "");
@@ -1995,31 +1967,33 @@ const handleAWBEntry = async (data) => {
         setVolumeContent(fetchedAwbData.boxes);
       }
     } else {
-      // New shipment - clear all fields
-      setValue("customer", "");
-      setValue("accountBalance", "");
+      if (!isManualAccountEntry) {
+        setValue("customer", "");
+        setValue("accountBalance", "");
+      }
       setValue("volDisc", "");
       setIsHold(false);
       setInvContent([]);
-      // console.log("No AWB data found - new shipment");
     }
-  }, [fetchedAwbData, setValue]);
+  }, [
+    fetchedAwbData,
+    setValue,
+    amountDetails,
+    isManualAccountEntry,
+    lastEnteredCode,
+  ]);
 
-  // Enhanced hold logic - FIXED: Only disable "Other Reason" for Credit Limit Exceeded
-  // AFTER — only clear invContent, don't touch hold state
+  // Enhanced hold logic
   useEffect(() => {
     if (!grandTotal || Number(grandTotal) === 0) {
-      // ✅ Only reset holdEdit and invContent for new shipments
-      // Hold state is managed by the fetchedAwbData population effect above
       if (newShipment !== "old") {
         setHoldEdit(false);
         setInvContent([]);
       }
-      // console.log("No AWB data found - new shipment");
     }
   }, [fetchedAwbData, setValue, grandTotal, newShipment]);
 
-  //for alerts
+  // for alerts
   useEffect(() => {
     const checkForAlerts = async () => {
       if (awbNo && awbNo.trim().length >= 4) {
@@ -2056,8 +2030,6 @@ const handleAWBEntry = async (data) => {
           params: { serviceName: selectedService },
         });
 
-        // console.log("ServiceMaster data:", res.data);
-
         if (!res.data || !res.data._id) {
           setServiceData(null);
           return;
@@ -2066,7 +2038,6 @@ const handleAWBEntry = async (data) => {
         const s = res.data;
         setServiceData(s);
 
-        // Validate against service master
         const validationResult = validateServiceRules(s, {
           pcs: Number(pcs) || 0,
           actualWt: Number(actualWt) || 0,
@@ -2084,7 +2055,6 @@ const handleAWBEntry = async (data) => {
           });
         }
 
-        // Also run server-side validation
         await validateServiceAgainstMaster(selectedService, {
           pcs: Number(pcs) || 0,
           actualWt: Number(actualWt) || 0,
@@ -2099,20 +2069,27 @@ const handleAWBEntry = async (data) => {
     };
 
     fetchServiceMaster();
-  }, [selectedService, server, awbNo]);
+  }, [
+    selectedService,
+    server,
+    pcs,
+    actualWt,
+    volWt,
+    chargeableWt,
+    invoiceValue,
+    setError,
+  ]);
 
-  // ✅ FIXED: Fetch volume discount from service master for new shipments
+  // Fetch volume discount from service master for new shipments
   useEffect(() => {
     const fetchServiceVolumeDiscount = async () => {
       if (!selectedService || !server) {
-        // Clear volume discount if no service selected
         if (!isEdit) {
-          setValue("volDisc", "0"); // ✅ Set to "0" instead of empty string
+          setValue("volDisc", "0");
         }
         return;
       }
 
-      // Skip if we're editing an existing AWB (use saved discount)
       if (isEdit && fetchedAwbData && Object.keys(fetchedAwbData).length > 0) {
         return;
       }
@@ -2125,33 +2102,25 @@ const handleAWBEntry = async (data) => {
         if (res.data && res.data.found !== false && res.data._id) {
           const serviceData = res.data;
 
-          // ✅ Set volume discount from service master
           if (
             serviceData.volDiscountPercent !== undefined &&
             serviceData.volDiscountPercent !== null
           ) {
             setValue("volDisc", serviceData.volDiscountPercent.toString());
-            // console.log(
-//               `✅ Volume discount set from service master: ${serviceData.volDiscountPercent}%`,
-//             );
 
-            // ✅ FORCE RECALCULATION: Trigger the chargeable weight calculation
-            // by temporarily updating actualWt or volWt
             const currentActual = watch("actualWt");
             const currentVol = watch("volWt");
             if (currentActual || currentVol) {
-              // Trigger recalculation by setting values again
               setValue("actualWt", currentActual);
               setValue("volWt", currentVol);
             }
           } else {
-            // If service has no volume discount, set to 0
             setValue("volDisc", "0");
           }
         }
       } catch (error) {
         console.error("Error fetching service volume discount:", error);
-        setValue("volDisc", "0"); // ✅ Set default on error
+        setValue("volDisc", "0");
       }
     };
 
@@ -2173,10 +2142,8 @@ const handleAWBEntry = async (data) => {
 
     if (!p && !a && !v && !c && !inv) return;
 
-    // Clear previous errors first
     clearErrors(["pcs", "actualWt", "volWt", "chargeableWt", "invoiceValue"]);
 
-    // Local validation - ONLY perAWB rules
     const localValidation = validateServiceRules(serviceData, {
       pcs: p,
       actualWt: a,
@@ -2185,7 +2152,6 @@ const handleAWBEntry = async (data) => {
       invoiceValue: inv,
     });
 
-    // Set errors if any (these are perAWB errors)
     if (!localValidation.ok) {
       localValidation.errors.forEach((err) => {
         setError(err.field, {
@@ -2202,6 +2168,8 @@ const handleAWBEntry = async (data) => {
     invoiceValue,
     selectedService,
     serviceData,
+    clearErrors,
+    setError,
   ]);
 
   useEffect(() => {
@@ -2212,7 +2180,7 @@ const handleAWBEntry = async (data) => {
     if (selectedPayment === "FOC" && !focUnlocked) {
       setShowFOCPasswordModal(true);
     }
-  }, [selectedPayment, focUnlocked]);
+  }, [selectedPayment, focUnlocked, selectedService]);
 
   const handleFOCPasswordSuccess = () => {
     setFocUnlocked(true);
@@ -2249,12 +2217,9 @@ const handleAWBEntry = async (data) => {
     } else {
       setValue("network", "");
     }
-
-    // console.log("Selected service:", selectedService);
-    // console.log("Matched rate:", matchedRate);
   }, [selectedService, applicableRates, setValue]);
 
-  // Zone status checking effect - when destination or service changes
+  // Zone status checking effect
   useEffect(() => {
     const checkAndAlertZoneStatus = async () => {
       const destinationValue = watch("destination");
@@ -2266,7 +2231,6 @@ const handleAWBEntry = async (data) => {
         return;
       }
 
-      // Skip if we already have a pending update
       if (pendingZoneUpdate) {
         return;
       }
@@ -2277,17 +2241,14 @@ const handleAWBEntry = async (data) => {
         const { zoneNumber, isRemote, isUnserviceable } = zoneStatus;
 
         if (isRemote || isUnserviceable) {
-          // Check if this zone has already been confirmed
           const currentRemark = watch("operationRemark") || "";
           const alreadyConfirmed = currentRemark.includes(
             isRemote ? "Remote area confirmed" : "Unserviceable area confirmed",
           );
 
           if (!alreadyConfirmed) {
-            // Set pending update flag
             setPendingZoneUpdate(true);
 
-            // Show alert modal
             setZoneAlertData({
               isOpen: true,
               message: `The selected destination "${destinationValue}" is in a ${
@@ -2312,11 +2273,16 @@ const handleAWBEntry = async (data) => {
       }
     };
 
-    // Add a small delay to avoid checking on every keystroke
     const timeoutId = setTimeout(checkAndAlertZoneStatus, 500);
-
     return () => clearTimeout(timeoutId);
-  }, [watch("destination"), watch("service"), isEdit, pendingZoneUpdate]);
+  }, [
+    watch("destination"),
+    watch("service"),
+    isEdit,
+    pendingZoneUpdate,
+    checkZoneStatus,
+    watch,
+  ]);
 
   return (
     <div key={refreshKey}>
@@ -2333,7 +2299,6 @@ const handleAWBEntry = async (data) => {
         serviceValidation.errors?.length > 0 && (
           <div className="fixed top-24 right-4 z-50 max-w-md animate-slide-in-right">
             <div className="bg-red-50 border-l-4 border-red-500 rounded-lg shadow-lg overflow-hidden">
-              {/* Header */}
               <div className="bg-red text-white px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <svg
@@ -2376,7 +2341,6 @@ const handleAWBEntry = async (data) => {
                 </button>
               </div>
 
-              {/* Error List */}
               <div className="px-4 py-3 max-h-64 overflow-y-auto">
                 <ul className="space-y-2">
                   {serviceValidation.errors.map((error, index) => (
@@ -2532,7 +2496,6 @@ const handleAWBEntry = async (data) => {
               <div className="flex gap-3 justify-between">
                 <div className="flex flex-col gap-3 w-1/2">
                   <RedLabelHeading label={`Airway Bill Number`} />
-                  {/* Input container with relative positioning */}
                   <div className="relative">
                     <InputBoxYellow
                       register={register}
@@ -2548,7 +2511,6 @@ const handleAWBEntry = async (data) => {
                       }}
                     />
 
-                    {/* Loader - positioned inside the input field */}
                     {awbLoading && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
                         <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
@@ -2663,7 +2625,7 @@ const handleAWBEntry = async (data) => {
                     label={`Customer`}
                     setValue={setValue}
                     resetFactor={refreshKey}
-                    inputValue={fetchedAwbData?.name || ""}
+                    inputValue={watch("customer")}
                     value={`customer`}
                     error={errors.customer}
                     trigger={trigger}
@@ -2677,7 +2639,7 @@ const handleAWBEntry = async (data) => {
                       setValue={setValue}
                       resetFactor={refreshKey}
                       value={`accountBalance`}
-                      inputValue={fetchedAwbData?.accountBalance || ""}
+                      inputValue={watch("accountBalance")}
                     />
                     <DummyInputBoxWithLabelDarkGray
                       register={register}
@@ -2873,7 +2835,6 @@ const handleAWBEntry = async (data) => {
                     disabled={isEdit}
                     validation={{
                       required: "Zipcode is required",
-                      // Add pattern validation based on country
                       validate: (value) => {
                         const isAustralia = selectedSector
                           ?.toLowerCase()
@@ -2883,7 +2844,6 @@ const handleAWBEntry = async (data) => {
                           .includes("canada");
 
                         if (isAustralia && value) {
-                          // Australian postcode: 4 digits
                           const auPattern = /^\d{4}$/;
                           if (!auPattern.test(value.replace(/\s/g, ""))) {
                             return "Australian postcode must be 4 digits (e.g., 2000)";
@@ -2891,7 +2851,6 @@ const handleAWBEntry = async (data) => {
                         }
 
                         if (isCanada && value) {
-                          // Canadian postal code: A1A 1A1 format
                           const caPattern =
                             /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
                           if (!caPattern.test(value)) {
@@ -3215,7 +3174,7 @@ const handleAWBEntry = async (data) => {
                     setValue={setValue}
                     resetFactor={refreshKey}
                     flip={true}
-                    disabled={isEdit || holdEdit} // FIXED: Only disable when credit limit exceeded, not for all holds
+                    disabled={isEdit || holdEdit}
                   />
                   <LabeledDropdown
                     options={[
@@ -3271,7 +3230,7 @@ const handleAWBEntry = async (data) => {
                     title={`Hold Reason`}
                     value={`holdReason`}
                     defaultValue={holdReason || fetchedAwbData.holdReason || ""}
-                    disabled={isEdit || holdEdit} // FIXED: Only disable when credit limit exceeded
+                    disabled={isEdit || holdEdit}
                   />
                   <InputBox
                     placeholder="Other Reason"
@@ -3632,7 +3591,6 @@ const handleAWBEntry = async (data) => {
                   onClick={(data) => {
                     setBtnAction("modify");
                     setIsEdit(false);
-                    // console.log(data);
                   }}
                   disabled={
                     newShipment == "new" ||
