@@ -1,0 +1,620 @@
+﻿
+> m5-sw-t@0.1.0 build
+> next build
+
+node.exe :  ΓÜá 
+Specified "rewrites" 
+will not automatically 
+work with "output: 
+export". See more info 
+here: https://nextjs.or
+g/docs/messages/export-
+no-custom-routes
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: ( ΓÜá Specifie   
+ d ...o-custom-rout    
+es:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+ ΓÜá Specified 
+"rewrites" will not 
+automatically work 
+with "output: export". 
+See more info here: htt
+ps://nextjs.org/docs/me
+ssages/export-no-custom
+-routes
+  Γû▓ Next.js 14.2.13
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ΓÜá Specified 
+"rewrites" will not 
+automatically work 
+with "output: export". 
+See more info here: htt
+ps://nextjs.org/docs/me
+ssages/export-no-custom
+-routes
+ ΓÜá Specified 
+"rewrites" will not 
+automatically work 
+with "output: export". 
+See more info here: htt
+ps://nextjs.org/docs/me
+ssages/export-no-custom
+-routes
+ ΓÜá Specified 
+"rewrites" will not 
+automatically work 
+with "output: export". 
+See more info here: htt
+ps://nextjs.org/docs/me
+ssages/export-no-custom
+-routes
+ Γ£ô Compiled successfully
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/137) ...
+ReferenceError: 
+rowData is not defined
+    at h (C:\OTHERS\GIT
+HUB\m5-software\.next\s
+erver\app\pages\ChildAw
+bNoReport\page.js:1:720
+2)
+    at nj (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:462
+51)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:475
+71)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nI (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:470
+10)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:477
+17)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:615
+46)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nB (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:675
+38)
+    at nD (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:666
+80) {
+  digest: '2128158310'
+}
+
+Error occurred 
+prerendering page "/pag
+es/ChildAwbNoReport". 
+Read more: https://next
+js.org/docs/messages/pr
+erender-error
+
+ReferenceError: 
+rowData is not defined
+    at h (C:\OTHERS\GIT
+HUB\m5-software\.next\s
+erver\app\pages\ChildAw
+bNoReport\page.js:1:720
+2)
+    at nj (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:462
+51)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:475
+71)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nI (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:470
+10)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:477
+17)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:615
+46)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nB (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:675
+38)
+    at nD (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:666
+80)
+   Generating static pages (34/137) 
+ReferenceError: 
+lineRef is not defined
+    at M (C:\OTHERS\GIT
+HUB\m5-software\.next\s
+erver\app\pages\custome
+r-account\page.js:2:819
+12)
+    at nj (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:462
+51)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:475
+71)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nB (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:675
+38)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:585
+60)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nI (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:470
+10)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:477
+17)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46) {
+  digest: '388919938'
+}
+
+Error occurred 
+prerendering page "/pag
+es/customer-account". 
+Read more: https://next
+js.org/docs/messages/pr
+erender-error
+
+ReferenceError: 
+lineRef is not defined
+    at M (C:\OTHERS\GIT
+HUB\m5-software\.next\s
+erver\app\pages\custome
+r-account\page.js:2:819
+12)
+    at nj (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:462
+51)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:475
+71)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nB (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:675
+38)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:585
+60)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nI (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:470
+10)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:477
+17)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+   Generating static pages (68/137) 
+ReferenceError: 
+loading is not defined
+    at m (C:\OTHERS\GIT
+HUB\m5-software\.next\s
+erver\app\pages\month-s
+ale\page.js:2:8563)
+    at nj (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:462
+51)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:475
+71)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nI (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:470
+10)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:477
+17)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:615
+46)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nB (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:675
+38)
+    at nD (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:666
+80) {
+  digest: '880631640'
+}
+
+Error occurred 
+prerendering page 
+"/pages/month-sale". 
+Read more: https://next
+js.org/docs/messages/pr
+erender-error
+
+ReferenceError: 
+loading is not defined
+    at m (C:\OTHERS\GIT
+HUB\m5-software\.next\s
+erver\app\pages\month-s
+ale\page.js:2:8563)
+    at nj (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:462
+51)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:475
+71)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nI (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:470
+10)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:477
+17)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:615
+46)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nB (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:675
+38)
+    at nD (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:666
+80)
+ReferenceError: Table 
+is not defined
+    at b (C:\OTHERS\GIT
+HUB\m5-software\.next\s
+erver\app\pages\sale-re
+port-with-dummy-number\
+page.js:170:5100)
+    at nj (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:462
+51)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:475
+71)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nI (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:470
+10)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:477
+17)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:615
+46)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nB (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:675
+38)
+    at nD (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:666
+80) {
+  digest: '3899724357'
+}
+   Generating static pages (102/137) 
+
+Error occurred 
+prerendering page "/pag
+es/sale-report-with-dum
+my-number". Read more: 
+https://nextjs.org/docs
+/messages/prerender-err
+or
+
+ReferenceError: Table 
+is not defined
+    at b (C:\OTHERS\GIT
+HUB\m5-software\.next\s
+erver\app\pages\sale-re
+port-with-dummy-number\
+page.js:170:5100)
+    at nj (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:462
+51)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:475
+71)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nI (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:470
+10)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:477
+17)
+    at nM (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:615
+46)
+    at nN (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:645
+46)
+    at nB (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:675
+38)
+    at nD (C:\OTHERS\GI
+THUB\m5-software\node_m
+odules\next\dist\compil
+ed\next-server\app-page
+.runtime.prod.js:12:666
+80)
+ Γ£ô Generating static pages (137/137)
+
+> Export encountered 
+errors on following 
+paths:
+	/pages/ChildAwbNoRepor
+t/page: 
+/pages/ChildAwbNoReport
+	/pages/customer-accoun
+t/page: 
+/pages/customer-account
+	/pages/month-sale/page
+: /pages/month-sale
+	/pages/sale-report-wit
+h-dummy-number/page: /p
+ages/sale-report-with-d
+ummy-number

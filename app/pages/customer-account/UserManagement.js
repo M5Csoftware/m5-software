@@ -42,7 +42,7 @@ function UserManagement({
 
       setFilteredUsers(sortedUsers);
     },
-    [filteredUsers, sortConfig]
+    [filteredUsers, sortConfig],
   );
 
   // Filter states
@@ -125,7 +125,7 @@ function UserManagement({
     if (selectedAccountType !== "All") {
       filtered = filtered.filter(
         (user) =>
-          user.accountType?.toLowerCase() === selectedAccountType.toLowerCase()
+          user.accountType?.toLowerCase() === selectedAccountType.toLowerCase(),
       );
     }
 
@@ -149,7 +149,7 @@ function UserManagement({
       filtered = filtered.filter(
         (user) =>
           user.fullName &&
-          user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+          user.fullName.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
 
@@ -169,7 +169,7 @@ function UserManagement({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const selectedElement = document.querySelector(
-      `.department-tabs > li[data-dept='${selectedDepartment}']`
+      `.department-tabs > li[data-dept='${selectedDepartment}']`,
     );
     if (selectedElement && lineRef.current) {
       const ulElement = selectedElement.parentElement;
@@ -177,8 +177,6 @@ function UserManagement({
       setLineLeft(selectedElement.offsetLeft - ulElement.offsetLeft);
     }
   }, [selectedDepartment]);
-
-
 
   const handleClearFilters = () => {
     setSelectedAccountType("All");
@@ -199,8 +197,8 @@ function UserManagement({
     const dataToExport =
       selectedIds.length > 0
         ? filteredUsers.filter((user) =>
-          selectedIds.includes(user._id || user.id)
-        )
+            selectedIds.includes(user._id || user.id),
+          )
         : filteredUsers;
 
     if (dataToExport.length === 0) {
@@ -257,7 +255,7 @@ function UserManagement({
     const columnWidths = exportColumns.map((col) => ({
       wch: Math.max(
         col.label.length + 2,
-        ...exportData.map((row) => String(row[col.label] || "").length)
+        ...exportData.map((row) => String(row[col.label] || "").length),
       ),
     }));
     ws["!cols"] = columnWidths;
@@ -278,10 +276,10 @@ function UserManagement({
 
     // Show success message
     // console.log(
-//       selectedIds.length > 0
-//         ? `Downloaded ${selectedIds.length} selected user(s)`
-//         : `Downloaded all ${dataToExport.length} user(s)`
-//     );
+    //       selectedIds.length > 0
+    //         ? `Downloaded ${selectedIds.length} selected user(s)`
+    //         : `Downloaded all ${dataToExport.length} user(s)`
+    //     );
   };
 
   const hasActiveFilters =
@@ -353,7 +351,6 @@ function UserManagement({
               />
             </div>
             <div className="flex items-center gap-2 ">
-
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDownloadExcel}
@@ -379,7 +376,7 @@ function UserManagement({
                     </span>
                   )}
                 </button>
-                
+
                 {/* Filter button with dropdown wrapper - FIXED POSITIONING */}
                 <div className="relative">
                   <div
@@ -488,7 +485,9 @@ function UserManagement({
                           </label>
                           <select
                             value={selectedTurnover}
-                            onChange={(e) => setSelectedTurnover(e.target.value)}
+                            onChange={(e) =>
+                              setSelectedTurnover(e.target.value)
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#EA1B40]"
                           >
                             {turnovers.map((turnover) => (
@@ -517,7 +516,7 @@ function UserManagement({
             users={filteredUsers}
             onSort={handleSort}
             sortConfig={sortConfig}
-            refetchUsers={() => setRefreshKey(prev => prev + 1)}
+            refetchUsers={() => setRefreshKey((prev) => prev + 1)}
             onCreateAccount={handleCreateAccount}
             selectedIds={selectedIds}
             setSelectedIds={setSelectedIds}
