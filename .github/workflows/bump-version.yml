@@ -107,9 +107,6 @@ jobs:
           if [ -z "$ZIP" ]; then echo "ERROR: ZIP not found!"; exit 1; fi
 
       # ── 6. Write version.json with signature for silent updater ───────
-      # Tauri updater expects: version, notes, pub_date, platforms
-      # Our Rust check_for_update also reads: version, notes, pub_date
-      # Both work from the same version.json ✅
       - name: Write version.json
         shell: bash
         run: |
@@ -117,7 +114,9 @@ jobs:
           NOTES="${{ steps.msg.outputs.notes }}"
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           SIGNATURE=$(cat "${{ steps.files.outputs.sig }}")
-          ZIP_NAME=$(basename "${{ steps.files.outputs.zip }}")
+
+          # URL-encode spaces in the filename so the download URL is valid
+          ZIP_NAME=$(basename "${{ steps.files.outputs.zip }}" | sed 's/ /%20/g')
 
           cat > version.json << JSONEOF
           {
