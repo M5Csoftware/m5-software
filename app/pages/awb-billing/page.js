@@ -1,7 +1,17 @@
 "use client";
-import HoldHistory from "@/app/components/awb-entry/HoldHistory";
-import InvoiceDetails from "@/app/components/awb-entry/InvoiceDetails";
-import VolumeWeight from "@/app/components/awb-entry/VolumeWeight";
+import dynamic from "next/dynamic";
+const HoldHistory = dynamic(
+  () => import("@/app/components/awb-entry/HoldHistory"),
+  { ssr: false },
+);
+const InvoiceDetails = dynamic(
+  () => import("@/app/components/awb-entry/InvoiceDetails"),
+  { ssr: false },
+);
+const VolumeWeight = dynamic(
+  () => import("@/app/components/awb-entry/VolumeWeight"),
+  { ssr: false },
+);
 import { OutlinedButtonRed } from "@/app/components/Buttons";
 import {
   LabeledDropdown,
@@ -42,6 +52,7 @@ import NotificationFlag from "@/app/components/Notificationflag";
 import { useAlertCheck } from "@/app/hooks/useAlertCheck";
 import { AlertModal } from "@/app/components/AlertModal";
 import PasswordModal from "@/app/components/passwordModal";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 function AwbBilling() {
   const {
@@ -53,6 +64,7 @@ function AwbBilling() {
     clearErrors,
     watch,
     control,
+    reset,
     formState: { errors },
   } = useForm();
 
@@ -131,8 +143,28 @@ function AwbBilling() {
   });
   const [pendingZoneUpdate, setPendingZoneUpdate] = useState(false);
 
+  // Refresh functionality state
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Manual account entry tracking
+  const [isManualAccountEntry, setIsManualAccountEntry] = useState(false);
+  const [lastEnteredCode, setLastEnteredCode] = useState("");
+
   const showNotification = (type, message) => {
     setNotification({ type, message, visible: true });
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "";
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return "";
+    return (
+      dateObj.getDate().toString().padStart(2, "0") +
+      "/" +
+      (dateObj.getMonth() + 1).toString().padStart(2, "0") +
+      "/" +
+      dateObj.getFullYear()
+    );
   };
 
   // Watching input values
@@ -144,11 +176,20 @@ function AwbBilling() {
   const invoiceValue = useWatch({ control, name: "invoiceValue" });
 
   // holdreason dynamic rendering
-  const [holdReason, setHoldReason] = useState(" ");
+  const [holdReason, setHoldReason] = useState("");
   const grandTotal = watch("grandTotal");
-  const actualWtValue = watch("actualWt");
   const [holdEdit, setHoldEdit] = useState(false);
   const volDisc = watch("volDisc");
+  const holdReasonValue = watch("holdReason");
+
+  // Automatically clear hold reasons when isHold is false
+  useEffect(() => {
+    if (!isHold) {
+      setHoldReason("");
+      setValue("holdReason", "");
+      setValue("otherHoldReason", "");
+    }
+  }, [isHold, setValue]);
 
   //payment type
   const [showFOCPasswordModal, setShowFOCPasswordModal] = useState(false);
@@ -163,6 +204,18 @@ function AwbBilling() {
   const [awbLoading, setAwbLoading] = useState(false);
   const consigneeZipcode = useWatch({ control, name: "consignee-zipcode" });
 
+  // Initialize hold state from fetched data
+  useEffect(() => {
+    if (fetchedAwbData && Object.keys(fetchedAwbData).length > 0) {
+      setIsHold(fetchedAwbData.isHold || false);
+      setHoldReason(fetchedAwbData.holdReason || "");
+      setValue("isHold", fetchedAwbData.isHold || false);
+      setValue("holdReason", fetchedAwbData.holdReason || "");
+      setValue("otherHoldReason", fetchedAwbData.otherHoldReason || "");
+      setHoldEdit(false);
+    }
+  }, [fetchedAwbData, setValue]);
+
   // FETCH ALL SERVICE MASTER DATA
   const [serviceMasterList, setServiceMasterList] = useState([]);
 
@@ -173,7 +226,6 @@ function AwbBilling() {
       try {
         const res = await axios.get(`${server}/service-master`);
         setServiceMasterList(res.data || []);
-        // console.log("Service Master List:", res.data);
       } catch (err) {
         console.error("Error fetching service list:", err);
         setServiceMasterList([]);
@@ -189,7 +241,7 @@ function AwbBilling() {
     const vol = Number(volWt) || 0;
     const disc = Number(volDisc) || 0;
 
-    if (actual > 0 && vol > 0 && disc >= 0) {
+    if (actual > 0 && vol > 0) {
       const diff = vol - actual;
       const discount = (diff * disc) / 100;
       const discountedVol = vol - discount;
@@ -199,6 +251,11 @@ function AwbBilling() {
       } else {
         setValue("chargeableWt", Math.ceil(chargable));
       }
+    } else if (actual > 0) {
+      setValue(
+        "chargeableWt",
+        actual < 1 ? actual.toFixed(2) : Math.ceil(actual),
+      );
     } else {
       setValue("chargeableWt", "0.00");
     }
@@ -242,14 +299,12 @@ function AwbBilling() {
       );
       setServiceValidation(response.data);
 
-      // Show warnings as notifications
       if (response.data.warnings?.length > 0) {
         response.data.warnings.forEach((warning) => {
           showNotification("warning", warning);
         });
       }
 
-      // Set errors on form fields
       if (response.data.errors?.length > 0) {
         response.data.errors.forEach((error) => {
           if (error.includes("PCS") || error.includes("pieces")) {
@@ -273,7 +328,7 @@ function AwbBilling() {
     }
   };
 
-  // Validation rules function
+  // Enhanced validation rules function
   const validateServiceRules = (
     serviceData,
     { pcs, actualWt, volWt, chargeableWt, invoiceValue },
@@ -282,7 +337,6 @@ function AwbBilling() {
 
     const errors = [];
 
-    // Multiple PCS validation (AWB-level)
     if (!serviceData.multiplePcsAllow && pcs > 1) {
       errors.push({
         field: "pcs",
@@ -301,7 +355,6 @@ function AwbBilling() {
       });
     }
 
-    // Max PCS per AWB
     if (serviceData.maxPcsPerAWB && pcs > serviceData.maxPcsPerAWB) {
       errors.push({
         field: "pcs",
@@ -309,7 +362,6 @@ function AwbBilling() {
       });
     }
 
-    // Average weight validation (AWB-level)
     if (serviceData.averageWeightAllow && serviceData.averageLimit > 0) {
       if (actualWt > serviceData.averageLimit) {
         errors.push({
@@ -331,7 +383,6 @@ function AwbBilling() {
       }
     }
 
-    // Max shipment value (AWB-level)
     if (
       serviceData.maxShipmentValue &&
       invoiceValue > serviceData.maxShipmentValue
@@ -342,7 +393,6 @@ function AwbBilling() {
       });
     }
 
-    // Per AWB validation
     const perAWB = serviceData.perAWB || {};
     if (perAWB.minActualWeight && actualWt < perAWB.minActualWeight) {
       errors.push({
@@ -425,7 +475,7 @@ function AwbBilling() {
     }
   };
 
-  // Zone alert handlers
+  // Function to handle zone alert confirmation
   const handleZoneAlertConfirm = () => {
     const currentRemark = watch("operationRemark") || "";
     const newRemark = currentRemark
@@ -448,6 +498,7 @@ function AwbBilling() {
     );
   };
 
+  // Function to handle zone alert cancellation
   const handleZoneAlertCancel = () => {
     setValue("destination", "");
     setSelectedDestinations("");
@@ -464,9 +515,7 @@ function AwbBilling() {
   };
 
   // handle AWB Billing Operations
-  // handle AWB Billing Operations
   const handleAWBBilling = async (data) => {
-    // ✅ NEW: Check if runNo and bagNo exist before billing
     if (!fetchedAwbData?.runNo || !fetchedAwbData?.bag) {
       showNotification(
         "error",
@@ -475,7 +524,6 @@ function AwbBilling() {
       return;
     }
 
-    // Check service validation before submission
     if (selectedService && serviceValidation && !serviceValidation.valid) {
       showNotification(
         "error",
@@ -484,7 +532,6 @@ function AwbBilling() {
       return;
     }
 
-    // Check for warnings and ask for confirmation
     if (serviceValidation.warnings?.length > 0) {
       const shouldProceed = window.confirm(
         `Service has ${serviceValidation.warnings.length} warnings:\n` +
@@ -501,9 +548,7 @@ function AwbBilling() {
     const accountCode = code;
     const updateUser = user?.userId;
     const payload = { accountCode, ...fillterData };
-    // console.log("Billing payload: ", payload, newShipment);
 
-    // small helper to safely fetch customer name
     const getCustomerName = async (accountCode) => {
       try {
         if (!accountCode) return "";
@@ -517,6 +562,48 @@ function AwbBilling() {
       }
     };
 
+    const logHoldAction = async (action, reason, additionalData = {}) => {
+      try {
+        const customer = await getCustomerName(accountCode);
+        const holdLogPayload = {
+          awbNo: payload.awbNo || awbNo,
+          accountCode,
+          customer,
+          action: action,
+          actionUser: user?.userId || "System",
+          departmentName: user?.department || "Billing",
+          holdReason: reason,
+          actionSystemName: "AwbBilling",
+          ...additionalData,
+        };
+
+        const response = await axios.post(
+          `${server}/hold-log/action`,
+          holdLogPayload,
+        );
+        return response.data;
+      } catch (error) {
+        console.error(`Error logging hold action (${action}):`, error);
+        return null;
+      }
+    };
+
+    const logAwbAction = async (action, department = "Billing") => {
+      try {
+        const customer = await getCustomerName(accountCode);
+        await pushAWBLog({
+          awbNo: payload.awbNo || awbNo,
+          accountCode,
+          customer,
+          action: action,
+          actionUser: user?.userId,
+          department: department,
+        });
+      } catch (error) {
+        console.error("Error logging AWB action:", error);
+      }
+    };
+
     if (newShipment == "old" && btnAction == "save" && isEdit == false) {
       try {
         setIsSubmitting(true);
@@ -527,30 +614,15 @@ function AwbBilling() {
         );
 
         if (response?.status === 200) {
-          const customer = await getCustomerName(accountCode);
-          await pushAWBLog({
-            awbNo,
-            accountCode,
-            customer,
-            action: "Billing Updated",
-            actionUser: user?.userId,
-            department: "Billing",
-          });
-        }
-
-        if (response.data?.holdReason != "") {
-          const customer = await getCustomerName(accountCode);
-          const pushHoldLogPayload = {
-            awbNo: response.data?.awbNo || payload?.awbNo,
-            accountCode,
-            customer,
-            action: "Hold",
-            actionUser: user?.userId,
-            departmentName: user?.department || "Billing",
-            holdReason: payload?.holdReason || "Billing Update",
-          };
-          const holdLogResponse = await pushHoldLog(pushHoldLogPayload);
-          // console.log("Hold log response:", holdLogResponse);
+          if (isHold && !fetchedAwbData?.isHold) {
+            await logHoldAction("Hold", payload.holdReason || "Billing Update");
+            await logAwbAction("Shipment put on hold during billing");
+          } else if (!isHold && fetchedAwbData?.isHold) {
+            await logHoldAction("Unhold", "Hold Removed during billing");
+            await logAwbAction("Shipment unhold during billing");
+          } else {
+            await logAwbAction("Billing Updated");
+          }
         }
 
         showNotification("success", "Billing Updated Successfully");
@@ -584,7 +656,7 @@ function AwbBilling() {
     setInvoiceDetailsWindow(false);
   };
 
-  // Shortcut keys
+  // Window shortcuts
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "F8" && !isEdit) {
@@ -619,42 +691,143 @@ function AwbBilling() {
     };
   }, [holdHistoryWindow, invoiceDetailsWindow, volumeWtWindow]);
 
-  // Customer account details fetching
-  useEffect(() => {
-    const code = watch("code");
-    if (!code) return;
+  // Customer account details fetching - with manual entry tracking
+  const debouncedCode = useDebounce(watch("code"), 500);
 
-    const handler = setTimeout(async () => {
+  useEffect(() => {
+    if (!debouncedCode || !server) return;
+
+    const fetchAccount = async () => {
       try {
+        setIsManualAccountEntry(true);
+        setLastEnteredCode(debouncedCode.toUpperCase());
+
         const response = await axios.get(
-          `${server}/customer-account?accountCode=${code}`,
+          `${server}/customer-account?accountCode=${debouncedCode.toUpperCase()}`,
         );
-        setAccount(response.data);
-        // console.log("customer-account", response.data);
 
         if (response.data) {
-          setValue("customer", response.data?.name);
-          setValue("accountBalance", response.data?.leftOverBalance.toFixed(2));
+          setAccount(response.data);
+          setValue("customer", response.data?.name || "");
+          setValue(
+            "accountBalance",
+            response.data?.leftOverBalance?.toFixed(2) || "0.00",
+          );
+          setValue("code", debouncedCode.toUpperCase());
+
+          localStorage.setItem(
+            `customer_${debouncedCode.toUpperCase()}`,
+            JSON.stringify({
+              name: response.data?.name || "",
+              balance: response.data?.leftOverBalance?.toFixed(2) || "0.00",
+              timestamp: Date.now(),
+            }),
+          );
         } else {
-          setValue("customer", null);
-          setValue("accountBalance", null);
+          setAccount(null);
+          setValue("customer", "");
+          setValue("accountBalance", "");
+          setError("code", {
+            type: "manual",
+            message: "Customer account not found",
+          });
         }
       } catch (error) {
         console.error("Failed to fetch account:", error);
-        setValue("customer", null);
-        setValue("accountBalance", null);
+        setAccount(null);
+        setValue("customer", "");
+        setValue("accountBalance", "");
       }
-    }, 500);
-
-    return () => {
-      clearTimeout(handler);
     };
+
+    fetchAccount();
+  }, [debouncedCode, server, setValue, setError]);
+
+  // Reset manual entry flag when code field is cleared
+  useEffect(() => {
+    const currentCode = watch("code");
+    if (!currentCode) {
+      setIsManualAccountEntry(false);
+      setLastEnteredCode("");
+    }
   }, [watch("code")]);
+
+  // getting amount sections data
+  const [airwayBills, setAirwayBills] = useState([]);
+
+  useEffect(() => {
+    const fetchAirwayBills = async () => {
+      try {
+        const response = await axios.get(`${server}/rate-sheet`);
+        setAirwayBills(response.data);
+      } catch (err) {
+        console.error("Error fetching airway bills:", err);
+      }
+    };
+    fetchAirwayBills();
+  }, [server]);
+
+  const debouncedAwbNo = useDebounce(watch("awbNo"), 800);
+
+  useEffect(() => {
+    const enteredAwbNo = debouncedAwbNo?.trim();
+    if (!enteredAwbNo) return;
+
+    const matchedAwb = airwayBills.find(
+      (bill) => bill.awbNo?.toUpperCase() === enteredAwbNo.toUpperCase(),
+    );
+
+    if (matchedAwb) {
+      const keys = [
+        "manualAmount",
+        "cashRecvAmount",
+        "balanceAmount",
+        "handlingAmount",
+        "miscChg",
+        "miscChgReason",
+        "duty",
+        "overWtHandling",
+        "hikeAmt",
+        "fuelPercentage",
+        "fuelAmt",
+        "discount",
+        "sgst",
+        "cgst",
+        "igst",
+        "currency",
+      ];
+
+      keys.forEach((key) => {
+        setValue(key, matchedAwb[key] ?? "");
+      });
+    } else {
+      const keys = [
+        "manualAmount",
+        "cashRecvAmount",
+        "balanceAmount",
+        "handlingAmount",
+        "miscChg",
+        "miscChgReason",
+        "duty",
+        "overWtHandling",
+        "hikeAmt",
+        "fuelPercentage",
+        "fuelAmt",
+        "discount",
+        "sgst",
+        "cgst",
+        "igst",
+        "currency",
+      ];
+      keys.forEach((key) => {
+        setValue(key, "");
+      });
+    }
+  }, [watch("awbNo"), airwayBills, setValue]);
 
   // Find sector
   useEffect(() => {
     const selectedSectorName = watch("sector");
-    // console.log("Watched sector:", selectedSectorName);
 
     if (!sectors || !Array.isArray(sectors)) {
       console.error("Sectors data is missing or not an array");
@@ -668,7 +841,6 @@ function AwbBilling() {
     );
     const selectedSectorCode = selectedSector ? selectedSector.code : null;
 
-    // console.log("Selected sector code:", selectedSectorCode);
     setSelectedSector(selectedSectorCode);
 
     if (!selectedSectorCode) {
@@ -684,7 +856,6 @@ function AwbBilling() {
 
         const zoneData = response.data || [];
         setZones(zoneData);
-        // console.log("Zones fetched:", zoneData);
 
         if (!Array.isArray(zoneData)) {
           console.error("Zones data is missing or not an array");
@@ -697,7 +868,6 @@ function AwbBilling() {
           .filter((zone) => zone.sector === selectedSectorCode)
           .map((zone) => zone.destination);
 
-        // console.log("Filtered Destinations:", filteredDestinations);
         setDestinations(filteredDestinations);
       } catch (error) {
         console.error("Error fetching zones:", error);
@@ -706,7 +876,7 @@ function AwbBilling() {
     };
 
     fetchZoneData();
-  }, [watch("sector")]);
+  }, [watch("sector"), sectors, server]);
 
   useEffect(() => {
     setResetServiceAndDestination((prev) => !prev);
@@ -718,9 +888,6 @@ function AwbBilling() {
 
   // Filtering services based on sector and destination
   useEffect(() => {
-    // console.log("Selected Destination:", selectedDestination);
-    // console.log("Selected Sector:", selectedSector);
-
     if (!zones || !Array.isArray(zones)) {
       console.error("Zones data is missing or not an array");
       return;
@@ -743,7 +910,6 @@ function AwbBilling() {
       }));
 
     setFilteredServices(filteredResults);
-    // console.log("Filtered Results:", filteredResults);
   }, [watch("destination"), selectedSector, selectedDestination, zones]);
 
   // Getting applicable rates
@@ -753,7 +919,6 @@ function AwbBilling() {
         const response = await axios.get(
           `${server}/shipper-tariff?accountCode=${account.accountCode}`,
         );
-        // console.log("ApplicableRates", response.data);
         setApplicableRates(response.data);
       } catch (error) {
         setApplicableRates(null);
@@ -764,9 +929,9 @@ function AwbBilling() {
     if (account) {
       getApplicableRates();
     }
-  }, [account]);
+  }, [account, server]);
 
-  // Filtering final services based on applicable rates AND removing In-Active services
+  // Filtering final services
   useEffect(() => {
     if (filteredServices.length > 0 && applicableRates) {
       const applicableList = Array.isArray(applicableRates)
@@ -791,14 +956,15 @@ function AwbBilling() {
         ),
       );
 
-      const availableServices = Array.from(
-        new Map(
-          commonServices.map((item) => [
-            `${normalizeService(item.service)}-${item.zone}`,
-            item,
-          ]),
-        ).values(),
-      );
+      const uniqueServiceNames = new Map();
+      commonServices.forEach((item) => {
+        const normalizedName = normalizeService(item.service);
+        if (!uniqueServiceNames.has(normalizedName)) {
+          uniqueServiceNames.set(normalizedName, item);
+        }
+      });
+
+      const availableServices = Array.from(uniqueServiceNames.values());
 
       const activeServiceSet = new Set(
         serviceMasterList
@@ -811,9 +977,32 @@ function AwbBilling() {
       );
 
       setFinalServices(onlyActiveServices);
-      // console.log("Active Final Services:", onlyActiveServices);
     }
   }, [filteredServices, applicableRates, serviceMasterList]);
+
+  // Fetching amount details
+  const ratesInputs = useMemo(
+    () => ({
+      selectedService,
+      chargeableWt,
+      pcs,
+      actualWt,
+      selectedSector,
+      selectedDestination,
+      consigneeZipcode,
+    }),
+    [
+      selectedService,
+      chargeableWt,
+      pcs,
+      actualWt,
+      selectedSector,
+      selectedDestination,
+      consigneeZipcode,
+    ],
+  );
+
+  const debouncedRatesInputs = useDebounce(ratesInputs, 800);
 
   // Fetching amount details with Australia/Canada logic
   useEffect(() => {
@@ -836,14 +1025,12 @@ function AwbBilling() {
 
     const fetchAmountDetails = async () => {
       try {
-        // Check if this is a Canada shipment
         const isCanadaSector = selectedSector?.toLowerCase().includes("canada");
         const isCanadaDestination = selectedDestination
           ?.toLowerCase()
           .includes("canada");
         const isCanadaShipment = isCanadaSector && isCanadaDestination;
 
-        // Check if this is an Australia shipment
         const isAustraliaSector = selectedSector
           ?.toLowerCase()
           .includes("australia");
@@ -852,23 +1039,18 @@ function AwbBilling() {
           .includes("australia");
         const isAustraliaShipment = isAustraliaSector && isAustraliaDestination;
 
-        // For Canada shipments, we need proper postal code format
         if (isCanadaShipment) {
           if (!consigneeZipcode || consigneeZipcode.trim().length < 3) {
-            // console.log("Waiting for valid Canadian postal code...");
             return;
           }
         }
 
-        // For Australia shipments, we need proper postcode format
         if (isAustraliaShipment) {
           if (!consigneeZipcode || consigneeZipcode.trim().length < 1) {
-            // console.log("Waiting for valid Australian postcode...");
             return;
           }
         }
 
-        // Build query parameters
         const params = new URLSearchParams({
           service: selectedService,
           rateTariff: rateTariff,
@@ -879,18 +1061,14 @@ function AwbBilling() {
           sector: selectedSector,
         });
 
-        // Add zone parameter
         if (zone) {
           params.append("zone", zone);
         }
 
-        // Add zipcode for Canada or Australia shipments
         if ((isCanadaShipment || isAustraliaShipment) && consigneeZipcode) {
           const cleanedZip = consigneeZipcode.replace(/\s+/g, "").toUpperCase();
           params.append("zipcode", cleanedZip);
         }
-
-        // console.log("Fetching amount details...");
 
         const response = await axios.get(
           `${server}/portal/create-shipment/get-rates?${params.toString()}`,
@@ -898,7 +1076,10 @@ function AwbBilling() {
 
         setAmountDetails(response.data);
 
-        // Show appropriate notification based on shipment type
+        if (isEdit && response.data) {
+          setValue("chargeableWt", chargeableWt);
+        }
+
         if (response.data.isCanadaShipment) {
           showNotification(
             "info",
@@ -911,7 +1092,6 @@ function AwbBilling() {
           );
         }
 
-        // Show zone details if available
         if (response.data.zoneDetails) {
           const { matchType, isRemote, isUnserviceable } =
             response.data.zoneDetails;
@@ -936,12 +1116,9 @@ function AwbBilling() {
         }
       } catch (error) {
         console.log("Error fetching amount details:", error);
-        setAmountDetails(null);
-
         if (error.response?.data?.error) {
           showNotification("error", error.response.data.error);
 
-          // Provide more specific guidance for Australia/Canada
           if (
             error.response.data.details?.sector
               ?.toLowerCase()
@@ -965,55 +1142,38 @@ function AwbBilling() {
       }
     };
 
-    // Use debounce to prevent too many API calls
-    const timeoutId = setTimeout(fetchAmountDetails, 800);
+    fetchAmountDetails();
+  }, [debouncedRatesInputs, applicableRates, finalServices, server, isEdit]);
 
-    return () => clearTimeout(timeoutId);
-  }, [
-    selectedService,
-    applicableRates,
-    finalServices,
-    chargeableWt,
-    pcs,
-    actualWt,
-    selectedSector,
-    selectedDestination,
-    server,
-    consigneeZipcode,
-  ]);
-
-  // Fetch Customer, Branch, and Tax Settings from backend
+  // Fetch Customer, Branch, and Tax Settings
   useEffect(() => {
     const fetchData = async () => {
       try {
+        if (!account || !account.branch) {
+          console.log("No branch data available yet");
+          return;
+        }
+
         const [branchRes, taxRes] = await Promise.all([
           axios.get(
-            `${server}/branch-master/get-branch?code=${account?.branch}`,
+            `${server}/branch-master/get-branch?code=${account.branch}`,
           ),
           axios.get(`${server}/tax-settings`),
         ]);
 
         setBranch(branchRes.data);
         setTaxSettings(taxRes.data);
-        // console.log("Fetched Branch:", branchRes.data);
-        // console.log("Fetched Tax Settings:", taxRes.data);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching branch/tax data:", error);
       }
     };
 
     fetchData();
-  }, [account]);
+  }, [account, server]);
 
-  // Calculate base amount and GST once
+  // Calculate base amount and GST
   useEffect(() => {
     if (amountDetails && account && branch && taxSettings) {
-      // console.log(
-//         "Updating form with amount details:",
-//         amountDetails,
-//         taxSettings,
-//       );
-
       if (
         !amountDetails.rate ||
         Number(amountDetails.rate) <= 0 ||
@@ -1058,16 +1218,6 @@ function AwbBilling() {
       const cgstRate = sameState ? cgstObj?.taxAmount || 0 : 0;
       const igstRate = !sameState ? igstObj?.taxAmount || 0 : 0;
 
-      // console.log("GST Applicability:", gstApplicable);
-      // console.log(
-//         "Tax Rates - SGST:",
-//         sgstRate,
-//         "CGST:",
-//         cgstRate,
-//         "IGST:",
-//         igstRate,
-//       );
-
       const sgstAmt = gstApplicable ? basicAmount * sgstRate : 0;
       const cgstAmt = gstApplicable ? basicAmount * cgstRate : 0;
       const igstAmt = gstApplicable ? basicAmount * igstRate : 0;
@@ -1090,8 +1240,6 @@ function AwbBilling() {
       setValue("igst", igstAmt);
       setValue("baseGrandTotal", baseGrandTotal);
       setValue("grandTotal", baseGrandTotal);
-
-      // console.log("Calculated baseGrandTotal:", baseGrandTotal);
     }
   }, [
     amountDetails,
@@ -1100,32 +1248,53 @@ function AwbBilling() {
     taxSettings,
     chargeableWt,
     selectedPayment,
+    setValue,
   ]);
 
-  // Calculate GRAND TOTAL with adjustments
+  const round = (num) => Math.round((Number(num) + Number.EPSILON) * 100) / 100;
   const isUpdatingRef = useRef(false);
 
+  // SINGLE CONSOLIDATED GRAND TOTAL CALCULATION
+  // This useEffect handles all adjustments and recalculates grand total
   useEffect(() => {
     if (!account || !branch || !taxSettings) return;
 
     const subscription = watch((values) => {
       if (isUpdatingRef.current) return;
 
+      // Get all values
       const baseGrandTotal = Number(values.baseGrandTotal) || 0;
-      if (baseGrandTotal <= 0) return;
-
-      const {
-        manualAmount = 0,
-        handlingAmount = 0,
-        miscChg = 0,
-        overWtHandling = 0,
-        cashRecvAmount = 0,
-        discount = 0,
-        basicAmount = 0,
-      } = values;
+      const basicAmount = Number(values.basicAmount) || 0;
+      const manualAmount = Number(values.manualAmount) || 0;
+      const handlingAmount = Number(values.handlingAmount) || 0;
+      const miscChg = Number(values.miscChg) || 0;
+      const overWtHandling = Number(values.overWtHandling) || 0;
+      const cashRecvAmount = Number(values.cashRecvAmount) || 0;
+      const discount = Number(values.discount) || 0;
 
       const gstApplicable = account.gst === "GST-Additional";
 
+      if (!gstApplicable) {
+        // If GST not applicable, calculate grand total without GST
+        const totalAdditions =
+          manualAmount + handlingAmount + miscChg + overWtHandling;
+        const totalDeductions = cashRecvAmount + discount;
+        const grandTotalValue =
+          baseGrandTotal + totalAdditions - totalDeductions;
+
+        isUpdatingRef.current = true;
+        setValue("sgst", 0);
+        setValue("cgst", 0);
+        setValue("igst", 0);
+        setValue(
+          "grandTotal",
+          round(grandTotalValue > 0 ? grandTotalValue : 0),
+        );
+        isUpdatingRef.current = false;
+        return;
+      }
+
+      // GST Applicable - Calculate GST on base and adjustments
       const sameState =
         account.gstNo?.substring(0, 2) === branch.serviceTax?.substring(0, 2);
 
@@ -1141,53 +1310,55 @@ function AwbBilling() {
         ? taxSettings.find((t) => t.tax === "IGST")?.taxAmount || 0
         : 0;
 
+      // Calculate taxable adjustments (all additions)
       const taxableAdjustment =
-        Number(manualAmount) +
-        Number(handlingAmount) +
-        Number(miscChg) +
-        Number(overWtHandling);
+        manualAmount + handlingAmount + miscChg + overWtHandling;
 
-      const adjSgst = gstApplicable ? taxableAdjustment * sgstRate : 0;
-      const adjCgst = gstApplicable ? taxableAdjustment * cgstRate : 0;
-      const adjIgst = gstApplicable ? taxableAdjustment * igstRate : 0;
+      // Calculate GST on adjustments
+      const adjSgst = taxableAdjustment * sgstRate;
+      const adjCgst = taxableAdjustment * cgstRate;
+      const adjIgst = taxableAdjustment * igstRate;
 
-      const baseSgst = gstApplicable ? basicAmount * sgstRate : 0;
-      const baseCgst = gstApplicable ? basicAmount * cgstRate : 0;
-      const baseIgst = gstApplicable ? basicAmount * igstRate : 0;
+      // Calculate base GST
+      const baseSgst = basicAmount * sgstRate;
+      const baseCgst = basicAmount * cgstRate;
+      const baseIgst = basicAmount * igstRate;
 
+      // Final GST amounts
       const finalSgst = round(baseSgst + adjSgst);
       const finalCgst = round(baseCgst + adjCgst);
       const finalIgst = round(baseIgst + adjIgst);
 
-      const updatedGrandTotal = round(
+      // Calculate total additions (manual, handling, misc, overWt)
+      const totalAdditions =
+        manualAmount + handlingAmount + miscChg + overWtHandling;
+
+      // Calculate total deductions (cash received and discount)
+      const totalDeductions = cashRecvAmount + discount;
+
+      // Grand Total = Base Grand Total + All Additions + GST - All Deductions
+      const grandTotalValue =
         baseGrandTotal +
-          taxableAdjustment +
-          adjSgst +
-          adjCgst +
-          adjIgst -
-          Number(cashRecvAmount) -
-          Number(discount),
-      );
+        totalAdditions +
+        finalSgst +
+        finalCgst +
+        finalIgst -
+        totalDeductions;
 
       isUpdatingRef.current = true;
-
       setValue("sgst", finalSgst);
       setValue("cgst", finalCgst);
       setValue("igst", finalIgst);
-      setValue("grandTotal", updatedGrandTotal);
-
+      setValue("grandTotal", round(grandTotalValue > 0 ? grandTotalValue : 0));
       isUpdatingRef.current = false;
     });
 
     return () => subscription.unsubscribe();
   }, [watch, setValue, account, branch, taxSettings]);
 
-  const round = (num) => Math.round((Number(num) + Number.EPSILON) * 100) / 100;
-
   // Extracting zone from filtered services
   useEffect(() => {
     const selectedServiceLocal = watch("service");
-    // console.log("Selected Service:", selectedServiceLocal);
     setSelectedService(selectedServiceLocal);
 
     if (!filteredServices || !Array.isArray(filteredServices)) {
@@ -1198,59 +1369,134 @@ function AwbBilling() {
     const matchedZone = filteredServices.find(
       (item) => item.service === selectedServiceLocal,
     );
-
-    const zoneNumber = matchedZone ? matchedZone.zone : null;
-    // console.log("Extracted Zone:", zoneNumber);
   }, [watch("service"), filteredServices]);
 
   // Handle date formatting
   useEffect(() => {
-    const formatDate = (date) => {
-      const formattedDate =
-        date.getDate().toString().padStart(2, "0") +
-        "/" +
-        (date.getMonth() + 1).toString().padStart(2, "0") +
-        "/" +
-        date.getFullYear().toString();
-
-      return formattedDate;
-    };
-
     if (fetchedAwbData?.createdAt) {
-      const dateObj = new Date(fetchedAwbData.createdAt);
-      setDate(formatDate(dateObj));
+      setDate(formatDate(fetchedAwbData.createdAt));
     } else {
-      const today = new Date();
-      setDate(formatDate(today));
+      setDate(formatDate(new Date()));
     }
   }, [fetchedAwbData]);
 
-  // Handle refresh btn
-  const [awbreset, setAwbreset] = useState(false);
+  // Enhanced handle refresh function
   const handleRefresh = () => {
-    setAwbreset(!awbreset);
-    setValue("accountBalance", "");
-    setValue("customer", "");
-    setValue("volWt", "");
-    setValue("invoiceValue", "");
-    setValue("network", "");
-    setIsHold(false);
+    reset({
+      awbNo: "",
+      code: "",
+      customer: "",
+      accountBalance: "",
+      origin: "",
+      sector: "",
+      destination: "",
+      service: "",
+      consignor: "",
+      "consignor-addressLine1": "",
+      "consignor-addressLine2": "",
+      "consignor-pincode": "",
+      "consignor-city": "",
+      "consignor-state": "",
+      "consignor-telephone": "",
+      "consignor-idType": "",
+      "consignor-idNumber": "",
+      consignee: "",
+      "consignee-addressLine1": "",
+      "consignee-addressLine2": "",
+      "consignee-zipcode": "",
+      "consignee-city": "",
+      "consignee-state": "",
+      "consignee-telephone": "",
+      "consignee-emailID": "",
+      goodstype: "",
+      pcs: "",
+      actualWt: "",
+      chargeableWt: "",
+      volWt: "",
+      volDisc: "",
+      payment: "Credit",
+      currency: "INR",
+      invoiceValue: "",
+      content: "",
+      operationRemark: "",
+      holdReason: "",
+      otherHoldReason: "",
+      isHold: false,
+      basicAmount: "",
+      manualAmount: "",
+      cashRecvAmount: "",
+      balanceAmount: "",
+      handlingAmount: "",
+      miscChg: "",
+      miscChgReason: "",
+      duty: "",
+      overWtHandling: "",
+      hikeAmt: "",
+      fuelPercentage: "",
+      fuelAmt: "",
+      discount: "",
+      sgst: "",
+      cgst: "",
+      igst: "",
+      grandTotal: "",
+      referenceNo: "",
+      mawbNo: "",
+      runNo: "",
+      bag: "",
+      runDate: "",
+      clubNo: "",
+      alMawb: "",
+      flight: "",
+      obc: "",
+    });
+
+    setFetchedAwbData({});
+    setAccount(null);
+    setAmountDetails(null);
     setIsEdit(false);
+    setIsHold(false);
+    setNewShipment(null);
+    setBtnAction(null);
+    setSelectedSector("");
+    setSelectedDestinations("");
+    setSelectedService("");
+    setFilteredServices([]);
+    setFinalServices([]);
+    setVolumeContent({});
+    setInvoiceContent([]);
+    setTotalKg(0.0);
+    setInvoiceTotalValue(0.0);
+    setInvContent([]);
+    setHoldReason("");
+    setHoldEdit(false);
+    setFocUnlocked(false);
+    setPrevPayment("Credit");
     setIsRemoteOrUnserviceable(false);
     setPendingZoneUpdate(false);
-    setZoneAlertData({
-      isOpen: false,
-      message: "",
-      zoneType: "",
-      destination: "",
-      zone: "",
-    });
     setServiceValidation({
       valid: true,
       errors: [],
       warnings: [],
       serviceDetails: null,
     });
+    setIsManualAccountEntry(false);
+    setLastEnteredCode("");
+
+    setHoldHistoryWindow(false);
+    setVolumeWtWindow(false);
+    setInvoiceDetailsWindow(false);
+
+    const today = new Date();
+    const formattedDate =
+      today.getDate().toString().padStart(2, "0") +
+      "/" +
+      (today.getMonth() + 1).toString().padStart(2, "0") +
+      "/" +
+      today.getFullYear().toString();
+    setDate(formattedDate);
+
+    setRefreshKey((prev) => prev + 1);
+    showNotification("success", "Page refreshed successfully");
   };
 
   // Fetching data in shipments
@@ -1280,7 +1526,10 @@ function AwbBilling() {
           clearErrors("awbNo");
           setFetchedAwbData(response.data.shipments[0]);
           setIsEdit(true);
-          setNewShipment("old");
+
+          if (user?.role?.toLowerCase() === "admin") {
+            setNewShipment("old");
+          }
         }
       } catch (error) {
         if (axios.isCancel(error)) return;
@@ -1299,24 +1548,69 @@ function AwbBilling() {
       clearTimeout(debounceTimer);
       controller.abort();
     };
-  }, [awbNo]);
+  }, [awbNo, server, user, clearErrors, setValue]);
 
-  // Populate form when fetchedAwbData changes
+  // Add effect to preserve customer data when loading AWB
   useEffect(() => {
     if (fetchedAwbData && Object.keys(fetchedAwbData).length > 0) {
-      // Basic shipment details
+      if (
+        !isManualAccountEntry ||
+        lastEnteredCode !== fetchedAwbData.accountCode
+      ) {
+        setValue("customer", fetchedAwbData.name || "");
+        setValue(
+          "accountBalance",
+          fetchedAwbData.accountBalance || fetchedAwbData.leftOverBalance || 0,
+        );
+      }
+    }
+  }, [fetchedAwbData, setValue, isManualAccountEntry, lastEnteredCode]);
+
+  // Add handler for content changes
+  const handleSetInvoiceContent = useCallback((data) => {
+    setInvoiceContent(data);
+  }, []);
+
+  // Sync invoiceContent with form state
+  useEffect(() => {
+    setValue("invoiceContent", invoiceContent);
+  }, [invoiceContent, setValue]);
+
+  // Add handler for volume content changes
+  const handleSetVolumeContent = useCallback((data) => {
+    const cleanedData = data.map(({ volumeWeightTable, ...rest }) => rest);
+    setVolumeContent(cleanedData);
+  }, []);
+
+  // Sync volumeContent with form state
+  useEffect(() => {
+    setValue("volumeContent", volumeContent);
+  }, [volumeContent, setValue]);
+
+  // Populate form when fetchedAwbData changes - with rate preservation
+  useEffect(() => {
+    if (fetchedAwbData && Object.keys(fetchedAwbData).length > 0) {
+      const currentAmountDetails = amountDetails;
+
       setValue("referenceNo", fetchedAwbData.reference || "");
       setValue("origin", fetchedAwbData.origin || "");
       setValue("sector", fetchedAwbData.sector || "");
       setValue("destination", fetchedAwbData.destination || "");
       setValue("service", fetchedAwbData.service || "");
 
-      // Customer details
       setValue("code", fetchedAwbData.accountCode || "");
-      setValue("customer", fetchedAwbData.name || "");
-      setValue("accountBalance", fetchedAwbData.accountBalance || "");
 
-      // Consignor details
+      if (
+        !isManualAccountEntry ||
+        lastEnteredCode !== fetchedAwbData.accountCode
+      ) {
+        setValue("customer", fetchedAwbData.name || "");
+        setValue(
+          "accountBalance",
+          fetchedAwbData.accountBalance || fetchedAwbData.leftOverBalance || 0,
+        );
+      }
+
       setValue("consignor", fetchedAwbData.shipperFullName || "");
       setValue(
         "consignor-addressLine1",
@@ -1333,7 +1627,6 @@ function AwbBilling() {
       setValue("consignor-idType", fetchedAwbData.shipperKycType || "");
       setValue("consignor-idNumber", fetchedAwbData.shipperKycNumber || "");
 
-      // Consignee details
       setValue("consignee", fetchedAwbData.receiverFullName || "");
       setValue(
         "consignee-addressLine1",
@@ -1349,40 +1642,70 @@ function AwbBilling() {
       setValue("consignee-telephone", fetchedAwbData.receiverPhoneNumber || "");
       setValue("consignee-emailID", fetchedAwbData.receiverEmail || "");
 
-      // Weight details
       setValue("goodstype", fetchedAwbData.goodstype || "");
       setValue("pcs", fetchedAwbData.boxes?.length || 0);
       setValue("actualWt", fetchedAwbData.totalActualWt || 0);
       setValue("chargeableWt", fetchedAwbData.chargeableWt || 0);
       setValue("volWt", fetchedAwbData.totalVolWt || 0);
-      setValue("volDisc", fetchedAwbData.volDiscount || 0);
-      setValue("payment", fetchedAwbData.payment || "Credit");
 
-      // Invoice details
+      if (
+        fetchedAwbData.volDiscount !== undefined &&
+        fetchedAwbData.volDiscount !== null
+      ) {
+        setValue("volDisc", fetchedAwbData.volDiscount);
+      } else if (
+        fetchedAwbData.volDisc !== undefined &&
+        fetchedAwbData.volDisc !== null
+      ) {
+        setValue("volDisc", fetchedAwbData.volDisc);
+      }
+
+      setValue("payment", fetchedAwbData.payment || "Credit");
       setValue("currencys", fetchedAwbData.currencys || "INR");
       setValue("currency", fetchedAwbData.currency || "INR");
-
       setValue("invoiceValue", fetchedAwbData.totalInvoiceValue || 0);
 
-      // Run details
       setValue("mawbNo", fetchedAwbData.awbNo || "");
       setValue("bag", fetchedAwbData.bag || "");
       setValue("billNo", fetchedAwbData.billNo || "");
       setValue("manifestNo", fetchedAwbData.manifestNo || "");
-
       setValue("runNo", fetchedAwbData.runNo || "");
       setValue("flight", fetchedAwbData.flight || "");
       setValue("obc", fetchedAwbData.obc || "");
       setValue("alMawb", fetchedAwbData.alMawb || "");
-      setValue("runDate", fetchedAwbData.runDate || "");
+      setValue(
+        "runDate",
+        fetchedAwbData.runDate ? formatDate(fetchedAwbData.runDate) : "",
+      );
 
-      // Amount details
-      setValue("basicAmount", fetchedAwbData.basicAmt || 0);
-      setValue("discount", fetchedAwbData.volDiscount || 0);
-      setValue("sgst", fetchedAwbData.sgst || 0);
-      setValue("cgst", fetchedAwbData.cgst || 0);
-      setValue("igst", fetchedAwbData.igst || 0);
-      setValue("grandTotal", fetchedAwbData.totalAmt || 0);
+      if (
+        currentAmountDetails &&
+        Object.keys(currentAmountDetails).length > 0
+      ) {
+        setValue(
+          "basicAmount",
+          currentAmountDetails.basicAmount || fetchedAwbData.basicAmt || 0,
+        );
+        setValue(
+          "discount",
+          currentAmountDetails.discount || fetchedAwbData.volDiscount || 0,
+        );
+        setValue("sgst", currentAmountDetails.sgst || fetchedAwbData.sgst || 0);
+        setValue("cgst", currentAmountDetails.cgst || fetchedAwbData.cgst || 0);
+        setValue("igst", currentAmountDetails.igst || fetchedAwbData.igst || 0);
+        setValue(
+          "grandTotal",
+          currentAmountDetails.grandTotal || fetchedAwbData.totalAmt || 0,
+        );
+      } else {
+        setValue("basicAmount", fetchedAwbData.basicAmt || 0);
+        setValue("discount", fetchedAwbData.volDiscount || 0);
+        setValue("sgst", fetchedAwbData.sgst || 0);
+        setValue("cgst", fetchedAwbData.cgst || 0);
+        setValue("igst", fetchedAwbData.igst || 0);
+        setValue("grandTotal", fetchedAwbData.totalAmt || 0);
+      }
+
       setValue(
         "currency",
         fetchedAwbData.currency || fetchedAwbData.currencys || "INR",
@@ -1399,10 +1722,8 @@ function AwbBilling() {
       setValue("cashRecvAmount", fetchedAwbData.cashRecvAmount || 0);
       setValue("balanceAmount", fetchedAwbData?.balanceAmt || 0);
 
-      //invoice content
       setValue("content", fetchedAwbData.content || []);
 
-      //hold details
       setIsHold(fetchedAwbData.isHold || false);
       setValue("holdReason", fetchedAwbData.holdReason || " ");
       setValue("otherHoldReason", fetchedAwbData.otherHoldReason || "");
@@ -1415,33 +1736,71 @@ function AwbBilling() {
         setVolumeContent(fetchedAwbData.boxes);
       }
     } else {
-      setValue("customer", "");
-      setValue("accountBalance", "");
+      if (!isManualAccountEntry) {
+        setValue("customer", "");
+        setValue("accountBalance", "");
+      }
+      setValue("volDisc", "");
       setIsHold(false);
       setInvContent([]);
-      // console.log("No AWB data found");
     }
-  }, [fetchedAwbData, setValue]);
+  }, [
+    fetchedAwbData,
+    setValue,
+    amountDetails,
+    isManualAccountEntry,
+    lastEnteredCode,
+  ]);
 
-  // Hold logic - REMOVED credit limit check
+  // Enhanced hold logic - credit limit check only for billing
   useEffect(() => {
-    // If no grand total, no hold needed
-    if (!grandTotal || Number(grandTotal) === 0) {
-      setHoldEdit(false);
-      setIsHold(false);
-      setHoldReason("");
-      setValue("isHold", false);
+    if (newShipment === "old" && !isEdit) return;
+
+    if (!account || !grandTotal || Number(grandTotal) === 0) {
+      if (holdEdit) {
+        setHoldEdit(false);
+      }
       return;
     }
 
-    // NO CREDIT LIMIT CHECK - Shipment never goes on hold for credit limit
-    setHoldEdit(false);
-    setIsHold(false);
-    setValue("isHold", false);
-    setHoldReason(" ");
-    // console.log("Credit limit check disabled - No hold for credit limit");
-  }, [grandTotal, setValue]);
-  // For alerts
+    const leftOverBalance = account.leftOverBalance || 0;
+    const creditLimit = account.creditLimit || 0;
+
+    const walletFunds = leftOverBalance < 0 ? Math.abs(leftOverBalance) : 0;
+    const totalAvailable = walletFunds + creditLimit;
+    const effectiveDebt = leftOverBalance > 0 ? leftOverBalance : 0;
+    const netAvailable = totalAvailable - effectiveDebt;
+    const creditExceeded = Number(grandTotal) > netAvailable;
+
+    if (creditExceeded) {
+      setHoldReason("Credit Limit Exceeded");
+      setIsHold(true);
+      setHoldEdit(true);
+      setValue("isHold", true);
+      setValue("holdReason", "Credit Limit Exceeded");
+
+      if (account?.accountCode && awbNo) {
+        pushHoldLog({
+          awbNo: awbNo,
+          accountCode: account.accountCode,
+          customer: account.name || "",
+          action: "Auto Hold",
+          actionUser: "System",
+          departmentName: "Billing",
+          holdReason: "Credit Limit Exceeded",
+          actionSystemName: "CreditCheck",
+        }).catch((err) => console.error("Failed to log auto-hold:", err));
+      }
+
+      showNotification("error", "Credit Limit Exceeded");
+    } else {
+      if (holdEdit) {
+        setHoldEdit(false);
+      }
+    }
+  }, [grandTotal, account, newShipment, awbNo, isEdit, holdEdit]);
+
+  // for alerts
   useEffect(() => {
     const checkForAlerts = async () => {
       if (awbNo && awbNo.trim().length >= 4) {
@@ -1478,8 +1837,6 @@ function AwbBilling() {
           params: { serviceName: selectedService },
         });
 
-        // console.log("ServiceMaster data:", res.data);
-
         if (!res.data || !res.data._id) {
           setServiceData(null);
           return;
@@ -1488,7 +1845,6 @@ function AwbBilling() {
         const s = res.data;
         setServiceData(s);
 
-        // Validate against service master
         const validationResult = validateServiceRules(s, {
           pcs: Number(pcs) || 0,
           actualWt: Number(actualWt) || 0,
@@ -1506,7 +1862,6 @@ function AwbBilling() {
           });
         }
 
-        // Also run server-side validation
         await validateServiceAgainstMaster(selectedService, {
           pcs: Number(pcs) || 0,
           actualWt: Number(actualWt) || 0,
@@ -1521,7 +1876,63 @@ function AwbBilling() {
     };
 
     fetchServiceMaster();
-  }, [selectedService, server, awbNo]);
+  }, [
+    selectedService,
+    server,
+    pcs,
+    actualWt,
+    volWt,
+    chargeableWt,
+    invoiceValue,
+    setError,
+  ]);
+
+  // Fetch volume discount from service master
+  useEffect(() => {
+    const fetchServiceVolumeDiscount = async () => {
+      if (!selectedService || !server) {
+        if (!isEdit) {
+          setValue("volDisc", "0");
+        }
+        return;
+      }
+
+      if (isEdit && fetchedAwbData && Object.keys(fetchedAwbData).length > 0) {
+        return;
+      }
+
+      try {
+        const res = await axios.get(`${server}/service-master/getService`, {
+          params: { serviceName: selectedService },
+        });
+
+        if (res.data && res.data.found !== false && res.data._id) {
+          const serviceData = res.data;
+
+          if (
+            serviceData.volDiscountPercent !== undefined &&
+            serviceData.volDiscountPercent !== null
+          ) {
+            setValue("volDisc", serviceData.volDiscountPercent.toString());
+
+            const currentActual = watch("actualWt");
+            const currentVol = watch("volWt");
+            if (currentActual || currentVol) {
+              setValue("actualWt", currentActual);
+              setValue("volWt", currentVol);
+            }
+          } else {
+            setValue("volDisc", "0");
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching service volume discount:", error);
+        setValue("volDisc", "0");
+      }
+    };
+
+    fetchServiceVolumeDiscount();
+  }, [selectedService, server, isEdit, fetchedAwbData, setValue, watch]);
 
   // Enhanced validation effect
   useEffect(() => {
@@ -1538,10 +1949,8 @@ function AwbBilling() {
 
     if (!p && !a && !v && !c && !inv) return;
 
-    // Clear previous errors first
     clearErrors(["pcs", "actualWt", "volWt", "chargeableWt", "invoiceValue"]);
 
-    // Local validation - ONLY perAWB rules
     const localValidation = validateServiceRules(serviceData, {
       pcs: p,
       actualWt: a,
@@ -1550,7 +1959,6 @@ function AwbBilling() {
       invoiceValue: inv,
     });
 
-    // Set errors if any (these are perAWB errors)
     if (!localValidation.ok) {
       localValidation.errors.forEach((err) => {
         setError(err.field, {
@@ -1567,6 +1975,8 @@ function AwbBilling() {
     invoiceValue,
     selectedService,
     serviceData,
+    clearErrors,
+    setError,
   ]);
 
   useEffect(() => {
@@ -1577,7 +1987,7 @@ function AwbBilling() {
     if (selectedPayment === "FOC" && !focUnlocked) {
       setShowFOCPasswordModal(true);
     }
-  }, [selectedPayment, focUnlocked]);
+  }, [selectedPayment, focUnlocked, selectedService]);
 
   const handleFOCPasswordSuccess = () => {
     setFocUnlocked(true);
@@ -1614,12 +2024,9 @@ function AwbBilling() {
     } else {
       setValue("network", "");
     }
-
-    // console.log("Selected service:", selectedService);
-    // console.log("Matched rate:", matchedRate);
   }, [selectedService, applicableRates, setValue]);
 
-  // Zone status checking effect - when destination or service changes
+  // Zone status checking effect
   useEffect(() => {
     const checkAndAlertZoneStatus = async () => {
       const destinationValue = watch("destination");
@@ -1631,7 +2038,6 @@ function AwbBilling() {
         return;
       }
 
-      // Skip if we already have a pending update
       if (pendingZoneUpdate) {
         return;
       }
@@ -1642,17 +2048,14 @@ function AwbBilling() {
         const { zoneNumber, isRemote, isUnserviceable } = zoneStatus;
 
         if (isRemote || isUnserviceable) {
-          // Check if this zone has already been confirmed
           const currentRemark = watch("operationRemark") || "";
           const alreadyConfirmed = currentRemark.includes(
             isRemote ? "Remote area confirmed" : "Unserviceable area confirmed",
           );
 
           if (!alreadyConfirmed) {
-            // Set pending update flag
             setPendingZoneUpdate(true);
 
-            // Show alert modal
             setZoneAlertData({
               isOpen: true,
               message: `The selected destination "${destinationValue}" is in a ${
@@ -1677,34 +2080,16 @@ function AwbBilling() {
       }
     };
 
-    // Add a small delay to avoid checking on every keystroke
     const timeoutId = setTimeout(checkAndAlertZoneStatus, 500);
-
     return () => clearTimeout(timeoutId);
-  }, [watch("destination"), watch("service"), isEdit, pendingZoneUpdate]);
-
-  // Content handlers
-  const handleSetInvoiceContent = useCallback((data) => {
-    setInvoiceContent(data);
-    // console.log(invoiceContent);
-  }, []);
-
-  const handleSetVolumeContent = useCallback((data) => {
-    const cleanedData = data.map(({ volumeWeightTable, ...rest }) => rest);
-    setVolumeContent(cleanedData);
-    // console.log("Clean Volume Content Updated:", cleanedData);
-  }, []);
-
-  // Sync content with form state
-  useEffect(() => {
-    setValue("invoiceContent", invoiceContent);
-    // console.log("Invoice Content Updated:", invoiceContent);
-  }, [invoiceContent]);
-
-  useEffect(() => {
-    setValue("volumeContent", volumeContent);
-    // console.log("Volume Content Updated:", volumeContent);
-  }, [volumeContent]);
+  }, [
+    watch("destination"),
+    watch("service"),
+    isEdit,
+    pendingZoneUpdate,
+    checkZoneStatus,
+    watch,
+  ]);
 
   // Code list columns
   const columns = useMemo(() => {
@@ -1718,7 +2103,7 @@ function AwbBilling() {
   }, []);
 
   return (
-    <div>
+    <div key={refreshKey}>
       <NotificationFlag
         type={notification.type}
         message={notification.message}
@@ -1935,7 +2320,7 @@ function AwbBilling() {
                       placeholder={""}
                       inputValue={awbNo}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       value={`awbNo`}
                       error={errors.awbNo}
                       trigger={trigger}
@@ -1944,7 +2329,6 @@ function AwbBilling() {
                       }}
                     />
 
-                    {/* Loader - positioned inside the input field */}
                     {awbLoading && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
                         <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
@@ -1962,14 +2346,14 @@ function AwbBilling() {
                       inputValue={date}
                       register={register}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       value={`date`}
                     />
                     <LabeledDropdown
                       options={["Mumbai", "Delhi", "Ahemadabad"]}
                       register={register}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       defaultValue={fetchedAwbData?.origin || ""}
                       title={`Origin`}
                       value={`origin`}
@@ -1982,7 +2366,7 @@ function AwbBilling() {
                       options={sectors.map((sector) => sector.name)}
                       register={register}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       defaultValue={fetchedAwbData?.sector || null}
                       title={`Sector`}
                       value={`sector`}
@@ -1995,7 +2379,7 @@ function AwbBilling() {
                       options={destinations}
                       register={register}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       defaultValue={fetchedAwbData?.destination || null}
                       title={`Destination`}
                       value={`destination`}
@@ -2044,7 +2428,7 @@ function AwbBilling() {
                     placeholder="Code"
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     trigger={trigger}
                     value="code"
                     error={errors.code}
@@ -2058,8 +2442,8 @@ function AwbBilling() {
                     register={register}
                     label={`Customer`}
                     setValue={setValue}
-                    resetFactor={awbreset}
-                    inputValue={fetchedAwbData?.name || ""}
+                    resetFactor={refreshKey}
+                    inputValue={watch("customer")}
                     value={`customer`}
                     error={errors.customer}
                     trigger={trigger}
@@ -2071,15 +2455,15 @@ function AwbBilling() {
                       placeholder={`0.00`}
                       label={`Account Balance`}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       value={`accountBalance`}
-                      inputValue={fetchedAwbData?.accountBalance || ""}
+                      inputValue={watch("accountBalance")}
                     />
                     <DummyInputBoxWithLabelDarkGray
                       register={register}
                       label={`Company`}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       value={`company`}
                     />
                   </div>
@@ -2095,7 +2479,7 @@ function AwbBilling() {
                   placeholder="Consignor"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value="consignor"
                   error={errors.consignor}
                   disabled={isEdit}
@@ -2108,7 +2492,7 @@ function AwbBilling() {
                   placeholder="Address Line 1"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value="consignor-addressLine1"
                   error={errors["consignor-addressLine1"]}
                   disabled={isEdit}
@@ -2120,7 +2504,7 @@ function AwbBilling() {
                   placeholder="Address Line 2"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value="consignor-addressLine2"
                   trigger={trigger}
                   disabled={isEdit}
@@ -2131,7 +2515,7 @@ function AwbBilling() {
                     placeholder="Pincode"
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value="consignor-pincode"
                     error={errors["consignor-pincode"]}
                     trigger={trigger}
@@ -2149,7 +2533,7 @@ function AwbBilling() {
                     placeholder="City"
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value="consignor-city"
                     error={errors["consignor-city"]}
                     trigger={trigger}
@@ -2161,7 +2545,7 @@ function AwbBilling() {
                     placeholder="State"
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value="consignor-state"
                     trigger={trigger}
                     disabled={isEdit}
@@ -2174,7 +2558,7 @@ function AwbBilling() {
                   placeholder="Telephone"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value="consignor-telephone"
                   error={errors["consignor-telephone"]}
                   disabled={isEdit}
@@ -2198,7 +2582,7 @@ function AwbBilling() {
                     ]}
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     title={`ID Type`}
                     value={`consignor-idType`}
                     error={errors["consignor-idType"]}
@@ -2211,7 +2595,7 @@ function AwbBilling() {
                     placeholder="ID Number"
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value="consignor-idNumber"
                     error={errors["consignor-idNumber"]}
                     disabled={isEdit}
@@ -2227,7 +2611,7 @@ function AwbBilling() {
                   placeholder="Consignee"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value="consignee"
                   error={errors.consignee}
                   disabled={isEdit}
@@ -2240,7 +2624,7 @@ function AwbBilling() {
                   placeholder="Address Line 1"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value="consignee-addressLine1"
                   error={errors["consignee-addressLine1"]}
                   disabled={isEdit}
@@ -2252,7 +2636,7 @@ function AwbBilling() {
                   placeholder="Address Line 2"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value="consignee-addressLine2"
                   disabled={isEdit}
                   trigger={trigger}
@@ -2263,7 +2647,7 @@ function AwbBilling() {
                     placeholder="Zipcode"
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value="consignee-zipcode"
                     error={errors["consignee-zipcode"]}
                     disabled={isEdit}
@@ -2302,7 +2686,7 @@ function AwbBilling() {
                     placeholder="City"
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value="consignee-city"
                     error={errors["consignee-city"]}
                     disabled={isEdit}
@@ -2314,7 +2698,7 @@ function AwbBilling() {
                     placeholder="State"
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value="consignee-state"
                     error={errors["consignee-state"]}
                     disabled={isEdit}
@@ -2327,7 +2711,7 @@ function AwbBilling() {
                   placeholder="Telephone"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value="consignee-telephone"
                   error={errors["consignee-telephone"]}
                   disabled={isEdit}
@@ -2342,13 +2726,10 @@ function AwbBilling() {
                     placeholder="Email ID"
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value="consignee-emailID"
                     error={errors["consignee-emailID"]}
                     disabled={isEdit}
-                    validation={{
-                      required: "Email is required",
-                    }}
                     trigger={trigger}
                     initialValue={fetchedAwbData?.receiverEmail || ""}
                   />
@@ -2367,7 +2748,7 @@ function AwbBilling() {
                         placeholder="Network"
                         register={register}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value={`network`}
                       />
                     </div>
@@ -2376,7 +2757,7 @@ function AwbBilling() {
                       register={register}
                       placeholder={`DEL`}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       value={`networkName`}
                     />
                   </div>
@@ -2384,7 +2765,7 @@ function AwbBilling() {
                     options={finalServices.map((service) => service.service)}
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     title={`Service ${
                       serviceValidation?.serviceDetails?.softwareStatus ===
                       "In-Active"
@@ -2408,7 +2789,7 @@ function AwbBilling() {
                         placeholder={`0.00 Kg`}
                         label={`Vol. Wt.`}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value={`volWt`}
                         inputValue={totalKg || fetchedAwbData?.totalVolWt}
                         error={errors.volWt}
@@ -2438,7 +2819,7 @@ function AwbBilling() {
                       placeholder={`0.00 %`}
                       label={`Vol Disc (%)`}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       value={`volDisc`}
                       inputValue={fetchedAwbData?.volDiscount || 0.0}
                     />
@@ -2449,15 +2830,16 @@ function AwbBilling() {
                     register={register}
                     label={`Forwarding No.`}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value={`fwdNumber`}
+                    inputValue={fetchedAwbData?.forwardingNo || 0.0}
                   />
                   <div className="flex gap-2">
                     <LabeledDropdown
                       options={["Dox", "NDox"]}
                       register={register}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       title={`Goods Type`}
                       value={`goodstype`}
                       defaultValue={fetchedAwbData?.goodstype || ""}
@@ -2469,7 +2851,7 @@ function AwbBilling() {
                       setValue={setValue}
                       disabled={isEdit}
                       initialValue={fetchedAwbData?.boxes?.length || ""}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       value="pcs"
                       error={errors.pcs}
                       trigger={trigger}
@@ -2479,7 +2861,7 @@ function AwbBilling() {
                       placeholder="Actual Wt. (Kg)"
                       register={register}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       disabled={isEdit}
                       value="actualWt"
                       initialValue={fetchedAwbData?.totalActualWt || 0.0}
@@ -2494,7 +2876,7 @@ function AwbBilling() {
                         label="Chargable Wt."
                         register={register}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value="chargeableWt"
                         watch={watch}
                         error={errors.chargeableWt}
@@ -2508,7 +2890,7 @@ function AwbBilling() {
                       options={["AIR CARGO", "COD", "Credit", "FOC", "RTO"]}
                       register={register}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       title={`Payment`}
                       value={`payment`}
                       selectedValue={selectedPayment}
@@ -2530,7 +2912,7 @@ function AwbBilling() {
                       options={["AUD", "CAD", "EU", "EUR", "GBP", "INR", "USD"]}
                       register={register}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       title={`Currency`}
                       value={`currency`}
                       defaultValue={
@@ -2545,7 +2927,7 @@ function AwbBilling() {
                       label={`Inv Value`}
                       placeholder={`0`}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       value={`invoiceValue`}
                       inputValue={
                         invTotalValue || fetchedAwbData?.totalInvoiceValue
@@ -2560,7 +2942,7 @@ function AwbBilling() {
                       label={`Content`}
                       register={register}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       value={`content`}
                       inputValue={invContent || fetchedAwbData.content}
                     />
@@ -2569,7 +2951,7 @@ function AwbBilling() {
                         register={register}
                         placeholder={`Invoice`}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value={`invoice`}
                       />
                       <button
@@ -2595,7 +2977,7 @@ function AwbBilling() {
                   placeholder="Operation Remark"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   disabled={isEdit}
                   value="operationRemark"
                   initialValue={fetchedAwbData?.operationRemark || ""}
@@ -2608,7 +2990,7 @@ function AwbBilling() {
                     id={"isHold"}
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     flip={true}
                     disabled={isEdit || holdEdit}
                   />
@@ -2662,20 +3044,21 @@ function AwbBilling() {
                     ]}
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     title={`Hold Reason`}
                     value={`holdReason`}
-                    defaultValue={
-                      holdReason || fetchedAwbData.holdReason || " "
-                    }
+                    defaultValue={holdReason || fetchedAwbData.holdReason || ""}
                     disabled={isEdit || holdEdit}
                   />
                   <InputBox
                     placeholder="Other Reason"
                     register={register}
                     setValue={setValue}
-                    resetFactor={awbreset}
-                    disabled={isEdit || holdEdit}
+                    resetFactor={refreshKey}
+                    disabled={
+                      isEdit ||
+                      (holdEdit && holdReasonValue === "Credit Limit Exceeded")
+                    }
                     value="otherHoldReason"
                     initialValue={fetchedAwbData?.otherHoldReason || ""}
                   />
@@ -2692,7 +3075,7 @@ function AwbBilling() {
                 id={"automation"}
                 register={register}
                 setValue={setValue}
-                resetFactor={awbreset}
+                resetFactor={refreshKey}
               />
 
               <RedCheckboxRedLabel
@@ -2702,7 +3085,7 @@ function AwbBilling() {
                 id={"handling"}
                 register={register}
                 setValue={setValue}
-                resetFactor={awbreset}
+                resetFactor={refreshKey}
               />
               <RedCheckboxRedLabel
                 label={"CSB"}
@@ -2711,7 +3094,7 @@ function AwbBilling() {
                 id={"csb"}
                 register={register}
                 setValue={setValue}
-                resetFactor={awbreset}
+                resetFactor={refreshKey}
               />
               <RedCheckboxRedLabel
                 label={"Commercial Shipment"}
@@ -2720,7 +3103,7 @@ function AwbBilling() {
                 id={"commercialShipment"}
                 register={register}
                 setValue={setValue}
-                resetFactor={awbreset}
+                resetFactor={refreshKey}
               />
             </div>
             <div className="flex gap-2 justify-between ">
@@ -2729,7 +3112,7 @@ function AwbBilling() {
                   register={register}
                   label={"Bill No."}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value={"billNo"}
                   inputValue={fetchedAwbData?.billNo || ""}
                 />
@@ -2737,7 +3120,7 @@ function AwbBilling() {
                   register={register}
                   label={"Manifest No."}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value={"manifestNo"}
                   inputValue={fetchedAwbData?.manifestNo || ""}
                 />
@@ -2746,7 +3129,7 @@ function AwbBilling() {
                     register={register}
                     initialValue={fetchedAwbData?.reference || ""}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value={`referenceNo`}
                     placeholder={`Reference No.`}
                     disabled={isEdit}
@@ -2780,7 +3163,7 @@ function AwbBilling() {
                         register={register}
                         label={"Mawb No"}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value={"mawbNo"}
                         inputValue={fetchedAwbData?.awbNo || ""}
                       />
@@ -2788,7 +3171,7 @@ function AwbBilling() {
                         register={register}
                         label={"Run No"}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value={"runNo"}
                         inputValue={fetchedAwbData?.runNo || ""}
                       />
@@ -2798,7 +3181,7 @@ function AwbBilling() {
                         register={register}
                         label={"Bag"}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value={"bag"}
                         inputValue={fetchedAwbData?.bag || ""}
                       />
@@ -2806,7 +3189,7 @@ function AwbBilling() {
                         register={register}
                         label={"Date"}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value={"date"}
                       />
                     </div>
@@ -2816,14 +3199,14 @@ function AwbBilling() {
                         register={register}
                         label={"Club No"}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value={"clubNo"}
                       />
                       <DummyInputBoxWithLabelDarkGray
                         register={register}
                         label={"AL/Mawb"}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value={"alMawb"}
                         inputValue={fetchedAwbData?.alMawb || ""}
                       />
@@ -2833,7 +3216,7 @@ function AwbBilling() {
                         register={register}
                         label={"Flight"}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value={"flight"}
                         inputValue={fetchedAwbData?.flight || ""}
                       />
@@ -2841,7 +3224,7 @@ function AwbBilling() {
                         register={register}
                         label={"OBC"}
                         setValue={setValue}
-                        resetFactor={awbreset}
+                        resetFactor={refreshKey}
                         value={"obc"}
                         inputValue={fetchedAwbData?.obc || ""}
                       />
@@ -2858,7 +3241,7 @@ function AwbBilling() {
                       placeholder={`0.00`}
                       label={`Basic Amt`}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       value={`basicAmount`}
                       className={"bg-white"}
                     />
@@ -2868,7 +3251,7 @@ function AwbBilling() {
                       placeholder="Manual Amt"
                       register={register}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       disabled={isEdit}
                       value="manualAmount"
                       className="bg-white"
@@ -2883,7 +3266,7 @@ function AwbBilling() {
                       placeholder="Cash Recv. Amt"
                       register={register}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       disabled={isEdit}
                       value="cashRecvAmount"
                       className="bg-white"
@@ -2897,7 +3280,7 @@ function AwbBilling() {
                       placeholder={`0.00`}
                       label={`Balance Amt`}
                       setValue={setValue}
-                      resetFactor={awbreset}
+                      resetFactor={refreshKey}
                       value={`balanceAmount`}
                       className={"bg-white"}
                     />
@@ -2908,7 +3291,7 @@ function AwbBilling() {
                   placeholder="Handling Amt"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   disabled={isEdit}
                   value="handlingAmount"
                   className="bg-white"
@@ -2918,7 +3301,7 @@ function AwbBilling() {
                   placeholder="Misc. Chg"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   disabled={isEdit}
                   value="miscChg"
                   className="bg-white"
@@ -2928,7 +3311,7 @@ function AwbBilling() {
                   register={register}
                   placeholder="Misc. Chg. Reason"
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   disabled={isEdit}
                   value={`miscChgReason`}
                   className="bg-white"
@@ -2939,7 +3322,7 @@ function AwbBilling() {
                   placeholder={`0.00`}
                   label={`Duty`}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value={`duty`}
                   className={"bg-white"}
                 />
@@ -2947,7 +3330,7 @@ function AwbBilling() {
                   placeholder="Over Wt. Handling"
                   register={register}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   disabled={isEdit}
                   value="overWtHandling"
                   className="bg-white"
@@ -2958,7 +3341,7 @@ function AwbBilling() {
                   placeholder={`0.00`}
                   label={`Hike Amt`}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value={`hikeAmt`}
                   className={"bg-white"}
                 />
@@ -2968,7 +3351,7 @@ function AwbBilling() {
                     placeholder={`0.00`}
                     label={`Fuel(%)`}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value={`fuelPercentage`}
                     className={"bg-white"}
                   />
@@ -2976,7 +3359,7 @@ function AwbBilling() {
                     register={register}
                     placeholder={`0.00`}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value={`fuelAmt`}
                     className={"bg-white"}
                   />
@@ -2985,9 +3368,9 @@ function AwbBilling() {
                   <DummyInputBoxWithLabelLightGray
                     register={register}
                     placeholder={`DEL`}
-                    label={`Discount`}
+                    label={`Discount)`}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value={`discount`}
                     inputValue={fetchedAwbData?.volDiscount || 0.0}
                     className={"bg-white"}
@@ -2996,7 +3379,7 @@ function AwbBilling() {
                     register={register}
                     placeholder={`DEL`}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value={`discountAmt`}
                     className={"bg-white"}
                   />
@@ -3007,7 +3390,7 @@ function AwbBilling() {
                     placeholder={`0.00`}
                     label={`SGST`}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value={`sgst`}
                     inputValue={fetchedAwbData?.sgst || 0.0}
                   />
@@ -3016,7 +3399,7 @@ function AwbBilling() {
                     placeholder={`0.00`}
                     label={`CGST`}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value={`cgst`}
                     inputValue={fetchedAwbData?.cgst || 0.0}
                   />
@@ -3028,7 +3411,7 @@ function AwbBilling() {
                     placeholder={`0.00`}
                     label={`IGST`}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value={`igst`}
                     inputValue={fetchedAwbData?.igst || 0.0}
                   />
@@ -3037,7 +3420,7 @@ function AwbBilling() {
                     placeholder={`0.00`}
                     label={`Grand Total`}
                     setValue={setValue}
-                    resetFactor={awbreset}
+                    resetFactor={refreshKey}
                     value={`grandTotal`}
                     inputValue={fetchedAwbData?.totalAmt || 0.0}
                   />
@@ -3047,7 +3430,7 @@ function AwbBilling() {
                   register={register}
                   placeholder={`INR`}
                   setValue={setValue}
-                  resetFactor={awbreset}
+                  resetFactor={refreshKey}
                   value={`currency`}
                   inputValue={fetchedAwbData?.currency || "INR"}
                 />
@@ -3059,7 +3442,6 @@ function AwbBilling() {
                   onClick={(data) => {
                     setBtnAction("modify");
                     setIsEdit(false);
-                    // console.log(data);
                   }}
                   disabled={
                     newShipment == "new" ||
