@@ -249,12 +249,28 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
   const [currentView, setCurrentView] = useState("table"); // 'table' or 'form'
   const [editingUser, setEditingUser] = useState(null);
 
-  const { 
-    server, 
-    getCachedData, 
-    setCachedData, 
-    isCacheValid 
-  } = React.useContext(GlobalContext);
+  const { server, getCachedData, setCachedData, isCacheValid } =
+    React.useContext(GlobalContext);
+
+  // Memoize handleSort to avoid scoping issues during build
+  const handleSort = React.useCallback(
+    (key) => {
+      let direction = "asc";
+      if (sortConfig.key === key && sortConfig.direction === "asc") {
+        direction = "desc";
+      }
+      setSortConfig({ key, direction });
+
+      const sortedUsers = [...filteredUsers].sort((a, b) => {
+        if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
+        if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
+        return 0;
+      });
+
+      setFilteredUsers(sortedUsers);
+    },
+    [filteredUsers, sortConfig],
+  );
 
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
@@ -342,7 +358,7 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
   const fetchUsers = async (forceRefresh = false) => {
     try {
       const cacheKey = "CustomerManagement";
-      
+
       if (!forceRefresh && isCacheValid(cacheKey)) {
         const cached = getCachedData(cacheKey);
         if (cached && cached.data) {
@@ -420,12 +436,13 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
     const internalKey = departmentMap[selectedDepartment];
     if (internalKey === "Agents") {
       filtered = filtered.filter(
-        (user) => user.accountType && user.accountType.toLowerCase() === "agent"
+        (user) =>
+          user.accountType && user.accountType.toLowerCase() === "agent",
       );
     } else if (internalKey === "Customer") {
       filtered = filtered.filter(
         (user) =>
-          user.accountType && user.accountType.toLowerCase() === "customer"
+          user.accountType && user.accountType.toLowerCase() === "customer",
       );
     } else if (internalKey === "Active") {
       filtered = filtered.filter((user) => !user.deactivateReason);
@@ -437,18 +454,26 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
     if (query !== "") {
       filtered = filtered.filter((user) => {
         if (user.name && user.name.toLowerCase().includes(query)) return true;
-        if (user.accountCode && user.accountCode.toLowerCase().includes(query)) return true;
+        if (user.accountCode && user.accountCode.toLowerCase().includes(query))
+          return true;
         if (user.email && user.email.toLowerCase().includes(query)) return true;
-        if (user.contactPerson && user.contactPerson.toLowerCase().includes(query)) return true;
+        if (
+          user.contactPerson &&
+          user.contactPerson.toLowerCase().includes(query)
+        )
+          return true;
         if (user.telNo && user.telNo.includes(query)) return true;
         if (user.city && user.city.toLowerCase().includes(query)) return true;
-        if (user.branchName && user.branchName.toLowerCase().includes(query)) return true;
+        if (user.branchName && user.branchName.toLowerCase().includes(query))
+          return true;
         return false;
       });
     }
 
     if (appliedFilters.accountType) {
-      filtered = filtered.filter((user) => user.accountType === appliedFilters.accountType);
+      filtered = filtered.filter(
+        (user) => user.accountType === appliedFilters.accountType,
+      );
     }
     if (appliedFilters.city) {
       filtered = filtered.filter((user) => user.city === appliedFilters.city);
@@ -457,13 +482,19 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
       filtered = filtered.filter((user) => user.state === appliedFilters.state);
     }
     if (appliedFilters.country) {
-      filtered = filtered.filter((user) => user.country === appliedFilters.country);
+      filtered = filtered.filter(
+        (user) => user.country === appliedFilters.country,
+      );
     }
     if (appliedFilters.branchCode) {
-      filtered = filtered.filter((user) => user.branchCode === appliedFilters.branchCode);
+      filtered = filtered.filter(
+        (user) => user.branchCode === appliedFilters.branchCode,
+      );
     }
     if (appliedFilters.gstNumber) {
-      filtered = filtered.filter((user) => user.gstNumber === appliedFilters.gstNumber);
+      filtered = filtered.filter(
+        (user) => user.gstNumber === appliedFilters.gstNumber,
+      );
     }
     if (appliedFilters.hub) {
       filtered = filtered.filter((user) => user.hub === appliedFilters.hub);
@@ -473,8 +504,9 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
   }, [users, selectedDepartment, searchQuery, appliedFilters]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const selectedElement = document.querySelector(
-      `.department-tabs > li[data-dept='${selectedDepartment}']`
+      `.department-tabs > li[data-dept='${selectedDepartment}']`,
     );
     if (selectedElement && lineRef.current) {
       const ulElement = selectedElement.parentElement;
@@ -483,27 +515,11 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
     }
   }, [selectedDepartment]);
 
-  const handleSort = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
-    }
-    setSortConfig({ key, direction });
-
-    const sortedUsers = [...filteredUsers].sort((a, b) => {
-      if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
-      if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
-      return 0;
-    });
-
-    setFilteredUsers(sortedUsers);
-  };
-
   const handleDownloadExcel = async () => {
     const dataToExport =
       selectedIds.length > 0
         ? filteredUsers.filter((user) =>
-            selectedIds.includes(user._id || user.id)
+            selectedIds.includes(user._id || user.id),
           )
         : filteredUsers;
 
@@ -565,7 +581,7 @@ function CustomerManagement({ setShowCustomerForm, setUserManagementForm }) {
   };
 
   const activeFilterCount = Object.values(appliedFilters).filter(
-    (v) => v !== ""
+    (v) => v !== "",
   ).length;
 
   // ✅ Render CustomerAccount form if in form view
