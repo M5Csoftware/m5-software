@@ -68,6 +68,22 @@ const DocumentPreviewModal = ({
   document,
   documentNumber,
 }) => {
+  const { server } = useContext(GlobalContext);
+  const baseUrl = server?.replace(/\/api$/, "");
+
+  const isPdf = (url) => {
+    if (!url) return false;
+    const lowerUrl = url.toLowerCase();
+    return lowerUrl.includes("/raw/upload/") || lowerUrl.endsWith(".pdf") || lowerUrl.includes("resource_type=raw");
+  };
+
+  const getFullImageUrl = (url) => {
+    if (!url) return "";
+    const trimmedUrl = url.trim();
+    if (/^(https?:)?\/\//.test(trimmedUrl)) return trimmedUrl;
+    return `${baseUrl}/${trimmedUrl.startsWith("/") ? trimmedUrl.slice(1) : trimmedUrl}`;
+  };
+
   if (!isOpen || !document) return null;
 
   const handleDownload = async (url, type) => {
@@ -118,7 +134,7 @@ const DocumentPreviewModal = ({
             <div className="flex justify-between items-center">
               <h4 className="font-semibold text-gray-700">Front Side</h4>
               <button
-                onClick={() => handleDownload(document.frontImageUrl, "Front")}
+                onClick={() => handleDownload(getFullImageUrl(document.frontImageUrl), "Front")}
                 className="flex items-center gap-2 px-3 py-1.5 bg-red text-white rounded-md hover:bg-red transition-colors text-sm"
               >
                 <svg
@@ -137,12 +153,31 @@ const DocumentPreviewModal = ({
                 Download
               </button>
             </div>
-            <div className="border rounded-lg overflow-hidden">
-              <img
-                src={document.frontImageUrl}
-                alt={`${document.documentType} Front`}
-                className="w-full h-auto"
-              />
+            <div className="border rounded-lg overflow-hidden min-h-[200px] flex items-center justify-center bg-gray-50">
+              {isPdf(document.frontImageUrl) ? (
+                <div className="flex flex-col items-center gap-4 p-8">
+                  <div className="text-red-500">
+                    <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-600 font-medium">PDF Document</p>
+                  <a
+                    href={getFullImageUrl(document.frontImageUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    View Document
+                  </a>
+                </div>
+              ) : (
+                <img
+                  src={getFullImageUrl(document.frontImageUrl)}
+                  alt={`${document.documentType} Front`}
+                  className="w-full h-auto"
+                />
+              )}
             </div>
           </div>
 
@@ -151,7 +186,7 @@ const DocumentPreviewModal = ({
             <div className="flex justify-between items-center">
               <h4 className="font-semibold text-gray-700">Back Side</h4>
               <button
-                onClick={() => handleDownload(document.backImageUrl, "Back")}
+                onClick={() => handleDownload(getFullImageUrl(document.backImageUrl), "Back")}
                 className="flex items-center gap-2 px-3 py-1.5 bg-red text-white rounded-md hover:bg-red transition-colors text-sm"
               >
                 <svg
@@ -170,12 +205,31 @@ const DocumentPreviewModal = ({
                 Download
               </button>
             </div>
-            <div className="border rounded-lg overflow-hidden">
-              <img
-                src={document.backImageUrl}
-                alt={`${document.documentType} Back`}
-                className="w-full h-auto"
-              />
+            <div className="border rounded-lg overflow-hidden min-h-[200px] flex items-center justify-center bg-gray-50">
+              {isPdf(document.backImageUrl) ? (
+                <div className="flex flex-col items-center gap-4 p-8">
+                  <div className="text-red-500">
+                    <svg className="w-16 h-16" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-600 font-medium">PDF Document</p>
+                  <a
+                    href={getFullImageUrl(document.backImageUrl)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    View Document
+                  </a>
+                </div>
+              ) : (
+                <img
+                  src={getFullImageUrl(document.backImageUrl)}
+                  alt={`${document.documentType} Back`}
+                  className="w-full h-auto"
+                />
+              )}
             </div>
           </div>
         </div>
@@ -199,6 +253,22 @@ const DocumentPreviewModal = ({
 
 // All Documents View Modal
 const AllDocumentsModal = ({ isOpen, onClose, documents, customerName }) => {
+  const { server } = useContext(GlobalContext);
+  const baseUrl = server?.replace(/\/api$/, "");
+
+  const isPdf = (url) => {
+    if (!url) return false;
+    const lowerUrl = url.toLowerCase();
+    return lowerUrl.includes("/raw/upload/") || lowerUrl.endsWith(".pdf") || lowerUrl.includes("resource_type=raw");
+  };
+
+  const getFullImageUrl = (url) => {
+    if (!url) return "";
+    const trimmedUrl = url.trim();
+    if (/^(https?:)?\/\//.test(trimmedUrl)) return trimmedUrl;
+    return `${baseUrl}/${trimmedUrl.startsWith("/") ? trimmedUrl.slice(1) : trimmedUrl}`;
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -226,21 +296,49 @@ const AllDocumentsModal = ({ isOpen, onClose, documents, customerName }) => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600 mb-2">Front Side</p>
-                    <img
-                      src={doc.frontImageUrl}
-                      alt={`${doc.documentType} Front`}
-                      className="w-full h-auto rounded border cursor-pointer hover:opacity-80"
-                      onClick={() => window.open(doc.frontImageUrl, "_blank")}
-                    />
+                    {isPdf(doc.frontImageUrl) ? (
+                      <div className="w-full aspect-video bg-gray-50 flex flex-col items-center justify-center rounded border gap-2">
+                        <span className="text-xs font-medium text-gray-500">PDF</span>
+                        <a
+                          href={getFullImageUrl(doc.frontImageUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 text-xs hover:underline"
+                        >
+                          View PDF
+                        </a>
+                      </div>
+                    ) : (
+                      <img
+                        src={getFullImageUrl(doc.frontImageUrl)}
+                        alt={`${doc.documentType} Front`}
+                        className="w-full h-auto rounded border cursor-pointer hover:opacity-80"
+                        onClick={() => window.open(getFullImageUrl(doc.frontImageUrl), "_blank")}
+                      />
+                    )}
                   </div>
                   <div>
                     <p className="text-sm text-gray-600 mb-2">Back Side</p>
-                    <img
-                      src={doc.backImageUrl}
-                      alt={`${doc.documentType} Back`}
-                      className="w-full h-auto rounded border cursor-pointer hover:opacity-80"
-                      onClick={() => window.open(doc.backImageUrl, "_blank")}
-                    />
+                    {isPdf(doc.backImageUrl) ? (
+                      <div className="w-full aspect-video bg-gray-50 flex flex-col items-center justify-center rounded border gap-2">
+                        <span className="text-xs font-medium text-gray-500">PDF</span>
+                        <a
+                          href={getFullImageUrl(doc.backImageUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 text-xs hover:underline"
+                        >
+                          View PDF
+                        </a>
+                      </div>
+                    ) : (
+                      <img
+                        src={getFullImageUrl(doc.backImageUrl)}
+                        alt={`${doc.documentType} Back`}
+                        className="w-full h-auto rounded border cursor-pointer hover:opacity-80"
+                        onClick={() => window.open(getFullImageUrl(doc.backImageUrl), "_blank")}
+                      />
+                    )}
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">

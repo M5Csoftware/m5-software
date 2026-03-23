@@ -341,6 +341,21 @@ const CustomerBranchWiseDropdown = ({
     return branches.filter((branch) => branch && branch.trim() !== "");
   }, [branches]);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleEsc);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleEsc);
+    };
+  }, [isOpen, onClose]);
+
   // Handle select/deselect all rows
   const handleSelectAll = (checked) => {
     if (checked) {

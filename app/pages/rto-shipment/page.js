@@ -757,14 +757,14 @@ function RTOShipment() {
             isChecked={withEmail}
             setChecked={setEmail}
           />
-          <RedCheckbox
+          {/* <RedCheckbox
             register={register}
             setValue={setValue}
             label="Update in Events"
             id="updateEvents"
             isChecked={withEvents}
             setChecked={setEvents}
-          />
+          /> */}
         </div>
         <div className="flex gap-2">
           <SimpleButton

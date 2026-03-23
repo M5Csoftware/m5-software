@@ -215,7 +215,7 @@ export default function EntityManager({ setCurrentView }) {
         await axios.delete(`${server}/entity-manager`, {
           params: { code, entityType: selectedOption },
         });
-        setResponseMsg("Data deleted successfully!");
+        setResponseMsg("Deleted");
         setVisibleFlag(true);
       } catch (error) {
         console.error(
@@ -253,7 +253,7 @@ export default function EntityManager({ setCurrentView }) {
       reset();
       setSelectedEntity(null);
       setMatchedEntity(null);
-      setResponseMsg("Added to Code List successfully!");
+      setResponseMsg("Added");
       setVisibleFlag(true);
     } catch (error) {
       console.error("Error adding entity:", error);
@@ -272,7 +272,7 @@ export default function EntityManager({ setCurrentView }) {
         `${server}/entity-manager?code=${formData.code}`,
         payload
       );
-      setResponseMsg("Entity updated successfully!");
+      setResponseMsg("Updated");
       setVisibleFlag(true);
       reset();
       setSelectedEntity(null);
@@ -294,7 +294,7 @@ export default function EntityManager({ setCurrentView }) {
         params: { code: codeValue, entityType: selectedOption },
       });
       setShowDelCol(true);
-      setResponseMsg("Entity deleted successfully!");
+      setResponseMsg("Deleted");
       setVisibleFlag(true);
       reset();
       setSelectedEntity(null);
@@ -578,8 +578,7 @@ export default function EntityManager({ setCurrentView }) {
         />
 
         <NotificationFlag
-          message={"Entity Manager"}
-          subMessage={responseMsg}
+          message={responseMsg}
           visible={visibleFlag}
           setVisible={setVisibleFlag}
         />
