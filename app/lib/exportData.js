@@ -10,22 +10,89 @@ const formatExcelDate = (dateStr) => {
   return `${day}/${month}/${year}`;
 };
 
-export const exportCodeList = async (data, name) => {
-  const XLSX = await import("xlsx");
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Data");
-  const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  const dataBlob = new Blob([excelBuffer], {
-    type: "application/octet-stream",
+export const exportCodeList = async (data, name, columns) => {
+  if (!data || data.length === 0) {
+    alert("No data to export!");
+    return;
+  }
+
+  const ExcelJS = (await import("exceljs")).default;
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(name || "Data");
+
+  // If columns are not provided (fallback), use keys from the first data object
+  const exportColumns = columns || Object.keys(data[0]).map(key => ({ key, label: key }));
+
+  // ============================
+  // HEADER ROW
+  // ============================
+  const headerRow = sheet.addRow(exportColumns.map(col => col.label));
+
+  headerRow.eachCell((cell) => {
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFE0E0E0" }, // Light gray
+    };
+    cell.font = { bold: true, color: { argb: "FF000000" } }; // black bold text
+    cell.border = {
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" },
+    };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
   });
 
+  // ============================
+  // BODY ROWS
+  // ============================
+  data.forEach((item) => {
+    const row = sheet.addRow(
+      exportColumns.map((col) => {
+        const val = item[col.key] ?? "";
+        if (typeof val === "boolean") return val ? "Yes" : "No";
+        if (typeof val === "object") return JSON.stringify(val);
+        return val;
+      })
+    );
+
+    row.eachCell((cell) => {
+      cell.alignment = { vertical: "middle", horizontal: "left" };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
+  });
+
+  // ============================
+  // AUTO-FIT COLUMN WIDTHS
+  // ============================
+  sheet.columns.forEach((col) => {
+    let maxLength = 0;
+    col.eachCell({ includeEmpty: true }, (cell) => {
+      const v = cell.value ? cell.value.toString() : "";
+      maxLength = Math.max(maxLength, v.length);
+    });
+    col.width = maxLength < 10 ? 12 : Math.min(maxLength + 2, 50);
+  });
+
+  // ============================
+  // EXPORT FILE
+  // ============================
+  const buffer = await workbook.xlsx.writeBuffer();
   const now = new Date();
   const timestamp = `${String(now.getDate()).padStart(2, "0")}-${String(
     now.getMonth() + 1,
   ).padStart(2, "0")}-${now.getFullYear()}`;
 
-  saveAs(dataBlob, `${name}_Checklist_${timestamp}.xlsx`);
+  saveAs(
+    new Blob([buffer], { type: "application/octet-stream" }),
+    `${name}_${timestamp}.xlsx`,
+  );
 };
 
 export const exportAccountLedgerData = async (

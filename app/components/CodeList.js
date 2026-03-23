@@ -254,6 +254,8 @@ export default function CodeList({ data, columns, name, handleAction }) {
   return (
     <div
       ref={containerRef}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
       className={`border fixed bg-white top-2 bottom-2 z-50 border-alice-blue rounded-lg w-[428px] overflow-auto hidden-scrollbar transition-all ${
         toggleCodeList ? "right-2" : "-right-[450px]"
       }`}
@@ -292,7 +294,7 @@ export default function CodeList({ data, columns, name, handleAction }) {
             )}
           </div>
           <div
-            onClick={() => exportCodeList(data, name)}
+            onClick={() => exportCodeList(data, name, columns)}
             className="flex gap-2 items-center cursor-pointer border border-battleship-gray rounded-md px-4 py-2.5"
           >
             <Image src={`/export.svg`} height={20} width={20} alt="export" />
