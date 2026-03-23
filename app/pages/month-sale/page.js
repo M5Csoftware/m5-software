@@ -118,21 +118,21 @@ function MonthSale() {
       { key: "referenceBy", label: "Reference By" },
       { key: "collectionBy", label: "Collection By" },
       { key: "accountManager", label: "Account Manager" },
-      { key: "openingBalance", label: "Opening Balance" },
-      { key: "creditLimit", label: "Credit Limit" },
-      { key: "month1", label: "Jan" },
-      { key: "month2", label: "Feb" },
-      { key: "month3", label: "Mar" },
-      { key: "month4", label: "Apr" },
-      { key: "month5", label: "May" },
-      { key: "month6", label: "Jun" },
-      { key: "month7", label: "Jul" },
-      { key: "month8", label: "Aug" },
-      { key: "month9", label: "Sep" },
-      { key: "month10", label: "Oct" },
-      { key: "month11", label: "Nov" },
-      { key: "month12", label: "Dec" },
-      { key: "yearTotal", label: "Year Total" },
+      { key: "openingBalance", label: "Opening Balance", type: "number" },
+      { key: "creditLimit", label: "Credit Limit", type: "number" },
+      { key: "month1", label: "Jan", type: "number" },
+      { key: "month2", label: "Feb", type: "number" },
+      { key: "month3", label: "Mar", type: "number" },
+      { key: "month4", label: "Apr", type: "number" },
+      { key: "month5", label: "May", type: "number" },
+      { key: "month6", label: "Jun", type: "number" },
+      { key: "month7", label: "Jul", type: "number" },
+      { key: "month8", label: "Aug", type: "number" },
+      { key: "month9", label: "Sep", type: "number" },
+      { key: "month10", label: "Oct", type: "number" },
+      { key: "month11", label: "Nov", type: "number" },
+      { key: "month12", label: "Dec", type: "number" },
+      { key: "yearTotal", label: "Year Total", type: "number" },
     ],
     []
   );
@@ -141,7 +141,12 @@ function MonthSale() {
     return rowData.map((row) => {
       const formattedRow = {};
       columns.forEach((column) => {
-        formattedRow[column.label] = row[column.key] || "";
+        const value = row[column.key];
+        if (column.type === "number" && typeof value === "number") {
+          formattedRow[column.label] = value.toFixed(2);
+        } else {
+          formattedRow[column.label] = value !== null && value !== undefined ? value : "";
+        }
       });
       return formattedRow;
     });

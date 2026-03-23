@@ -67,14 +67,14 @@ function CreditLimitReport() {
       { key: "reportPerson", label: "Report Person" },
       { key: "paymentTerms", label: "Pay Type" },
       { key: "billingCycle", label: "Billing Cycle" },
-      { key: "openingBalance", label: "Opening Balance" },
-      { key: "creditLimit", label: "Credit Limit" },
-      { key: "totalAmt", label: "Total Sale" },
-      { key: "amount", label: "Total Receipt" },
-      { key: "debitAmount", label: "Total Debit" },
-      { key: "creditAmount", label: "Total Credit" },
-      { key: "leftOverBalance", label: "Total Outstanding" },
-      { key: "creditBalance", label: "Credit Balance" },
+      { key: "openingBalance", label: "Opening Balance", type: "number" },
+      { key: "creditLimit", label: "Credit Limit", type: "number" },
+      { key: "totalAmt", label: "Total Sale", type: "number" },
+      { key: "amount", label: "Total Receipt", type: "number" },
+      { key: "debitAmount", label: "Total Debit", type: "number" },
+      { key: "creditAmount", label: "Total Credit", type: "number" },
+      { key: "leftOverBalance", label: "Total Outstanding", type: "number" },
+      { key: "creditBalance", label: "Credit Balance", type: "number" },
       { key: "groupCode", label: "Group Code" },
       { key: "currency", label: "Currency" },
     ],
@@ -354,7 +354,12 @@ function CreditLimitReport() {
       const excelData = rowData.map((row) => {
         const formattedRow = {};
         columns.forEach((col) => {
-          formattedRow[col.label] = row[col.key] || "";
+          const value = row[col.key];
+          if (col.type === "number" && typeof value === "number") {
+            formattedRow[col.label] = value.toFixed(2);
+          } else {
+            formattedRow[col.label] = value !== null && value !== undefined ? value : "";
+          }
         });
         return formattedRow;
       });
@@ -403,7 +408,11 @@ function CreditLimitReport() {
         .map((row) => {
           return columns
             .map((col) => {
-              const value = row[col.key] || "";
+              const rawValue = row[col.key];
+              let value = (col.type === "number" && typeof rawValue === "number")
+                ? rawValue.toFixed(2)
+                : (rawValue !== null && rawValue !== undefined ? rawValue : "");
+              
               // Escape quotes and wrap in quotes if contains comma
               return typeof value === "string" && value.includes(",")
                 ? `"${value.replace(/"/g, '""')}"`

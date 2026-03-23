@@ -57,7 +57,7 @@ function PaymentCollectionReport() {
   const columns = useMemo(
     () => [
       { key: "srNo", label: "Sr No." },
-      { key: "customerCode", label: "Customer Code" },
+      { key: "accountCode", label: "Customer Code" },
       { key: "customerName", label: "Customer Name" },
       { key: "receiptNo", label: "Receipt Number" },
       {
