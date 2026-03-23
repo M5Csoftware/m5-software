@@ -33,7 +33,7 @@ function BulkUpload() {
         title="Bulk Upload"
         bulkUploadBtn="hidden"
         downloadBtn={true}
-        codeListBtn={true}
+        codeListBtn={false}
         fullscreenBtn={false}
         onRefresh={handleRefresh}
         onClickDownloadBtn={handleDownloadTemplate}

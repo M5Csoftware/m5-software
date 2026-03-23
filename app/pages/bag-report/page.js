@@ -30,8 +30,8 @@ export default function BagReport() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [pageLimit, setPageLimit] = useState(50); // Records per page
-  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+  const [pageLimit, setPageLimit] = useState(50);
+  const [currentFilters, setCurrentFilters] = useState(null);
 
   const showNotification = (type, message) => {
     setNotification({ type, message, visible: true });
@@ -39,7 +39,6 @@ export default function BagReport() {
 
   const runNumber = watch("runNo");
 
-  // Table columns configuration
   const columns = {
     Shipper: [
       { key: "awbNo", label: "AWB No." },
@@ -79,7 +78,6 @@ export default function BagReport() {
     ],
   };
 
-
   const formatDate = (d) => {
     if (!d) return "";
     const date = new Date(d);
@@ -89,29 +87,20 @@ export default function BagReport() {
     return `${dd}/${mm}/${yyyy}`;
   };
 
-  // Get filtered columns based on report type and skipShipper checkbox
   const getFilteredColumns = () => {
     const cols = columns[reportType];
-
-    // If Consignee report and skipShipper is checked, filter out the "shipper" column
     if (reportType === "Consignee" && skipShipper) {
       return cols.filter((col) => col.key !== "shipper");
     }
-
     return cols;
   };
 
-  // Handle page change
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
-    
-    // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+    window.scrollTo({ top: 0, behavior: "smooth" });
     handleShowData(currentFilters, newPage);
   };
 
-  // Handle limit change
   const handleLimitChange = (e) => {
     const newLimit = parseInt(e.target.value, 10);
     setPageLimit(newLimit);
@@ -121,7 +110,6 @@ export default function BagReport() {
     }
   };
 
-  // CSV Download Function
   const handleDownloadCSV = () => {
     if (tableData.length === 0) {
       showNotification("error", "No data to download");
@@ -129,17 +117,12 @@ export default function BagReport() {
     }
 
     const filteredColumns = getFilteredColumns();
-
-    // Create CSV header
     const headers = filteredColumns.map((col) => col.label).join(",");
-
-    // Create CSV rows from ALL data (not just paginated)
     const rows = tableData
-      .map((row) => {
-        return filteredColumns
+      .map((row) =>
+        filteredColumns
           .map((col) => {
             const value = row[col.key] || "";
-            // Escape values that contain commas, quotes, or newlines
             const stringValue = String(value);
             if (
               stringValue.includes(",") ||
@@ -150,39 +133,28 @@ export default function BagReport() {
             }
             return stringValue;
           })
-          .join(",");
-      })
+          .join(",")
+      )
       .join("\n");
 
-    // Combine headers and rows
     const csv = `${headers}\n${rows}`;
-
-    // Create blob and download
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
-
-    // Generate filename with timestamp
     const timestamp = new Date()
       .toISOString()
       .replace(/[:.]/g, "-")
       .slice(0, -5);
-    const filename = `Bag_Report_${reportType}_${
-      runNumber || "data"
-    }_${timestamp}.csv`;
-
+    const filename = `Bag_Report_${reportType}_${runNumber || "data"}_${timestamp}.csv`;
     link.setAttribute("href", url);
     link.setAttribute("download", filename);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    // Show success notification
     showNotification("success", "CSV file downloaded successfully");
   };
 
-  // API calls
   const fetchRunData = async (runNo) => {
     const response = await axios.get(`${server}/run-entry?runNo=${runNo.toUpperCase()}`);
     return response.data;
@@ -205,41 +177,25 @@ export default function BagReport() {
     return response.data;
   };
 
-  // Data mapping functions
   const createBaggingLookup = (baggingData, branchBaggingData) => {
     const lookup = {};
-
-    // Process regular bagging data
     if (baggingData && baggingData.rowData) {
       baggingData.rowData.forEach((item) => {
         const awb = item.awbNo || item.childShipment;
-        if (awb) {
-          lookup[awb] = {
-            bagNo: item.bagNo,
-            mhbsNo: baggingData.mhbsNo,
-          };
-        }
+        if (awb) lookup[awb] = { bagNo: item.bagNo, mhbsNo: baggingData.mhbsNo };
       });
     }
-
-    // Process branch bagging data
     if (branchBaggingData && branchBaggingData.rowData) {
       branchBaggingData.rowData.forEach((item) => {
         const awb = item.awbNo || item.childShipment;
-        if (awb) {
-          lookup[awb] = {
-            bagNo: item.bagNo,
-            mhbsNo: branchBaggingData.mawb || "",
-          };
-        }
+        if (awb) lookup[awb] = { bagNo: item.bagNo, mhbsNo: branchBaggingData.mawb || "" };
       });
     }
-
     return lookup;
   };
 
-  const mapShipperData = (shipmentData, baggingLookup) => {
-    return shipmentData.map((item) => {
+  const mapShipperData = (shipmentData, baggingLookup) =>
+    shipmentData.map((item) => {
       const baggingInfo = baggingLookup[item.awbNo] || {};
       return {
         awbNo: item.awbNo || "",
@@ -265,10 +221,9 @@ export default function BagReport() {
         shipmentRemark: item.shipmentType || "",
       };
     });
-  };
 
-  const mapConsigneeData = (shipmentData, baggingLookup) => {
-    return shipmentData.map((item) => {
+  const mapConsigneeData = (shipmentData, baggingLookup) =>
+    shipmentData.map((item) => {
       const baggingInfo = baggingLookup[item.awbNo] || {};
       return {
         mawbNo: baggingInfo.mhbsNo || "",
@@ -286,45 +241,29 @@ export default function BagReport() {
         shipmentRem: item.shipmentType || item.remarks || "",
       };
     });
-  };
 
   const mapSummaryData = (baggingData, branchBaggingData) => {
     const bagSummary = {};
-
-    // Process regular bagging data
     if (baggingData && baggingData.rowData) {
       baggingData.rowData.forEach((item) => {
         if (item.bagNo) {
-          if (!bagSummary[item.bagNo]) {
-            bagSummary[item.bagNo] = {
-              bagNo: item.bagNo,
-              countAwbNo: 0,
-              bagWeight: 0,
-            };
-          }
+          if (!bagSummary[item.bagNo])
+            bagSummary[item.bagNo] = { bagNo: item.bagNo, countAwbNo: 0, bagWeight: 0 };
           bagSummary[item.bagNo].countAwbNo += 1;
           bagSummary[item.bagNo].bagWeight += parseFloat(item.bagWeight) || 0;
         }
       });
     }
-
-    // Process branch bagging data
     if (branchBaggingData && branchBaggingData.rowData) {
       branchBaggingData.rowData.forEach((item) => {
         if (item.bagNo) {
-          if (!bagSummary[item.bagNo]) {
-            bagSummary[item.bagNo] = {
-              bagNo: item.bagNo,
-              countAwbNo: 0,
-              bagWeight: 0,
-            };
-          }
+          if (!bagSummary[item.bagNo])
+            bagSummary[item.bagNo] = { bagNo: item.bagNo, countAwbNo: 0, bagWeight: 0 };
           bagSummary[item.bagNo].countAwbNo += 1;
           bagSummary[item.bagNo].bagWeight += parseFloat(item.bagWeight) || 0;
         }
       });
     }
-
     return Object.values(bagSummary).map((bag, index) => ({
       srNo: index + 1,
       countAwbNo: bag.countAwbNo,
@@ -333,9 +272,17 @@ export default function BagReport() {
     }));
   };
 
-  // Main data fetching function
-  const handleShowData = async (runNum = runNumber, page = 1) => {
-    const queryRunNo = runNum?.trim();
+  // ─── Fix: onClick passes a SyntheticEvent as first arg.
+  //     Detect and discard it, always resolving runNo from form state.
+  const handleShowData = async (runNumOrEvent = runNumber, page = 1) => {
+    const isEvent =
+      runNumOrEvent !== null &&
+      typeof runNumOrEvent === "object" &&
+      ("nativeEvent" in runNumOrEvent || "target" in runNumOrEvent);
+
+    const runNum = isEvent ? runNumber : runNumOrEvent;
+    const queryRunNo = typeof runNum === "string" ? runNum.trim() : "";
+
     if (!queryRunNo) {
       showNotification("error", "Please enter a run number");
       return;
@@ -349,7 +296,6 @@ export default function BagReport() {
       let pagination = { currentPage: 1, totalPages: 1, totalRecords: 0 };
 
       if (reportType === "Summary") {
-        // Summary might not support server-side pagination yet in backend, but we'll try passing params
         const [baggingData, branchBaggingData] = await Promise.all([
           fetchBaggingData(queryRunNo).catch(() => null),
           fetchBranchBaggingData(queryRunNo).catch(() => null),
@@ -359,31 +305,27 @@ export default function BagReport() {
         pagination.totalPages = Math.ceil(newTableData.length / pageLimit);
         pagination.currentPage = page;
       } else {
-        const [shipmentRes, baggingData, branchBaggingData] =
-          await Promise.all([
-            fetchShipmentData(queryRunNo, page),
-            fetchBaggingData(queryRunNo).catch(() => null),
-            fetchBranchBaggingData(queryRunNo).catch(() => null),
-          ]);
+        const [shipmentRes, baggingData, branchBaggingData] = await Promise.all([
+          fetchShipmentData(queryRunNo, page),
+          fetchBaggingData(queryRunNo).catch(() => null),
+          fetchBranchBaggingData(queryRunNo).catch(() => null),
+        ]);
 
-        const shipmentData = shipmentRes.data || (Array.isArray(shipmentRes) ? shipmentRes : []);
+        const shipmentData =
+          shipmentRes.data || (Array.isArray(shipmentRes) ? shipmentRes : []);
         const respPagination = shipmentRes.pagination || {
           currentPage: 1,
           totalPages: 1,
           totalRecords: shipmentData.length,
         };
 
-        const baggingLookup = createBaggingLookup(
-          baggingData,
-          branchBaggingData
-        );
+        const baggingLookup = createBaggingLookup(baggingData, branchBaggingData);
 
-        if (reportType === "Shipper") {
-          newTableData = mapShipperData(shipmentData, baggingLookup);
-        } else {
-          newTableData = mapConsigneeData(shipmentData, baggingLookup);
-        }
-        
+        newTableData =
+          reportType === "Shipper"
+            ? mapShipperData(shipmentData, baggingLookup)
+            : mapConsigneeData(shipmentData, baggingLookup);
+
         pagination = respPagination;
       }
 
@@ -392,7 +334,10 @@ export default function BagReport() {
       setTotalPages(pagination.totalPages);
       setCurrentPage(pagination.currentPage);
 
-      showNotification("success", `Found ${pagination.totalRecords} records (Page ${pagination.currentPage} of ${pagination.totalPages})`);
+      showNotification(
+        "success",
+        `Found ${pagination.totalRecords} records (Page ${pagination.currentPage} of ${pagination.totalPages})`
+      );
     } catch (error) {
       console.error("Error fetching data:", error);
       setTableData([]);
@@ -404,7 +349,6 @@ export default function BagReport() {
     }
   };
 
-  // Form auto-fill from run data
   const fillFormFromRunData = (runData) => {
     const fields = {
       date: formatDate(runData.date),
@@ -414,11 +358,9 @@ export default function BagReport() {
       obc: runData.obc || "",
       almawb: runData.almawb || "",
     };
-
     Object.entries(fields).forEach(([key, value]) => setValue(key, value));
   };
 
-  // Fetch run data when runNumber changes
   useEffect(() => {
     const fetchAndFillRunData = async () => {
       if (runNumber?.trim()) {
@@ -446,7 +388,6 @@ export default function BagReport() {
         setTotalPages(1);
       }
     };
-
     fetchAndFillRunData();
   }, [runNumber, setValue]);
 
@@ -458,7 +399,6 @@ export default function BagReport() {
     setCurrentPage(1);
   };
 
-  // Pagination component
   const PaginationControls = () => {
     if (totalPages <= 1 && tableData.length === 0) return null;
 
@@ -469,7 +409,6 @@ export default function BagReport() {
             Showing <span className="font-medium">{tableData.length}</span> of{" "}
             <span className="font-medium">{totalRecords}</span> records
           </div>
-
           <div className="flex items-center gap-2">
             <label htmlFor="limit" className="text-sm text-gray-600">
               Rows per page:
@@ -504,11 +443,9 @@ export default function BagReport() {
           >
             Previous
           </button>
-
           <span className="px-3 py-1 text-sm">
             Page {currentPage} of {totalPages}
           </span>
-
           <button
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages || loading}
@@ -540,7 +477,6 @@ export default function BagReport() {
       <Heading title="Bag Report" bulkUploadBtn="hidden" codeListBtn="hidden" />
 
       <div>
-        {/* Report Type Selection */}
         <div className="flex w-full gap-3 mt-3">
           {["Shipper", "Consignee", "Summary"].map((type) => (
             <RadioButtonLarge
@@ -557,7 +493,6 @@ export default function BagReport() {
         </div>
 
         <div className="flex flex-col gap-3 mt-3">
-          {/* Run Details Form */}
           <div className="flex flex-col gap-3 mt-3">
             <RedLabelHeading label="Run Details" />
 
@@ -590,7 +525,7 @@ export default function BagReport() {
                 />
               </div>
 
-              {/* Second Row - Fixed with equal spacing and proper alignment */}
+              {/* Second Row */}
               <div className="flex gap-3 w-full justify-between items-center">
                 <div className="flex gap-3 flex-1">
                   <DummyInputBoxWithLabelDarkGray
@@ -629,7 +564,6 @@ export default function BagReport() {
                 </div>
               </div>
 
-              {/* Skip Shipper Checkbox for Consignee */}
               {reportType === "Consignee" && (
                 <RedCheckbox
                   isChecked={skipShipper}
@@ -641,32 +575,26 @@ export default function BagReport() {
                 />
               )}
 
-              {/* Data Table */}
               <Table
                 columns={getFilteredColumns()}
-                rowData={tableData} // Use paginated data
+                rowData={tableData}
                 register={register}
                 setValue={setValue}
                 name="begReportTable"
               />
 
-              {/* Pagination Controls */}
               <PaginationControls />
 
-              {/* Total Records Display */}
               <div className="flex justify-between mt-2">
                 <div className="text-sm text-gray-600">
-                  {totalRecords > 0 && (
-                    <span>Total Records: {totalRecords}</span>
-                  )}
+                  {totalRecords > 0 && <span>Total Records: {totalRecords}</span>}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex justify-between">
-            <div>{/* <OutlinedButtonRed label="Close" /> */}</div>
+            <div></div>
           </div>
         </div>
       </div>

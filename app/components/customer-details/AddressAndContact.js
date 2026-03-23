@@ -44,7 +44,7 @@ const CustomInputBox = ({
         onBlur={handleBlur}
         disabled={disabled}
         autoComplete="off"
-        className={`border border-[#979797] outline-none bg-transparent rounded-md h-10 px-4 py-2 w-full ${
+        className={`border border-[#979797] outline-none bg-transparent rounded-md h-8 text-sm px-4 py-2 w-full ${
           disabled ? "bg-gray-100 cursor-not-allowed" : ""
         }`}
       />
@@ -275,7 +275,7 @@ const AddressAndContact = ({
       )} */}
 
       <div className="h-[55vh]">
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
           <div className="flex gap-6 ">
             <RadioButton
               id="agent"
@@ -299,7 +299,7 @@ const AddressAndContact = ({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <div className="flex gap-5">
+            <div className="flex gap-3">
               <div className="w-[150px]">
                 <CustomInputBox
                   placeholder="Code"
@@ -352,12 +352,12 @@ const AddressAndContact = ({
           </div>
         </div>
 
-        <div className="mt-3 flex gap-5">
+        <div className="mt-3 flex gap-3">
           <div className="w-full flex flex-col gap-3 ">
             <div>
               <h2 className="text-[16px] text-red font-semibold">Address</h2>
             </div>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-3">
               <CustomInputBox
                 placeholder="Address Line 1"
                 value={formData.addressLine1}
@@ -377,7 +377,7 @@ const AddressAndContact = ({
                 }}
                 value="city"
                 title="City"
-                defaultValue={formData.city}
+                selectedValue={formData.city}
                 resetFactor={resetFactor}
               />
               <LabeledDropdown
@@ -389,7 +389,7 @@ const AddressAndContact = ({
                 }}
                 value="state"
                 title="State"
-                defaultValue={formData.state}
+                selectedValue={formData.state}
                 resetFactor={resetFactor}
               />
 
@@ -402,7 +402,7 @@ const AddressAndContact = ({
                 }}
                 value="country"
                 title="Country"
-                defaultValue={formData.country}
+                selectedValue={formData.country}
                 resetFactor={resetFactor}
               />
               <CustomInputBox
@@ -419,7 +419,7 @@ const AddressAndContact = ({
                 Contact Details
               </h2>
             </div>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-3">
               <CustomInputBox
                 placeholder="Contact Person"
                 value={formData.contactPerson}
@@ -436,7 +436,7 @@ const AddressAndContact = ({
                 value={formData.telNo}
                 onChange={(value) => handleFieldChange("telNo", value)}
               />
-              <div className="flex gap-5">
+              <div className="flex gap-3">
                 <CustomInputBox
                   placeholder="PAN No."
                   value={formData.panNo}

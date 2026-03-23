@@ -15,37 +15,36 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
     const [lineLeft, setLineLeft] = useState(0);
     const [lineWidth, setLineWidth] = useState(0);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
-    
+
     // Modal states
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [modalData, setModalData] = useState({
         title: "",
         message: "",
-        type: "", // success, warning, error
+        type: "",
         userData: null,
         emailSent: false,
-        apiKey: ""
+        apiKey: "",
     });
 
     const lineRef = useRef(null);
     const ulRef = useRef(null);
-
     const { server } = useContext(GlobalContext);
 
+    // ─── Status map ──────────────────────────────────────────────────────────
+    // Each tab maps to one or more DB status values (array = OR match)
     const statusMap = {
-        All: null,
-        Active: "active",
-        "De-activated": "deactivated",
-        Approved: "approved",
-        "Non-Approved": "non-approved",
-        Pending: "pending",
+        All:             null,
+        // Active:          ["active"],
+        Approved:        ["approved"],
+        "De-activated":  ["deactivated"],
+        "Non-Approved":  ["non-approved", "rejected"],
+        Pending:         ["pending"],
     };
 
     const statuses = Object.keys(statusMap);
 
-    // ============================
-    // Fetch API Users
-    // ============================
+    // ─── Fetch ────────────────────────────────────────────────────────────────
     const fetchApiUsers = async () => {
         try {
             const response = await axios.get(`${server}/api-request`);
@@ -54,15 +53,16 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
                 : response.data?.data || [];
 
             const formatted = data.map((item) => ({
-                id: item._id,
+                id:           item._id,
                 customerName: item.customerName,
-                email: item.email,
-                contact: item.phone,
-                branch: item.branch,
-                apiUseCase: item.apiUseCase,
-                appliedOn: item.createdAt,
-                status: item.Status,
-                apiKey: item.apiKey,
+                email:        item.email,
+                contact:      item.phone,
+                branch:       item.branch,
+                apiUseCase:   item.apiUseCase,   // ← keep original field name
+                appliedOn:    item.createdAt,
+                // Normalise status to lowercase so comparisons are consistent
+                status:       (item.Status || item.status || "pending").toLowerCase(),
+                apiKey:       item.apiKey,
                 customerCode: item.customerCode,
             }));
 
@@ -77,47 +77,26 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
         fetchApiUsers();
     }, [refreshTrigger]);
 
-    // ============================
-    // Modal Functions
-    // ============================
+    // ─── Modal helpers ────────────────────────────────────────────────────────
     const showModal = (title, message, type, userData = null, emailSent = false, apiKey = "") => {
-        setModalData({
-            title,
-            message,
-            type,
-            userData,
-            emailSent,
-            apiKey
-        });
+        setModalData({ title, message, type, userData, emailSent, apiKey });
         setShowSuccessModal(true);
     };
 
     const closeModal = () => {
         setShowSuccessModal(false);
-        setModalData({
-            title: "",
-            message: "",
-            type: "",
-            userData: null,
-            emailSent: false,
-            apiKey: ""
-        });
+        setModalData({ title: "", message: "", type: "", userData: null, emailSent: false, apiKey: "" });
     };
 
-    // Close modal on Escape key
     useEffect(() => {
         const handleEscape = (e) => {
-            if (e.key === "Escape" && showSuccessModal) {
-                closeModal();
-            }
+            if (e.key === "Escape" && showSuccessModal) closeModal();
         };
         document.addEventListener("keydown", handleEscape);
         return () => document.removeEventListener("keydown", handleEscape);
     }, [showSuccessModal]);
 
-    // ============================
-    // Status tab underline
-    // ============================
+    // ─── Tab underline ────────────────────────────────────────────────────────
     useEffect(() => {
         const selectedElement = ulRef.current?.querySelector(
             `li[data-status="${selectedStatus}"]`
@@ -129,28 +108,19 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
         }
     }, [selectedStatus]);
 
-    // ============================
-    // Sorting
-    // ============================
+    // ─── Sorting ──────────────────────────────────────────────────────────────
     const handleSort = (key) => {
-        let direction = "asc";
-        if (sortConfig.key === key && sortConfig.direction === "asc") {
-            direction = "desc";
-        }
+        const direction = sortConfig.key === key && sortConfig.direction === "asc" ? "desc" : "asc";
         setSortConfig({ key, direction });
-
-        const sortedUsers = [...filteredApiUsers].sort((a, b) => {
+        const sorted = [...filteredApiUsers].sort((a, b) => {
             if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
             if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
             return 0;
         });
-
-        setFilteredApiUsers(sortedUsers);
+        setFilteredApiUsers(sorted);
     };
 
-    // ============================
-    // Download Excel
-    // ============================
+    // ─── Excel download ───────────────────────────────────────────────────────
     const handleDownloadExcel = () => {
         if (filteredApiUsers.length === 0) {
             showModal("No Data", "There is no data to export.", "warning");
@@ -159,30 +129,22 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
 
         const columns = [
             { key: "customerName", label: "Customer Name" },
-            { key: "contact", label: "Contact" },
-            { key: "email", label: "Email" },
-            { key: "branch", label: "Branch" },
-            { key: "apiUseCase", label: "Use Case" },
-            { key: "appliedOn", label: "Applied On" },
-            { key: "status", label: "Status" },
-            { key: "apiKey", label: "API Key" },
+            { key: "contact",      label: "Contact" },
+            { key: "email",        label: "Email" },
+            { key: "branch",       label: "Branch" },
+            { key: "apiUseCase",   label: "Use Case" },
+            { key: "appliedOn",    label: "Applied On" },
+            { key: "status",       label: "Status" },
+            { key: "apiKey",       label: "API Key" },
         ];
 
         const exportData = filteredApiUsers.map((user) => {
             const row = {};
             columns.forEach((col) => {
                 let value = user[col.key];
-                
                 if (col.key === "apiUseCase") {
-                    if (Array.isArray(value)) {
-                        value = value.join(", ");
-                    } else if (typeof value === 'string') {
-                        // Keep as is
-                    } else if (value === null || value === undefined) {
-                        value = "";
-                    }
+                    value = Array.isArray(value) ? value.join(", ") : (value || "");
                 }
-                
                 row[col.label] = value || "";
             });
             return row;
@@ -192,45 +154,39 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "API Users");
         XLSX.writeFile(wb, `api_users_${new Date().toISOString().split("T")[0]}.xlsx`);
-        
         showModal("Download Complete", "API users data has been exported successfully.", "success");
     };
 
-    // ============================
-    // Filter: status + search
-    // ============================
+    // ─── Filter: status tab + search ─────────────────────────────────────────
     useEffect(() => {
         let filtered = [...apiUsers];
 
-        if (selectedStatus !== "All") {
-            const statusKey = statusMap[selectedStatus];
-            filtered = filtered.filter((user) => user.status === statusKey);
+        // Status filter
+        const allowedStatuses = statusMap[selectedStatus]; // null | string[]
+        if (allowedStatuses !== null) {
+            filtered = filtered.filter((user) =>
+                allowedStatuses.includes((user.status || "").toLowerCase())
+            );
         }
 
+        // Search filter
         if (searchQuery.trim() !== "") {
             const q = searchQuery.toLowerCase();
-            filtered = filtered.filter((user) => {
-                const name = (user.customerName || "").toLowerCase();
-                const email = (user.email || "").toLowerCase();
-                const contact = (user.contact || "").toLowerCase();
-                return name.includes(q) || email.includes(q) || contact.includes(q);
-            });
+            filtered = filtered.filter((user) =>
+                (user.customerName || "").toLowerCase().includes(q) ||
+                (user.email        || "").toLowerCase().includes(q) ||
+                (user.contact      || "").toLowerCase().includes(q)
+            );
         }
 
         setFilteredApiUsers(filtered);
     }, [apiUsers, selectedStatus, searchQuery]);
 
-    // ============================
-    // Actions (approve, reject, etc.)
-    // ============================
+    // ─── Row actions ──────────────────────────────────────────────────────────
     const handleApiUserAction = async (action, userData) => {
         const id = userData.id;
 
-        // view / edit are handled locally
-        if (action === "view") {
-            // console.log("View user:", userData);
-            return;
-        }
+        if (action === "view") return;
         if (action === "edit") {
             onEditApiUser && onEditApiUser(userData);
             return;
@@ -239,209 +195,109 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
         try {
             if (action === "approve") {
                 const response = await axios.patch(`${server}/api-request/approve?id=${id}`);
-                
                 if (response.data.emailSent) {
                     showModal(
                         "Approval Successful!",
-                        `API request has been approved and an email has been sent to ${userData.email} with the API key.`,
-                        "success",
-                        userData,
-                        true,
-                        response.data.data?.apiKey
+                        `API request approved. Email sent to ${userData.email} with the API key.`,
+                        "success", userData, true, response.data.data?.apiKey
                     );
                 } else {
                     showModal(
-                        "Approval Successful - Email Failed",
-                        `API request approved but email notification failed to send to ${userData.email}. Please notify the user manually.`,
-                        "warning",
-                        userData,
-                        false,
-                        response.data.data?.apiKey
+                        "Approval Successful – Email Failed",
+                        `Request approved but email failed for ${userData.email}. Please notify manually.`,
+                        "warning", userData, false, response.data.data?.apiKey
                     );
                 }
             }
 
             if (action === "reject") {
-                await axios.put(`${server}/api-request?id=${id}`, {
-                    Status: "non-approved",
-                    apiKey: "",
-                });
-                showModal(
-                    "Request Rejected",
-                    `API request has been rejected for ${userData.customerName}.`,
-                    "error",
-                    userData
-                );
+                await axios.put(`${server}/api-request?id=${id}`, { Status: "non-approved", apiKey: "" });
+                showModal("Request Rejected", `API request rejected for ${userData.customerName}.`, "error", userData);
             }
 
             if (action === "activate") {
-                await axios.put(`${server}/api-request?id=${id}`, {
-                    Status: "active",
-                });
-                showModal(
-                    "API Access Activated",
-                    `API access has been activated for ${userData.customerName}.`,
-                    "success",
-                    userData
-                );
+                await axios.put(`${server}/api-request?id=${id}`, { Status: "active" });
+                showModal("API Access Activated", `API access activated for ${userData.customerName}.`, "success", userData);
             }
 
             if (action === "deactivate") {
-                await axios.put(`${server}/api-request?id=${id}`, {
-                    Status: "deactivated",
-                });
-                showModal(
-                    "API Access Deactivated",
-                    `API access has been deactivated for ${userData.customerName}.`,
-                    "warning",
-                    userData
-                );
+                await axios.put(`${server}/api-request?id=${id}`, { Status: "deactivated" });
+                showModal("API Access Deactivated", `API access deactivated for ${userData.customerName}.`, "warning", userData);
             }
 
             if (action === "regenerate") {
-                const newApiKey = Date.now().toString(36) + Math.random().toString(36).substring(2, 15);
-                
-                await axios.put(`${server}/api-request?id=${id}`, {
-                    apiKey: newApiKey.toUpperCase(),
-                });
-                
-                showModal(
-                    "API Key Regenerated",
-                    `API key has been regenerated for ${userData.customerName}.`,
-                    "success",
-                    userData,
-                    false,
-                    newApiKey.toUpperCase()
-                );
+                const newApiKey = (Date.now().toString(36) + Math.random().toString(36).substring(2, 15)).toUpperCase();
+                await axios.put(`${server}/api-request?id=${id}`, { apiKey: newApiKey });
+                showModal("API Key Regenerated", `API key regenerated for ${userData.customerName}.`, "success", userData, false, newApiKey);
             }
 
             if (action === "delete") {
                 await axios.delete(`${server}/api-request?id=${id}`);
-                showModal(
-                    "User Deleted",
-                    `API user ${userData.customerName} has been deleted.`,
-                    "error",
-                    userData
-                );
+                showModal("User Deleted", `API user ${userData.customerName} has been deleted.`, "error", userData);
             }
 
             setRefreshTrigger((prev) => prev + 1);
         } catch (error) {
             console.error("API action error:", error);
-            
-            let errorMessage = "An unknown error occurred.";
-            if (error.response) {
-                errorMessage = error.response.data.error || "Server error";
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-            
-            showModal(
-                "Action Failed",
-                `Failed to ${action} user: ${errorMessage}`,
-                "error",
-                userData
-            );
+            const errorMessage = error.response?.data?.error || error.message || "An unknown error occurred.";
+            showModal("Action Failed", `Failed to ${action} user: ${errorMessage}`, "error", userData);
         }
     };
 
-    // ============================
-    // Modal Component
-    // ============================
+    // ─── Modal component ──────────────────────────────────────────────────────
     const SuccessModal = () => {
         if (!showSuccessModal) return null;
 
-        const getIcon = () => {
-            switch (modalData.type) {
-                case "success":
-                    return (
-                        <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-green-100">
-                            <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                    );
-                case "warning":
-                    return (
-                        <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-yellow-100">
-                            <svg className="h-8 w-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                            </svg>
-                        </div>
-                    );
-                case "error":
-                    return (
-                        <div className="mx-auto flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
-                            <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </div>
-                    );
-                default:
-                    return null;
-            }
+        const iconMap = {
+            success: { bg: "bg-green-100", color: "text-green-600", path: "M5 13l4 4L19 7" },
+            warning: { bg: "bg-yellow-100", color: "text-yellow-600", path: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" },
+            error:   { bg: "bg-red-100",   color: "text-red-600",   path: "M6 18L18 6M6 6l12 12" },
         };
-
-        const getTitleColor = () => {
-            switch (modalData.type) {
-                case "success": return "text-green-600";
-                case "warning": return "text-yellow-600";
-                case "error": return "text-red-600";
-                default: return "text-gray-600";
-            }
-        };
-
-        const handleCopyApiKey = () => {
-            if (modalData.apiKey) {
-                navigator.clipboard.writeText(modalData.apiKey);
-                // You could add a toast notification here
-                alert("API Key copied to clipboard!");
-            }
-        };
+        const titleColorMap = { success: "text-green-600", warning: "text-yellow-600", error: "text-red-600" };
+        const icon = iconMap[modalData.type];
 
         return (
             <div className="fixed inset-0 z-50 overflow-y-auto">
                 <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" />
-                
-                <div className="flex min-h-full items-center justify-center p-4 text-center">
-                    <div className="relative transform overflow-hidden rounded-2xl bg-white px-8 pb-8 pt-10 text-left shadow-xl transition-all w-full max-w-lg">
+                <div className="flex min-h-full items-center justify-center p-4">
+                    <div className="relative bg-white rounded-2xl px-8 pb-8 pt-10 shadow-xl w-full max-w-lg">
                         <div className="flex flex-col items-center">
-                            {getIcon()}
-                            
+                            {icon && (
+                                <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${icon.bg}`}>
+                                    <svg className={`h-8 w-8 ${icon.color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon.path} />
+                                    </svg>
+                                </div>
+                            )}
                             <div className="mt-6 text-center w-full">
-                                <h3 className={`text-lg font-semibold leading-6 ${getTitleColor()} mb-2`}>
+                                <h3 className={`text-lg font-semibold ${titleColorMap[modalData.type] || "text-gray-600"} mb-2`}>
                                     {modalData.title}
                                 </h3>
-                                
                                 <div className="text-sm text-gray-600 mb-6 space-y-3">
                                     <p>{modalData.message}</p>
-                                    
                                     {modalData.userData && (
-                                        <div className="bg-gray-50 rounded-lg p-4 mt-3">
-                                            <div className="grid grid-cols-2 gap-2 text-left">
-                                                <div>
-                                                    <span className="text-xs text-gray-500">Customer:</span>
-                                                    <p className="font-medium">{modalData.userData.customerName}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-xs text-gray-500">Email:</span>
-                                                    <p className="font-medium truncate">{modalData.userData.email}</p>
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <span className="text-xs text-gray-500">Status:</span>
-                                                    <p className="font-medium capitalize">{modalData.userData.status || "updated"}</p>
-                                                </div>
+                                        <div className="bg-gray-50 rounded-lg p-4 mt-3 text-left grid grid-cols-2 gap-2">
+                                            <div>
+                                                <span className="text-xs text-gray-500">Customer:</span>
+                                                <p className="font-medium">{modalData.userData.customerName}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-xs text-gray-500">Email:</span>
+                                                <p className="font-medium truncate">{modalData.userData.email}</p>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <span className="text-xs text-gray-500">Status:</span>
+                                                <p className="font-medium capitalize">{modalData.userData.status || "updated"}</p>
                                             </div>
                                         </div>
                                     )}
-                                    
                                     {modalData.apiKey && (
                                         <div className="mt-4">
                                             <div className="flex items-center justify-between mb-2">
                                                 <span className="text-xs font-medium text-gray-700">API Key:</span>
                                                 <button
-                                                    onClick={handleCopyApiKey}
-                                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                                    onClick={() => { navigator.clipboard.writeText(modalData.apiKey); alert("Copied!"); }}
+                                                    className="text-xs text-blue-600 hover:underline"
                                                 >
                                                     Copy Key
                                                 </button>
@@ -451,22 +307,20 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
                                             </div>
                                         </div>
                                     )}
-                                    
                                     {modalData.emailSent === false && modalData.userData && (
                                         <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                                             <p className="text-xs text-yellow-800">
-                                                <strong>Note:</strong> Email notification was not sent. Please contact the user directly.
+                                                <strong>Note:</strong> Email was not sent. Please contact the user directly.
                                             </p>
                                         </div>
                                     )}
                                 </div>
                             </div>
-                            
-                            <div className="w-full mt-6">
+                            <div className="w-full">
                                 <button
                                     type="button"
                                     onClick={closeModal}
-                                    className="inline-flex w-full justify-center rounded-lg bg-[#EA1B40] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-600 transition-colors"
+                                    className="w-full rounded-lg bg-[#EA1B40] px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600 transition-colors"
                                 >
                                     Close
                                 </button>
@@ -478,9 +332,7 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
         );
     };
 
-    // ============================
-    // RENDER
-    // ============================
+    // ─── Render ───────────────────────────────────────────────────────────────
     return (
         <>
             <div className="flex flex-col gap-8">
@@ -529,7 +381,7 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
                             ref={lineRef}
                             className="transition-all duration-400 rounded-t-lg absolute bottom-[1px] bg-[#EA1B40]"
                             style={{ width: lineWidth, height: "3px", left: lineLeft }}
-                        ></div>
+                        />
                     </div>
 
                     {/* Table + controls */}
@@ -548,25 +400,15 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
                             </div>
 
                             {/* Download */}
-                            <div className="flex items-center gap-2">
-                                <button
-                                    className="flex items-center gap-2 bg-white rounded-lg border border-[#D0D5DD] px-4 py-[9px] hover:bg-gray-50 transition-colors relative"
-                                    onClick={handleDownloadExcel}
-                                >
-                                    <Image
-                                        src="/Download-gray.svg"
-                                        alt="download"
-                                        width={20}
-                                        height={20}
-                                    />
-                                    <span className="font-sans text-gray-500 font-semibold">
-                                        Download
-                                    </span>
-                                </button>
-                            </div>
+                            <button
+                                className="flex items-center gap-2 bg-white rounded-lg border border-[#D0D5DD] px-4 py-[9px] hover:bg-gray-50 transition-colors"
+                                onClick={handleDownloadExcel}
+                            >
+                                <Image src="/Download-gray.svg" alt="download" width={20} height={20} />
+                                <span className="font-sans text-gray-500 font-semibold">Download</span>
+                            </button>
                         </div>
-                        
-                        {/* Pass apiUsers with correct property name */}
+
                         <ApiManagementTable
                             apiUsers={filteredApiUsers}
                             onSort={handleSort}
@@ -575,7 +417,7 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
                         />
 
                         {filteredApiUsers.length === 0 && (
-                            <div className="p-4 text-center text-gray-500">
+                            <div className="p-8 text-center text-gray-400 text-sm">
                                 No API users found.
                             </div>
                         )}
@@ -583,7 +425,6 @@ function ApiManagement({ setShowApiUserForm, onEditApiUser }) {
                 </div>
             </div>
 
-            {/* Success Modal */}
             <SuccessModal />
         </>
     );
