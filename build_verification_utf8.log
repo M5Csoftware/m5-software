@@ -1,0 +1,164 @@
+﻿
+> m5-sw-t@0.1.0 build
+> next build
+
+  Γû▓ Next.js 14.2.13
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/137) ...
+   Generating static pages (34/137) 
+   Generating static pages (68/137) 
+   Generating static pages (102/137) 
+ Γ£ô Generating static pages (137/137)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                               Size     First Load JS
+Γöî Γùï /                                     202 kB          768 kB
+Γö£ Γùï /_not-found                           143 B          90.7 kB
+Γö£ Γùï /login                                211 B           299 kB
+Γö£ Γùï /pages/account-ledger                 6.86 kB         176 kB
+Γö£ Γùï /pages/account-ledger-mail            5.54 kB         181 kB
+Γö£ Γùï /pages/airwaybill-log                 4.47 kB         173 kB
+Γö£ Γùï /pages/alert-messages                 4.44 kB         175 kB
+Γö£ Γùï /pages/amount-log                     6.18 kB         301 kB
+Γö£ Γùï /pages/api-management                 10.3 kB         321 kB
+Γö£ Γùï /pages/assign-customer                7.64 kB         318 kB
+Γö£ Γùï /pages/assign-sector                  4 kB            154 kB
+Γö£ Γùï /pages/auto-calculation               8.64 kB         179 kB
+Γö£ Γùï /pages/awb-billing                    18.5 kB         208 kB
+Γö£ Γùï /pages/awb-entry                      21.2 kB         194 kB
+Γö£ Γùï /pages/awb-print                      10.6 kB         347 kB
+Γö£ Γùï /pages/bag-report                     6.71 kB         175 kB
+Γö£ Γùï /pages/bagging                        13 kB           324 kB
+Γö£ Γùï /pages/bagging-with-barcode           12 kB           323 kB
+Γö£ Γùï /pages/booking-report                 6.63 kB         175 kB
+Γö£ Γùï /pages/booking-report-with-amount     15.5 kB         327 kB
+Γö£ Γùï /pages/booking-with-sale              6.58 kB         175 kB
+Γö£ Γùï /pages/branch-bagging                 9.35 kB         181 kB
+Γö£ Γùï /pages/branch-manifest-report         11 kB           319 kB
+Γö£ Γùï /pages/branch-master                  8.93 kB         320 kB
+Γö£ Γùï /pages/bulk-invoice                   4.68 kB         172 kB
+Γö£ Γùï /pages/bulk-invoice-delete            5.07 kB         177 kB
+Γö£ Γùï /pages/bulk-upload                    12.1 kB         320 kB
+Γö£ Γùï /pages/ChildAwbNoReport               4.43 kB         173 kB
+Γö£ Γùï /pages/claim-for-lost-shipment        1.79 kB         149 kB
+Γö£ Γùï /pages/claim-for-lost-ss              296 B           145 kB
+Γö£ Γùï /pages/client-report                  3.43 kB         152 kB
+Γö£ Γùï /pages/club-report                    3.98 kB         153 kB
+Γö£ Γùï /pages/clubbing                       7.83 kB         177 kB
+Γö£ Γùï /pages/complaint-report               6.42 kB         321 kB
+Γö£ Γùï /pages/counter-part-inscan            2.37 kB         143 kB
+Γö£ Γùï /pages/create-child-number            5.37 kB         176 kB
+Γö£ Γùï /pages/credit-limit-report            6.69 kB         315 kB
+Γö£ Γùï /pages/credit-limit-report-with-days  2.15 kB         145 kB
+Γö£ Γùï /pages/credit-limit-temp              9.58 kB         436 kB
+Γö£ Γùï /pages/credit-note                    5.96 kB         177 kB
+Γö£ Γùï /pages/credit-note-summary-awb-wise   11.9 kB         716 kB
+Γö£ Γùï /pages/credit-summary-report          7.07 kB         318 kB
+Γö£ Γùï /pages/csb-v-report                   3.73 kB         146 kB
+Γö£ Γùï /pages/custom-Invoice                 11.7 kB         337 kB
+Γö£ Γùï /pages/custom-reports                 3.71 kB         155 kB
+Γö£ Γùï /pages/customer-account               26.6 kB         367 kB
+Γö£ Γùï /pages/customer-discount              4.39 kB         176 kB
+Γö£ Γùï /pages/data-lock                      4.01 kB         151 kB
+Γö£ Γùï /pages/day-wise-sale-report           5.06 kB         411 kB
+Γö£ Γùï /pages/debit-summary-report           7.16 kB         318 kB
+Γö£ Γùï /pages/debite-note                    5.97 kB         177 kB
+Γö£ Γùï /pages/delete-shipment                5.02 kB         174 kB
+Γö£ Γùï /pages/digital-tally                  12.8 kB         190 kB
+Γö£ Γùï /pages/discount-credit-note           2.22 kB         143 kB
+Γö£ Γùï /pages/discount-credit-ns             2.59 kB         145 kB
+Γö£ Γùï /pages/dummy-shipment-status-report   5.31 kB         297 kB
+Γö£ Γùï /pages/edi-report                     4.74 kB         173 kB
+Γö£ Γùï /pages/email-invoice                  5.75 kB         177 kB
+Γö£ Γùï /pages/entity-manager                 13.2 kB         323 kB
+Γö£ Γùï /pages/event-activity                 7.89 kB         322 kB
+Γö£ Γùï /pages/ExpenseEntry                   4.39 kB         309 kB
+Γö£ Γùï /pages/extra-charges                  13.2 kB         202 kB
+Γö£ Γùï /pages/forwarding-number-report       7.09 kB         489 kB
+Γö£ Γùï /pages/fuel-setting                   3.4 kB          175 kB
+Γö£ Γùï /pages/hubInscan                      2.93 kB         144 kB
+Γö£ Γùï /pages/hubInscan-client               3.02 kB         144 kB
+Γö£ Γùï /pages/international-pickup-order     4.03 kB         288 kB
+Γö£ Γùï /pages/Invoice                        11.6 kB         314 kB
+Γö£ Γùï /pages/invoice-ptp                    19.8 kB         365 kB
+Γö£ Γùï /pages/invoice-ptp-summary            8.46 kB         458 kB
+Γö£ Γùï /pages/invoice-summary                7.69 kB         319 kB
+Γö£ Γùï /pages/labels/ams-dpd                 2.28 kB         143 kB
+Γö£ Γùï /pages/labels/courier-please          7.06 kB         174 kB
+Γö£ Γùï /pages/labels/cp                      2.27 kB         143 kB
+Γö£ Γùï /pages/labels/lhr-fedex               2.29 kB         143 kB
+Γö£ Γùï /pages/labels/uk-dpd                  7.45 kB         174 kB
+Γö£ Γùï /pages/labels/yvr-ups                 6.68 kB         174 kB
+Γö£ Γùï /pages/labels/yyz-ups                 7.23 kB         174 kB
+Γö£ Γùï /pages/manifest                       7.12 kB         181 kB
+Γö£ Γùï /pages/manifest-close                 2.31 kB         171 kB
+Γö£ Γùï /pages/manifest-report                8.17 kB         188 kB
+Γö£ Γùï /pages/manifest-report-d              4.81 kB         173 kB
+Γö£ Γùï /pages/message-circular               10.5 kB         175 kB
+Γö£ Γùï /pages/message-sheet                  5.17 kB         174 kB
+Γö£ Γùï /pages/modified-shipper-tariff        4.05 kB         176 kB
+Γö£ Γùï /pages/month-files                    2.07 kB         171 kB
+Γö£ Γùï /pages/month-sale                     4.24 kB         313 kB
+Γö£ Γùï /pages/multiple-run-wise              5.78 kB         154 kB
+Γö£ Γùï /pages/new-booking-report             6.81 kB         176 kB
+Γö£ Γùï /pages/new-sale-report                6.19 kB         158 kB
+Γö£ Γùï /pages/newdemobutton                  915 B           105 kB
+Γö£ Γùï /pages/offload-shipment               5.76 kB         181 kB
+Γö£ Γùï /pages/overseas-manifest              30.7 kB         537 kB
+Γö£ Γùï /pages/payment-collection-report      8.54 kB         180 kB
+Γö£ Γùï /pages/payment-entry                  9.68 kB         436 kB
+Γö£ Γùï /pages/payment-receipt-summary        3.15 kB         155 kB
+Γö£ Γùï /pages/poa-entry                      35.3 kB         472 kB
+Γö£ Γùï /pages/pod-email                      3.8 kB          176 kB
+Γö£ Γùï /pages/pod-entry                      6.01 kB         314 kB
+Γö£ Γùï /pages/portal-balance                 5.55 kB         173 kB
+Γö£ Γùï /pages/portal-ticket-details          3.93 kB         155 kB
+Γö£ Γùï /pages/quick-inscan                   4.12 kB         175 kB
+Γö£ Γùï /pages/rate-calculator                4.71 kB         172 kB
+Γö£ Γùï /pages/rate-hike                      6.8 kB          178 kB
+Γö£ Γùï /pages/rate-sheet                     8.57 kB         180 kB
+Γö£ Γùï /pages/register-complaint             1.65 kB         184 kB
+Γö£ Γùï /pages/registered-ticket-details      3.87 kB         155 kB
+Γö£ Γùï /pages/rto-shipment                   5.93 kB         180 kB
+Γö£ Γùï /pages/rto-shipment-report            4.97 kB         313 kB
+Γö£ Γùï /pages/run-entry                      6.63 kB         174 kB
+Γö£ Γùï /pages/run-number-report              4.01 kB         173 kB
+Γö£ Γùï /pages/run-process                    4.55 kB         202 kB
+Γö£ Γùï /pages/run-summary                    5.72 kB         452 kB
+Γö£ Γùï /pages/run-transfer                   4.37 kB         316 kB
+Γö£ Γùï /pages/runwise-sale-report            2.41 kB         148 kB
+Γö£ Γùï /pages/sale-report                    8.31 kB         160 kB
+Γö£ Γùï /pages/sale-report-with-dummy-number  9.45 kB         321 kB
+Γö£ Γùï /pages/sale-report-with-hold          10.3 kB         325 kB
+Γö£ Γùï /pages/sale-summary-sector-wise       6.89 kB         456 kB
+Γö£ Γùï /pages/sale-with-collection-report    8.22 kB         317 kB
+Γö£ Γùï /pages/sale-with-total-receiving      15.3 kB         326 kB
+Γö£ Γùï /pages/shipment-query                 7.07 kB         189 kB
+Γö£ Γùï /pages/shipment-status-report         5.73 kB         177 kB
+Γö£ Γùï /pages/shipper-tariff                 5.52 kB         177 kB
+Γö£ Γùï /pages/shipper-tariff-bulk            6.75 kB         178 kB
+Γö£ Γùï /pages/tax-settings                   4.27 kB         311 kB
+Γö£ Γùï /pages/ticket-dashboard               6.6 kB          298 kB
+Γö£ Γùï /pages/total-outstanding              8.29 kB         320 kB
+Γö£ Γùï /pages/tracking-report                6.83 kB         179 kB
+Γö£ Γùï /pages/Update-forwarding-number       4.79 kB         316 kB
+Γö£ Γùï /pages/upload-irn-number              5.73 kB         317 kB
+Γö£ Γùï /pages/upload-shipping-bill           4.75 kB         173 kB
+Γö£ Γùï /pages/vendor-master                  6.59 kB         171 kB
+Γö£ Γùï /pages/volume-weight                  2.75 kB         151 kB
+Γöö Γùï /pages/zone                           16.6 kB         188 kB
++ First Load JS shared by all             90.5 kB
+  Γö£ chunks/7023-2d373856d8c30cf2.js       31.8 kB
+  Γö£ chunks/fd9d1056-4a8ade5b4d1a5a33.js   53.6 kB
+  Γöö other shared chunks (total)           5.05 kB
+
+
+Γùï  (Static)  prerendered as static content
+
