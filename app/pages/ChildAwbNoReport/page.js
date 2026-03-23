@@ -162,7 +162,7 @@ const ChildAwbNoReport = () => {
       if (runNumber && !mawbNumber) {
         // Fetch bagging data by run number
         const res = await axios.get(
-          `${server}/bagging?runNo=${runNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`
+          `${server}/bagging?runNo=${runNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`,
         );
         const baggingData = res.data;
 
@@ -175,15 +175,15 @@ const ChildAwbNoReport = () => {
         // Process each AWB in the bagging data
         for (const item of baggingData.rowData) {
           const awbNo = item.childShipment || item.awbNo;
-          
+
           if (!awbNo) continue;
 
           try {
             // Fetch child shipment details
             const childRes = await axios.get(
-              `${server}/portal/create-child?childAwbNo=${awbNo}`
+              `${server}/portal/create-child?childAwbNo=${awbNo}`,
             );
-            
+
             const childData = childRes.data;
 
             // Fetch master shipment details
@@ -191,7 +191,7 @@ const ChildAwbNoReport = () => {
             if (childData && childData.masterAwbNo) {
               try {
                 const masterRes = await axios.get(
-                  `${server}/bagging?awbNo=${childData.masterAwbNo}`
+                  `${server}/bagging?awbNo=${childData.masterAwbNo}`,
                 );
                 masterData = masterRes.data;
               } catch (err) {
@@ -203,9 +203,11 @@ const ChildAwbNoReport = () => {
               childAwbNo: awbNo,
               createdAt: childData?.createdAt || baggingData.date || "",
               sector: masterData?.sector || baggingData.sector || "",
-              destination: childData?.destination || masterData?.destination || "",
+              destination:
+                childData?.destination || masterData?.destination || "",
               shipperName: masterData?.shipperName || "",
-              consigneeName: childData?.consigneeName || masterData?.consigneeName || "",
+              consigneeName:
+                childData?.consigneeName || masterData?.consigneeName || "",
               bagWeight: item.bagWeight || "",
               runNumber: baggingData.runNo || runNumber,
               bagNo: item.bagNo || "",
@@ -235,7 +237,7 @@ const ChildAwbNoReport = () => {
       } else if (!runNumber && mawbNumber) {
         // Fetch by MAWB number
         const res = await axios.get(
-          `${server}/portal/create-child?masterAwbNo=${mawbNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`
+          `${server}/portal/create-child?masterAwbNo=${mawbNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`,
         );
         const childShipments = Array.isArray(res.data) ? res.data : [res.data];
 
@@ -258,23 +260,30 @@ const ChildAwbNoReport = () => {
       } else if (runNumber && mawbNumber) {
         // Fetch by both - combine results
         const [baggingRes, childRes] = await Promise.all([
-          axios.get(`${server}/bagging?runNo=${runNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`),
-          axios.get(`${server}/portal/create-child?masterAwbNo=${mawbNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`),
+          axios.get(
+            `${server}/bagging?runNo=${runNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`,
+          ),
+          axios.get(
+            `${server}/portal/create-child?masterAwbNo=${mawbNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`,
+          ),
         ]);
 
         const baggingData = baggingRes.data;
-        const childShipments = Array.isArray(childRes.data) ? childRes.data : [childRes.data];
+        const childShipments = Array.isArray(childRes.data)
+          ? childRes.data
+          : [childRes.data];
 
         // Process bagging data first
         if (baggingData && baggingData.rowData) {
           for (const item of baggingData.rowData) {
             const awbNo = item.childShipment || item.awbNo;
-            
+
             if (!awbNo) continue;
 
             // Find matching child shipment
             const matchingChild = childShipments.find(
-              child => child.childAwbNo === awbNo || child.masterAwbNo === awbNo
+              (child) =>
+                child.childAwbNo === awbNo || child.masterAwbNo === awbNo,
             );
 
             finalData.push({
@@ -289,28 +298,29 @@ const ChildAwbNoReport = () => {
               bagNo: item.bagNo || "",
               alMawb: baggingData.alMawb || mawbNumber,
               forwarder: "",
-              forwardingNo: item.forwardingNo || matchingChild?.forwardingNo || "",
+              forwardingNo:
+                item.forwardingNo || matchingChild?.forwardingNo || "",
             });
           }
         }
       }
 
       setRowData(finalData);
-      
+
       // Update pagination state
       // Note: Since this report combines multiple sources, we rely on the primary response's pagination
       // For simplicity, we'll try to extract it from res.data where applicable
       // This part might need backend-specific adjustment if res.data structure differs per endpoint
-      
+
       // Let's assume the first major response defines the pagination for now
       // (This is a bit of a placeholder logic depending on backend response structure)
       // const firstRes = runNumber ? (await axios.get(`${server}/bagging?runNo=${runNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`)).data : null;
       // Re-fetching just for pagination info is suboptimal, but ChildAwbNoReport logic is complex.
       // Ideally, the backend would return a consistent pagination object.
-      
-      // Actually, let's look at how other reports handled it. 
+
+      // Actually, let's look at how other reports handled it.
       // I'll assume res.data.pagination exists if the backend was updated.
-      
+
       // For now, I'll set basic values if pagination is missing
       setTotalPages(1);
       setTotalRecords(finalData.length);
@@ -323,7 +333,10 @@ const ChildAwbNoReport = () => {
       }
     } catch (err) {
       console.error("Error fetching data:", err);
-      showNotification("error", err.response?.data?.error || "Error fetching data");
+      showNotification(
+        "error",
+        err.response?.data?.error || "Error fetching data",
+      );
       setRowData([]);
     } finally {
       setLoading(false);
@@ -332,7 +345,7 @@ const ChildAwbNoReport = () => {
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
     fetchData(newPage);
   };
 
@@ -352,7 +365,7 @@ const ChildAwbNoReport = () => {
     const { from, to } = getValues();
     if (!from) setValue("from", formattedToday);
     if (!to) setValue("to", formattedToday);
-    
+
     setCurrDate([from || formattedToday, to || formattedToday]);
   };
 
@@ -378,7 +391,7 @@ const ChildAwbNoReport = () => {
 
     const csvHeaders = columns.map((col) => col.label).join(",");
     const csvRows = rowData.map((row) =>
-      columns.map((col) => `"${row[col.key] || ""}"`).join(",")
+      columns.map((col) => `"${row[col.key] || ""}"`).join(","),
     );
     const csvContent = [csvHeaders, ...csvRows].join("\n");
 
@@ -448,9 +461,17 @@ const ChildAwbNoReport = () => {
           initialValue={currDate[1] || ""}
         />
 
-        <div className="flex gap-2"> 
-          <OutlinedButtonRed label={loading ? "Loading..." : "Show"} onClick={() => fetchData(1)} disabled={loading} />
-          <SimpleButton name="Download" onClick={handleDownloadCSV} disabled={loading || rowData.length === 0} />
+        <div className="flex gap-2">
+          <OutlinedButtonRed
+            label={loading ? "Loading..." : "Show"}
+            onClick={() => fetchData(1)}
+            disabled={loading}
+          />
+          <SimpleButton
+            name="Download"
+            onClick={handleDownloadCSV}
+            disabled={loading || rowData.length === 0}
+          />
         </div>
       </div>
 
@@ -462,8 +483,8 @@ const ChildAwbNoReport = () => {
         rowData={formattedData}
         className="h-[450px] border-b-0 rounded-b-none"
       />
-      
-      <PaginationControls 
+
+      <PaginationControls
         totalPages={totalPages}
         rowData={rowData}
         totalRecords={totalRecords}
@@ -476,9 +497,7 @@ const ChildAwbNoReport = () => {
 
       <div className="flex justify-between">
         <div></div>
-        <div className="flex gap-3">
-         
-        </div>
+        <div className="flex gap-3"></div>
       </div>
     </form>
   );
