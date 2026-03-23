@@ -14,6 +14,7 @@ function EmployeeManagement({ setShowEmployeeForm, onEditEmployee }) {
   const [lineLeft, setLineLeft] = useState(0);
   const [lineWidth, setLineWidth] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [selectedIds, setSelectedIds] = useState([]);
   const lineRef = useRef(null);
   const ulRef = useRef(null);
   const { server } = useContext(GlobalContext);
@@ -128,7 +129,13 @@ function EmployeeManagement({ setShowEmployeeForm, onEditEmployee }) {
   };
 
   const handleDownloadExcel = () => {
-  const dataToExport = filteredUsers;
+  let dataToExport = filteredUsers;
+
+  if (selectedIds.length > 0) {
+    dataToExport = filteredUsers.filter((user) =>
+      selectedIds.includes(user.id || user._id || user.userId)
+    );
+  }
 
   if (dataToExport.length === 0) {
     alert("No data to export");
@@ -192,6 +199,15 @@ function EmployeeManagement({ setShowEmployeeForm, onEditEmployee }) {
       } catch (error) {
         console.error("Error deactivating employee:", error);
       }
+    } else if (action === "activate") {
+      try {
+        await axios.patch(`${server}/employee-master/activate`, {
+          userId: employeeData.userId,
+        });
+        setRefreshTrigger((prev) => prev + 1);
+      } catch (error) {
+        console.error("Error activating employee:", error);
+      }
     }
   };
 
@@ -232,6 +248,11 @@ function EmployeeManagement({ setShowEmployeeForm, onEditEmployee }) {
 
     setFilteredUsers(filtered);
   }, [users, selectedDepartment, searchQuery, appliedFilters]);
+
+  // Reset selection when filters or search change
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [selectedDepartment, searchQuery, appliedFilters]);
 
   // useEffect(() => {
   //   let filtered = [...users];
@@ -393,6 +414,8 @@ function EmployeeManagement({ setShowEmployeeForm, onEditEmployee }) {
             onSort={handleSort}
             sortConfig={sortConfig}
             onEmployeeAction={handleEmployeeAction}
+            selectedIds={selectedIds}
+            setSelectedIds={setSelectedIds}
           />
 
           {filteredUsers.length === 0 && (
