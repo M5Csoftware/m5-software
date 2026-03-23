@@ -1172,6 +1172,7 @@ function AwbBilling() {
   }, [account, server]);
 
   // Calculate base amount and GST
+  // Calculate base amount and GST - FIXED
   useEffect(() => {
     if (amountDetails && account && branch && taxSettings) {
       if (
@@ -1222,24 +1223,14 @@ function AwbBilling() {
       const cgstAmt = gstApplicable ? basicAmount * cgstRate : 0;
       const igstAmt = gstApplicable ? basicAmount * igstRate : 0;
 
-      const baseGrandTotal = basicAmount + sgstAmt + cgstAmt + igstAmt;
-
-      if (rate === 0) {
-        setValue("basicAmount", 0);
-        setValue("sgst", 0);
-        setValue("cgst", 0);
-        setValue("igst", 0);
-        setValue("baseGrandTotal", 0);
-        setValue("grandTotal", 0);
-        return;
-      }
-
+      // FIX: Store basicAmount in baseGrandTotal (without GST)
+      // GST will be added separately in the grand total calculation
       setValue("basicAmount", basicAmount);
       setValue("sgst", sgstAmt);
       setValue("cgst", cgstAmt);
       setValue("igst", igstAmt);
-      setValue("baseGrandTotal", baseGrandTotal);
-      setValue("grandTotal", baseGrandTotal);
+      setValue("baseGrandTotal", basicAmount); // Store only basic amount, not including GST
+      setValue("grandTotal", basicAmount + sgstAmt + cgstAmt + igstAmt);
     }
   }, [
     amountDetails,
@@ -1256,6 +1247,7 @@ function AwbBilling() {
 
   // SINGLE CONSOLIDATED GRAND TOTAL CALCULATION
   // This useEffect handles all adjustments and recalculates grand total
+  // SINGLE CONSOLIDATED GRAND TOTAL CALCULATION - FIXED
   useEffect(() => {
     if (!account || !branch || !taxSettings) return;
 
@@ -1263,7 +1255,6 @@ function AwbBilling() {
       if (isUpdatingRef.current) return;
 
       // Get all values
-      const baseGrandTotal = Number(values.baseGrandTotal) || 0;
       const basicAmount = Number(values.basicAmount) || 0;
       const manualAmount = Number(values.manualAmount) || 0;
       const handlingAmount = Number(values.handlingAmount) || 0;
@@ -1279,13 +1270,13 @@ function AwbBilling() {
         const totalAdditions =
           manualAmount + handlingAmount + miscChg + overWtHandling;
         const totalDeductions = cashRecvAmount + discount;
-        const grandTotalValue =
-          baseGrandTotal + totalAdditions - totalDeductions;
+        const grandTotalValue = basicAmount + totalAdditions - totalDeductions;
 
         isUpdatingRef.current = true;
         setValue("sgst", 0);
         setValue("cgst", 0);
         setValue("igst", 0);
+        setValue("baseGrandTotal", basicAmount);
         setValue(
           "grandTotal",
           round(grandTotalValue > 0 ? grandTotalValue : 0),
@@ -1336,7 +1327,12 @@ function AwbBilling() {
       // Calculate total deductions (cash received and discount)
       const totalDeductions = cashRecvAmount + discount;
 
-      // Grand Total = Base Grand Total + All Additions + GST - All Deductions
+      // CRITICAL FIX: baseGrandTotal should be basicAmount (without GST) for the final calculation
+      // Because we are adding GST separately in the grand total
+      const baseGrandTotal = basicAmount;
+
+      // Grand Total = Base Amount + GST on Base + Adjustments + GST on Adjustments - Deductions
+      // This is equivalent to: Base Amount + Adjustments + Total GST - Deductions
       const grandTotalValue =
         baseGrandTotal +
         totalAdditions +
@@ -1349,6 +1345,7 @@ function AwbBilling() {
       setValue("sgst", finalSgst);
       setValue("cgst", finalCgst);
       setValue("igst", finalIgst);
+      setValue("baseGrandTotal", baseGrandTotal);
       setValue("grandTotal", round(grandTotalValue > 0 ? grandTotalValue : 0));
       isUpdatingRef.current = false;
     });
