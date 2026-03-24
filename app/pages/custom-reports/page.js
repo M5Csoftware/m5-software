@@ -16,13 +16,37 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 const CustomReports = () => {
   const { register, setValue, watch } = useForm();
   const department = watch("department");
-  const [selectedFields, setSelectedFields] = useState([]);
-  const dynamicColumns = selectedFields.map((field) => ({
+  const [selectedFields, setSelectedFields] = useState({
+    Booking: [],
+    Operations: [],
+    "Customer Service": [],
+    Billing: [],
+  });
+
+  const allSelectedFields = Object.values(selectedFields).flat();
+
+  const dynamicColumns = allSelectedFields.map((field) => ({
     key: field.toLowerCase().replace(/\s+/g, "_").replace(/[^\w]/g, ""), // convert to safe key
     label: field,
   }));
-  const [selectedBookingFields, setSelectedBookingFields] = useState([]);
-  const {server} = useContext(GlobalContext)
+
+  const handleFieldChange = (dept, fields) => {
+    setSelectedFields((prev) => ({
+      ...prev,
+      [dept]: fields,
+    }));
+  };
+
+  const resetFields = () => {
+    setSelectedFields({
+      Booking: [],
+      Operations: [],
+      "Customer Service": [],
+      Billing: [],
+    });
+  };
+
+  const { server } = useContext(GlobalContext);
 
   const columns = [{ key: "awbNumber", label: "AWB Number" }];
 
@@ -31,7 +55,7 @@ const CustomReports = () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        fields: selectedBookingFields,
+        fields: selectedFields.Booking,
       }),
     });
 
@@ -81,7 +105,8 @@ const CustomReports = () => {
               {department === "Booking" && (
                 <div className="rounded mt-6 h-[60vh] overflow-y-auto table-scrollbar">
                   <BookingSection
-                    onChange={(fields) => setSelectedFields(fields)}
+                    preSelectedFields={selectedFields.Booking}
+                    onChange={(fields) => handleFieldChange("Booking", fields)}
                   />
                 </div>
               )}
@@ -89,7 +114,10 @@ const CustomReports = () => {
               {department === "Operations" && (
                 <div className="rounded mt-6 h-[60vh] overflow-y-auto table-scrollbar">
                   <OperationsSection
-                    onChange={(fields) => setSelectedFields(fields)}
+                    preSelectedFields={selectedFields.Operations}
+                    onChange={(fields) =>
+                      handleFieldChange("Operations", fields)
+                    }
                   />
                 </div>
               )}
@@ -97,7 +125,10 @@ const CustomReports = () => {
               {department === "Customer Service" && (
                 <div className="rounded mt-6 h-[60vh] overflow-y-auto table-scrollbar">
                   <CustomerServiceSection
-                    onChange={(fields) => setSelectedFields(fields)}
+                    preSelectedFields={selectedFields["Customer Service"]}
+                    onChange={(fields) =>
+                      handleFieldChange("Customer Service", fields)
+                    }
                   />
                 </div>
               )}
@@ -105,7 +136,8 @@ const CustomReports = () => {
               {department === "Billing" && (
                 <div className="rounded mt-6 h-[60vh] overflow-y-auto table-scrollbar">
                   <BillingSection
-                    onChange={(fields) => setSelectedFields(fields)}
+                    preSelectedFields={selectedFields.Billing}
+                    onChange={(fields) => handleFieldChange("Billing", fields)}
                   />
                 </div>
               )}
@@ -118,12 +150,12 @@ const CustomReports = () => {
               <div>
                 <h2 className="font-semibold">Selected Fields</h2>
                 <span className="font-extralight text-sm text-battleship-gray">
-                  {selectedFields.length} Fields selected for your report
+                  {allSelectedFields.length} Fields selected for your report
                 </span>
               </div>
 
               <div className="h-8 w-8 bg-red rounded-md p-2 flex items-center justify-center text-sm text-white">
-                {selectedFields.length}
+                {allSelectedFields.length}
               </div>
             </div>
 
@@ -196,6 +228,7 @@ const CustomReports = () => {
               label={"Reset Fields"}
               type="button"
               buttonIcon
+              onClick={resetFields}
             />
           </div>
           <div>

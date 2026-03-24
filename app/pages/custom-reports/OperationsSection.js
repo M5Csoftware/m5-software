@@ -1,7 +1,7 @@
 import { RedCheckbox } from "@/app/components/Checkbox";
 import React, { useState, useEffect } from "react";
 
-const OperationsSection = ({ onChange }) => {
+const OperationsSection = ({ onChange, preSelectedFields = [] }) => {
   const sections = {
     Processing: [
       "Pickup Status",
@@ -27,13 +27,28 @@ const OperationsSection = ({ onChange }) => {
     ],
   };
 
-  const initial = {};
-  Object.entries(sections).forEach(([title, fields]) => {
-    initial[`title-${title}`] = false;
-    fields.forEach((f) => (initial[f] = false));
+  // Build dynamic state based on preSelectedFields
+  const [state, setState] = useState(() => {
+    const initialState = {};
+    Object.entries(sections).forEach(([title, fields]) => {
+      const allSelected = fields.every((f) => preSelectedFields.includes(f));
+      initialState[`title-${title}`] = allSelected;
+      fields.forEach((f) => (initialState[f] = preSelectedFields.includes(f)));
+    });
+    return initialState;
   });
 
-  const [state, setState] = useState(initial);
+  // Handle external reset
+  useEffect(() => {
+    if (preSelectedFields.length === 0) {
+      const hasSelected = Object.values(state).some((v) => v === true);
+      if (hasSelected) {
+        const resetState = {};
+        Object.keys(state).forEach((k) => (resetState[k] = false));
+        setState(resetState);
+      }
+    }
+  }, [preSelectedFields]);
 
   const toggle = (key) => {
     setState((prev) => {
@@ -46,7 +61,7 @@ const OperationsSection = ({ onChange }) => {
         sections[title].forEach((f) => (updated[f] = newVal));
       } else {
         const parent = Object.keys(sections).find((t) =>
-          sections[t].includes(key)
+          sections[t].includes(key),
         );
 
         const allSelected = sections[parent].every((f) => updated[f]);
@@ -62,7 +77,7 @@ const OperationsSection = ({ onChange }) => {
 
   useEffect(() => {
     const selected = Object.keys(state).filter(
-      (k) => !k.startsWith("title-") && state[k]
+      (k) => !k.startsWith("title-") && state[k],
     );
     onChange?.(selected);
   }, [state]);
@@ -88,7 +103,7 @@ const OperationsSection = ({ onChange }) => {
 
           <ul className="ml-6 mt-2">
             {fields.map((f) => (
-              <li key={f}>
+              <li key={f} className="mt-1">
                 <RedCheckbox
                   id={f}
                   label={f}
