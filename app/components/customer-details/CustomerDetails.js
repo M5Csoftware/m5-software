@@ -96,7 +96,7 @@ const CustomerDetails = ({
           </div>
 
           <div className="flex flex-col gap-4">
-            <h2 className="text-red font-semibold text-base">
+            <h2 className="text-red font-semibold text-base py-2">
               Sale Person Details
             </h2>
             <div className="flex gap-6">

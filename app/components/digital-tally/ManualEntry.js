@@ -6,7 +6,7 @@ import RedCheckbox from "../RedCheckBox";
 import { OutlinedButtonRed, SimpleButton } from "../Buttons";
 import { LabeledDropdown } from "../Dropdown";
 import { DummyInputBoxWithLabelDarkGray } from "../DummyInputBox";
-import Table, { TableWithSorting } from "../Table";
+import Table, { TableWithSorting, TableWithCheckbox } from "../Table";
 import axios from "axios";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import { useAuth } from "@/app/Context/AuthContext";
@@ -21,6 +21,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
   const { user } = useAuth();
   const [hubList, setHubList] = useState([]);
   const [resetTally, setResetTally] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
 
   useEffect(() => {
     const now = new Date();
@@ -107,7 +108,7 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
       actWgt: watch("actualWeight") || "",
       volwgt: watch("volWeight") || "",
       service: watch("service") || "",
-      status: hold ? "Hold" : "Active",
+      status: hold ? "Hold" : "Arrived at Hub",
       "Hold Reason": hold ? watch("holdReason") || "" : "-",
       cdNumber: watch("cdNumber") || "",
       code: currentCode || "",
@@ -118,7 +119,20 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
 
     // console.log("✅ Row data:", newRow);
 
-    setRowData((prev) => [...prev, newRow]);
+    setRowData((prev) => {
+      const existingIndex = prev.findIndex(
+        (row) => row.mawbNumber === (watch("mawbNumber") || ""),
+      );
+      if (existingIndex !== -1) {
+        // Update existing row
+        const updatedData = [...prev];
+        updatedData[existingIndex] = newRow;
+        alert(`Updated entry for AWB: ${watch("mawbNumber")}`);
+        return updatedData;
+      }
+      // Add new row
+      return [...prev, newRow];
+    });
 
     // Clear specified things on Add to Table
     [
@@ -127,13 +141,21 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
       "volWeight",
       "holdReason",
       "service",
-      "code",
-      "client",
-      "email",
-      "phoneNumber",
     ].forEach((field) => setValue(field, ""));
 
     setHold(false);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedItems.length === 0) return;
+
+    const selectedAwbs = new Set(selectedItems.map((item) => item.mawbNumber));
+
+    setRowData((prev) =>
+      prev.filter((row) => !selectedAwbs.has(row.mawbNumber)),
+    );
+    setSelectedItems([]); // Clear selection after delete
+    alert(`Removed ${selectedAwbs.size} selected entries`);
   };
 
   const code = watch("code");
@@ -224,14 +246,14 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
       // console.log("🔍 Current user:", { entryUser, entryUserName });
 
       // console.log("🔍 Current form values:", {
-//         cdNumber: watch("cdNumber"),
-//         code: watch("code"),
-//         client: watch("client"),
-//         email: watch("email"),
-//         phoneNumber: watch("phoneNumber"),
-//         hubName: watch("hubName"),
-//         hubCode: watch("hubCode"),
-//       });
+      //         cdNumber: watch("cdNumber"),
+      //         code: watch("code"),
+      //         client: watch("client"),
+      //         email: watch("email"),
+      //         phoneNumber: watch("phoneNumber"),
+      //         hubName: watch("hubName"),
+      //         hubCode: watch("hubCode"),
+      //       });
 
       // console.log("📊 Current rowData:", rowData);
 
@@ -271,9 +293,9 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
       };
 
       // console.log(
-//         "📤 Final payload being sent:",
-//         JSON.stringify(payload, null, 2),
-//       );
+      //         "📤 Final payload being sent:",
+      //         JSON.stringify(payload, null, 2),
+      //       );
 
       const token = localStorage.getItem("token");
 
@@ -318,28 +340,6 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex w-full gap-4">
-        <DummyInputBoxWithLabelDarkGray
-          placeholder="--/--/--"
-          label={`Status Date`}
-          register={register}
-          setValue={setValue}
-          value={`statusDate`}
-        />
-        <DummyInputBoxWithLabelDarkGray
-          placeholder="00:00"
-          label={`Time`}
-          register={register}
-          setValue={setValue}
-          value={`time`}
-        />
-        <DummyInputBoxWithLabelDarkGray
-          placeholder="Hub Code"
-          label="Location"
-          register={register}
-          setValue={setValue}
-          value="hubCode"
-          disabled
-        />
         <LabeledDropdown
           options={hubList.map((hub) => hub.name)}
           register={register}
@@ -353,6 +353,28 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
           value="hubName"
           title="Select Hub"
           selectedValue={watch("hubName") || ""}
+        />
+        <DummyInputBoxWithLabelDarkGray
+          placeholder="Hub Code"
+          label="Location"
+          register={register}
+          setValue={setValue}
+          value="hubCode"
+          disabled
+        />
+        <DummyInputBoxWithLabelDarkGray
+          placeholder="--/--/--"
+          label={`Status Date`}
+          register={register}
+          setValue={setValue}
+          value={`statusDate`}
+        />
+        <DummyInputBoxWithLabelDarkGray
+          placeholder="00:00"
+          label={`Time`}
+          register={register}
+          setValue={setValue}
+          value={`time`}
         />
       </div>
       <div className="flex gap-6 w-full">
@@ -558,13 +580,22 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
             />
           </div>
 
-          <TableWithSorting
-            register={register}
-            setValue={setValue}
-            name="manualEntry"
-            columns={columns}
-            rowData={rowData}
-            className=" h-[250px]"
+          <div className="max-h-[250px] overflow-auto border-zinc-300 border-[1px] rounded-lg">
+            <TableWithCheckbox
+              register={register}
+              setValue={setValue}
+              name="manualEntry"
+              columns={columns}
+              rowData={rowData}
+              selectedItems={selectedItems}
+              setSelectedItems={setSelectedItems}
+              divClassName="border-none"
+            />
+          </div>
+          <SimpleButton
+            name="Delete Selected"
+            onClick={handleDeleteSelected}
+            disabled={selectedItems.length === 0}
           />
 
           <div className="flex justify-between">
