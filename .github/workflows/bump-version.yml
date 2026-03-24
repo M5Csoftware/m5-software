@@ -115,9 +115,8 @@ jobs:
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           SIGNATURE=$(cat "${{ steps.files.outputs.sig }}")
 
-          # URL-encode spaces in the filename so the download URL is valid
-          # Use MSI file for updater (not ZIP)
-          MSI_NAME=$(basename "${{ steps.files.outputs.msi }}" | sed 's/ /%20/g')
+          # Use the ZIP file for the Tauri updater (required by Tauri v1)
+          ZIP_NAME=$(basename "${{ steps.files.outputs.zip }}")
 
           cat > version.json << JSONEOF
           {
@@ -127,7 +126,7 @@ jobs:
             "platforms": {
               "windows-x86_64": {
                 "signature": "$SIGNATURE",
-                "url": "https://github.com/M5Csoftware/m5-software/releases/download/v$NEW_VERSION/$MSI_NAME"
+                "url": "https://github.com/M5Csoftware/m5-software/releases/download/v$NEW_VERSION/$ZIP_NAME"
               }
             }
           }
