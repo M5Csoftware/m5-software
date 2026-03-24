@@ -116,7 +116,8 @@ jobs:
           SIGNATURE=$(cat "${{ steps.files.outputs.sig }}")
 
           # Use the ZIP file for the Tauri updater (required by Tauri v1)
-          ZIP_NAME=$(basename "${{ steps.files.outputs.zip }}")
+          # GitHub replaces spaces with dots in release asset names, so we must do the same
+          ZIP_NAME=$(basename "${{ steps.files.outputs.zip }}" | sed 's/ /./g')
 
           cat > version.json << JSONEOF
           {
