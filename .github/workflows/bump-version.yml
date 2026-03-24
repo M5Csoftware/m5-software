@@ -116,7 +116,8 @@ jobs:
           SIGNATURE=$(cat "${{ steps.files.outputs.sig }}")
 
           # URL-encode spaces in the filename so the download URL is valid
-          ZIP_NAME=$(basename "${{ steps.files.outputs.zip }}" | sed 's/ /%20/g')
+          # Use MSI file for updater (not ZIP)
+          MSI_NAME=$(basename "${{ steps.files.outputs.msi }}" | sed 's/ /%20/g')
 
           cat > version.json << JSONEOF
           {
@@ -126,7 +127,7 @@ jobs:
             "platforms": {
               "windows-x86_64": {
                 "signature": "$SIGNATURE",
-                "url": "https://github.com/M5Csoftware/m5-software/releases/download/v$NEW_VERSION/$ZIP_NAME"
+                "url": "https://github.com/M5Csoftware/m5-software/releases/download/v$NEW_VERSION/$MSI_NAME"
               }
             }
           }
@@ -156,5 +157,6 @@ jobs:
             ${{ steps.files.outputs.msi }}
             ${{ steps.files.outputs.zip }}
             ${{ steps.files.outputs.sig }}
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -102,20 +102,40 @@ function ConfirmationModal({
           {/* Content */}
           <div className="sm:flex sm:items-start">
             {/* Icon */}
-            <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-              <svg
-                className="w-6 h-6 text-red-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
+            <div
+              className={`mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full sm:mx-0 sm:h-10 sm:w-10 ${
+                variant === "success" ? "bg-green-100" : "bg-red-100"
+              }`}
+            >
+              {variant === "success" ? (
+                <svg
+                  className="w-6 h-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              )}
             </div>
 
             {/* Text content */}
@@ -138,7 +158,11 @@ function ConfirmationModal({
               type="button"
               disabled={isLoading}
               onClick={handleConfirm}
-              className="inline-flex w-full bg-red justify-center items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 sm:w-auto min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed bg-red-600 hover:bg-red-700 focus:ring-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2"
+              className={`inline-flex w-full justify-center items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 sm:w-auto min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                variant === "success"
+                  ? "bg-green-600 hover:bg-green-700 focus:ring-green-500"
+                  : "bg-red-600 hover:bg-red-700 focus:ring-red-500"
+              }`}
             >
               {isLoading ? (
                 <>
@@ -203,8 +227,9 @@ export default function EmployeeTable({
   onSort,
   sortConfig,
   onEmployeeAction,
+  selectedIds,
+  setSelectedIds,
 }) {
-  const [selectedIds, setSelectedIds] = useState([]);
   const [activeMenu, setActiveMenu] = useState(null);
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
@@ -214,6 +239,10 @@ export default function EmployeeTable({
     useState(false);
   const [userToDeactivate, setUserToDeactivate] = useState(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
+  const [showConfirmActivateModal, setShowConfirmActivateModal] =
+    useState(false);
+  const [userToActivate, setUserToActivate] = useState(null);
+  const [isActivating, setIsActivating] = useState(false);
 
   const allowedRoles = [
     "admin",
@@ -283,16 +312,38 @@ export default function EmployeeTable({
         setUserToDelete(user);
         setShowConfirmDeleteModal(true);
         break;
-      case "permissions":
-        onEmployeeAction("permissions", user);
-        // console.log("Change permissions for:", user);
-        break;
       case "deactivate":
         setUserToDeactivate(user);
         setShowConfirmDeactivateModal(true);
         break;
+      case "activate":
+        setUserToActivate(user);
+        setShowConfirmActivateModal(true);
+        break;
       default:
         break;
+    }
+  };
+
+  const confirmActivate = async () => {
+    if (userToActivate) {
+      setIsActivating(true);
+      try {
+        await onEmployeeAction("activate", userToActivate);
+        setShowConfirmActivateModal(false);
+        setUserToActivate(null);
+      } catch (error) {
+        console.error("Failed to activate user:", error);
+      } finally {
+        setIsActivating(false);
+      }
+    }
+  };
+
+  const cancelActivate = () => {
+    if (!isActivating) {
+      setShowConfirmActivateModal(false);
+      setUserToActivate(null);
     }
   };
 
@@ -609,31 +660,7 @@ export default function EmployeeTable({
                             <span>Edit details</span>
                           </button>
 
-                          <button
-                            onClick={(e) =>
-                              handleMenuAction("permissions", user, e)
-                            }
-                            className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 text-sm text-gray-700 flex items-center gap-3 transition-colors duration-150 group"
-                            role="menuitem"
-                            type="button"
-                          >
-                            <div className="w-4 h-4 flex items-center justify-center">
-                              <svg
-                                className="w-4 h-4 text-gray-500 group-hover:text-gray-700"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={1.5}
-                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                />
-                              </svg>
-                            </div>
-                            <span>Change permissions</span>
-                          </button>
+                          {/* Removed Change permissions */}
 
                           {/* Divider */}
                           <div className="my-2 border-t border-gray-100"></div>
@@ -662,49 +689,85 @@ export default function EmployeeTable({
                             <span>Delete user</span>
                           </button>
 
-                          <button
-                            onClick={(e) =>
-                              handleMenuAction("deactivate", user, e)
-                            }
-                            className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-red-100 text-sm text-red flex items-center gap-3 transition-colors duration-150 group"
-                            role="menuitem"
-                            type="button"
-                          >
-                            <div className="w-4 h-4 flex items-center justify-center">
-                              <svg
-                                className="w-4 h-4 text-red group-hover:text-red"
-                                fill="currentColor"
-                                viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg"
-                              >
-                                <circle
-                                  cx="12"
-                                  cy="12"
-                                  r="10"
+                          {!user.deactivated ? (
+                            <button
+                              onClick={(e) =>
+                                handleMenuAction("deactivate", user, e)
+                              }
+                              className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-red-100 text-sm text-red flex items-center gap-3 transition-colors duration-150 group"
+                              role="menuitem"
+                              type="button"
+                            >
+                              <div className="w-4 h-4 flex items-center justify-center">
+                                <svg
+                                  className="w-4 h-4 text-red group-hover:text-red"
                                   fill="currentColor"
-                                />
-                                <line
-                                  x1="8"
-                                  y1="8"
-                                  x2="16"
-                                  y2="16"
-                                  stroke="white"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                />
-                                <line
-                                  x1="16"
-                                  y1="8"
-                                  x2="8"
-                                  y2="16"
-                                  stroke="white"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                            </div>
-                            <span>De-activate user</span>
-                          </button>
+                                  viewBox="0 0 24 24"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <circle
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    fill="currentColor"
+                                  />
+                                  <line
+                                    x1="8"
+                                    y1="8"
+                                    x2="16"
+                                    y2="16"
+                                    stroke="white"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                  />
+                                  <line
+                                    x1="16"
+                                    y1="8"
+                                    x2="8"
+                                    y2="16"
+                                    stroke="white"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                              </div>
+                              <span>De-activate user</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) =>
+                                handleMenuAction("activate", user, e)
+                              }
+                              className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-green-100 text-sm text-green-600 flex items-center gap-3 transition-colors duration-150 group"
+                              role="menuitem"
+                              type="button"
+                            >
+                              <div className="w-4 h-4 flex items-center justify-center">
+                                <svg
+                                  className="w-4 h-4 text-green-600 group-hover:text-green-700"
+                                  fill="currentColor"
+                                  viewBox="0 0 24 24"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                >
+                                  <circle
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    fill="currentColor"
+                                  />
+                                  <path
+                                    d="M9 12l2 2 4-4"
+                                    stroke="white"
+                                    strokeWidth="2"
+                                    fill="none"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              </div>
+                              <span>Activate user</span>
+                            </button>
+                          )}
                         </div>
                       </>
                     )}
@@ -741,6 +804,20 @@ export default function EmployeeTable({
           confirmText="Deactivate"
           cancelText="Cancel"
           isLoading={isDeactivating}
+        />
+      )}
+      {showConfirmActivateModal && (
+        <ConfirmationModal
+          onConfirm={confirmActivate}
+          onCancel={cancelActivate}
+          message={`Are you sure you want to activate ${
+            userToActivate?.userName || "this user"
+          }? They will regain access to the system.`}
+          title="Activate User"
+          confirmText="Activate"
+          cancelText="Cancel"
+          isLoading={isActivating}
+          variant="success"
         />
       )}
     </>

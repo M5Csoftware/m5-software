@@ -412,9 +412,11 @@ const TableRowWithSorting = memo(function TableRowWithSorting({ rowData, columns
           <span>
             {column.key === "date"
               ? formatDate(rowData[column.key])
-              : isTicketDashboard && column.key === "ticketNo"
-                ? rowData[column.key].ticketNo
-                : rowData[column.key]}
+              : column.type === "number" && typeof rowData[column.key] === "number"
+                ? rowData[column.key].toFixed(2)
+                : isTicketDashboard && column.key === "ticketNo"
+                  ? rowData[column.key].ticketNo
+                  : rowData[column.key]}
           </span>{" "}
           <br />
           {isTicketDashboard && column.key === "ticketNo" && (
