@@ -7,8 +7,9 @@ export default function ApiManagementTable({
     onSort,
     sortConfig,
     onApiUserAction,
+    selectedIds,
+    setSelectedIds,
 }) {
-    const [selectedIds, setSelectedIds] = useState([]);
     const [activeMenu, setActiveMenu] = useState(null);
     const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
     const [userToDelete, setUserToDelete] = useState(null);

@@ -237,7 +237,7 @@ export default function UpdateNotification() {
 
   const handleManualDownload = () => {
     if (updateInfo?.remote_version) {
-      const downloadUrl = `https://github.com/M5Csoftware/m5-software/releases/download/v${updateInfo.remote_version}/M5C%20Logs_${updateInfo.remote_version}_x64_en-US.msi`;
+      const downloadUrl = `https://github.com/M5Csoftware/m5-software/releases/download/v${updateInfo.remote_version}/M5C.Logs_${updateInfo.remote_version}_x64_en-US.msi`;
       window.open(downloadUrl, "_blank");
     }
   };
