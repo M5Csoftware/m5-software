@@ -122,7 +122,7 @@ const CreditLimit = ({
       { key: "service", label: "Service" },
       { key: "divisible", label: "Divisible" },
     ],
-    []
+    [],
   );
 
   const [rowData, setRowData] = useState([]);
@@ -140,19 +140,22 @@ const CreditLimit = ({
     const fetchCustomerSummary = async () => {
       // Get accountCode - check both watched value and customerData
       const accountCode = watchedAccountCode || customerData?.accountCode;
-      
+
       if (!accountCode) {
         // console.log("=== No accountCode available, skipping payment entry fetch");
         return;
       }
 
       try {
-        console.log("=== Fetching Customer Summary for accountCode:", accountCode);
+        console.log(
+          "=== Fetching Customer Summary for accountCode:",
+          accountCode,
+        );
         // console.log("Server URL:", server);
         // console.log("Full URL:", `${server}/payment-entry?accountCode=${accountCode}`);
-        
+
         const response = await axios.get(
-          `${server}/payment-entry?accountCode=${accountCode}`
+          `${server}/payment-entry?accountCode=${accountCode}`,
         );
 
         // console.log("=== Payment Entry API Response:", response.data);
@@ -173,9 +176,10 @@ const CreditLimit = ({
         const totalReceipt = parseFloat(summary.totalReceipt || 0);
         const totalDebit = parseFloat(summary.totalDebit || 0);
         const totalCredit = parseFloat(summary.totalCredit || 0);
-        
-        const calculatedOutstanding = (totalSales + totalDebit) - (totalReceipt + totalCredit);
-        
+
+        const calculatedOutstanding =
+          totalSales + totalDebit - (totalReceipt + totalCredit);
+
         // console.log("=== Outstanding Calculation ===");
         // console.log("Total Sales:", totalSales);
         // console.log("Total Debit:", totalDebit);
@@ -183,14 +187,14 @@ const CreditLimit = ({
         // console.log("Total Credit:", totalCredit);
         // console.log("Formula: (Sales + Debit) - (Receipt + Credit)");
         // console.log(`(${totalSales} + ${totalDebit}) - (${totalReceipt} + ${totalCredit}) = ${calculatedOutstanding}`);
-        
+
         setValue("outstanding", calculatedOutstanding.toFixed(2));
       } catch (error) {
         console.error("=== ERROR fetching customer summary ===");
         console.error("Error details:", error);
         console.error("Error response:", error.response?.data);
         console.error("Error status:", error.response?.status);
-        
+
         // Reset totals on error
         setTotals({
           totalSales: 0,
@@ -212,14 +216,14 @@ const CreditLimit = ({
         console.log("=== Fetching Rate Sheets ===");
         // console.log("Server URL:", server);
         // console.log("Full URL:", `${server}/rate-sheet`);
-        
+
         const response = await axios.get(`${server}/rate-sheet`);
         // console.log("Rate sheets fetched:", response.data);
 
         // Extract unique services from all rate sheets
         const services = [
           ...new Set(
-            response.data.map((sheet) => sheet.service).filter(Boolean)
+            response.data.map((sheet) => sheet.service).filter(Boolean),
           ),
         ];
         // console.log("Unique services:", services);
@@ -461,7 +465,7 @@ const CreditLimit = ({
                 </div>
               </div>
 
-              <div className="w-full py-6">
+              <div className="w-full">
                 <Table
                   columns={columns}
                   rowData={rowData}
