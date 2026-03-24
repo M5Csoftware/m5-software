@@ -250,7 +250,7 @@ export default function UpdateNotification() {
       <div
         onClick={() => setShowModal(true)}
         style={{
-          background: "linear-gradient(135deg,#f59e0b,#d97706)",
+          background: "linear-gradient(135deg,#EA1B40,#c41535)",
           borderRadius: "10px",
           padding: "10px 12px",
           margin: "0 8px 6px 8px",
@@ -258,17 +258,17 @@ export default function UpdateNotification() {
           display: "flex",
           alignItems: "center",
           gap: "10px",
-          boxShadow: "0 2px 10px rgba(245,158,11,.4)",
+          boxShadow: "0 2px 10px rgba(234,27,64,.4)",
           userSelect: "none",
           animation: "pulse-banner 2.5s ease-in-out infinite",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = "translateY(-1px)";
-          e.currentTarget.style.boxShadow = "0 4px 16px rgba(245,158,11,.55)";
+          e.currentTarget.style.boxShadow = "0 4px 16px rgba(234,27,64,.55)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 2px 10px rgba(245,158,11,.4)";
+          e.currentTarget.style.boxShadow = "0 2px 10px rgba(234,27,64,.4)";
         }}
       >
         <svg
@@ -382,8 +382,8 @@ export default function UpdateNotification() {
                 height: "56px",
                 borderRadius: "16px",
                 background: installing
-                  ? "linear-gradient(135deg,#dbeafe,#bfdbfe)"
-                  : "linear-gradient(135deg,#fef3c7,#fde68a)",
+                  ? "linear-gradient(135deg,#dcfce7,#bbf7d0)"
+                  : "linear-gradient(135deg,#fee2e2,#fecaca)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -396,7 +396,7 @@ export default function UpdateNotification() {
                   height="28"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#3b82f6"
+                  stroke="#16a34a"
                   strokeWidth="2"
                   strokeLinecap="round"
                   style={{ animation: "spin 1s linear infinite" }}
@@ -409,7 +409,7 @@ export default function UpdateNotification() {
                   height="28"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#d97706"
+                  stroke="#EA1B40"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -455,7 +455,7 @@ export default function UpdateNotification() {
                     style={{
                       height: "100%",
                       width: `${progress}%`,
-                      background: "linear-gradient(90deg,#3b82f6,#6366f1)",
+                      background: "linear-gradient(90deg,#22c55e,#16a34a)",
                       borderRadius: "999px",
                       transition: "width 0.4s ease",
                     }}
@@ -648,12 +648,12 @@ export default function UpdateNotification() {
                       padding: "12px",
                       borderRadius: "12px",
                       border: "none",
-                      background: "linear-gradient(135deg,#f59e0b,#d97706)",
+                      background: "linear-gradient(135deg,#EA1B40,#c41535)",
                       color: "white",
                       fontWeight: "700",
                       fontSize: "14px",
                       cursor: "pointer",
-                      boxShadow: "0 4px 14px rgba(245,158,11,.45)",
+                      boxShadow: "0 4px 14px rgba(234,27,64,.45)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -700,8 +700,8 @@ export default function UpdateNotification() {
 
       <style>{`
         @keyframes pulse-banner {
-          0%,100% { box-shadow:0 2px 10px rgba(245,158,11,.4); }
-          50%      { box-shadow:0 2px 18px rgba(245,158,11,.7); }
+          0%,100% { box-shadow:0 2px 10px rgba(234,27,64,.4); }
+          50%      { box-shadow:0 2px 18px rgba(234,27,64,.7); }
         }
         @keyframes modal-in {
           from { opacity:0; transform:scale(.95) translateY(8px); }
