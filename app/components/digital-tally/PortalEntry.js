@@ -423,12 +423,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
       "holdReason",
       "selectedReason",
       "service",
-      "code",
-      "client",
-      "email",
-      "phoneNumber",
-      "ConsigneeDetails",
-      "ConsignorDetails",
     ].forEach((field) => setValue(field, ""));
 
     setHold(false);

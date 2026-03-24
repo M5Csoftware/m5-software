@@ -141,10 +141,6 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
       "volWeight",
       "holdReason",
       "service",
-      "code",
-      "client",
-      "email",
-      "phoneNumber",
     ].forEach((field) => setValue(field, ""));
 
     setHold(false);
