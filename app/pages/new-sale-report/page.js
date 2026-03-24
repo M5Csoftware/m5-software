@@ -260,10 +260,7 @@ const NewSaleReport = () => {
       try {
         const range = getISODateRange(fromDate, toDate);
         if (!range) return { data: [], totalPages: 1, page };
-        const route = `${server}/new-sale-report/comparison
-?mode=${mode}
-&from=${range.from}
-&to=${range.to}`;
+        const route = `${server}/new-sale-report/comparison?mode=${mode}&from=${range.from}&to=${range.to}`;
 
         const res = await fetch(
           `${route}&prevFrom=${prevMonthRange.from}&prevTo=${prevMonthRange.to}&page=${page}&limit=${limit}`,
@@ -614,13 +611,10 @@ const NewSaleReport = () => {
           <div className="w-[200px]">
             <OutlinedButtonRed
               label={isLoading ? "Loading..." : "Show"}
-              onClick={
-                demoRadio === "Comparison" && comparisonMode === "State"
-                  ? handleShowComparison
-                  : handleShow
-              }
+              onClick={handleShow}
               disabled={isLoading}
             />
+
           </div>
           <div>
             {demoRadio === "Comparison" && comparisonMode === "Sec & Hub" ? (

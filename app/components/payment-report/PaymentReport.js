@@ -34,7 +34,7 @@ function PaymentReport({
   const [rowData, setRowData] = useState([]);
   const columns = [
     { key: "receiptNo", label: "Receipt No." },
-    { key: "customerCode", label: "Customer Code" },
+    { key: "accountCode", label: "Customer Code" },
     { key: "customerName", label: "Customer Name" },
     { key: "branchCode", label: "Branch Code" },
     { key: "branchName", label: "Branch Name" },

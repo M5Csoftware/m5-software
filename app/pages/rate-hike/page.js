@@ -16,7 +16,7 @@ const RateHike = () => {
   const { register, setValue, watch, reset } = useForm({
     shouldUnregister: false,
   });
-  const customerCode = watch("customerName");
+  const customerCode = watch("customerCode");
   const [demoRadio, setDemoRadio] = useState("percentageInput");
   const { server, accounts } = useContext(GlobalContext);
   const [rateTariffs, setRateTariffs] = useState([]);
@@ -31,7 +31,7 @@ const RateHike = () => {
   const searchZone = watch("searchZoneList");
   const percentageRateHike = watch("percentageRateHike");
   const flatRateHike = watch("flatRateHike");
-  const [branchValue, setBranchValue] = useState("");
+  const [customerNameValue, setCustomerNameValue] = useState("");
   const [countryValue, setCountryValue] = useState("");
   const [showHikedRates, setShowHikedRates] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,7 +61,7 @@ const RateHike = () => {
     setZoneListData([]);
     setShowHikedRates(false);
     setDemoRadio("percentageInput");
-    setBranchValue("");
+    setCustomerNameValue("");
     setCountryValue("");
     setZoneTariffValue("");
     zoneRef.current = "";
@@ -69,24 +69,24 @@ const RateHike = () => {
     showNotification("info", "All fields have been refreshed");
   };
 
-  // Find branch for selected customer
+  // Find name for selected customer
   useEffect(() => {
     if (customerCode && accounts && accounts.length > 0) {
       const selectedAccount = accounts.find(
-        (account) => account.accountCode === customerCode
+        (account) => account.accountCode === customerCode,
       );
 
       if (selectedAccount) {
-        const branch = selectedAccount.branch || "";
-        setBranchValue(branch);
-        setValue("branch", branch);
+        const name = selectedAccount.name || "";
+        setCustomerNameValue(name);
+        setValue("name", name);
       } else {
-        setBranchValue("");
-        setValue("branch", "");
+        setCustomerNameValue("");
+        setValue("name", "");
       }
     } else {
-      setBranchValue("");
-      setValue("branch", "");
+      setCustomerNameValue("");
+      setValue("name", "");
     }
   }, [customerCode, accounts, setValue]);
 
@@ -114,9 +114,9 @@ const RateHike = () => {
   useEffect(() => {
     if (zoneTariffValue && zoneTariffValue.trim()) {
       // console.log(
-//         "zoneTariffValue changed, fetching zone list:",
-//         zoneTariffValue
-//       );
+      //         "zoneTariffValue changed, fetching zone list:",
+      //         zoneTariffValue
+      //       );
       zoneRef.current = zoneTariffValue;
       fetchZoneList();
     }
@@ -130,10 +130,10 @@ const RateHike = () => {
       const cleanService = service.trim();
 
       // console.log("Fetching country for:", {
-//         customerCode,
-//         rateTariff: cleanRateTariff,
-//         service: cleanService,
-//       });
+      //         customerCode,
+      //         rateTariff: cleanRateTariff,
+      //         service: cleanService,
+      //       });
 
       const res = await axios.get(`${server}/rate-hike/country`, {
         params: {
@@ -169,6 +169,25 @@ const RateHike = () => {
     } catch (error) {
       console.error("Error fetching rate tariffs:", error);
       showNotification("error", "Failed to fetch rate tariffs");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchAllRateTariffs = async () => {
+    try {
+      setIsLoading(true);
+      const res = await axios.get(`${server}/rate-sheet`);
+      const allData = res.data || [];
+      const uniqueShippers = [
+        ...new Set(allData.map((item) => item.shipper)),
+      ].filter(Boolean);
+
+      setRateTariffs(uniqueShippers);
+      setRateTariffRaw([]);
+    } catch (error) {
+      console.error("Error fetching all rate tariffs:", error);
+      showNotification("error", "Failed to fetch all rate tariffs");
     } finally {
       setIsLoading(false);
     }
@@ -218,17 +237,17 @@ const RateHike = () => {
       });
 
       // console.log("Zone list API response:", {
-//         status: res.status,
-//         dataLength: res.data?.length || 0,
-//         sample: res.data?.[0],
-//       });
+      //         status: res.status,
+      //         dataLength: res.data?.length || 0,
+      //         sample: res.data?.[0],
+      //       });
 
       setZoneListData(res.data || []);
 
       if (res.data && res.data.length > 0) {
         // console.log(
-//           `✅ Loaded ${res.data.length} zone entries for zoneMatrix: "${currentZone}"`
-//         );
+        //           `✅ Loaded ${res.data.length} zone entries for zoneMatrix: "${currentZone}"`
+        //         );
         // console.log("Sample zone entry:", res.data[0]);
       } else {
         // console.log(`❌ No zone data found for zoneMatrix: "${currentZone}"`);
@@ -299,7 +318,7 @@ const RateHike = () => {
         label: `Zone ${i + 1}`,
       })),
     ],
-    []
+    [],
   );
 
   const zoneListColumns = useMemo(
@@ -309,7 +328,7 @@ const RateHike = () => {
       { key: "zone", label: "Zone" },
       { key: "destination", label: "Destination" },
     ],
-    []
+    [],
   );
 
   // Enhanced search filter for zone list
@@ -350,13 +369,13 @@ const RateHike = () => {
   const handleShow = async () => {
     // console.log("=== handleShow clicked ===");
     // console.log("Current values:", {
-//       customerCode,
-//       selectedRateTariff,
-//       selectedService,
-//       zoneTariffFromShipper: zoneRef.current,
-//       branch: branchValue,
-//       country: countryValue,
-//     });
+    //       customerCode,
+    //       selectedRateTariff,
+    //       selectedService,
+    //       zoneTariffFromShipper: zoneRef.current,
+    //       customerName: customerNameValue,
+    //       country: countryValue,
+    //     });
 
     if (!selectedRateTariff) {
       showNotification("error", "Please select rate tariff");
@@ -386,22 +405,22 @@ const RateHike = () => {
       });
 
       // console.log("Rate sheet response:", {
-//         status: res.status,
-//         dataLength: res.data?.length || 0,
-//       });
+      //         status: res.status,
+      //         dataLength: res.data?.length || 0,
+      //       });
 
       const ratesData = res.data || [];
 
       if (ratesData.length > 0) {
         // console.log("Sample row:", {
-//           shipper: ratesData[0].shipper,
-//           service: ratesData[0].service,
-//           network: ratesData[0].network,
-//         });
+        //           shipper: ratesData[0].shipper,
+        //           service: ratesData[0].service,
+        //           network: ratesData[0].network,
+        //         });
       }
 
       const sortedData = [...ratesData].sort(
-        (a, b) => a.minWeight - b.minWeight
+        (a, b) => a.minWeight - b.minWeight,
       );
       setTableData(sortedData);
       setHikedTableData([]);
@@ -412,13 +431,13 @@ const RateHike = () => {
 
       showNotification(
         "success",
-        `Rates loaded successfully - ${sortedData.length} rows`
+        `Rates loaded successfully - ${sortedData.length} rows`,
       );
     } catch (error) {
       console.error("Error fetching rates:", error);
       showNotification(
         "error",
-        `Failed to fetch rates: ${error.response?.data?.error || error.message}`
+        `Failed to fetch rates: ${error.response?.data?.error || error.message}`,
       );
     } finally {
       setIsLoading(false);
@@ -437,8 +456,9 @@ const RateHike = () => {
     if (!hikeValue || parseFloat(hikeValue) <= 0) {
       showNotification(
         "error",
-        `Please enter a valid ${demoRadio === "percentageInput" ? "percentage" : "flat"
-        } hike value`
+        `Please enter a valid ${
+          demoRadio === "percentageInput" ? "percentage" : "flat"
+        } hike value`,
       );
       return;
     }
@@ -453,11 +473,13 @@ const RateHike = () => {
           if (newRow[zoneKey] !== null && newRow[zoneKey] !== undefined) {
             if (demoRadio === "percentageInput") {
               newRow[zoneKey] = parseFloat(
-                (newRow[zoneKey] * (1 + parseFloat(hikeValue) / 100)).toFixed(2)
+                (newRow[zoneKey] * (1 + parseFloat(hikeValue) / 100)).toFixed(
+                  2,
+                ),
               );
             } else {
               newRow[zoneKey] = parseFloat(
-                (newRow[zoneKey] + parseFloat(hikeValue)).toFixed(2)
+                (newRow[zoneKey] + parseFloat(hikeValue)).toFixed(2),
               );
             }
           }
@@ -471,8 +493,9 @@ const RateHike = () => {
 
       showNotification(
         "success",
-        `Rate hike of ${hikeValue}${demoRadio === "percentageInput" ? "%" : ""
-        } calculated successfully. Toggle between Original/Hiked rates above.`
+        `Rate hike of ${hikeValue}${
+          demoRadio === "percentageInput" ? "%" : ""
+        } calculated successfully. Toggle between Original/Hiked rates above.`,
       );
     } catch (error) {
       console.error("Error calculating hike:", error);
@@ -492,7 +515,7 @@ const RateHike = () => {
     } else {
       showNotification(
         "error",
-        "No hiked rates calculated yet. Click 'Hike' first."
+        "No hiked rates calculated yet. Click 'Hike' first.",
       );
     }
   };
@@ -502,7 +525,7 @@ const RateHike = () => {
     if (!hikedTableData.length) {
       showNotification(
         "error",
-        "No hiked rates to save. Please calculate hike first."
+        "No hiked rates to save. Please calculate hike first.",
       );
       return;
     }
@@ -517,16 +540,20 @@ const RateHike = () => {
       const res = await axios.get(`${server}/shipper-tariff`);
       const allTariffs = res.data || [];
 
-      const filteredTariffs = allTariffs.filter(t =>
-        t.rateTariff === selectedRateTariff &&
-        t.service === selectedService
+      const filteredTariffs = allTariffs.filter(
+        (t) =>
+          t.rateTariff === selectedRateTariff && t.service === selectedService,
       );
 
       // Unique customers using this tariff/service
-      const uniqueCustomerNames = [...new Set(filteredTariffs.map(t => t.customer))];
+      const uniqueCustomerNames = [
+        ...new Set(filteredTariffs.map((t) => t.customer)),
+      ];
 
       // Match with accounts to get names and account codes
-      affectedAccounts = accounts.filter(acc => uniqueCustomerNames.includes(acc.name));
+      affectedAccounts = accounts.filter((acc) =>
+        uniqueCustomerNames.includes(acc.name),
+      );
       affectedCustomersCount = affectedAccounts.length;
     } catch (error) {
       console.error("Error identifying affected customers:", error);
@@ -556,14 +583,14 @@ const RateHike = () => {
     try {
       setIsLoading(true);
       // console.log(
-//         "Bulk saving hiked tariff updates for",
-//         hikedTableData.length,
-//         "rows"
-//       );
+      //         "Bulk saving hiked tariff updates for",
+      //         hikedTableData.length,
+      //         "rows"
+      //       );
 
       showNotification(
         "info",
-        `Saving ${hikedTableData.length} rate sheets to database...`
+        `Saving ${hikedTableData.length} rate sheets to database...`,
       );
 
       const updates = hikedTableData.map((row) => {
@@ -571,7 +598,7 @@ const RateHike = () => {
 
         if (!update._id) {
           throw new Error(
-            `Missing _id for row with shipper: ${row.shipper}, service: ${row.service}`
+            `Missing _id for row with shipper: ${row.shipper}, service: ${row.service}`,
           );
         }
 
@@ -594,7 +621,7 @@ const RateHike = () => {
 
         showNotification(
           "success",
-          `Successfully saved ${res.data.modifiedCount} rate sheets to database`
+          `Successfully saved ${res.data.modifiedCount} rate sheets to database`,
         );
 
         // Send notifications to all affected customers
@@ -616,7 +643,7 @@ const RateHike = () => {
       } else {
         showNotification(
           "warning",
-          `No rates were modified. They may already have the same values.`
+          `No rates were modified. They may already have the same values.`,
         );
       }
     } catch (error) {
@@ -656,15 +683,16 @@ const RateHike = () => {
     if (customerCode) {
       fetchRateTariffs(customerCode);
     } else {
-      setRateTariffs([]);
-      setRateTariffRaw([]);
-      setServices([]);
+      fetchAllRateTariffs();
+      setCustomerNameValue("");
       setCountryValue("");
       setZoneTariffValue("");
       setTableData([]);
       setHikedTableData([]);
       setShowHikedRates(false);
       setZoneListData([]);
+      setServices([]); // Clear services
+      setValue("name", "");
       setValue("rateTariff", "");
       setValue("service", "");
       setValue("country", "");
@@ -720,8 +748,9 @@ const RateHike = () => {
         title="Confirm Save Tariff"
         message={
           pendingSaveData
-            ? `Are you sure you want to save the tariff with ${pendingSaveData.hikeType.toLowerCase()} hike of ${pendingSaveData.hikeValue
-            }${pendingSaveData.hikeType === "Percentage" ? "%" : ""}?
+            ? `Are you sure you want to save the tariff with ${pendingSaveData.hikeType.toLowerCase()} hike of ${
+                pendingSaveData.hikeValue
+              }${pendingSaveData.hikeType === "Percentage" ? "%" : ""}?
           
           This will update ${pendingSaveData.affectedRows} rate sheets for:
           • Customer: ${pendingSaveData.customer}
@@ -747,21 +776,41 @@ const RateHike = () => {
 
       <div className="flex gap-4">
         <div className="flex w-2/3 flex-col gap-3">
+          <div className="flex gap-4 items-center">
+            <RadioButtonLarge
+              id={"percentageInput"}
+              label={`Rate Hike Percentage (%)`}
+              name={`percentageInput`}
+              register={register}
+              setValue={setValue}
+              selectedValue={demoRadio}
+              setSelectedValue={setDemoRadio}
+            />
+            <RadioButtonLarge
+              id={`flatInput`}
+              label={`Flat Hike`}
+              name={`flatInput`}
+              register={register}
+              setValue={setValue}
+              selectedValue={demoRadio}
+              setSelectedValue={setDemoRadio}
+            />
+          </div>
           <div className="flex gap-4">
             <InputBox
-              value="customerName"
-              placeholder="Customer"
+              value="customerCode"
+              placeholder="Customer Code"
               setValue={setValue}
               register={register}
             />
 
             <InputBox
-              value={`branch`}
-              placeholder={`Branch`}
+              value={`name`}
+              placeholder={`Customer Name`}
               setValue={setValue}
               register={register}
               disabled
-              initialValue={branchValue}
+              initialValue={customerNameValue}
             />
           </div>
           <div className="flex gap-4">
@@ -791,14 +840,14 @@ const RateHike = () => {
               setValue={setValue}
             />
 
-            <InputBox
+            {/* <InputBox
               value="country"
               placeholder="Country"
               setValue={setValue}
               register={register}
               disabled
               initialValue={countryValue}
-            />
+            /> */}
 
             <div>
               <OutlinedButtonRed
@@ -816,20 +865,22 @@ const RateHike = () => {
               <div className="flex gap-2">
                 <button
                   onClick={handleShowOriginal}
-                  className={`px-3 py-1 rounded text-sm ${!showHikedRates
-                    ? "bg-white text-red border-[1px] rounded-md font-semibold tracking-wide text-xs border-red"
-                    : "bg-white text-red border-[1px] rounded-md font-semibold tracking-wide text-xs border-red opacity-70"
-                    }`}
+                  className={`px-3 py-1 rounded text-sm ${
+                    !showHikedRates
+                      ? "bg-white text-red border-[1px] rounded-md font-semibold tracking-wide text-xs border-red"
+                      : "bg-white text-red border-[1px] rounded-md font-semibold tracking-wide text-xs border-red opacity-70"
+                  }`}
                   type="button"
                 >
                   Original Rates
                 </button>
                 <button
                   onClick={handleShowHiked}
-                  className={`px-3 py-1 rounded text-sm ${showHikedRates
-                    ? "bg-red text-white font-semibold text-xs rounded-md tracking-wide"
-                    : "bg-red text-white font-semibold text-xs rounded-md tracking-wide opacity-70"
-                    }`}
+                  className={`px-3 py-1 rounded text-sm ${
+                    showHikedRates
+                      ? "bg-red text-white font-semibold text-xs rounded-md tracking-wide"
+                      : "bg-red text-white font-semibold text-xs rounded-md tracking-wide opacity-70"
+                  }`}
                   type="button"
                 >
                   Hiked Rates
@@ -863,71 +914,8 @@ const RateHike = () => {
               className="bg-white border rounded h-[35vh]"
             />
           </div>
-          <div className="flex gap-4 items-center">
-            <RadioButtonLarge
-              id={"percentageInput"}
-              label={`Rate Hike Percentage (%)`}
-              name={`percentageInput`}
-              register={register}
-              setValue={setValue}
-              selectedValue={demoRadio}
-              setSelectedValue={setDemoRadio}
-            />
-            <RadioButtonLarge
-              id={`flatInput`}
-              label={`Flat Hike`}
-              name={`flatInput`}
-              register={register}
-              setValue={setValue}
-              selectedValue={demoRadio}
-              setSelectedValue={setDemoRadio}
-            />
-          </div>
-        </div>
-
-        <div className="w-1/3 flex flex-col gap-3">
-          <div className="flex gap-2 w-full">
-            <div className="w-5/6">
-              <InputBox
-                value={`searchZoneList`}
-                placeholder={`Search in Service, Sector, Zone, Destination...`}
-                setValue={setValue}
-                register={register}
-              />
-            </div>
-            <div className="flex items-center w-1/6 justify-center text-xs font-semibold tracking-wide bg-red text-white px-2 py-1 rounded">
-              {searchStats.isFiltered ? (
-                <span className="">
-                  {searchStats.filtered}/{searchStats.total}
-                </span>
-              ) : (
-                <span> ~ </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <div className="">
-              <TableWithSorting
-                name="zoneList"
-                register={register}
-                setValue={setValue}
-                columns={zoneListColumns}
-                rowData={filteredZoneList}
-                className={`bg-white border rounded h-[50.2vh]`}
-              />
-            </div>
-
-            {/* Search result summary */}
-            {searchStats.isFiltered && (
-              <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded border">
-                Showing {searchStats.filtered} of {searchStats.total} zones
-                matching "
-                <span className="font-semibold">{searchStats.searchTerm}</span>"
-              </div>
-            )}
-
-            <div>
+          <div className="flex gap-3">
+            <div className="w-1/2">
               {demoRadio === "percentageInput" ? (
                 <InputBox
                   value={`percentageRateHike`}
@@ -944,22 +932,58 @@ const RateHike = () => {
                 />
               )}
             </div>
-          </div>
-          <div className="flex flex-col gap-4 w-full">
-            <div className="flex w-full items-center">
-              <div className="flex gap-4 w-full">
-                <OutlinedButtonRed
-                  label={`Hike`}
-                  type="button"
-                  onClick={handleHike}
-                />
-                <SimpleButton
-                  name={`Save Tariff`}
-                  type="button"
-                  onClick={handleSaveTariff}
-                />
-              </div>
+
+            <div className="w-1/4">
+              {" "}
+              <OutlinedButtonRed
+                label={`Hike`}
+                type="button"
+                onClick={handleHike}
+              />
             </div>
+            <div className="w-1/4">
+              {" "}
+              <SimpleButton
+                name={`Save Tariff`}
+                type="button"
+                onClick={handleSaveTariff}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="w-1/3 flex flex-col gap-3">
+          <div className="flex gap-2 w-full">
+            <div className="w-full">
+              <InputBox
+                value={`searchZoneList`}
+                placeholder={`Search in Service, Sector, Zone, Destination...`}
+                setValue={setValue}
+                register={register}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="">
+              <TableWithSorting
+                name="zoneList"
+                register={register}
+                setValue={setValue}
+                columns={zoneListColumns}
+                rowData={filteredZoneList}
+                className={`bg-white border rounded h-[54.8vh]`}
+              />
+            </div>
+
+            {/* Search result summary */}
+            {searchStats.isFiltered && (
+              <div className="text-xs text-gray-500 p-2 py-1.5 bg-gray-50 rounded border">
+                Showing {searchStats.filtered} of {searchStats.total} zones
+                matching "
+                <span className="font-semibold">{searchStats.searchTerm}</span>"
+              </div>
+            )}
           </div>
         </div>
       </div>
