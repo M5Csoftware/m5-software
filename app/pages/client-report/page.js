@@ -27,6 +27,8 @@ export default function ClientReport() {
   const [currentFilters, setCurrentFilters] = useState({ search: "" });
   const [loading, setLoading] = useState(false);
 
+  const [resetFactor, setResetFactor] = useState(false);
+
   const showNotification = (type, message) =>
     setNotification({ type, message, visible: true });
 
@@ -50,24 +52,29 @@ export default function ClientReport() {
       const queryParams = new URLSearchParams({
         page,
         limit: pageLimit,
-        search: searchQuery
+        search: searchQuery,
       });
-      const res = await fetch(`${server}/customer-account?${queryParams.toString()}`);
+      const res = await fetch(
+        `${server}/customer-account?${queryParams.toString()}`,
+      );
       const responseData = await res.json();
-      
+
       const data = responseData.data || [];
       const pagination = responseData.pagination || {
         currentPage: 1,
         totalPages: 1,
-        totalRecords: data.length
+        totalRecords: data.length,
       };
 
       setClients(data);
       setCurrentPage(pagination.currentPage);
       setTotalPages(pagination.totalPages);
       setTotalRecords(pagination.totalRecords);
-      
-      showNotification("success", `Fetched ${pagination.totalRecords} Clients (Page ${pagination.currentPage} of ${pagination.totalPages})`);
+
+      showNotification(
+        "success",
+        `Fetched ${pagination.totalRecords} Clients (Page ${pagination.currentPage} of ${pagination.totalPages})`,
+      );
     } catch (err) {
       console.error("Error fetching clients:", err);
       showNotification("error", "Error fetching clients");
@@ -90,7 +97,7 @@ export default function ClientReport() {
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || loading) return;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
     fetchClients(newPage, currentFilters.search);
   };
 
@@ -108,7 +115,7 @@ export default function ClientReport() {
 
     const headers = columns.map((col) => col.label).join(",");
     const rows = clients.map((client) =>
-      columns.map((col) => client[col.key] ?? "").join(",")
+      columns.map((col) => client[col.key] ?? "").join(","),
     );
 
     const csv = [headers, ...rows].join("\n");
@@ -137,7 +144,7 @@ export default function ClientReport() {
             Showing <span className="font-medium">{clients.length}</span> of{" "}
             <span className="font-medium">{totalRecords}</span> records
           </div>
-          
+
           <div className="flex items-center gap-2">
             <label htmlFor="limit" className="text-sm text-gray-600">
               Rows per page:
@@ -171,11 +178,11 @@ export default function ClientReport() {
           >
             Previous
           </button>
-          
+
           <span className="px-3 py-1 text-sm">
             Page {currentPage} of {totalPages}
           </span>
-          
+
           <button
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
@@ -208,9 +215,9 @@ export default function ClientReport() {
         title="Client Report"
         onRefresh={() => {
           setValue("customerSearch", "");
+          setResetFactor(!resetFactor);
           fetchClients(1, "");
         }}
-
         bulkUploadBtn="hidden"
         codeListBtn="hidden"
       />
@@ -222,6 +229,7 @@ export default function ClientReport() {
             register={register}
             setValue={setValue}
             value="customerSearch"
+            resetFactor={resetFactor}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 handleSearchSubmit(e);
@@ -231,7 +239,11 @@ export default function ClientReport() {
         </div>
 
         <div className="flex gap-2">
-          <OutlinedButtonRed label={loading ? "Searching..." : "Search"} onClick={handleSearchSubmit} disabled={loading} />
+          <OutlinedButtonRed
+            label={loading ? "Searching..." : "Search"}
+            onClick={handleSearchSubmit}
+            disabled={loading}
+          />
           <SimpleButton name="Download CSV" onClick={handleDownloadCSV} />
         </div>
       </div>
@@ -243,7 +255,7 @@ export default function ClientReport() {
           name="Client Report"
           columns={columns}
           rowData={clients}
-          className="min-h-[50vh] border-b-0 rounded-b-none"
+          className="h-[60vh]"
         />
       </div>
 
