@@ -153,7 +153,7 @@ const ExcelPoa = () => {
         prev.map((row) => ({
           ...row,
           shipmentDate: formatDate(watchedDate),
-        }))
+        })),
       );
       showNotification("success", "Date applied to all rows");
     }
@@ -186,14 +186,14 @@ const ExcelPoa = () => {
       "Kindly refer to the subject cited above. It is submitted that I do hereby authorize ATG CUSTOMS BROKERS INC. to transact business on my behalf with CBSA.",
       20,
       90,
-      { maxWidth: 170 }
+      { maxWidth: 170 },
     );
 
     doc.text(
       "I declare that this is my personal shipment and this does not have anything for sale. This is a personal shipment with items for personal and family use and neither for sale nor for any commercial activity.",
       20,
       110,
-      { maxWidth: 170 }
+      { maxWidth: 170 },
     );
 
     doc.text("Thank you for your cooperation.", 20, 140);
@@ -257,7 +257,7 @@ const ExcelPoa = () => {
                 value={fileName}
                 readOnly
                 placeholder="Excel Path"
-                className="border border-[#979797] outline-none bg-gray-100 rounded-md h-10 px-4 pr-8 w-full cursor-default"
+                className="border border-[#979797] outline-none bg-gray-100 rounded-md h-8 px-4 pr-10 w-full cursor-default"
               />
               {fileName && (
                 <button

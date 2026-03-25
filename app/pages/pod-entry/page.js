@@ -17,8 +17,16 @@ import { useAuth } from "@/app/Context/AuthContext";
 import { DummyInputBoxWithLabelTransparent } from "@/app/components/DummyInputBox";
 import NotificationFlag from "@/app/components/Notificationflag";
 
+const EVENT_CODE = "DLV";
+const STATUS_VALUE = "Delivered (POD Updated)";
+
 function PODEntry() {
-  const { register, setValue, handleSubmit, reset, watch } = useForm();
+  const { register, setValue, handleSubmit, reset, watch } = useForm({
+    defaultValues: {
+      eventCode: EVENT_CODE,
+      status: STATUS_VALUE,
+    },
+  });
   const [demoRadio, setDemoRadio] = useState("AWB");
   const [rowData, setRowData] = useState([]);
   const [originalRowData, setOriginalRowData] = useState([]);
@@ -30,6 +38,12 @@ function PODEntry() {
   const [excelPath, setExcelPath] = useState("");
   const [resetForm, setResetForm] = useState(false);
   const [eventData, setEventData] = useState({});
+
+  // ✅ FIX: Always keep eventCode and status set — survives resets and re-renders
+  useEffect(() => {
+    setValue("eventCode", EVENT_CODE);
+    setValue("status", STATUS_VALUE);
+  }, [resetForm, setValue]);
 
   const [notification, setNotification] = useState({
     type: "success",
@@ -56,6 +70,9 @@ function PODEntry() {
     setSelectedFile(null);
     setExcelPath("");
     setResetForm((prev) => !prev);
+    // ✅ FIX: Re-apply fixed values immediately after refresh
+    setValue("eventCode", EVENT_CODE);
+    setValue("status", STATUS_VALUE);
     showNotification("success", "Refreshed");
   };
 
@@ -84,7 +101,7 @@ function PODEntry() {
     const d = new Date(time);
     if (!isNaN(d.getTime())) {
       return `${String(d.getHours()).padStart(2, "0")}:${String(
-        d.getMinutes()
+        d.getMinutes(),
       ).padStart(2, "0")}`;
     }
     return "";
@@ -97,7 +114,7 @@ function PODEntry() {
       setLoading(true);
 
       const response = await axios.get(
-        `${server}/portal/get-shipments?awbNo=${awbNumber.toUpperCase()}`
+        `${server}/portal/get-shipments?awbNo=${awbNumber.toUpperCase()}`,
       );
 
       const shipments = normalizeShipments(response.data.shipment).map((s) => ({
@@ -121,7 +138,7 @@ function PODEntry() {
   const eventbyAWB = async (awbNumber) => {
     try {
       const res = await axios.get(
-        `${server}/event-activity?awbNo=${awbNumber}`
+        `${server}/event-activity?awbNo=${awbNumber}`,
       );
 
       if (!res.data) {
@@ -145,6 +162,10 @@ function PODEntry() {
       setValue("time(Use 24 hr Format)", latest.eventTime);
       setValue("receiverName", latest.receiverName);
       setValue("remark", latest.remark);
+
+      // ✅ FIX: Re-assert fixed values after loading event data
+      setValue("eventCode", EVENT_CODE);
+      setValue("status", STATUS_VALUE);
 
       showNotification("success", "Last event loaded");
     } catch (err) {
@@ -210,7 +231,7 @@ function PODEntry() {
 
     setRowData((prev) => prev.filter((i) => !excluded.includes(i.awbNo)));
     setOriginalRowData((prev) =>
-      prev.filter((i) => !excluded.includes(i.awbNo))
+      prev.filter((i) => !excluded.includes(i.awbNo)),
     );
     setSelectedItems([]);
 
@@ -246,9 +267,13 @@ function PODEntry() {
   };
 
   const onSubmit = async (data) => {
+    // ✅ FIX: Fallback to constants in case form values are missing
+    const eventCode = data.eventCode || EVENT_CODE;
+    const status = data.status || STATUS_VALUE;
+
     if (
-      !data.eventCode ||
-      !data.status ||
+      !eventCode ||
+      !status ||
       !data.statusDate ||
       !data["time(Use 24 hr Format)"] ||
       !data.receiverName
@@ -266,8 +291,8 @@ function PODEntry() {
       awbNo: i.awbNo,
       eventDate: data.statusDate,
       eventTime: data["time(Use 24 hr Format)"],
-      eventCode: data.eventCode,
-      status: data.status,
+      eventCode: eventCode, // ✅ uses guaranteed value
+      status: status, // ✅ uses guaranteed value
       receiverName: data.receiverName,
       remark: data.remark || "",
       eventUser: user?.userName || "System",
@@ -289,7 +314,7 @@ function PODEntry() {
     }
 
     const filtered = originalRowData.filter((i) =>
-      String(i.awbNo).toLowerCase().includes(term.toLowerCase())
+      String(i.awbNo).toLowerCase().includes(term.toLowerCase()),
     );
 
     if (filtered.length === 0) {
@@ -452,7 +477,7 @@ function PODEntry() {
               <DummyInputBoxWithLabelTransparent
                 watch={watch}
                 label={`Event Code`}
-                inputValue={"DLV"}
+                inputValue={EVENT_CODE}
                 register={register}
                 setValue={setValue}
                 resetFactor={resetForm}
@@ -463,7 +488,7 @@ function PODEntry() {
             <DummyInputBoxWithLabelTransparent
               watch={watch}
               label={`Status`}
-              inputValue={"Delivered (POD Updated)"}
+              inputValue={STATUS_VALUE}
               register={register}
               setValue={setValue}
               resetFactor={resetForm}
@@ -472,15 +497,6 @@ function PODEntry() {
           </div>
 
           <div className="flex gap-2">
-            {/* <InputBox
-              register={register}
-              setValue={setValue}
-              value="statusDate"
-              type="date"
-              required={true}
-              resetFactor={resetForm}
-              initialValue={eventData.eventDate || " "}
-            /> */}
             <DateInputBox
               register={register}
               setValue={setValue}
@@ -525,32 +541,14 @@ function PODEntry() {
 
         {/* Action Buttons */}
         <div className="flex justify-between">
-          <div>
-            {/* <OutlinedButtonRed
-              label={"Close"}
-              onClick={() => {
-                reset();
-                setRowData([]);
-                setOriginalRowData([]);
-                setSelectedItems([]);
-                setSelectedFile(null);
-                setExcelPath("");
-                setError("");
-              }}
-            /> */}
-          </div>
+          <div></div>
           <div className="flex gap-2">
             <OutlinedButtonRed
               label={"Remove"}
               onClick={handleRemoveSelected}
-              //   disabled={podData.length === 0}
               perm="CC Deletion"
             />
-            <SimpleButton
-              name={"Save"}
-              type="submit"
-              // disabled={loading || podData.length === 0}
-            />
+            <SimpleButton name={"Save"} type="submit" />
           </div>
         </div>
       </div>

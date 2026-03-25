@@ -30,13 +30,45 @@ const Poa = () => {
   const airwaybillNumber = watch("airwaybillNumber");
   const date = watch("date");
 
+  // ✅ FIX: Handle all common date formats robustly
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
+
+    // Format: YYYY-MM-DD  →  DD/MM/YYYY
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split("-");
+      return `${day}/${month}/${year}`;
+    }
+
+    // Format: DD/MM/YYYY  →  already correct
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+      return dateStr;
+    }
+
+    // Format: MM/DD/YYYY  →  DD/MM/YYYY
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+      const [month, day, year] = dateStr.split("/");
+      return `${day}/${month}/${year}`;
+    }
+
+    // Format: YYYYMMDD  →  DD/MM/YYYY
+    if (/^\d{8}$/.test(dateStr)) {
+      const year = dateStr.slice(0, 4);
+      const month = dateStr.slice(4, 6);
+      const day = dateStr.slice(6, 8);
+      return `${day}/${month}/${year}`;
+    }
+
+    // Fallback: use UTC methods to avoid timezone shift
     const d = new Date(dateStr);
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getUTCDate()).padStart(2, "0");
+      const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const year = d.getUTCFullYear();
+      return `${day}/${month}/${year}`;
+    }
+
+    return "";
   };
 
   const handleClose = () => {
@@ -91,11 +123,10 @@ const Poa = () => {
     }
   }, [date]);
 
-  // ===== Generate PDF Preview =====
-  const handleGeneratePDF = () => {
-    if (!awbFound) return showNotification("error", "AWB not verified");
-    if (!date) return showNotification("error", "Please enter a date");
-
+  const buildPdfDoc = () => {
+    console.log("📅 date value from form:", date); // ← check this in browser console
+    const formattedDate = formatDate(date);
+    console.log("📅 formatted date:", formattedDate);
     const doc = new jsPDF();
     doc.setFontSize(12);
 
@@ -109,21 +140,30 @@ const Poa = () => {
       "Kindly refer to the subject cited above. It is submitted that I do hereby authorize ATG CUSTOMS BROKERS INC. to transact business on my behalf with CBSA.",
       20,
       90,
-      { maxWidth: 170 }
+      { maxWidth: 170 },
     );
 
     doc.text(
       "I declare that this is my personal shipment and this does not have anything for sale. This is a personal shipment with items for personal and family use and neither for sale nor for any commercial activity.",
       20,
       110,
-      { maxWidth: 170 }
+      { maxWidth: 170 },
     );
 
     doc.text("Thank you for your cooperation.", 20, 140);
     doc.text("Regards,", 20, 160);
     doc.text(`Name - ${receiverName}`, 20, 170);
-    doc.text(`Date - ${formatDate(date)}`, 20, 180);
+    doc.text(`Date - ${formattedDate}`, 20, 180);
 
+    return doc;
+  };
+
+  // ===== Generate PDF Preview =====
+  const handleGeneratePDF = () => {
+    if (!awbFound) return showNotification("error", "AWB not verified");
+    if (!date) return showNotification("error", "Please enter a date");
+
+    const doc = buildPdfDoc();
     const pdfDataUri = doc.output("datauristring");
     setPdfUrl(pdfDataUri);
 
@@ -135,34 +175,7 @@ const Poa = () => {
     if (!awbFound) return showNotification("error", "AWB not verified");
     if (!date) return showNotification("error", "Please enter a date");
 
-    const doc = new jsPDF();
-    doc.setFontSize(12);
-
-    doc.text("The Superintendent,", 20, 20);
-    doc.text("Canada Border Services Agency,", 20, 30);
-    doc.text("Vancouver International Airport,", 20, 40);
-    doc.text("Vancouver BC.", 20, 50);
-    doc.text(`Subject: CCN: 80KT${airwaybillNumber}`, 20, 70);
-
-    doc.text(
-      "Kindly refer to the subject cited above. It is submitted that I do hereby authorize ATG CUSTOMS BROKERS INC. to transact business on my behalf with CBSA.",
-      20,
-      90,
-      { maxWidth: 170 }
-    );
-
-    doc.text(
-      "I declare that this is my personal shipment and this does not have anything for sale. This is a personal shipment with items for personal and family use and neither for sale nor for any commercial activity.",
-      20,
-      110,
-      { maxWidth: 170 }
-    );
-
-    doc.text("Thank you for your cooperation.", 20, 140);
-    doc.text("Regards,", 20, 160);
-    doc.text(`Name - ${receiverName}`, 20, 170);
-    doc.text(`Date - ${formatDate(date)}`, 20, 180);
-
+    const doc = buildPdfDoc();
     doc.save(`POA_${airwaybillNumber}.pdf`);
 
     showNotification("success", "PDF downloaded");
