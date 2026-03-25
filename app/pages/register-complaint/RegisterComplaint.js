@@ -123,7 +123,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
 
       const response = await axios.put(
         `${server}/register-complaint/close`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -136,7 +136,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
       } else {
         showNotification(
           "error",
-          response.data.message || "Failed to close complaint."
+          response.data.message || "Failed to close complaint.",
         );
       }
     } catch (error) {
@@ -162,7 +162,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
 
       const response = await axios.put(
         `${server}/register-complaint/reopen`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -175,7 +175,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
       } else {
         showNotification(
           "error",
-          response.data.message || "Failed to reopen complaint."
+          response.data.message || "Failed to reopen complaint.",
         );
       }
     } catch (error) {
@@ -203,14 +203,14 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
       if (!payload.assignTo) {
         showNotification(
           "error",
-          "Please select a user to reassign the complaint."
+          "Please select a user to reassign the complaint.",
         );
         return;
       }
 
       const response = await axios.put(
         `${server}/register-complaint/reassign`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -221,13 +221,13 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
         setRegisteredComplaint(complaintData);
         showNotification(
           "success",
-          `Complaint reassigned to ${payload.assignTo} successfully!`
+          `Complaint reassigned to ${payload.assignTo} successfully!`,
         );
         setValue("reAssignTo", "");
       } else {
         showNotification(
           "error",
-          response.data.message || "Failed to reassign complaint."
+          response.data.message || "Failed to reassign complaint.",
         );
       }
     } catch (error) {
@@ -253,7 +253,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
 
       const response = await axios.put(
         `${server}/register-complaint/prioritize`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -266,7 +266,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
       } else {
         showNotification(
           "error",
-          response.data.message || "Failed to prioritize complaint."
+          response.data.message || "Failed to prioritize complaint.",
         );
       }
     } catch (error) {
@@ -312,11 +312,11 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
       // Check shipment existence
       try {
         // console.log(
-//           "📦 Fetching shipment from:",
-//           `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`
-//         );
+        //           "📦 Fetching shipment from:",
+        //           `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`
+        //         );
         const shipmentResponse = await axios.get(
-          `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`
+          `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`,
         );
         // console.log("✅ Shipment verified:", shipmentResponse.data);
       } catch (error) {
@@ -329,11 +329,11 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
       // Check complaint existence
       try {
         // console.log(
-//           "🎫 Fetching complaint from:",
-//           `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`
-//         );
+        //           "🎫 Fetching complaint from:",
+        //           `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`
+        //         );
         const response = await axios.get(
-          `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`
+          `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`,
         );
         // console.log("✅ Complaint API response:", response.data);
 
@@ -354,8 +354,8 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
         console.error("Error message:", error.message);
         setRegisteredComplaint(null);
         // console.log(
-//           "🔄 Registered complaint set to null (this is normal if no complaint exists yet)"
-//         );
+        //           "🔄 Registered complaint set to null (this is normal if no complaint exists yet)"
+        //         );
       }
     };
 
@@ -454,7 +454,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
       setValue("complaintType", registeredComplaint?.complaintType || "");
       setValue(
         "assignTo",
-        registeredComplaint?.assignTo || `${user?.userId} - ${user?.userName}`
+        registeredComplaint?.assignTo || `${user?.userId} - ${user?.userName}`,
       );
 
       const formattedHistory = (registeredComplaint.history || []).map((h) => {
@@ -514,11 +514,11 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
     const fetchEmployees = async () => {
       try {
         const response = await axios.get(
-          `${server}/employee-master/employees?department=Customer Support`
+          `${server}/employee-master/employees?department=Customer Support`,
         );
 
         const formattedEmployees = response.data.data.map(
-          (emp) => `${emp.userId} - ${emp.userName}`
+          (emp) => `${emp.userId} - ${emp.userName}`,
         );
 
         setEmployees(formattedEmployees);
@@ -541,12 +541,12 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
   const handleRefresh = () => {
     // Increment form key to reset all form inputs
     setFormKey((prev) => prev + 1);
-    
+
     // Reset all toggle states
     setResetReassign(!resetReassign);
     setResetFactor(!resetFactor);
     setResetComplaintRemark(!resetComplaintRemark);
-    
+
     // Reset form
     reset();
 
@@ -591,7 +591,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
     setValue("reAssignTo", "");
     setValue("complaintRemark", "");
     setValue("awbNo", "");
-    
+
     // Reset state
     setDate(currentDate);
     setDisplayDate(formattedCurrentDate);
@@ -603,7 +603,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
     setManualSearch(false);
     setComplaintNo("");
     setComplaintID("");
-    
+
     showNotification("success", "Form refreshed successfully");
 
     // Clear any form errors
@@ -618,7 +618,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
 
     try {
       const response = await axios.get(
-        `${server}/register-complaint/search?complaintNo=${searchTerm}&complaintID=${searchTerm}`
+        `${server}/register-complaint/search?complaintNo=${searchTerm}&complaintID=${searchTerm}`,
       );
       if (response.data.success) {
         setManualSearch(true);
@@ -646,7 +646,11 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
   };
 
   return (
-    <form className="flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)} key={formKey}>
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={handleSubmit(onSubmit)}
+      key={formKey}
+    >
       <Heading
         title="Register Complaint"
         bulkUploadBtn="hidden"
@@ -755,7 +759,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
               options={[
                 "ADDRESS QUERY",
                 "CNEE NOT AVAILABLE",
-                "WRONG DELIVERT",
+                "WRONG DELIVERY",
                 "NEED FWB NUMBER",
                 "SHORT DELIVERY",
                 "NOT CONNECTED CASES",
