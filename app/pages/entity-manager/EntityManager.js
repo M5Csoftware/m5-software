@@ -21,6 +21,7 @@ import Image from "next/image";
 import * as XLSX from "xlsx";
 import UploadModal from "@/app/components/UploadModal";
 import NotificationFlag from "@/app/components/Notificationflag";
+import ConfirmModal from "@/app/components/ConfirmModal";
 
 export default function EntityManager({ setCurrentView }) {
   const [selectedOption, setSelectedOption] = useState(null);
@@ -32,8 +33,10 @@ export default function EntityManager({ setCurrentView }) {
   const [data, setData] = useState([]);
   const [dataUpdate, setDataUpdate] = useState(false);
   const [matchedEntity, setMatchedEntity] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDelCol, setShowDelCol] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showListDeleteModal, setShowListDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
   const fileInputRef = useRef(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [visibleFlag, setVisibleFlag] = useState(false);
@@ -50,7 +53,8 @@ export default function EntityManager({ setCurrentView }) {
   } = useForm();
 
   const { selectedEntity, setSelectedEntity } = useContext(EntityContext);
-  const { setToggleCodeList, setCodeListConfig, server, sectors } = useContext(GlobalContext);
+  const { toggleCodeList, setToggleCodeList, setCodeListConfig, server, sectors } =
+    useContext(GlobalContext);
 
   const codeValue = useWatch({ control, name: "code" });
   const nameValue = useWatch({ control, name: "name" });
@@ -74,9 +78,9 @@ export default function EntityManager({ setCurrentView }) {
       activeOnSoftware: false,
       hsn: "",
       taxCharges: false,
-      fuelCharges: false
+      fuelCharges: false,
     });
-    
+
     // Clear states
     setSelectedOption(null);
     setSelectedEntity(null);
@@ -87,14 +91,14 @@ export default function EntityManager({ setCurrentView }) {
     setDeleteButton(false);
     setResponseMsg("");
     setShowDelCol(false);
-    
+
     // Force re-render
-    setRefreshKey(prev => prev + 1);
-    
+    setRefreshKey((prev) => prev + 1);
+
     // Show success message
     setResponseMsg("Page refreshed successfully");
     setVisibleFlag(true);
-    
+
     // Clear message after 5 seconds
     setTimeout(() => setResponseMsg(""), 5000);
   };
@@ -104,7 +108,7 @@ export default function EntityManager({ setCurrentView }) {
 
     const checkDuplicate = () => {
       const match = data.find(
-        (item) => item.code?.toLowerCase() === codeValue.toLowerCase()
+        (item) => item.code?.toLowerCase() === codeValue.toLowerCase(),
       );
 
       setDeleteButton(!!match);
@@ -150,21 +154,33 @@ export default function EntityManager({ setCurrentView }) {
       let hasChanges = false;
 
       // Check name change
-      if (nameValue && matchedEntity.name?.toLowerCase() !== nameValue.toLowerCase()) {
+      if (
+        nameValue &&
+        matchedEntity.name?.toLowerCase() !== nameValue.toLowerCase()
+      ) {
         hasChanges = true;
       }
 
       // Check extra fields based on entity type
       if (selectedOption === "Service") {
         if (sectorValue !== matchedEntity.sector) hasChanges = true;
-        if (Boolean(activeOnPortalValue) !== Boolean(matchedEntity.activeOnPortal)) hasChanges = true;
-        if (Boolean(activeOnSoftwareValue) !== Boolean(matchedEntity.activeOnSoftware)) hasChanges = true;
+        if (
+          Boolean(activeOnPortalValue) !== Boolean(matchedEntity.activeOnPortal)
+        )
+          hasChanges = true;
+        if (
+          Boolean(activeOnSoftwareValue) !==
+          Boolean(matchedEntity.activeOnSoftware)
+        )
+          hasChanges = true;
       }
 
       if (selectedOption === "Misc Charges") {
         if (hsnValue !== matchedEntity.hsn) hasChanges = true;
-        if (Boolean(taxChargesValue) !== Boolean(matchedEntity.taxCharges)) hasChanges = true;
-        if (Boolean(fuelChargesValue) !== Boolean(matchedEntity.fuelCharges)) hasChanges = true;
+        if (Boolean(taxChargesValue) !== Boolean(matchedEntity.taxCharges))
+          hasChanges = true;
+        if (Boolean(fuelChargesValue) !== Boolean(matchedEntity.fuelCharges))
+          hasChanges = true;
       }
 
       setUpdateButton(isSameCode && hasChanges);
@@ -183,7 +199,7 @@ export default function EntityManager({ setCurrentView }) {
     matchedEntity,
     codeValue,
     selectedOption,
-    refreshKey
+    refreshKey,
   ]);
 
   const handleAction = async (action, rowData) => {
@@ -209,24 +225,32 @@ export default function EntityManager({ setCurrentView }) {
       setResponseMsg("Data loaded for editing!");
       setVisibleFlag(true);
     } else if (action === "delete") {
-      const { code } = rowData;
-      if (!code) return;
-      try {
-        await axios.delete(`${server}/entity-manager`, {
-          params: { code, entityType: selectedOption },
-        });
-        setResponseMsg("Deleted");
-        setVisibleFlag(true);
-      } catch (error) {
-        console.error(
-          "Error during deletion:",
-          error.response?.data || error.message
-        );
-        setResponseMsg("Data deletion failed!");
-        setVisibleFlag(true);
-      } finally {
-        setDataUpdate(!dataUpdate);
-      }
+      setItemToDelete(rowData);
+      setShowListDeleteModal(true);
+    }
+  };
+
+  const confirmDeleteFromList = async () => {
+    if (!itemToDelete || !itemToDelete.code) return;
+    const { code } = itemToDelete;
+
+    try {
+      await axios.delete(`${server}/entity-manager`, {
+        params: { code, entityType: selectedOption },
+      });
+      setResponseMsg("Deleted");
+      setVisibleFlag(true);
+      setDataUpdate(!dataUpdate);
+    } catch (error) {
+      console.error(
+        "Error during deletion:",
+        error.response?.data || error.message,
+      );
+      setResponseMsg("Data deletion failed!");
+      setVisibleFlag(true);
+    } finally {
+      setShowListDeleteModal(false);
+      setItemToDelete(null);
     }
   };
 
@@ -270,7 +294,7 @@ export default function EntityManager({ setCurrentView }) {
       const payload = { ...formData, entityType: selectedOption };
       const response = await axios.put(
         `${server}/entity-manager?code=${formData.code}`,
-        payload
+        payload,
       );
       setResponseMsg("Updated");
       setVisibleFlag(true);
@@ -412,16 +436,16 @@ export default function EntityManager({ setCurrentView }) {
         data.map((d) =>
           String(d.code || "")
             .trim()
-            .toLowerCase()
-        )
+            .toLowerCase(),
+        ),
       );
       const finalPayload = uniquePayload.filter(
         (item) =>
           !dbCodes.has(
             String(item.code || "")
               .trim()
-              .toLowerCase()
-          )
+              .toLowerCase(),
+          ),
       );
 
       if (finalPayload.length === 0) {
@@ -437,7 +461,7 @@ export default function EntityManager({ setCurrentView }) {
         });
 
         setResponseMsg(
-          `${finalPayload.length} entries uploaded successfully! (duplicates ignored)`
+          `${finalPayload.length} entries uploaded successfully! (duplicates ignored)`,
         );
         setAdded(!Added);
       } catch (err) {
@@ -464,8 +488,32 @@ export default function EntityManager({ setCurrentView }) {
     setToggleCodeList(true);
   };
 
+  // Keep CodeList Config in sync if it's already open
+  useEffect(() => {
+    if (toggleCodeList && selectedOption) {
+      setCodeListConfig({
+        data,
+        columns,
+        name: selectedOption,
+        handleAction,
+      });
+    }
+  }, [
+    data,
+    columns,
+    selectedOption,
+    handleAction,
+    toggleCodeList,
+    setCodeListConfig,
+  ]);
+
   return (
-    <form autoComplete="off" className="flex flex-col gap-5" key={refreshKey}>
+    <form
+      onSubmit={(e) => e.preventDefault()}
+      autoComplete="off"
+      className="flex flex-col gap-5"
+      key={refreshKey}
+    >
       <Heading
         title="Entity Manager"
         disabled={selectedOption === null}
@@ -515,21 +563,9 @@ export default function EntityManager({ setCurrentView }) {
 
           <div className="flex gap-3 relative">
             <DeleteButton
-              onClick={() => setShowDeleteModal(true)}
+              onClick={() => setShowConfirmModal(true)}
               disabled={!deleteButton}
             />
-
-            {showDeleteModal && (
-              <div className="absolute top-full right-0 mt-3 z-50">
-                <ConfirmDeleteModal
-                  onConfirm={() => {
-                    deleteEntity();
-                    setShowDeleteModal(false);
-                  }}
-                  onCancel={() => setShowDeleteModal(false)}
-                />
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -592,10 +628,34 @@ export default function EntityManager({ setCurrentView }) {
           entityType={selectedOption}
         />
       )}
+
+      {showListDeleteModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-[100] bg-black bg-opacity-30">
+          <ConfirmModal
+            isOpen={showListDeleteModal}
+            onClose={() => {
+              setShowListDeleteModal(false);
+              setItemToDelete(null);
+            }}
+            onConfirm={confirmDeleteFromList}
+            title="Delete Entity"
+            message={`Are you sure you want to delete ${itemToDelete?.name || "this entity"}?`}
+            confirmLabel="Delete"
+          />
+        </div>
+      )}
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={deleteEntity}
+        title="Delete Entity"
+        message={`Are you sure you want to delete ${nameValue || "this entity"}?`}
+        confirmLabel="Delete"
+      />
     </form>
   );
 }
-
 
 function ExtraFields({
   selectedEntity,
@@ -676,7 +736,7 @@ function ExtraFields({
     setValue("activeOnSoftware", false);
     setValue("taxCharges", false);
     setValue("fuelCharges", false);
-    setValue("sector", "")
+    setValue("sector", "");
   }, [Added, setValue, refreshKey]);
 
   switch (selectedEntity) {
@@ -785,35 +845,4 @@ function ExtraFields({
     default:
       return null;
   }
-}
-
-
-function ConfirmDeleteModal({ onConfirm, onCancel }) {
-  return (
-    <div className="bg-white rounded-xl shadow-2xl w-[290px] p-4 border-2 border-gray-200">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-red-500 font-medium">
-          <Image
-            src="/delete-red.svg"
-            alt="Delete Icon"
-            width={16}
-            height={16}
-          />
-          <span className="text-sm text-gray-500 font-semibold">
-            Delete Entity
-          </span>
-        </div>
-        <button onClick={onCancel}>
-          <Image src="/close.svg" alt="Close" width={20} height={20} />
-        </button>
-      </div>
-
-      <button
-        onClick={onConfirm}
-        className="mt-4 bg-red text-white py-2 w-full rounded-md text-sm hover:bg-red-700 transition"
-      >
-        Delete
-      </button>
-    </div>
-  );
 }
