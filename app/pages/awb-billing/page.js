@@ -659,13 +659,13 @@ function AwbBilling() {
   // Window shortcuts
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === "F8" && !isEdit) {
+      if (event.key === "F8") {
         openVolumeWtWindow();
       } else if (event.key === "Escape") {
         setHoldHistoryWindow(false);
         setVolumeWtWindow(false);
         setInvoiceDetailsWindow(false);
-      } else if (event.key === "F9" && !isEdit) {
+      } else if (event.key === "F9") {
         openInvoiceDetailsWindow();
       } else if (event.key === "F11" && !isEdit) {
         openHoldHistoryWindow();
@@ -1246,8 +1246,7 @@ function AwbBilling() {
   const isUpdatingRef = useRef(false);
 
   // SINGLE CONSOLIDATED GRAND TOTAL CALCULATION
-  // This useEffect handles all adjustments and recalculates grand total
-  // SINGLE CONSOLIDATED GRAND TOTAL CALCULATION - FIXED
+  // This useEffect handles all adjustments and recalculates grand total and balance
   useEffect(() => {
     if (!account || !branch || !taxSettings) return;
 
@@ -1260,32 +1259,30 @@ function AwbBilling() {
       const handlingAmount = Number(values.handlingAmount) || 0;
       const miscChg = Number(values.miscChg) || 0;
       const overWtHandling = Number(values.overWtHandling) || 0;
+      const hikeAmt = Number(values.hikeAmt) || 0;
+      const fuelPercentage = Number(values.fuelPercentage) || 0;
+      const duty = Number(values.duty) || 0;
       const cashRecvAmount = Number(values.cashRecvAmount) || 0;
       const discount = Number(values.discount) || 0;
 
       const gstApplicable = account.gst === "GST-Additional";
 
-      if (!gstApplicable) {
-        // If GST not applicable, calculate grand total without GST
-        const totalAdditions =
-          manualAmount + handlingAmount + miscChg + overWtHandling;
-        const totalDeductions = cashRecvAmount + discount;
-        const grandTotalValue = basicAmount + totalAdditions - totalDeductions;
+      // Calculate taxable amount before fuel
+      const baseTaxable =
+        basicAmount +
+        manualAmount +
+        handlingAmount +
+        miscChg +
+        overWtHandling +
+        hikeAmt;
 
-        isUpdatingRef.current = true;
-        setValue("sgst", 0);
-        setValue("cgst", 0);
-        setValue("igst", 0);
-        setValue("baseGrandTotal", basicAmount);
-        setValue(
-          "grandTotal",
-          round(grandTotalValue > 0 ? grandTotalValue : 0),
-        );
-        isUpdatingRef.current = false;
-        return;
-      }
+      // Calculate fuel amount (taxable)
+      const fuelAmtValue = round(baseTaxable * (fuelPercentage / 100));
 
-      // GST Applicable - Calculate GST on base and adjustments
+      // Total taxable amount
+      const totalTaxable = baseTaxable + fuelAmtValue;
+
+      // GST Rates
       const sameState =
         account.gstNo?.substring(0, 2) === branch.serviceTax?.substring(0, 2);
 
@@ -1301,52 +1298,49 @@ function AwbBilling() {
         ? taxSettings.find((t) => t.tax === "IGST")?.taxAmount || 0
         : 0;
 
-      // Calculate taxable adjustments (all additions)
-      const taxableAdjustment =
-        manualAmount + handlingAmount + miscChg + overWtHandling;
+      if (!gstApplicable) {
+        // If GST not applicable
+        const grandTotalValue = round(totalTaxable + duty - discount);
+        const balanceAmountValue = round(grandTotalValue - cashRecvAmount);
 
-      // Calculate GST on adjustments
-      const adjSgst = taxableAdjustment * sgstRate;
-      const adjCgst = taxableAdjustment * cgstRate;
-      const adjIgst = taxableAdjustment * igstRate;
+        isUpdatingRef.current = true;
+        setValue("sgst", 0);
+        setValue("cgst", 0);
+        setValue("igst", 0);
+        setValue("fuelAmt", fuelAmtValue);
+        setValue("baseGrandTotal", basicAmount);
+        setValue("grandTotal", grandTotalValue > 0 ? grandTotalValue : 0);
+        setValue(
+          "balanceAmount",
+          round(balanceAmountValue > 0 ? balanceAmountValue : 0),
+        );
+        isUpdatingRef.current = false;
+        return;
+      }
 
-      // Calculate base GST
-      const baseSgst = basicAmount * sgstRate;
-      const baseCgst = basicAmount * cgstRate;
-      const baseIgst = basicAmount * igstRate;
+      // GST Applicable - Calculate GST on base and adjustments
+      const finalSgst = round(totalTaxable * sgstRate);
+      const finalCgst = round(totalTaxable * cgstRate);
+      const finalIgst = round(totalTaxable * igstRate);
+      const totalGST = finalSgst + finalCgst + finalIgst;
 
-      // Final GST amounts
-      const finalSgst = round(baseSgst + adjSgst);
-      const finalCgst = round(baseCgst + adjCgst);
-      const finalIgst = round(baseIgst + adjIgst);
+      // Grand Total = Total Taxable + Total GST + Duty - Discount
+      const grandTotalValue = round(totalTaxable + totalGST + duty - discount);
 
-      // Calculate total additions (manual, handling, misc, overWt)
-      const totalAdditions =
-        manualAmount + handlingAmount + miscChg + overWtHandling;
-
-      // Calculate total deductions (cash received and discount)
-      const totalDeductions = cashRecvAmount + discount;
-
-      // CRITICAL FIX: baseGrandTotal should be basicAmount (without GST) for the final calculation
-      // Because we are adding GST separately in the grand total
-      const baseGrandTotal = basicAmount;
-
-      // Grand Total = Base Amount + GST on Base + Adjustments + GST on Adjustments - Deductions
-      // This is equivalent to: Base Amount + Adjustments + Total GST - Deductions
-      const grandTotalValue =
-        baseGrandTotal +
-        totalAdditions +
-        finalSgst +
-        finalCgst +
-        finalIgst -
-        totalDeductions;
+      // Balance = Grand Total - Cash received
+      const balanceAmountValue = round(grandTotalValue - cashRecvAmount);
 
       isUpdatingRef.current = true;
       setValue("sgst", finalSgst);
       setValue("cgst", finalCgst);
       setValue("igst", finalIgst);
-      setValue("baseGrandTotal", baseGrandTotal);
-      setValue("grandTotal", round(grandTotalValue > 0 ? grandTotalValue : 0));
+      setValue("fuelAmt", fuelAmtValue);
+      setValue("baseGrandTotal", basicAmount);
+      setValue("grandTotal", grandTotalValue > 0 ? grandTotalValue : 0);
+      setValue(
+        "balanceAmount",
+        round(balanceAmountValue > 0 ? balanceAmountValue : 0),
+      );
       isUpdatingRef.current = false;
     });
 
@@ -2796,9 +2790,7 @@ function AwbBilling() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (isEdit == false) {
                             openVolumeWtWindow();
-                          }
                         }}
                         className="absolute top-1/4 right-4"
                       >
@@ -2954,9 +2946,7 @@ function AwbBilling() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (isEdit == false) {
                             openInvoiceDetailsWindow();
-                          }
                         }}
                         className="absolute top-1/4 right-4"
                       >
@@ -3233,7 +3223,6 @@ function AwbBilling() {
                 <div className="flex gap-2">
                   <div className="w-1/2">
                     <DummyInputBoxWithLabelLightGray
-                      inputValue={fetchedAwbData?.basicAmt || 0.0}
                       register={register}
                       placeholder={`0.00`}
                       label={`Basic Amt`}
@@ -3362,15 +3351,15 @@ function AwbBilling() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <DummyInputBoxWithLabelLightGray
+                  <InputBox
+                    placeholder="Discount"
                     register={register}
-                    placeholder={`DEL`}
-                    label={`Discount)`}
                     setValue={setValue}
                     resetFactor={refreshKey}
-                    value={`discount`}
-                    inputValue={fetchedAwbData?.volDiscount || 0.0}
-                    className={"bg-white"}
+                    disabled={isEdit}
+                    value="discount"
+                    className="bg-white"
+                    initialValue={fetchedAwbData?.volDiscount || "0.00"}
                   />
                   <DummyInputBoxLightGray
                     register={register}
@@ -3389,7 +3378,6 @@ function AwbBilling() {
                     setValue={setValue}
                     resetFactor={refreshKey}
                     value={`sgst`}
-                    inputValue={fetchedAwbData?.sgst || 0.0}
                   />
                   <DummyInputBoxWithLabelYellow
                     register={register}
@@ -3398,7 +3386,6 @@ function AwbBilling() {
                     setValue={setValue}
                     resetFactor={refreshKey}
                     value={`cgst`}
-                    inputValue={fetchedAwbData?.cgst || 0.0}
                   />
                 </div>
 
@@ -3410,7 +3397,6 @@ function AwbBilling() {
                     setValue={setValue}
                     resetFactor={refreshKey}
                     value={`igst`}
-                    inputValue={fetchedAwbData?.igst || 0.0}
                   />
                   <DummyInputBoxWithLabelYellow
                     register={register}
@@ -3419,7 +3405,6 @@ function AwbBilling() {
                     setValue={setValue}
                     resetFactor={refreshKey}
                     value={`grandTotal`}
-                    inputValue={fetchedAwbData?.totalAmt || 0.0}
                   />
                 </div>
 

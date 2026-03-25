@@ -218,7 +218,7 @@ export default function BagReport() {
         zipCode: item.receiverPincode || "",
         service: item.service || "",
         forwardingNo: item.forwardingNo || item.reference || "",
-        shipmentRemark: item.operationRemark || item.shipmentType || item.remarks || "",
+        shipmentRemark: item.shipmentType || "",
       };
     });
 
@@ -238,7 +238,7 @@ export default function BagReport() {
         zipCode: item.receiverPincode || "",
         service: item.service || "",
         forwardingNo: item.forwardingNo || item.reference || "",
-        shipmentRemark: item.operationRemark || item.shipmentType || item.remarks || "",
+        shipmentRem: item.shipmentType || item.remarks || "",
       };
     });
 
@@ -474,7 +474,23 @@ export default function BagReport() {
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
 
-      <Heading title="Bag Report" bulkUploadBtn="hidden" codeListBtn="hidden" />
+      <Heading
+        title="Bag Report"
+        bulkUploadBtn="hidden"
+        codeListBtn="hidden"
+        onRefresh={() => {
+          setTableData([]);
+          setRunData(null);
+          setCurrentPage(1);
+          setTotalPages(1);
+          setTotalRecords(0);
+          setCurrentFilters(null);
+          setValue("runNo", "");
+          ["sector", "date", "counterpart", "flight", "obc", "almawb"].forEach(
+            (field) => setValue(field, "")
+          );
+        }}
+      />
 
       <div>
         <div className="flex w-full gap-3 mt-3">

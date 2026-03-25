@@ -172,11 +172,21 @@ const ChildAwbNoReport = () => {
           return;
         }
 
-        // Process each AWB in the bagging data
-        for (const item of baggingData.rowData) {
-          const awbNo = item.childShipment || item.awbNo;
+        // Check if any items have childShipment
+        const childItems = baggingData.rowData.filter(
+          (item) => item.childShipment
+        );
 
-          if (!awbNo) continue;
+        if (childItems.length === 0) {
+          showNotification("info", "No child shipments found for this Run No");
+          setRowData([]);
+          setLoading(false);
+          return;
+        }
+
+        // Process each child shipment in the bagging data
+        for (const item of childItems) {
+          const awbNo = item.childShipment;
 
           try {
             // Fetch child shipment details
@@ -481,7 +491,7 @@ const ChildAwbNoReport = () => {
         name="bagging"
         columns={columns}
         rowData={formattedData}
-        className="h-[450px] border-b-0 rounded-b-none"
+        className="h-[450px]"
       />
 
       <PaginationControls

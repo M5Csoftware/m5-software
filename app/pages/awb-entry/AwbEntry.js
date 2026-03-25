@@ -837,13 +837,13 @@ function AwbEntry() {
   // Window shortcuts
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === "F8" && !isEdit) {
+      if (event.key === "F8") {
         openVolumeWtWindow();
       } else if (event.key === "Escape") {
         setHoldHistoryWindow(false);
         setVolumeWtWindow(false);
         setInvoiceDetailsWindow(false);
-      } else if (event.key === "F9" && !isEdit) {
+      } else if (event.key === "F9") {
         openInvoiceDetailsWindow();
       } else if (event.key === "F11" && !isEdit) {
         openHoldHistoryWindow();
@@ -2981,9 +2981,7 @@ function AwbEntry() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (isEdit == false) {
                             openVolumeWtWindow();
-                          }
                         }}
                         className="absolute top-1/4 right-4"
                       >
@@ -3139,9 +3137,7 @@ function AwbEntry() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (isEdit == false) {
                             openInvoiceDetailsWindow();
-                          }
                         }}
                         className="absolute top-1/4 right-4"
                       >

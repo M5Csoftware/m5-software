@@ -115,8 +115,9 @@ jobs:
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           SIGNATURE=$(cat "${{ steps.files.outputs.sig }}")
 
-          # URL-encode spaces in the filename so the download URL is valid
-          ZIP_NAME=$(basename "${{ steps.files.outputs.zip }}" | sed 's/ /%20/g')
+          # Use the ZIP file for the Tauri updater (required by Tauri v1)
+          # GitHub replaces spaces with dots in release asset names, so we must do the same
+          ZIP_NAME=$(basename "${{ steps.files.outputs.zip }}" | sed 's/ /./g')
 
           cat > version.json << JSONEOF
           {
@@ -156,5 +157,6 @@ jobs:
             ${{ steps.files.outputs.msi }}
             ${{ steps.files.outputs.zip }}
             ${{ steps.files.outputs.sig }}
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
