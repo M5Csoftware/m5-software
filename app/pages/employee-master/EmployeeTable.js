@@ -104,7 +104,7 @@ function ConfirmationModal({
             {/* Icon */}
             <div
               className={`mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full sm:mx-0 sm:h-10 sm:w-10 ${
-                variant === "success" ? "bg-green-100" : "bg-red-100"
+                variant === "success" ? "bg-green-100" : "bg-red"
               }`}
             >
               {variant === "success" ? (
@@ -123,7 +123,7 @@ function ConfirmationModal({
                 </svg>
               ) : (
                 <svg
-                  className="w-6 h-6 text-red-600"
+                  className="w-6 h-6 text-red"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -161,7 +161,7 @@ function ConfirmationModal({
               className={`inline-flex w-full justify-center items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 sm:w-auto min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                 variant === "success"
                   ? "bg-green-600 hover:bg-green-700 focus:ring-green-500"
-                  : "bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                  : "bg-red hover:bg-red focus:ring-red"
               }`}
             >
               {isLoading ? (
@@ -292,7 +292,7 @@ export default function EmployeeTable({
 
   const toggleSelectOne = (id) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
@@ -553,7 +553,7 @@ export default function EmployeeTable({
                       {user.role && (
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium border whitespace-nowrap ${getRoleColor(
-                            user.role
+                            user.role,
                           )}`}
                         >
                           {user.role}
@@ -562,7 +562,7 @@ export default function EmployeeTable({
                       {user.department && (
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium border whitespace-nowrap ${getDepartmentColor(
-                            user.department
+                            user.department,
                           )}`}
                         >
                           {user.department}
@@ -580,7 +580,7 @@ export default function EmployeeTable({
                           year: "numeric",
                         })
                       : new Date(
-                          user.createdAt || user.dateAdded || Date.now()
+                          user.createdAt || user.dateAdded || Date.now(),
                         ).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -597,7 +597,7 @@ export default function EmployeeTable({
                           year: "numeric",
                         })
                       : new Date(
-                          user.createdAt || Date.now()
+                          user.createdAt || Date.now(),
                         ).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -667,7 +667,7 @@ export default function EmployeeTable({
 
                           <button
                             onClick={(e) => handleMenuAction("delete", user, e)}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-red-100 text-sm text-red flex items-center gap-3 transition-colors duration-150 group"
+                            className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-red text-sm text-red flex items-center gap-3 transition-colors duration-150 group"
                             role="menuitem"
                             type="button"
                           >
@@ -694,7 +694,7 @@ export default function EmployeeTable({
                               onClick={(e) =>
                                 handleMenuAction("deactivate", user, e)
                               }
-                              className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-red-100 text-sm text-red flex items-center gap-3 transition-colors duration-150 group"
+                              className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-red text-sm text-red flex items-center gap-3 transition-colors duration-150 group"
                               role="menuitem"
                               type="button"
                             >
