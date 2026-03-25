@@ -22,6 +22,7 @@ import NotificationFlag from "@/app/components/Notificationflag";
 import { sendNotification } from "@/app/lib/sendNotifications";
 import { useAuth } from "@/app/Context/AuthContext";
 import pushAWBLog from "@/app/lib/pushAWBLog";
+import ConfirmModal from "@/app/components/ConfirmModal";
 
 const InvoiceMain = ({ fYear }) => {
   const { register, setValue, watch } = useForm();
@@ -45,6 +46,7 @@ const InvoiceMain = ({ fYear }) => {
     message: "",
     visible: false,
   });
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const showNotification = (type, message) => {
     setNotification({ type, message, visible: true });
@@ -720,6 +722,12 @@ const InvoiceMain = ({ fYear }) => {
       return;
     }
 
+    setShowConfirmModal(true);
+  };
+
+  const executeRemoveInvoice = async () => {
+    const invoiceNumber = watch("invoiceNumber");
+    
     try {
       const res = await fetch(
         `${server}/billing-invoice?invoiceNumber=${encodeURIComponent(
@@ -1032,6 +1040,15 @@ const InvoiceMain = ({ fYear }) => {
           />
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={executeRemoveInvoice}
+        title="Remove Invoice"
+        message={`Are you sure you want to remove invoice ${watch("invoiceNumber")}? This action cannot be undone.`}
+        confirmLabel="Remove"
+      />
     </form>
   );
 };

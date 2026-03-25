@@ -73,7 +73,7 @@ const RateHike = () => {
   useEffect(() => {
     if (customerCode && accounts && accounts.length > 0) {
       const selectedAccount = accounts.find(
-        (account) => account.accountCode === customerCode,
+        (account) => account.accountCode?.toUpperCase() === customerCode?.toUpperCase(),
       );
 
       if (selectedAccount) {

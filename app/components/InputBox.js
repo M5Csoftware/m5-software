@@ -54,6 +54,7 @@ export default function InputBox({
         "awbNo",
         "eventCode",
         "accountCode",
+        "customerCode",
       ].includes(value)
     ) {
       newValue = newValue.toUpperCase();
@@ -337,7 +338,7 @@ export function InputBoxYellow({
 
   const handleChange = (e) => {
     let newValue = e.target.value;
-    if (["code", "panNo", "gstNo", "cinNo", "awbNo"].includes(value)) {
+    if (["code", "panNo", "gstNo", "cinNo", "awbNo", "customerCode"].includes(value)) {
       newValue = newValue.toUpperCase();
     }
     setInputValue(newValue);

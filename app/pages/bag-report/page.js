@@ -52,8 +52,8 @@ export default function BagReport() {
       { key: "state", label: "State" },
       { key: "zipCode", label: "ZipCode" },
       { key: "service", label: "Service" },
-      { key: "forwardingNo", label: "ForwardingNo" },
-      { key: "shipmentRemark", label: "ShipmentRemark" },
+      { key: "forwardingNo", label: "Forwarding No." },
+      { key: "shipmentRemark", label: "Shipment Remarks" },
     ],
     Consignee: [
       { key: "mawbNo", label: "MawbNo" },
@@ -67,8 +67,8 @@ export default function BagReport() {
       { key: "state", label: "State" },
       { key: "zipCode", label: "ZipCode" },
       { key: "service", label: "Service" },
-      { key: "forwardingNo", label: "ForwardingNo" },
-      { key: "shipmentRem", label: "ShipmentRem" },
+      { key: "forwardingNo", label: "Forwarding No." },
+      { key: "shipmentRemark", label: "Shipment Remarks" },
     ],
     Summary: [
       { key: "srNo", label: "SrNo." },

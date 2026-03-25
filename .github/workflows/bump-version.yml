@@ -79,6 +79,8 @@ jobs:
           workspaces: src-tauri
 
       - name: Install Node dependencies
+        env:
+          NEXT_PUBLIC_SERVER: ${{ secrets.NEXT_PUBLIC_SERVER }}
         run: npm install
 
       # ── 4. Build signed Tauri app ─────────────────────────────────────
@@ -86,6 +88,7 @@ jobs:
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          NEXT_PUBLIC_SERVER: ${{ secrets.NEXT_PUBLIC_SERVER }}
         run: npm run tauri build
 
       # ── 5. Find built files ───────────────────────────────────────────
@@ -115,8 +118,7 @@ jobs:
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           SIGNATURE=$(cat "${{ steps.files.outputs.sig }}")
 
-          # Use the ZIP file for the Tauri updater (required by Tauri v1)
-          # GitHub replaces spaces with dots in release asset names, so we must do the same
+          # GitHub replaces spaces with dots in release asset names
           ZIP_NAME=$(basename "${{ steps.files.outputs.zip }}" | sed 's/ /./g')
 
           cat > version.json << JSONEOF

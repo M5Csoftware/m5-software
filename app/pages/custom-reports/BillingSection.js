@@ -1,7 +1,7 @@
 import { RedCheckbox } from "@/app/components/Checkbox";
 import React, { useState, useEffect } from "react";
 
-const BillingSection = ({ onChange }) => {
+const BillingSection = ({ onChange, preSelectedFields = [] }) => {
   const sections = {
     Charges: [
       "Base Freight",
@@ -22,14 +22,28 @@ const BillingSection = ({ onChange }) => {
     Documents: ["Invoice File", "Receipt File"],
   };
 
-  // Build dynamic state
-  const initialState = {};
-  Object.entries(sections).forEach(([title, children]) => {
-    initialState[`title-${title}`] = false;
-    children.forEach((c) => (initialState[c] = false));
+  // Build dynamic state based on preSelectedFields
+  const [state, setState] = useState(() => {
+    const initialState = {};
+    Object.entries(sections).forEach(([title, children]) => {
+      const allSelected = children.every((c) => preSelectedFields.includes(c));
+      initialState[`title-${title}`] = allSelected;
+      children.forEach((c) => (initialState[c] = preSelectedFields.includes(c)));
+    });
+    return initialState;
   });
 
-  const [state, setState] = useState(initialState);
+  // Handle external reset
+  useEffect(() => {
+    if (preSelectedFields.length === 0) {
+      const hasSelected = Object.values(state).some((v) => v === true);
+      if (hasSelected) {
+        const resetState = {};
+        Object.keys(state).forEach((k) => (resetState[k] = false));
+        setState(resetState);
+      }
+    }
+  }, [preSelectedFields]);
 
   const toggle = (key) => {
     setState((prev) => {
@@ -44,12 +58,10 @@ const BillingSection = ({ onChange }) => {
       } else {
         // Child clicked → update heading based on all children
         const title = Object.keys(sections).find((t) =>
-          sections[t].includes(key)
+          sections[t].includes(key),
         );
 
-        const allSelected = sections[title].every(
-          (child) => updated[child]
-        );
+        const allSelected = sections[title].every((child) => updated[child]);
 
         updated[`title-${title}`] = allSelected;
       }
@@ -66,7 +78,7 @@ const BillingSection = ({ onChange }) => {
   // SEND only child-selected fields to parent
   useEffect(() => {
     const selected = Object.keys(state).filter(
-      (k) => !k.startsWith("title-") && state[k] === true
+      (k) => !k.startsWith("title-") && state[k] === true,
     );
 
     onChange?.(selected);
@@ -95,7 +107,7 @@ const BillingSection = ({ onChange }) => {
           {/* Child Fields */}
           <ul className="ml-6 mt-2">
             {children.map((child) => (
-              <li key={child}>
+              <li key={child} className="mt-1">
                 <RedCheckbox
                   id={child}
                   label={child}
