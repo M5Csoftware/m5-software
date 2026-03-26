@@ -25,6 +25,7 @@ const MultipleRunWise = () => {
   const [dateFormat, setdateFormat] = useState(false);
   const [rowData, setRowData] = useState([]);
   const [MultipleRunReset, setMultipleRunReset] = useState(false);
+  const [runNumberReset, setRunNumberReset] = useState(false);
   const [runNumbers, setRunNumbers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -105,6 +106,7 @@ const MultipleRunWise = () => {
     ) {
       setRunNumbers([...runNumbers, inputValue.trim()]);
       setValue("runNumber", "");
+      setRunNumberReset(!runNumberReset);
       showNotification("success", `Run number ${inputValue.trim()} added`);
     } else if (inputValue && runNumbers.includes(inputValue.trim())) {
       showNotification("warning", "This run number already exists");
@@ -177,7 +179,19 @@ const MultipleRunWise = () => {
         const result = await response.json();
 
         if (result.success) {
-          setRowData(result.data);
+          const sanitizedData = result.data.map((item) => {
+            if (item.status?.toLowerCase() !== "delivered") {
+              return {
+                ...item,
+                status: "",
+                eventDate: "",
+                eventTime: "",
+                remark: "",
+              };
+            }
+            return item;
+          });
+          setRowData(sanitizedData);
           setTotalPages(result.pagination.totalPages);
           setTotalCount(result.pagination.totalCount);
           setCurrentPage(pageNum);
@@ -197,7 +211,7 @@ const MultipleRunWise = () => {
         setLoading(false);
       }
     },
-    [runNumbers, watch, server, itemsPerPage]
+    [runNumbers, watch, server, itemsPerPage],
   );
 
   const showNotification = (type, message) => {
@@ -295,7 +309,7 @@ const MultipleRunWise = () => {
             ${worksheet_data
               .map(
                 (row) =>
-                  `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`
+                  `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`,
               )
               .join("")}
           </table>
@@ -335,7 +349,7 @@ const MultipleRunWise = () => {
               ? `"${value}"`
               : value;
           })
-          .join(",")
+          .join(","),
       ),
     ].join("\n");
 
@@ -380,7 +394,7 @@ const MultipleRunWise = () => {
       { key: "exceptionMail", label: "Exception Mail" },
       { key: "caseRegisterDate", label: "Case Register Date" },
     ],
-    []
+    [],
   );
 
   return (
@@ -409,7 +423,7 @@ const MultipleRunWise = () => {
                 placeholder="Run Number"
                 register={register}
                 setValue={setValue}
-                resetFactor={MultipleRunReset}
+                resetFactor={runNumberReset}
                 value="runNumber"
               />
             </div>
@@ -426,11 +440,11 @@ const MultipleRunWise = () => {
 
           {/* Run Number Tags */}
           {runNumbers.length > 0 && (
-            <div className="flex flex-wrap gap-2 bg-gray-50 p-3 rounded">
+            <div className="flex flex-wrap gap-2 bg-gray-50 p-1 rounded">
               {runNumbers.map((runNo, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-2 bg-red-100 text-red-700 px-3 py-1 rounded-full"
+                  className="flex items-center gap-2 bg-red text-white px-3 py-1 rounded-full"
                 >
                   <span className="text-sm font-medium">{runNo}</span>
                   <button
@@ -458,11 +472,11 @@ const MultipleRunWise = () => {
             />
           </div>
           <DummyInputBoxWithLabelDarkGray
-                        register={register}
-                        label="Customer Name"
-                        setValue={setValue}
-                        value="name"
-                      />
+            register={register}
+            label="Customer Name"
+            setValue={setValue}
+            value="name"
+          />
           <InputBox
             placeholder="Branch"
             register={register}

@@ -20,6 +20,8 @@ export default function ManifestReport() {
   const { register, setValue, watch } = useForm();
   const [rowData, setRowData] = useState([]);
   const [enableCanada, setEnableCanada] = useState(false);
+  const [cadRate, setCadRate] = useState(null); // INR per 1 CAD (auto-fetched)
+  const [cadRateLoading, setCadRateLoading] = useState(false);
   const [singleAddress, setSingleAddress] = useState(false);
   const [enableBagNumber, setEnableBagNumber] = useState(false);
   const [rundata, setRunData] = useState({});
@@ -97,6 +99,7 @@ export default function ManifestReport() {
             height: 30,
             fontSize: 10,
             displayValue: true,
+            text: enableCanada ? `80KT${item.awbNo}` : item.awbNo,
             margin: 0,
           });
         }
@@ -158,7 +161,7 @@ export default function ManifestReport() {
         item.consignor || "",
         "NA",
         "NA",
-        item.value || "",
+        enableCanada ? `${(parseFloat(item.value || 0) / (cadRate || 60)).toFixed(2)} CAD` : (item.value || ""),
         "CANADA",
         item.consignee || "",
         "NA",
@@ -176,7 +179,7 @@ export default function ManifestReport() {
         item.shipperAddressLine1 || "",
         "",
         "",
-        "INR",
+        enableCanada ? "CAD" : "INR",
         "",
         item.receiverAddressLine1 || "",
         "",
@@ -453,6 +456,30 @@ export default function ManifestReport() {
     }
   }, [runNo]);
 
+  // Auto-fetch INR to CAD exchange rate when Canada M/f is enabled
+  useEffect(() => {
+    if (!enableCanada) return;
+    const fetchRate = async () => {
+      setCadRateLoading(true);
+      try {
+        const res = await fetch("https://open.er-api.com/v6/latest/CAD");
+        const json = await res.json();
+        if (json && json.rates && json.rates.INR) {
+          // json.rates.INR = how many INR per 1 CAD
+          setCadRate(json.rates.INR);
+        } else {
+          setCadRate(60); // fallback
+        }
+      } catch (err) {
+        console.error("Failed to fetch exchange rate:", err);
+        setCadRate(60); // fallback
+      } finally {
+        setCadRateLoading(false);
+      }
+    };
+    fetchRate();
+  }, [enableCanada]);
+
   const handleView = async () => {
     const query = runNo?.trim();
     if (!query) {
@@ -502,7 +529,7 @@ export default function ManifestReport() {
 
       <div className="flex flex-col gap-3">
         <div className="flex justify-between">
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
             <RedCheckbox
               id="enableCanada"
               label="Canada M/f"
@@ -511,6 +538,12 @@ export default function ManifestReport() {
               register={register}
               setValue={setValue}
             />
+
+            {enableCanada && (
+              <span className="text-xs text-gray-500 ml-1">
+                {cadRateLoading ? "(Fetching rate...)" : cadRate ? `(1 CAD = ${cadRate.toFixed(2)} INR)` : ""}
+              </span>
+            )}
 
             <RedCheckbox
               id="singleAddress"
@@ -689,7 +722,7 @@ export default function ManifestReport() {
                 <td className="px-2 pt-3">{item.wt}</td>
                 <td className="px-2 pt-3">{item.dest}</td>
                 <td className="px-2 pt-3">{item.description}</td>
-                <td className="px-2 pt-3">{typeof item.value === 'number' ? item.value.toFixed(2) : item.value}</td>
+                <td className="px-2 pt-3">{enableCanada ? `${(parseFloat(item.value || 0) / (cadRate || 60)).toFixed(2)} CAD` : (typeof item.value === 'number' ? item.value.toFixed(2) : item.value)}</td>
               </tr>
             ))}
           </tbody>

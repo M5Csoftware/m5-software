@@ -10,11 +10,12 @@ import BookingSection from "./BookingSection";
 import OperationsSection from "./OperationsSection";
 import CustomerServiceSection from "./CustomerServiceSection";
 import BillingSection from "./BillingSection";
+import { format } from "date-fns";
 import { TableWithSorting } from "@/app/components/Table";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 
 const CustomReports = () => {
-  const { register, setValue, watch } = useForm();
+  const { register, setValue, watch, reset } = useForm();
   const department = watch("department");
   const [selectedFields, setSelectedFields] = useState({
     Booking: [],
@@ -23,7 +24,7 @@ const CustomReports = () => {
     Billing: [],
   });
 
-  const allSelectedFields = Object.values(selectedFields).flat();
+  const allSelectedFields = [...new Set(Object.values(selectedFields).flat())];
 
   const dynamicColumns = allSelectedFields.map((field) => ({
     key: field.toLowerCase().replace(/\s+/g, "_").replace(/[^\w]/g, ""), // convert to safe key
@@ -37,6 +38,234 @@ const CustomReports = () => {
     }));
   };
 
+  const [reportData, setReportData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const processReportData = (data) => {
+    const formatted = data.map((item) => {
+      const newItem = { ...item };
+      Object.keys(newItem).forEach((key) => {
+        if (key.toLowerCase().includes("date") && newItem[key]) {
+          try {
+            newItem[key] = format(new Date(newItem[key]), "dd/MM/yyyy");
+          } catch (e) {
+            // ignore
+          }
+        }
+        // Format numbers to 2 decimal places
+        if (typeof newItem[key] === "number") {
+          newItem[key] = newItem[key].toFixed(2);
+        }
+      });
+      return newItem;
+    });
+
+    // De-duplicate by AWB Number
+    const seenAWB = new Set();
+    const uniqueData = formatted.filter((item) => {
+      const awb = item.awb_number;
+      if (awb) {
+        if (seenAWB.has(awb)) return false;
+        seenAWB.add(awb);
+      }
+      return true;
+    });
+
+    return uniqueData;
+  };
+
+  const handleShowReport = async () => {
+    if (allSelectedFields.length === 0) {
+      alert("Please select at least one field to generate a report.");
+      return;
+    }
+
+    const filters = watch();
+    if (!filters.from || !filters.to) {
+      alert("Please select both 'From' and 'To' dates.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${server}/custom-reports/personal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fields: allSelectedFields,
+          filters: {
+            from: filters.from,
+            to: filters.to,
+            sector: filters.sector,
+            shipmentType: filters.shipmentType,
+            status: filters.status,
+          },
+        }),
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        const uniqueData = processReportData(result.data);
+        setReportData(uniqueData);
+      } else {
+        alert(result.message || "Failed to fetch report");
+      }
+    } catch (error) {
+      console.error("Error fetching report:", error);
+      alert("An error occurred while fetching the report.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    if (allSelectedFields.length === 0) {
+      alert("Please select at least one field to generate a report.");
+      return;
+    }
+
+    const filters = watch();
+    if (!filters.from || !filters.to) {
+      alert("Please select both 'From' and 'To' dates.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      let dataToExport = reportData;
+
+      if (dataToExport.length === 0) {
+        const res = await fetch(`${server}/custom-reports/personal`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fields: allSelectedFields,
+            filters: {
+              from: filters.from,
+              to: filters.to,
+              sector: filters.sector,
+              shipmentType: filters.shipmentType,
+              status: filters.status,
+            },
+          }),
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          dataToExport = processReportData(result.data);
+          setReportData(dataToExport);
+        } else {
+          alert(result.message || "Failed to fetch report for export");
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Dynamic Imports
+      const ExcelJS = (await import("exceljs")).default;
+      const fileSaver = await import("file-saver");
+      const saveAs = fileSaver.saveAs || fileSaver.default;
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Custom Report");
+
+      // Set columns with auto-width calculation
+      worksheet.columns = dynamicColumns.map((col) => {
+        let maxLen = col.label.length;
+        dataToExport.forEach((item) => {
+          const value = item[col.key];
+          if (value) {
+            const currentLen = value.toString().length;
+            if (currentLen > maxLen) {
+              maxLen = currentLen;
+            }
+          }
+        });
+
+        return {
+          header: col.label,
+          key: col.key,
+          width: maxLen + 5, // add padding
+        };
+      });
+
+      // Add Data
+      worksheet.addRows(dataToExport);
+
+      // Theme Styling (Red Header, White Font)
+      const headerRow = worksheet.getRow(1);
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "EA1B40" },
+        };
+        cell.font = {
+          color: { argb: "FFFFFF" },
+          bold: true,
+          size: 12,
+        };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+
+      // Styling Data Cells
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 1) {
+          row.eachCell((cell) => {
+            cell.alignment = { horizontal: "left", vertical: "middle" };
+            cell.border = {
+              top: { style: "thin" },
+              left: { style: "thin" },
+              bottom: { style: "thin" },
+              right: { style: "thin" },
+            };
+          });
+        }
+      });
+
+      // Write and Save
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const fileName = `Custom_Report_${format(new Date(), "dd_MM_yyyy_HHmm")}.xlsx`;
+
+      saveAs(blob, fileName);
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("An error occurred during export.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const [resetFactor, setResetFactor] = useState(false);
+
+  const refreshComponent = () => {
+    reset({
+      department: "",
+      from: "",
+      to: "",
+      sector: "",
+      shipmentType: "",
+      status: "",
+    });
+    setSelectedFields({
+      Booking: [],
+      Operations: [],
+      "Customer Service": [],
+      Billing: [],
+    });
+    setReportData([]);
+    setResetFactor((prev) => !prev);
+  };
+
   const resetFields = () => {
     setSelectedFields({
       Booking: [],
@@ -44,24 +273,10 @@ const CustomReports = () => {
       "Customer Service": [],
       Billing: [],
     });
+    setReportData([]);
   };
 
   const { server } = useContext(GlobalContext);
-
-  const columns = [{ key: "awbNumber", label: "AWB Number" }];
-
-  const fetchBookingData = async () => {
-    const res = await fetch(`${server}/custom-reports/booking`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fields: selectedFields.Booking,
-      }),
-    });
-
-    const data = await res.json();
-    // console.log("Result:", data);
-  };
 
   return (
     <div>
@@ -71,6 +286,7 @@ const CustomReports = () => {
           fullscreenBtn
           bulkUploadBtn="hidden"
           codeListBtn="hidden"
+          onRefresh={refreshComponent}
         />
 
         <div className="flex gap-6">
@@ -79,18 +295,21 @@ const CustomReports = () => {
             <RedLabelHeading label="Select Date Fields to add in your Report" />
 
             <div className="flex flex-col mt-2">
-              <LabeledDropdown
-                setValue={setValue}
-                register={register}
-                value={`department`}
-                options={[
-                  "Booking",
-                  "Operations",
-                  "Customer Service",
-                  "Billing",
-                ]}
-                title={`Department`}
-              />
+              <div className="flex bg-[#F2F2F2] p-2 rounded-lg gap-3">
+                {["Booking", "Operations", "CS", "Billing"].map((dept) => (
+                  <button
+                    key={dept}
+                    onClick={() => setValue("department", dept)}
+                    className={`flex-1 py-2 text-xs font-medium tracking-wider rounded-md transition-all duration-200 ${
+                      department === dept
+                        ? "bg-red text-white shadow-md scale-105"
+                        : "text-battleship-gray hover:bg-white hover:text-red hover:shadow-sm"
+                    }`}
+                  >
+                    {dept}
+                  </button>
+                ))}
+              </div>
               {/* DYNAMIC ACCORDING TO DEPARTMENT */}
 
               {!department && (
@@ -122,7 +341,7 @@ const CustomReports = () => {
                 </div>
               )}
 
-              {department === "Customer Service" && (
+              {(department === "Customer Service" || department === "CS") && (
                 <div className="rounded mt-6 h-[60vh] overflow-y-auto table-scrollbar">
                   <CustomerServiceSection
                     preSelectedFields={selectedFields["Customer Service"]}
@@ -167,12 +386,14 @@ const CustomReports = () => {
                   register={register}
                   setValue={setValue}
                   value="from"
+                  resetFactor={resetFactor}
                   placeholder="From"
                 />
                 <DateInputBox
                   register={register}
                   setValue={setValue}
                   value="to"
+                  resetFactor={resetFactor}
                   placeholder="To"
                 />
               </div>
@@ -182,6 +403,7 @@ const CustomReports = () => {
                   register={register}
                   title="Sector"
                   value="sector"
+                  resetFactor={resetFactor}
                   options={["DEL"]}
                 />
                 <LabeledDropdown
@@ -189,6 +411,7 @@ const CustomReports = () => {
                   register={register}
                   title="Shipment Type"
                   value="shipmentType"
+                  resetFactor={resetFactor}
                   options={["abc"]}
                 />
                 <LabeledDropdown
@@ -196,14 +419,25 @@ const CustomReports = () => {
                   register={register}
                   title="Status"
                   value="status"
+                  resetFactor={resetFactor}
                   options={["DEL"]}
                 />
               </div>
-              <div className="w-full cursor-pointer bg-[#F2F2F2] rounded-lg flex justify-center items-center border-opacity-30 shadow-sm border-battleship-gray border-[1px] p-2">
-                <button className=" flex justify-center items-center opacity-75 gap-2 text-sm tracking-wide">
-                  <PlusIcon size={16} />
-                  Add More Filters
-                </button>
+              <div className="flex gap-4">
+                <div className="w-1/2 cursor-pointer bg-[#F2F2F2] rounded-lg flex justify-center items-center border-opacity-30 shadow-sm border-battleship-gray border-[1px] p-2">
+                  <button className=" flex justify-center items-center opacity-75 gap-2 text-sm tracking-wide">
+                    <PlusIcon size={16} />
+                    Add More Filters
+                  </button>
+                </div>
+                <div
+                  onClick={handleShowReport}
+                  className="w-1/2 cursor-pointer bg-red text-white rounded-lg flex justify-center items-center border-opacity-30 shadow-sm border-battleship-gray border-[1px] p-2"
+                >
+                  <button className="flex justify-center items-center gap-2 text-sm tracking-wide font-semibold">
+                    {loading ? "Fetching..." : "Show Report"}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -214,7 +448,7 @@ const CustomReports = () => {
                 setValue={setValue}
                 register={register}
                 columns={dynamicColumns}
-                rowData={[]} // later you'll fill data here
+                rowData={reportData}
                 className={`h-[38vh] border-battleship-gray mt-4`}
               />
             </div>
@@ -235,7 +469,12 @@ const CustomReports = () => {
             <OutlinedButtonRed label={"Save Template"} type="button" saveIcon />
           </div>
           <div>
-            <SimpleButton name={"Generate Report"} type="button" reportIcon />
+            <SimpleButton
+              name={"Generate Report"}
+              type="button"
+              reportIcon
+              onClick={handleGenerateReport}
+            />
           </div>
         </div>
       </div>

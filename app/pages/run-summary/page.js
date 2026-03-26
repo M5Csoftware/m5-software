@@ -134,10 +134,17 @@ function RunSummary() {
 
         console.log("Fetched data:", fetchedData);
 
-        const formattedData = fetchedData.map((row) => ({
-          ...row,
-          flightDate: toDDMMYYYY(row.flightDate),
-        }));
+        const formattedData = fetchedData.map((row) => {
+          const newRow = { ...row };
+          Object.keys(newRow).forEach((key) => {
+            if (key === "flightDate") {
+              newRow[key] = toDDMMYYYY(newRow[key]);
+            } else if (typeof newRow[key] === "number") {
+              newRow[key] = newRow[key].toFixed(2);
+            }
+          });
+          return newRow;
+        });
 
         setRowData(formattedData);
         setCurrentPage(pagination.currentPage);

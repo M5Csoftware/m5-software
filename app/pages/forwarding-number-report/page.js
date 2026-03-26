@@ -208,40 +208,43 @@ const ForwardingNumberReport = () => {
     setIsLoading(true);
     
     try {
-      const fromParsed = parseDateDDMMYYYY(filters.from);
-      const toParsed = parseDateDDMMYYYY(filters.to);
-
-      if (
-        !fromParsed ||
-        !toParsed ||
-        isNaN(fromParsed.getTime()) ||
-        isNaN(toParsed.getTime())
-      ) {
+      // Check if at least one filter is provided
+      const hasFilter = Object.keys(filters).some(
+        (key) => filters[key] && filters[key].toString().trim() !== ""
+      );
+      if (!hasFilter) {
         setNotification({
           visible: true,
-          message: "Invalid date format",
+          message: "Please select at least one filter",
           type: "error",
         });
         setShipments([]);
         setIsLoading(false);
         return;
       }
-
-      fromParsed.setHours(0, 0, 0, 0);
-      toParsed.setHours(23, 59, 59, 999);
-
-      filters.from = fromParsed.toISOString();
-      filters.to = toParsed.toISOString();
-
-      if (!filters.from || !filters.to) {
-        setNotification({
-          visible: true,
-          message: "Please select From and To dates",
-          type: "error",
-        });
-        setShipments([]);
-        setIsLoading(false);
-        return;
+      
+      let fromParsed = null;
+      let toParsed = null;
+      
+      if (filters.from && filters.to) {
+        fromParsed = parseDateDDMMYYYY(filters.from);
+        toParsed = parseDateDDMMYYYY(filters.to);
+        
+        if (fromParsed && toParsed && !isNaN(fromParsed.getTime()) && !isNaN(toParsed.getTime())) {
+          fromParsed.setHours(0, 0, 0, 0);
+          toParsed.setHours(23, 59, 59, 999);
+          filters.from = fromParsed.toISOString();
+          filters.to = toParsed.toISOString();
+        } else {
+          setNotification({
+            visible: true,
+            message: "Invalid date format",
+            type: "error",
+          });
+          setShipments([]);
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Build filtered object with normalization

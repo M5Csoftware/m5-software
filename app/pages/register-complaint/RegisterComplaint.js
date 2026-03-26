@@ -301,7 +301,11 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
       }
 
       try {
-        await axios.get(
+        // console.log(
+        //           "📦 Fetching shipment from:",
+        //           `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`
+        //         );
+        const shipmentResponse = await axios.get(
           `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`,
         );
       } catch (error) {
@@ -310,6 +314,10 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
       }
 
       try {
+        // console.log(
+        //           "🎫 Fetching complaint from:",
+        //           `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`
+        //         );
         const response = await axios.get(
           `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`,
         );
@@ -324,6 +332,9 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
       } catch (error) {
         console.error("Error fetching registered complaint:", error);
         setRegisteredComplaint(null);
+        // console.log(
+        //           "🔄 Registered complaint set to null (this is normal if no complaint exists yet)"
+        //         );
       }
     };
 
@@ -430,9 +441,13 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
 
   const handleRefresh = () => {
     setFormKey((prev) => prev + 1);
+
+    // Reset all toggle states
     setResetReassign(!resetReassign);
     setResetFactor(!resetFactor);
     setResetComplaintRemark(!resetComplaintRemark);
+
+    // Reset form
     reset();
 
     const currentDate = new Date();
@@ -449,6 +464,7 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
     setValue("complaintRemark", "");
     setValue("awbNo", "");
 
+    // Reset state
     setDate(currentDate);
     setDisplayDate(formattedCurrentDate);
     setComplaintNo("");
@@ -457,6 +473,10 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
     setRegisteredComplaint(null);
     setSearchTerm("");
     setManualSearch(false);
+    setComplaintNo("");
+    setComplaintID("");
+
+    showNotification("success", "Form refreshed successfully");
 
     showNotification("success", "Form refreshed successfully");
     clearErrors();
