@@ -20,6 +20,9 @@ function AwbWise() {
   const [withEvents, setEvents] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sendingAlert, setSendingAlert] = useState(false);
+  // ✅ FIX: resetFactor toggles to force InputBox to clear
+  const [resetFactor, setResetFactor] = useState(false);
+
   const [notification, setNotification] = useState({
     type: "success",
     message: "",
@@ -41,40 +44,37 @@ function AwbWise() {
     []
   );
 
+  const clearInputs = () => {
+    setValue("awbNo", "");
+    setValue("offloadReason", "");
+    setResetFactor((prev) => !prev); // ✅ triggers InputBox internal reset
+  };
+
   const handleAdd = async () => {
     const formValues = getValues();
     const awbNo = formValues.awbNo;
     const offloadReason = formValues.offloadReason;
 
-    // console.log("Form Values:", { awbNo, offloadReason });
-
     if (!awbNo || !offloadReason) {
-      showNotification("error","Please enter AWB Number and Offload Reason");
+      showNotification("error", "Please enter AWB Number and Offload Reason");
       return;
     }
 
     if (!awbNo.trim() || !offloadReason.trim()) {
-      showNotification("error","AWB Number and Offload Reason cannot be empty");
+      showNotification("error", "AWB Number and Offload Reason cannot be empty");
       return;
     }
 
-    // Check if AWB already exists in table
     const exists = rowData.some((row) => row.awbNo === awbNo);
     if (exists) {
-      showNotification("error","AWB Number already added to the table");
+      showNotification("error", "AWB Number already added to the table");
       return;
     }
 
     setLoading(true);
     try {
-      const url = `${server}/offload-shipment/awb-wise?awbNo=${encodeURIComponent(
-        awbNo
-      )}`;
-      // console.log("Calling API:", url);
-
+      const url = `${server}/offload-shipment/awb-wise?awbNo=${encodeURIComponent(awbNo)}`;
       const response = await axios.get(url);
-
-      // console.log("API Response:", response.data);
 
       if (response.data.success) {
         const newRow = {
@@ -85,23 +85,15 @@ function AwbWise() {
           email: response.data.data.email,
         };
 
-        // console.log("New Row to Add:", newRow);
+        setRowData((prev) => [...prev, newRow]);
 
-        setRowData((prev) => {
-          const updated = [...prev, newRow];
-          // console.log("Updated Row Data:", updated);
-          return updated;
-        });
+        // ✅ FIX: clear both via resetFactor + setValue
+        clearInputs();
 
-        // Clear input fields
-        setValue("awbNo", "");
-        setValue("offloadReason", "");
-
-        showNotification("success","AWB added successfully");
+        showNotification("success", "AWB added successfully");
       }
     } catch (error) {
       console.error("Error fetching AWB details:", error);
-      console.error("Error Response:", error.response?.data);
       const errorMessage =
         error.response?.data?.message || "Failed to fetch AWB details";
       showNotification("error", errorMessage);
@@ -112,22 +104,21 @@ function AwbWise() {
 
   const handleSendAlert = async () => {
     if (rowData.length === 0) {
-      showNotification("error","Please add at least one AWB before sending alert");
+      showNotification("error", "Please add at least one AWB before sending alert");
       return;
     }
 
     if (!withPortal && !withEmail && !withEvents) {
-      showNotification("error","Please select at least one alert option");
+      showNotification("error", "Please select at least one alert option");
       return;
     }
 
-    // If email alert is selected, validate email addresses
     if (withEmail) {
       const invalidEmails = rowData.filter(
         (row) => !row.email || row.email.trim() === ""
       );
       if (invalidEmails.length > 0) {
-        showNotification("error","Some shipments have invalid email addresses");
+        showNotification("error", "Some shipments have invalid email addresses");
         return;
       }
     }
@@ -138,32 +129,25 @@ function AwbWise() {
       let allSuccess = true;
       let messages = [];
 
-      // 1. Handle Update in Events
       if (withEvents) {
         try {
-          const updateEventUrl = `${server}/offload-shipment/awb-wise/update-event`;
-          // console.log("Updating events at:", updateEventUrl);
-
-          const eventResponse = await axios.post(updateEventUrl, {
-            shipments: rowData,
-            alertOnEmail: withEmail,
-            alertOnPortal: withPortal,
-            updateInEvents: withEvents,
-          });
-
-          // console.log("Event Update Response:", eventResponse.data);
+          const eventResponse = await axios.post(
+            `${server}/offload-shipment/awb-wise/update-event`,
+            {
+              shipments: rowData,
+              alertOnEmail: withEmail,
+              alertOnPortal: withPortal,
+              updateInEvents: withEvents,
+            }
+          );
 
           if (eventResponse.data.success) {
             const { successful, failed, total } = eventResponse.data.results;
             if (failed > 0) {
-              messages.push(
-                `Events updated: ${successful} successful, ${failed} failed out of ${total}`
-              );
+              messages.push(`Events updated: ${successful} successful, ${failed} failed out of ${total}`);
               allSuccess = false;
             } else {
-              messages.push(
-                `Events updated successfully for ${total} shipment(s)`
-              );
+              messages.push(`Events updated successfully for ${total} shipment(s)`);
             }
           } else {
             messages.push("Failed to update events");
@@ -171,123 +155,67 @@ function AwbWise() {
           }
         } catch (error) {
           console.error("Error updating events:", error);
-          messages.push(
-            "Error updating events: " +
-              (error.response?.data?.message || error.message)
-          );
+          messages.push("Error updating events: " + (error.response?.data?.message || error.message));
           allSuccess = false;
         }
       }
 
-      // 2. Handle Email Alert
       if (withEmail) {
         try {
-          const emailUrl = `${server}/offload-shipment/awb-wise/send-alert`;
-          // console.log("Sending email alerts to:", emailUrl);
-
-          const emailResponse = await axios.post(emailUrl, {
-            shipments: rowData,
-            alertOnEmail: withEmail,
-            alertOnPortal: withPortal,
-            updateInEvents: false, // Already handled above
-          });
-
-          // console.log("Email Alert Response:", emailResponse.data);
+          const emailResponse = await axios.post(
+            `${server}/offload-shipment/awb-wise/send-alert`,
+            {
+              shipments: rowData,
+              alertOnEmail: withEmail,
+              alertOnPortal: withPortal,
+              updateInEvents: false,
+            }
+          );
 
           if (emailResponse.data.success && emailResponse.data.emailResults) {
-            const { successful, failed, total } =
-              emailResponse.data.emailResults;
+            const { successful, failed, total } = emailResponse.data.emailResults;
             if (failed > 0) {
-              messages.push(
-                `Emails sent: ${successful} successful, ${failed} failed out of ${total}`
-              );
+              messages.push(`Emails sent: ${successful} successful, ${failed} failed out of ${total}`);
               allSuccess = false;
             } else {
-              messages.push(
-                `Emails sent successfully to all ${total} customers`
-              );
+              messages.push(`Emails sent successfully to all ${total} customers`);
             }
           } else {
             messages.push("Email alerts sent");
           }
         } catch (error) {
           console.error("Error sending emails:", error);
-          messages.push(
-            "Error sending emails: " +
-              (error.response?.data?.message || error.message)
-          );
+          messages.push("Error sending emails: " + (error.response?.data?.message || error.message));
           allSuccess = false;
         }
       }
 
-      // 3. Handle Portal Alert (if you have a separate endpoint for this)
       if (withPortal) {
-        try {
-          // Add your portal alert endpoint here if you have one
-          // const portalUrl = `${server}/offload-shipment/portal-alert`;
-          // const portalResponse = await axios.post(portalUrl, { shipments: rowData });
-
-          messages.push("Portal alerts processed");
-        } catch (error) {
-          console.error("Error sending portal alerts:", error);
-          messages.push(
-            "Error with portal alerts: " +
-              (error.response?.data?.message || error.message)
-          );
-          allSuccess = false;
-        }
+        messages.push("Portal alerts processed");
       }
 
-      // Display results
       const finalMessage = messages.join(". ");
 
       if (allSuccess) {
-        setNotification({
-          type: "success",
-          message: finalMessage,
-          visible: true,
-        });
+        showNotification("success", finalMessage);
         toast.success(finalMessage);
-        showNotification("success", finalMessage)
-
-        // Clear the table after successful alert
         setRowData([]);
-
-        // Reset checkboxes
         setPortal(false);
         setEmail(false);
         setEvents(false);
       } else {
-        setNotification({
-          type: "warning",
-          message: finalMessage,
-          visible: true,
-        });
-        toast.warning(finalMessage);
-        showNotification("error", finalMessage)
+        showNotification("error", finalMessage);
+        toast.error(finalMessage);
       }
     } catch (error) {
       console.error("Error in handleSendAlert:", error);
-      const errorMessage =
-        error.response?.data?.message || "Failed to process alerts";
-
-      setNotification({
-        type: "error",
-        message: errorMessage,
-        visible: true,
-      });
-
+      const errorMessage = error.response?.data?.message || "Failed to process alerts";
+      showNotification("error", errorMessage);
       toast.error(errorMessage);
-      showNotification("error", errorMessage)
     } finally {
       setSendingAlert(false);
     }
   };
-
-  // Debug: Log rowData changes
-  React.useEffect(() => {
-    // console.log("Row Data Changed:", rowData);
-  }, [rowData]);
 
   return (
     <>
@@ -297,26 +225,25 @@ function AwbWise() {
         visible={notification.visible}
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
-      <form
-        className="flex flex-col gap-3"
-        onSubmit={(e) => e.preventDefault()}
-      >
+      <form className="flex flex-col gap-3" onSubmit={(e) => e.preventDefault()}>
         <div className="flex flex-col gap-3">
           <RedLabelHeading label="AWB To Be Offload" />
           <div className="flex gap-3">
+            {/* ✅ FIX: resetFactor passed to both inputs so they clear after Add */}
             <InputBox
               placeholder="Enter Awb No."
               register={register}
               setValue={setValue}
               value="awbNo"
+              resetFactor={resetFactor}
             />
             <InputBox
               placeholder="Offload Reason"
               register={register}
               setValue={setValue}
               value="offloadReason"
+              resetFactor={resetFactor}
             />
-
             <div>
               <OutlinedButtonRed
                 type="button"
@@ -375,8 +302,6 @@ function AwbWise() {
             rowData={rowData}
           />
         </div>
-
-        <div className="flex justify-end"></div>
       </form>
     </>
   );
