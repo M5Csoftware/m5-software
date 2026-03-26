@@ -2,7 +2,7 @@
 import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { LabeledDropdown } from "@/app/components/Dropdown";
 import { DummyInputBoxWithLabelDarkGray } from "@/app/components/DummyInputBox";
-import Heading, { RedLabelHeading } from "@/app/components/Heading";
+import Heading from "@/app/components/Heading";
 import InputBox, { SearchInputBox } from "@/app/components/InputBox";
 import { TableWithSorting } from "@/app/components/Table";
 import React, { useState, useContext, useEffect } from "react";
@@ -11,14 +11,14 @@ import axios from "axios";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import { useAuth } from "@/app/Context/AuthContext";
 import NotificationFlag from "@/app/components/Notificationflag";
-import { parseISO, format } from "date-fns";
+import { format } from "date-fns";
 
-const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
+const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
   const {
     register,
     setValue,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors },
     trigger,
     watch,
     setError,
@@ -44,13 +44,12 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
 
   const [registeredComplaint, setRegisteredComplaint] = useState(null);
   const [date, setDate] = useState(new Date());
-  const [displayDate, setDisplayDate] = useState(""); // For display only
+  const [displayDate, setDisplayDate] = useState("");
   const [complainNo, setComplaintNo] = useState("");
   const [complaintID, setComplaintID] = useState("");
   const { server } = useContext(GlobalContext);
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredHistory, setFilteredHistory] = useState([]);
   const [manualSearch, setManualSearch] = useState(false);
   const [formKey, setFormKey] = useState(0);
 
@@ -66,12 +65,18 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
     return d.toLocaleDateString("en-GB");
   };
 
+  // Set initial AWB number from props
+  useEffect(() => {
+    if (initialAwbNo && initialAwbNo.trim() !== "") {
+      setValue("awbNo", initialAwbNo);
+      trigger("awbNo");
+    }
+  }, [initialAwbNo, setValue, trigger]);
+
   const onSubmit = async (data) => {
-    // console.log("Register complaint data", data);
     try {
       let response;
       if (registeredComplaint) {
-        // Update existing complaint
         const payload = {
           awbNo: registeredComplaint.awbNo,
           complaintRemark: watch("complaintRemark"),
@@ -81,15 +86,13 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
         setValue("complaintRemark", "");
         setResetComplaintRemark(!resetComplaintRemark);
       } else {
-        // Create new complaint - send displayDate (DD/MM/YYYY format)
         const submitData = {
           ...data,
-          date: displayDate, // Send formatted date string
+          date: displayDate,
         };
         response = await axios.post(`${server}/register-complaint`, submitData);
       }
 
-      // Format the date in the response before setting state
       const complaintData = response.data.complaint;
       if (complaintData.date) {
         complaintData.date = formatDDMMYYYY(complaintData.date);
@@ -97,7 +100,6 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
 
       setRegisteredComplaint(complaintData);
       showNotification("success", "Complaint registered successfully!");
-      // console.log("Server Response:", response.data);
     } catch (error) {
       console.error("Error submitting data:", error);
       const errorMsg =
@@ -279,24 +281,14 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
   };
 
   useEffect(() => {
-    // console.log("=== AWB EFFECT TRIGGERED ===");
-    // console.log("awbNo:", awbNo);
-    // console.log("manualSearch:", manualSearch);
-    // console.log("server:", server);
-
     if (!awbNo || manualSearch) {
-      // console.log("⚠️ Exiting early - awbNo empty or manual search active");
       return;
     }
 
     const checkAwbNo = async () => {
-      // console.log("🔍 Starting AWB check for:", awbNo);
-
-      // UPDATED REGEX: Accept 1-3 letters followed by 6+ digits (changed from 7+)
       const regex = /^[A-Z]{1,3}\d{6,}$/i;
 
       if (!regex.test(awbNo)) {
-        console.log("❌ AWB format validation failed");
         setError("awbNo", {
           type: "manual",
           message:
@@ -305,11 +297,9 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
         setResetFactor(!resetFactor);
         return;
       } else {
-        // console.log("✅ AWB format validation passed");
         clearErrors("awbNo");
       }
 
-      // Check shipment existence
       try {
         // console.log(
         //           "📦 Fetching shipment from:",
@@ -318,15 +308,11 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
         const shipmentResponse = await axios.get(
           `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`,
         );
-        // console.log("✅ Shipment verified:", shipmentResponse.data);
       } catch (error) {
-        console.error("❌ Error fetching AWB details:", error);
-        console.error("Error response:", error.response?.data);
-        console.error("Error status:", error.response?.status);
+        console.error("Error fetching AWB details:", error);
         setRegisteredComplaint(null);
       }
 
-      // Check complaint existence
       try {
         // console.log(
         //           "🎫 Fetching complaint from:",
@@ -335,23 +321,16 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
         const response = await axios.get(
           `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`,
         );
-        // console.log("✅ Complaint API response:", response.data);
 
         const complaintData = response.data.complaint;
-        // console.log("📋 Raw complaint data:", complaintData);
 
         if (complaintData.date) {
           complaintData.date = formatDDMMYYYY(complaintData.date);
-          // console.log("📅 Formatted date:", complaintData.date);
         }
 
         setRegisteredComplaint(complaintData);
-        // console.log("✅ Registered complaint set successfully");
       } catch (error) {
-        console.error("❌ Error fetching registered complaint:", error);
-        console.error("Error response:", error.response?.data);
-        console.error("Error status:", error.response?.status);
-        console.error("Error message:", error.message);
+        console.error("Error fetching registered complaint:", error);
         setRegisteredComplaint(null);
         // console.log(
         //           "🔄 Registered complaint set to null (this is normal if no complaint exists yet)"
@@ -362,89 +341,12 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
     checkAwbNo();
   }, [awbNo, manualSearch, server]);
 
-  // useEffect(() => {
-  //   if (!awbNo) return;
-
-  //   const checkAwbNo = async () => {
-  //     const regex = /^[A-Z]{1,3}\d{7,}$/i;
-
-  //     if (!regex.test(awbNo)) {
-  //       setError("awbNo", {
-  //         type: "manual",
-  //         message:
-  //           "Invalid AWB format. Use 1-3 letters followed by 7+ digits (e.g., ABC1234567)",
-  //       });
-  //       setResetFactor(!resetFactor);
-  //       return;
-  //     } else {
-  //       clearErrors("awbNo");
-  //     }
-
-  //     try {
-  //       await axios.get(`${server}/portal/get-shipments?awbNo=${awbNo}`);
-  //       // console.log("Shipment verified");
-  //     } catch (error) {
-  //       console.error("Error fetching AWB details:", error);
-  //       setRegisteredComplaint(null);
-  //     }
-
-  //     try {
-  //       const response = await axios.get(
-  //         `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`
-  //       );
-  //       const complaintData = response.data.complaint;
-  //       if (complaintData.date) {
-  //         complaintData.date = formatDDMMYYYY(complaintData.date);
-  //       }
-  //       setRegisteredComplaint(complaintData);
-  //       // console.log("Registered Complaint Data:", complaintData);
-  //     } catch (error) {
-  //       setRegisteredComplaint(null);
-  //       console.error("Error fetching registered complaint:", error);
-  //     }
-  //   };
-
-  //   checkAwbNo();
-  // }, [awbNo]);
-
-  const parseAnyDate = (dateInput) => {
-    if (!dateInput) return null;
-
-    if (dateInput instanceof Date && !isNaN(dateInput)) {
-      return dateInput;
-    }
-
-    if (typeof dateInput === "string") {
-      let date = new Date(dateInput);
-      if (!isNaN(date)) {
-        return date;
-      }
-    }
-
-    if (typeof dateInput === "number") {
-      const date = new Date(dateInput);
-      if (!isNaN(date)) {
-        return date;
-      }
-    }
-
-    if (dateInput && dateInput.$date) {
-      const date = new Date(dateInput.$date);
-      if (!isNaN(date)) {
-        return date;
-      }
-    }
-
-    return null;
-  };
-
   useEffect(() => {
     setValue("actionUser", user?.userId);
     if (registeredComplaint) {
       setValue("complaintNo", registeredComplaint?.complaintNo || "");
       setValue("complaintID", registeredComplaint?.complaintID || "");
 
-      // registeredComplaint.date is already formatted as DD/MM/YYYY string
       setDisplayDate(registeredComplaint?.date || formatDDMMYYYY(new Date()));
       setValue("date", registeredComplaint?.date || formatDDMMYYYY(new Date()));
 
@@ -483,7 +385,6 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
       });
 
       setRowData(formattedHistory);
-      // console.log("setRowData called with:", formattedHistory);
 
       setDate(new Date(registeredComplaint?.date));
       setComplaintNo(registeredComplaint?.complaintNo);
@@ -539,7 +440,6 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
   ];
 
   const handleRefresh = () => {
-    // Increment form key to reset all form inputs
     setFormKey((prev) => prev + 1);
 
     // Reset all toggle states
@@ -550,34 +450,6 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
     // Reset form
     reset();
 
-    // Reset to default values
-    // console.log("🔄 Refresh triggered");
-
-    // Toggle reset factors to trigger useEffect in child components
-    setResetReassign(!resetReassign);
-    setResetFactor(!resetFactor);
-    setResetComplaintRemark(!resetComplaintRemark);
-
-    // Reset the form completely
-    reset({
-      awbNo: "",
-      complaintNo: "",
-      complaintID: "",
-      date: formatDDMMYYYY(new Date()),
-      status: "Open",
-      complaintSource: "",
-      caseType: "",
-      complaintType: "",
-      assignTo: `${user?.userId} - ${user?.userName}`,
-      complaintRemark: "",
-      closeRemark: "",
-      reAssignTo: "",
-      actionUser: user?.userId,
-    });
-
-    setResetFactor((prev) => prev + 1);
-
-    // Reset all state variables
     const currentDate = new Date();
     const formattedCurrentDate = formatDDMMYYYY(currentDate);
 
@@ -606,10 +478,8 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
 
     showNotification("success", "Form refreshed successfully");
 
-    // Clear any form errors
+    showNotification("success", "Form refreshed successfully");
     clearErrors();
-
-    // console.log("✅ Refresh completed");
   };
 
   const handleSearch = async () => {
@@ -645,23 +515,52 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
     }
   };
 
+  const handleBack = () => {
+    setRegisterComplaint(false);
+  };
+
   return (
     <form
       className="flex flex-col gap-3"
       onSubmit={handleSubmit(onSubmit)}
       key={formKey}
     >
+      {/* Header with Back Button */}
+      <div className="flex items-center justify-between mb-2">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="text-red-500 hover:text-red-700 flex items-center gap-2 px-4 py-2 rounded-md border border-red-500 hover:bg-red-50 transition-colors"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
+          </svg>
+        </button>
+      </div>
       <Heading
         title="Register Complaint"
         bulkUploadBtn="hidden"
         onRefresh={handleRefresh}
       />
+      <div className="w-[150px]"></div>
+
       <NotificationFlag
         type={notification.type}
         message={notification.message}
         visible={notification.visible}
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
+
       <div className="flex flex-col gap-3">
         <div className="font-semibold text-red text-sm">Complaint Details</div>
         <div className="flex gap-9">
@@ -736,7 +635,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
               }}
               trigger={trigger}
               disabled={registeredComplaint !== null}
-              resetFactor={resetFactor} // Add this
+              resetFactor={resetFactor}
             />
             <LabeledDropdown
               key={`complaintSource-${formKey}`}
@@ -752,7 +651,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
               }}
               trigger={trigger}
               disabled={registeredComplaint !== null}
-              resetFactor={resetFactor} // Add this
+              resetFactor={resetFactor}
             />
             <LabeledDropdown
               key={`caseType-${formKey}`}
@@ -776,7 +675,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
               }}
               trigger={trigger}
               disabled={registeredComplaint !== null}
-              resetFactor={resetFactor} // Add this
+              resetFactor={resetFactor}
             />
             <LabeledDropdown
               key={`assignTo-${formKey}`}
@@ -792,7 +691,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
               }}
               trigger={trigger}
               disabled={registeredComplaint !== null}
-              resetFactor={resetFactor} // Add this
+              resetFactor={resetFactor}
             />
             <div className="flex gap-2 w-full">
               <LabeledDropdown
@@ -805,7 +704,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
                 defaultValue={registeredComplaint?.status || "Open"}
                 trigger={trigger}
                 disabled
-                resetFactor={resetFactor} // Add this
+                resetFactor={resetFactor}
               />
               <div className="w-full">
                 <OutlinedButtonRed
@@ -921,12 +820,7 @@ const RegisterComplaint = ({ setRegisterComplaint = () => {} }) => {
       </div>
 
       <div className="flex justify-between">
-        <div>
-          {/* <OutlinedButtonRed
-            label="Close"
-            onClick={() => setRegisterComplaint(false)}
-          /> */}
-        </div>
+        <div></div>
         <div className="flex gap-2">
           <div>
             <OutlinedButtonRed

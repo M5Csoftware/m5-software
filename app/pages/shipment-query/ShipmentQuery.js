@@ -18,7 +18,6 @@ import { useAlertCheck } from "@/app/hooks/useAlertCheck";
 import NotificationFlag from "@/app/components/Notificationflag";
 import { AlertModal } from "@/app/components/AlertModal";
 
-
 const ShipmentQuery = ({ setRegisterComplaint }) => {
   const { register, setValue, watch } = useForm();
   const { server } = useContext(GlobalContext);
@@ -109,7 +108,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
       }
 
       const response = await axios.get(
-        `${server}/shipment-query?awbNo=${awbNo.toUpperCase()}`
+        `${server}/shipment-query?awbNo=${awbNo.toUpperCase()}`,
       );
       const run = response.data.response;
       // console.log(run);
@@ -131,7 +130,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
 
       // ✅ NEW: fetch status + web history from custom route
       const statusRes = await axios.get(
-        `${server}/shipment-query/shipment-status?awbNo=${awbNo.toUpperCase()}`
+        `${server}/shipment-query/shipment-status?awbNo=${awbNo.toUpperCase()}`,
       );
 
       if (statusRes.data?.data) {
@@ -196,12 +195,12 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
     try {
       // Get data from portal/get-shipments endpoint
       const shipmentResponse = await axios.get(
-        `${server}/portal/get-shipments?awbNo=${awbNumber.toUpperCase()}`
+        `${server}/portal/get-shipments?awbNo=${awbNumber.toUpperCase()}`,
       );
 
       // Get child shipments data from shipment-query
       const childResponse = await axios.get(
-        `${server}/shipment-query?awbNo=${awbNumber}`
+        `${server}/shipment-query?awbNo=${awbNumber}`,
       );
 
       const forwarding = [];
@@ -275,7 +274,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
   const fetchEventActivity = async (awbNumber) => {
     try {
       const eventResponse = await axios.get(
-        `${server}/event-activity?awbNo=${awbNumber}`
+        `${server}/event-activity?awbNo=${awbNumber}`,
       );
 
       if (eventResponse?.data) {
@@ -354,7 +353,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
       }
 
       const response = await axios.get(
-        `${server}/register-complaint?awbNo=${awbNumber}`
+        `${server}/register-complaint?awbNo=${awbNumber}`,
       );
 
       if (response?.data) {
@@ -364,7 +363,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
 
         // Filter complaints that match the entered AWB number
         const filteredComplaints = complaints.filter(
-          (complaint) => complaint.awbNo === awbNumber
+          (complaint) => complaint.awbNo === awbNumber,
         );
 
         // Map complaint data to table format
@@ -385,7 +384,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
               actionUser: lastHistory.actionUser || "",
               statusHistory: lastHistory.statusHistory || "",
             };
-          }
+          },
         );
 
         // console.log("Formatted complaint data:", formattedComplaints);
@@ -518,7 +517,14 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
           <div>
             <SimpleButton
               name={`Register Complaint`}
-              onClick={() => setRegisterComplaint(true)}
+              onClick={() => {
+                const currentAwb = watch("awbNo");
+                if (!currentAwb || currentAwb.trim() === "") {
+                  showNotification("error", "Please enter an AWB number first");
+                  return;
+                }
+                setRegisterComplaint(true, currentAwb);
+              }}
             />
           </div>
           <div className="flex gap-2">
@@ -785,7 +791,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
                     value="chgWt"
                     inputValue={Math.max(
                       shipmentQuery.totalActualWt || 0,
-                      shipmentQuery.totalVolWt || 0
+                      shipmentQuery.totalVolWt || 0,
                     )}
                   />
                   <DummyInputBoxWithLabelDarkGray
