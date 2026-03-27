@@ -17,7 +17,7 @@ import { useDebounce } from "@/app/hooks/useDebounce";
 
 export default function ManifestReport() {
   const [demoRadio, setDemoRadio] = useState("Manifest (O)");
-  const { register, setValue, watch } = useForm();
+  const { register, setValue, watch, reset } = useForm();
   const [rowData, setRowData] = useState([]);
   const [enableCanada, setEnableCanada] = useState(false);
   const [cadRate, setCadRate] = useState(null); // INR per 1 CAD (auto-fetched)
@@ -454,7 +454,7 @@ export default function ManifestReport() {
       setValue("flight", "");
       setValue("date", "");
     }
-  }, [runNo]);
+  }, [debouncedRunNo]);
 
   // Auto-fetch INR to CAD exchange rate when Canada M/f is enabled
   useEffect(() => {
@@ -480,6 +480,45 @@ export default function ManifestReport() {
     fetchRate();
   }, [enableCanada]);
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleRefresh = () => {
+    // Clear all piece-wise state
+    setData([]);
+    setRowData([]);
+    setRunData({});
+    setEnableCanada(false);
+    setSingleAddress(false);
+    setEnableBagNumber(false);
+    setDemoRadio("Manifest (O)");
+    
+    // Reset pagination
+    setCurrentPage(1);
+    setTotalPages(1);
+    setTotalRecords(0);
+    setCurrentFilters(null);
+
+    // Reset form to default values
+    reset({
+      runNumber: "",
+      from: "",
+      to: "",
+      sector: "",
+      "a/lMawb": "",
+      obc: "",
+      counterPart: "",
+      flight: "",
+      date: "",
+      enableCanada: false,
+      singleAddress: false,
+      enableBagNumber: false,
+      accountType: "Manifest (O)"
+    });
+
+    // Increment refreshKey to force the entire form to re-render (clears all internal component states)
+    setRefreshKey(prev => prev + 1);
+  };
+
   const handleView = async () => {
     const query = runNo?.trim();
     if (!query) {
@@ -500,11 +539,12 @@ export default function ManifestReport() {
   };
 
   return (
-    <form className="flex flex-col gap-3">
+    <form className="flex flex-col gap-3" key={refreshKey}>
       <Heading
         title="Manifest Report"
         bulkUploadBtn="hidden"
         codeListBtn="hidden"
+        onRefresh={handleRefresh}
       />
 
       <div className="flex flex-row gap-3">
