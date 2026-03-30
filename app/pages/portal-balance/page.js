@@ -13,7 +13,8 @@ const PortalBalance = () => {
   const { register, setValue, reset, getValues, watch } = useForm();
   const { server, setToggleCodeList, toggleCodeList } = useContext(GlobalContext);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);       // only for Show button
+  const [fetchingName, setFetchingName] = useState(false); // silent background fetch
   const [customerData, setCustomerData] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -34,14 +35,26 @@ const PortalBalance = () => {
   // ─── Fetch all customer accounts for CodeList ───────────────────────────────
   const fetchCustomerAccounts = async () => {
     try {
-      setLoading(true);
-      const res = await axios.get(`${server}/customer-account`);
+      const res = await axios.get(`${server}/customer-account`, {
+        params: { page: 1, limit: 1000 },
+      });
 
-      const raw = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data?.data)
-        ? res.data.data
-        : [];
+      console.log("📦 Raw customer-account API response:", res.data);
+
+      // Handle all possible response shapes
+      let raw = [];
+      if (Array.isArray(res.data)) {
+        // Shape: []
+        raw = res.data;
+      } else if (Array.isArray(res.data?.data)) {
+        // Shape: { data: [], pagination: {} }
+        raw = res.data.data;
+      } else if (res.data && typeof res.data === "object") {
+        // Shape: single object — wrap it
+        raw = [res.data];
+      }
+
+      console.log(`✅ Extracted ${raw.length} records`);
 
       const mapped = raw.map((item) => ({
         accountCode: item.accountCode || "",
@@ -52,8 +65,6 @@ const PortalBalance = () => {
     } catch (err) {
       console.error("Failed to fetch customer accounts:", err.message);
       showNotification("error", "Failed to load customer accounts");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -71,6 +82,7 @@ const PortalBalance = () => {
 
     const timeout = setTimeout(async () => {
       try {
+        setFetchingName(true);
         const res = await axios.get(
           `${server}/customer-account?accountCode=${code.trim().toUpperCase()}`
         );
@@ -81,6 +93,8 @@ const PortalBalance = () => {
         }
       } catch {
         setValue("client", "");
+      } finally {
+        setFetchingName(false);
       }
     }, 500);
 
@@ -134,13 +148,12 @@ const PortalBalance = () => {
     setToggleCodeList(false);
 
     try {
-      setLoading(true);
+      setFetchingName(true);
       const res = await axios.get(
         `${server}/customer-account?accountCode=${accountCode}`
       );
       if (res.data) {
           const name = res.data.name || res.data.companyName || rowData.name;
-          // ✅ FIX: leftOverBalance is the actual field from the API
           const balance = res.data.leftOverBalance ?? res.data.portalBalance ?? res.data.balance ?? "0";
 
           console.log("💰 Full API Response (CodeList):", res.data);
@@ -154,7 +167,7 @@ const PortalBalance = () => {
       console.error("Error loading customer:", err.message);
       showNotification("error", "Failed to load customer data");
     } finally {
-      setLoading(false);
+      setFetchingName(false);
     }
   };
 
@@ -206,13 +219,12 @@ const PortalBalance = () => {
               register={register}
               setValue={setValue}
               value="code"
-              disabled={loading}
               initialValue={code}
             />
           </div>
 
           <InputBox
-            placeholder="Customer Name"
+            placeholder={fetchingName ? "Fetching..." : "Customer Name"}
             register={register}
             setValue={setValue}
             value="client"
@@ -257,7 +269,6 @@ const PortalBalance = () => {
               type="button"
               name="Clear"
               onClick={handleClear}
-              disabled={loading}
             />
           </div>
         </div>
