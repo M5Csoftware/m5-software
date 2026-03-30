@@ -16,6 +16,7 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import { useAuth } from "@/app/Context/AuthContext";
 import { DummyInputBoxWithLabelTransparent } from "@/app/components/DummyInputBox";
 import NotificationFlag from "@/app/components/Notificationflag";
+import pushAWBLog from "@/app/lib/pushAWBLog";
 
 const EVENT_CODE = "DLV";
 const STATUS_VALUE = "Delivered (POD Updated)";
@@ -301,6 +302,36 @@ function PODEntry() {
 
     try {
       await createPODActivity(payload);
+
+      // ✅ NEW: Batch Logging
+      const getCustomerName = async (accountCode) => {
+        if (!accountCode) return "";
+        try {
+          const res = await axios.get(
+            `${server}/customer-account?accountCode=${accountCode}`,
+          );
+          return res.data?.name || "";
+        } catch {
+          return "";
+        }
+      };
+
+      for (const item of list) {
+        try {
+          const customer = await getCustomerName(item.accountCode);
+          await pushAWBLog({
+            awbNo: item.awbNo,
+            accountCode: item.accountCode || "",
+            customer: customer || item.receiverFullName || "",
+            action: "POD Entry Generated",
+            actionUser: user?.userId || "System",
+            department: "Operations",
+          });
+        } catch (logErr) {
+          console.error("❌ Failed to push AWB Log for:", item.awbNo, logErr);
+        }
+      }
+
       handleRefresh();
     } catch {}
   };

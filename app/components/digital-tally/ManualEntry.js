@@ -10,6 +10,8 @@ import Table, { TableWithSorting, TableWithCheckbox } from "../Table";
 import axios from "axios";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import { useAuth } from "@/app/Context/AuthContext";
+import pushHoldLog from "@/app/lib/pushHoldLog";
+import pushAWBLog from "@/app/lib/pushAWBLog";
 
 const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
   const [hold, setHold] = useState(true);
@@ -309,9 +311,114 @@ const ManualEntry = ({ register, setValue, errors, trigger, watch }) => {
         },
       );
 
-      if (res.status === 200) {
+      if (res.status === 200 || res.status === 201) {
+        // ✅ NEW: Batch Logging and Event Activity
+        const currentDate = new Date();
+        const formattedDate = currentDate.toLocaleDateString("en-GB");
+        const formattedTime = currentDate.toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        const getCustomerName = async (accountCode) => {
+          if (!accountCode) return "";
+          try {
+            const customerResponse = await axios.get(
+              `${server}/customer-account?accountCode=${accountCode}`,
+            );
+            return customerResponse.data?.name || "";
+          } catch (err) {
+            console.warn("Failed to fetch customer name:", err);
+            return "";
+          }
+        };
+
+        const accountCode = payload.code;
+        const customer = await getCustomerName(accountCode);
+
+        for (const row of rowData) {
+          if (row.mawbNumber) {
+            const eventCode = "OGH";
+            const eventLocation = payload.hubName || "Unknown Hub";
+            const statusMessage = hold
+              ? "Hold"
+              : "Arrived at Origin Gateway Hub";
+
+            // 1. Save to EventActivity
+            try {
+              const eventActivityPayload = {
+                awbNo: row.mawbNumber,
+                eventCode: eventCode,
+                status: statusMessage,
+                eventDate: currentDate.toISOString(),
+                eventTime: formattedTime,
+                eventUser: entryUser,
+                eventLocation: eventLocation,
+                eventLogTime: currentDate.toISOString(),
+                remark: payload.remarks || null,
+                receiverName: payload.client || null,
+              };
+
+              await axios.post(
+                `${server}/event-activity`,
+                eventActivityPayload,
+                {
+                  headers: { Authorization: `Bearer ${token}` },
+                },
+              );
+            } catch (eventError) {
+              console.error(
+                "❌ Failed to save EventActivity for AWB:",
+                row.mawbNumber,
+                eventError,
+              );
+            }
+
+            // 2. Push AWB Log
+            try {
+              const awbLogPayload = {
+                awbNo: row.mawbNumber,
+                accountCode,
+                customer,
+                action: "Digital Tally (Manual)",
+                actionUser: entryUser,
+              };
+
+              await pushAWBLog(awbLogPayload);
+            } catch (awbLogError) {
+              console.error(
+                "❌ Failed to push AWB Log for AWB:",
+                row.mawbNumber,
+                awbLogError,
+              );
+            }
+
+            // 3. Push Hold Log if applicable
+            if (hold && payload.holdReason) {
+              try {
+                const holdLogPayload = {
+                  awbNo: row.mawbNumber,
+                  accountCode,
+                  customer,
+                  action: "Hold",
+                  actionUser: entryUser,
+                  departmentName: user?.department || "Operations",
+                  holdReason: payload.holdReason || "Initial Creation",
+                };
+
+                await pushHoldLog(holdLogPayload);
+              } catch (holdLogError) {
+                console.error(
+                  "❌ Failed to push Hold Log for AWB:",
+                  row.mawbNumber,
+                  holdLogError,
+                );
+              }
+            }
+          }
+        }
+
         alert("Saved successfully!");
-        // console.log("✅ Server response:", res.data);
         setRowData([]);
         setResetTally(!resetTally);
         // Clear form fields after save (except cdNumber)
