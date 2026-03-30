@@ -592,19 +592,29 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
           minute: "2-digit",
         });
 
+        const getCustomerName = async (accountCode) => {
+          if (!accountCode) return "";
+          try {
+            const customerResponse = await axios.get(
+              `${server}/customer-account?accountCode=${accountCode}`,
+            );
+            return customerResponse.data?.name || "";
+          } catch (err) {
+            console.warn("Failed to fetch customer name:", err);
+            return "";
+          }
+        };
+
+        const responseData = res.data || {};
+        const accountCode = responseData.code || payload.code;
+        const customer = await getCustomerName(accountCode);
+
         for (const row of rowData) {
           if (row.awbNo) {
             const eventCode = "OGH";
             const eventLocation = payload.hubName || "Unknown Hub";
 
-            // console.log("📝 Saving to EventActivity:", {
-//               awbNo: row.awbNo,
-//               eventCode,
-//               status: status,
-//               eventLocation,
-//               entryUser,
-//             });
-
+            // 1. Save to EventActivity
             try {
               const eventActivityPayload = {
                 awbNo: row.awbNo,
@@ -619,25 +629,61 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
                 receiverName: payload.client || null,
               };
 
-              const eventRes = await axios.post(
+              await axios.post(
                 `${server}/event-activity`,
                 eventActivityPayload,
                 {
                   headers: { Authorization: `Bearer ${token}` },
                 },
               );
-
-              // console.log(
-//                 "✅ EventActivity saved for AWB:",
-//                 row.awbNo,
-//                 eventRes.data,
-//               );
             } catch (eventError) {
               console.error(
                 "❌ Failed to save EventActivity for AWB:",
                 row.awbNo,
                 eventError,
               );
+            }
+
+            // 2. Push AWB Log
+            try {
+              const awbLogPayload = {
+                awbNo: row.awbNo,
+                accountCode,
+                customer,
+                action: "Digital Tally",
+                actionUser: entryUser,
+              };
+
+              await pushAWBLog(awbLogPayload);
+            } catch (awbLogError) {
+              console.error(
+                "❌ Failed to push AWB Log for AWB:",
+                row.awbNo,
+                awbLogError,
+              );
+            }
+
+            // 3. Push Hold Log if applicable
+            if (payload.hold && payload.holdReason) {
+              try {
+                const holdLogPayload = {
+                  awbNo: row.awbNo,
+                  accountCode,
+                  customer,
+                  action: "Hold",
+                  actionUser: entryUser,
+                  departmentName: user?.department || "Operations",
+                  holdReason: payload.holdReason || "Initial Creation",
+                };
+
+                await pushHoldLog(holdLogPayload);
+              } catch (holdLogError) {
+                console.error(
+                  "❌ Failed to push Hold Log for AWB:",
+                  row.awbNo,
+                  holdLogError,
+                );
+              }
             }
           }
         }
@@ -672,56 +718,6 @@ ${data.shipperCity || ""}, ${data.shipperState || ""}, ${
         setConsignorDetails("");
       }
 
-      const responseData = res.data || {};
-      const accountCode = responseData.code || payload.code;
-
-      // console.log("Response Data for logs:", responseData);
-      // console.log("Account Code for logs:", accountCode);
-
-      const getCustomerName = async (accountCode) => {
-        if (!accountCode) return "";
-        try {
-          const customerResponse = await axios.get(
-            `${server}/customer-account?accountCode=${accountCode}`,
-          );
-          return customerResponse.data?.name || "";
-        } catch (err) {
-          console.warn("Failed to fetch customer name:", err);
-          return "";
-        }
-      };
-
-      if (res.status === 200 || res.status === 201) {
-        const customer = await getCustomerName(accountCode);
-        const awbNo = responseData.awbNo || firstAwb;
-
-        const awbLogPayload = {
-          awbNo,
-          accountCode,
-          customer,
-          action: "Digital Tally",
-          actionUser: user?.userId || "System",
-        };
-
-        // console.log("AWB log payload:", awbLogPayload);
-        const awbLogResponse = await pushAWBLog(awbLogPayload);
-        // console.log("AWB log response:", awbLogResponse);
-
-        if (payload.hold && payload.holdReason) {
-          const holdLogPayload = {
-            awbNo,
-            accountCode,
-            customer,
-            action: "Hold",
-            actionUser: user?.userId || "System",
-            departmentName: user?.department || "Operations",
-            holdReason: payload.holdReason || "Initial Creation",
-          };
-
-          const holdLogResponse = await pushHoldLog(holdLogPayload);
-          // console.log("Hold log response:", holdLogResponse);
-        }
-      }
     } catch (error) {
       console.error("❌ Error:", error);
       console.error("Error response:", error.response?.data);
