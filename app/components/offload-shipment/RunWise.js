@@ -303,7 +303,6 @@ function RunWise() {
             </div>
           </div>
         </div>
-
         <div>
           <TableWithSorting
             register={register}
