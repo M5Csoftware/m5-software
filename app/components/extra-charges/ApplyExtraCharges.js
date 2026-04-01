@@ -15,7 +15,7 @@ import {
   DummyInputBoxWithLabelYellow,
 } from "@/app/components/DummyInputBox";
 import Heading, { RedLabelHeading } from "@/app/components/Heading";
-import InputBox, { InputBoxYellowWithPrefix } from "@/app/components/InputBox";
+import InputBox from "@/app/components/InputBox";
 import { RedCheckboxBase } from "@/app/components/RedCheckBox";
 import Image from "next/image";
 import React, {
@@ -32,8 +32,6 @@ import BgBlack from "@/app/components/BgBlack";
 import axios from "axios";
 import CodeList from "@/app/components/CodeList";
 import { useAuth } from "@/app/Context/AuthContext";
-import pushAWBLog from "@/app/lib/pushAWBLog";
-import pushHoldLog from "@/app/lib/pushHoldLog";
 import NotificationFlag from "@/app/components/Notificationflag";
 
 function ApplyExtraCharges({ extraCharges, onClose }) {
@@ -58,6 +56,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
   const [isHold, setIsHold] = useState(false);
   const [newShipment, setNewShipment] = useState(null);
   const [btnAction, setBtnAction] = useState(null);
+  const [isModifying, setIsModifying] = useState(false);
 
   const [holdHistoryWindow, setHoldHistoryWindow] = useState(false);
   const [volumeWtWindow, setVolumeWtWindow] = useState(false);
@@ -98,6 +97,12 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     setNotification({ type, message, visible: true });
   };
 
+  // ✅ Extract clean prefix code once — used everywhere
+  const prefixCode = (extraCharges || "EX")
+    .split(/[-\s]/)[0]
+    .trim()
+    .toUpperCase();
+
   // Watching input values
   const awbNo = watch("awbNo");
   const actualWt = watch("actualWt");
@@ -105,8 +110,9 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
   const volDisc = watch("volDisc");
   const chargeableWt = watch("chargeableWt");
 
-  // Effect 2: Calculate chargeableWt dynamically on user changes
+  // Guard chargeableWt recalculation — skip when modifying
   useEffect(() => {
+    if (isModifying) return;
     const actual = Number(actualWt) || 0;
     const vol = Number(volWt) || 0;
     const disc = Number(volDisc) || 0;
@@ -124,9 +130,8 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     } else {
       setValue("chargeableWt", "0.00");
     }
-  }, [actualWt, volWt, volDisc, setValue]);
+  }, [actualWt, volWt, volDisc, setValue, isModifying]);
 
-  // set values in globalContext
   useEffect(() => {
     setActualWtt(watch("actualWt"));
   }, [watch("actualWt")]);
@@ -135,179 +140,130 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     setGlobalTotalPcs(watch("pcs"));
   }, [watch("pcs")]);
 
-  //handle awbEntry all Operations
   const handleAWBEntry = async (data) => {
-    const { code, ...fillterData } = data;
+    const { code, ...filterData } = data;
     const accountCode = code;
-    const payload = { accountCode, ...fillterData };
-    // console.log("payload: ", payload, newShipment);
 
-    // small helper to safely fetch customer name
-    const getCustomerName = async (accountCode) => {
-      try {
-        if (!accountCode) return "";
-        const customerResponse = await axios.get(
-          `${server}/customer-account?accountCode=${accountCode}`
-        );
-        return customerResponse.data?.name || "";
-      } catch (err) {
-        console.warn("Failed to fetch customer name:", err);
-        showNotification("error", "Failed to fetch customer name");
-        return "";
-      }
+    // ✅ Clean prefix from dropdown value e.g. "EX- Extra Charges" → "EX"
+    const extraChargeType = prefixCode;
+
+    // ✅ The user types the full AWB number directly e.g. "MPL03032026"
+    // Backend will prepend the prefix → "EXMPL03032026"
+    const enteredAwbNo = awbNo ? awbNo.trim() : "";
+
+    const payload = {
+      ...filterData,
+      accountCode,
+      extraChargeType,
+      grandTotal: filterData.grandTotal || filterData.totalAmt,
+      awbNo: enteredAwbNo, // ✅ send full entered AWB — backend prepends prefix
     };
 
-    if (newShipment == "new" && btnAction == "save") {
+    console.log("Payload being sent:", {
+      accountCode: payload.accountCode,
+      awbNo: payload.awbNo,
+      grandTotal: payload.grandTotal,
+      extraChargeType: payload.extraChargeType,
+    });
+
+    // ✅ When modifying or new — always POST to create new shipment
+    if (btnAction == "save" && (newShipment == "new" || isModifying)) {
       try {
-        const response = await axios.post(`${server}/extraCharges`, payload);
-        // console.log("awb-entry:", response.data);
-        // console.log("payload: ", payload);
+        const response = await axios.post(
+          `${server}/portal/create-shipment/extra-charges`,
+          payload,
+        );
 
-        if (response.data?.status == 201) {
-          const customer = await getCustomerName(accountCode);
-
-          const pushAWBLogPayload = {
-            awbNo: response.data?.awbNo || payload?.awbNo,
-            accountCode,
-            customer,
-            action: "Shipment Created",
-            actionUser: user?.userId,
-          };
-
-          const responseLog = await pushAWBLog(pushAWBLogPayload);
-          // console.log("AWB log response:", responseLog);
-
-          if (response.data?.holdReason != "") {
-            const pushHoldLogPayload = {
-              awbNo: response.data?.awbNo || payload?.awbNo,
-              accountCode,
-              customer,
-              action: "Hold",
-              actionUser: user?.userId,
-              departmentName: user?.department || "Operations",
-              holdReason: payload?.holdReason || "Initial Creation",
-            };
-
-            const holdLogResponse = await pushHoldLog(pushHoldLogPayload);
-            // console.log("Hold log response:", holdLogResponse);
+        if (response.data?.status == 201 || response.status == 201) {
+          showNotification(
+            "success",
+            isModifying
+              ? "Extra charges modified and saved as new entry!"
+              : "Extra charges applied successfully!",
+          );
+          if (response.data.awbNo) {
+            setValue("awbNo", response.data.awbNo);
           }
+          setTimeout(() => {
+            handleRefresh();
+            onClose();
+          }, 2000);
         }
         setBtnAction(null);
-        setResponseMsg("data updated successfully!");
-        setVisibleFlag(true);
-        showNotification("success", "data updated successfully!");
       } catch (error) {
-        console.error("Error submitting AWB entry:", error);
-        setBtnAction(null);
-        setResponseMsg("Error submitting AWB entry!");
-        showNotification("error", "Error submitting AWB entry!");
-        setVisibleFlag(true);
-      }
-    } else if (newShipment == "old" && btnAction == "save" && isEdit == false) {
-      try {
-        // console.log("Updating AWB entry with data:", payload);
-        const response = await axios.put(
-          `${server}/extraCharges?awbNo=${awbNo}`,
-          payload
+        console.error("Error applying extra charges:", error);
+        showNotification(
+          "error",
+          error.response?.data?.error || "Error applying extra charges!",
         );
-        // console.log("awb modified:", response.data);
+        setBtnAction(null);
+      }
+    } else if (
+      newShipment == "old" &&
+      btnAction == "save" &&
+      isEdit == false &&
+      !isModifying
+    ) {
+      // ✅ Normal update — send full entered AWB to backend for lookup
+      try {
+        const response = await axios.put(
+          `${server}/portal/create-shipment/extra-charges?awbNo=${enteredAwbNo}`,
+          payload,
+        );
 
         if (response?.status == 200) {
-          const customer = await getCustomerName(accountCode);
-          const pushAWBLogPayload = {
-            awbNo,
-            accountCode,
-            customer,
-            action: "Shipment Modified",
-            actionUser: user?.userId,
-          };
-
-          const responseLog = await pushAWBLog(pushAWBLogPayload);
-          // console.log("AWB log response:", responseLog);
-
-          if (response.data?.holdReason != "") {
-            const pushHoldLogPayload = {
-              awbNo: response.data?.awbNo || payload?.awbNo,
-              accountCode,
-              customer,
-              action: "Hold",
-              actionUser: user?.userId,
-              departmentName: user?.department || "Operations",
-              holdReason: payload?.holdReason || "Initial Creation",
-            };
-
-            const holdLogResponse = await pushHoldLog(pushHoldLogPayload);
-            // console.log("Hold log response:", holdLogResponse);
-          }
+          showNotification("success", "Extra charges updated successfully!");
+          setTimeout(() => {
+            handleRefresh();
+            onClose();
+          }, 2000);
         }
         setBtnAction(null);
-        setResponseMsg("AWB entry updated successfully!");
-        showNotification("success", "AWB entry updated successfully!");
-        setVisibleFlag(true);
       } catch (error) {
-        console.error("Error updating AWB entry:", error);
+        console.error("Error updating extra charges:", error);
+        showNotification("error", "Error updating extra charges!");
         setBtnAction(null);
-        setResponseMsg("Error updating AWB entry!");
-        showNotification("error", "Error updating AWB entry!");
-        setVisibleFlag(true);
       }
     } else if (newShipment == "old" && btnAction == "delete") {
       try {
         const response = await axios.delete(
-          `${server}/extraCharges?awbNo=${awbNo}`
+          `${server}/portal/create-shipment/extra-charges?awbNo=${enteredAwbNo}`,
         );
-        // console.log("awb deleted:", response.data);
 
         if (response?.status == 200) {
-          const customer = await getCustomerName(accountCode);
-
-          const pushAWBLogPayload = {
-            awbNo,
-            accountCode,
-            customer,
-            action: "Shipment Deleted",
-            actionUser: user?.userId,
-          };
-
-          const responseLog = await pushAWBLog(pushAWBLogPayload);
-          // console.log("AWB log response:", responseLog);
+          showNotification("success", "Extra charges deleted successfully!");
+          setTimeout(() => {
+            handleRefresh();
+            onClose();
+          }, 2000);
         }
         setBtnAction(null);
-        setResponseMsg("AWB entry deleted successfully!");
-        showNotification("success", "AWB entry deleted successfully!");
-        setVisibleFlag(true);
       } catch (error) {
-        console.error("Error deleting AWB:", error);
+        console.error("Error deleting extra charges:", error);
+        showNotification("error", "Error deleting extra charges!");
         setBtnAction(null);
-        setResponseMsg("Error deleting AWB entry!");
-        showNotification("error", "Error deleting AWB entry!");
-        setVisibleFlag(true);
       }
     }
   };
 
-  //handle VolumeWt Window
   const openVolumeWtWindow = () => {
     setHoldHistoryWindow(false);
     setInvoiceDetailsWindow(false);
     setVolumeWtWindow(true);
   };
 
-  //handle Invoice Window
   const openInvoiceDetailsWindow = () => {
     setHoldHistoryWindow(false);
     setVolumeWtWindow(false);
     setInvoiceDetailsWindow(true);
   };
 
-  //handle HoldHistory Window
   const openHoldHistoryWindow = () => {
     setHoldHistoryWindow(true);
     setVolumeWtWindow(false);
     setInvoiceDetailsWindow(false);
   };
 
-  //handle Windows in Shortcut Key used
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "F8" && !isEdit) {
@@ -323,32 +279,24 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       }
     };
 
-    // Attach the event listener
     window.addEventListener("keydown", handleKeyDown);
-
-    // Cleanup the event listener on unmount
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 
-  //handle Windows in Styling
   useEffect(() => {
     if (holdHistoryWindow || invoiceDetailsWindow || volumeWtWindow) {
-      // Disable body scrolling
       document.body.style.overflow = "hidden";
     } else {
-      // Enable body scrolling
       document.body.style.overflow = "";
     }
-
-    // Cleanup effect on unmount or when holdHistoryWindow changes
     return () => {
       document.body.style.overflow = "";
     };
   }, [holdHistoryWindow, invoiceDetailsWindow, volumeWtWindow]);
 
-  // customer account details fetching
+  // Customer account details fetching
   useEffect(() => {
     const code = watch("code");
     if (!code) return;
@@ -356,10 +304,9 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     const handler = setTimeout(async () => {
       try {
         const response = await axios.get(
-          `${server}/customer-account?accountCode=${code}`
+          `${server}/customer-account?accountCode=${code}`,
         );
         setAccount(response.data);
-        // console.log("customer-account", response.data);
 
         if (response.data) {
           setValue("customer", response.data?.name);
@@ -370,7 +317,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
         }
       } catch (error) {
         console.error("Failed to fetch account:", error);
-        // optional: show error state with setError(error.message);
         setValue("customer", null);
         setValue("accountBalance", null);
       }
@@ -381,18 +327,15 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     };
   }, [watch("code")]);
 
-  //getting amount sections data
   const [airwayBills, setAirwayBills] = useState([]);
 
   useEffect(() => {
     const fetchAirwayBills = async () => {
       try {
         const response = await axios.get(`${server}/rate-sheet`);
-        // console.log("awb billing data", response.data);
         setAirwayBills(response.data);
       } catch (err) {
         console.error("Error fetching airway bills:", err);
-        // console.log("Failed to fetch data.");
       }
     };
     fetchAirwayBills();
@@ -403,7 +346,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     if (!enteredAwbNo) return;
 
     const matchedAwb = airwayBills.find(
-      (bill) => bill.awbNo?.toLowerCase() === enteredAwbNo.toLowerCase()
+      (bill) => bill.awbNo?.toLowerCase() === enteredAwbNo.toLowerCase(),
     );
 
     if (matchedAwb) {
@@ -425,12 +368,10 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
         "igst",
         "currency",
       ];
-
       keys.forEach((key) => {
         setValue(key, matchedAwb[key] ?? "");
       });
     } else {
-      // Optional: Reset fields if no match
       setValue("manualAmount", "");
       setValue("cashRecvAmount", "");
       setValue("balanceAmount", "");
@@ -450,10 +391,8 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     }
   }, [watch("awbNo"), airwayBills, setValue]);
 
-  //Find sector
   useEffect(() => {
-    const selectedSectorName = watch("sector"); // Get selected sector name
-    // console.log("Watched sector:", selectedSectorName);
+    const selectedSectorName = watch("sector");
 
     if (!sectors || !Array.isArray(sectors)) {
       console.error("Sectors data is missing or not an array");
@@ -462,13 +401,11 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       return;
     }
 
-    // Find the corresponding sector code from the sectors array
     const selectedSector = sectors.find(
-      (sec) => sec.name === selectedSectorName
+      (sec) => sec.name === selectedSectorName,
     );
     const selectedSectorCode = selectedSector ? selectedSector.code : null;
 
-    // console.log("Selected sector code:", selectedSectorCode);
     setSelectedSector(selectedSectorCode);
 
     if (!selectedSectorCode) {
@@ -479,12 +416,11 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     const fetchZoneData = async () => {
       try {
         const response = await axios.get(
-          `${server}/portal/create-shipment/get-zones?sector=${selectedSectorCode}`
+          `${server}/portal/create-shipment/get-zones?sector=${selectedSectorCode}`,
         );
 
         const zoneData = response.data || [];
         setZones(zoneData);
-        // console.log("Zones fetched:", zoneData);
 
         if (!Array.isArray(zoneData)) {
           console.error("Zones data is missing or not an array");
@@ -493,12 +429,10 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
           return;
         }
 
-        // ✅ Filter and set destinations here, after fetching
         const filteredDestinations = zoneData
           .filter((zone) => zone.sector === selectedSectorCode)
           .map((zone) => zone.destination);
 
-        // console.log("Filtered Destinations:", filteredDestinations);
         setDestinations(filteredDestinations);
       } catch (error) {
         console.error("Error fetching zones:", error);
@@ -517,11 +451,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     setSelectedDestinations(watch("destination"));
   }, [watch("destination")]);
 
-  //filtering services based on sector and destination
   useEffect(() => {
-    // console.log("Selected Destination:", selectedDestination);
-    // console.log("Selected Sector:", selectedSector);
-
     if (!zones || !Array.isArray(zones)) {
       console.error("Zones data is missing or not an array");
       return;
@@ -532,12 +462,11 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       return;
     }
 
-    // Filter zones where sector matches `selectedSector` and destination matches `selectedDestination`
     const filteredResults = zones
       .filter(
         (zone) =>
           zone.sector === selectedSector &&
-          zone.destination === selectedDestination
+          zone.destination === selectedDestination,
       )
       .map((zone) => ({
         service: zone.service,
@@ -545,17 +474,14 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       }));
 
     setFilteredServices(filteredResults);
-    // console.log("Filtered Results:", filteredResults);
   }, [watch("destination"), selectedSector, selectedDestination, zones]);
 
-  // getting applicable rates
   useEffect(() => {
     const getApplicableRates = async () => {
       try {
         const response = await axios.get(
-          `${server}/shipper-tariff?accountCode=${account.accountCode}`
+          `${server}/shipper-tariff?accountCode=${account.accountCode}`,
         );
-        // console.log("ApplicableRates", response.data);
         setApplicableRates(response.data);
       } catch (error) {
         setApplicableRates(null);
@@ -568,18 +494,12 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     }
   }, [account]);
 
-  //filtering final services based on applicable rates and filtered services
   useEffect(() => {
-    // Extract services from applicableRates
-    // console.log("Filtered Services:", filteredServices);
-
     if (filteredServices.length > 0 && applicableRates) {
-      // ✅ STEP 0: Ensure it's always an array
       const applicableList = Array.isArray(applicableRates)
         ? applicableRates
         : applicableRates?.ApplicableRates || applicableRates?.data || [];
 
-      // ✅ STEP 1: Normalize text
       function normalizeService(str) {
         return (
           str
@@ -589,81 +509,53 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
         );
       }
 
-      // ✅ STEP 2: Build lookup set
       const applicableSet = new Set(
-        applicableList.map((a) => normalizeService(a.service))
+        applicableList.map((a) => normalizeService(a.service)),
       );
 
-      // ✅ STEP 3: Filter matching services
       const commonServices = filteredServices.filter((f) =>
         Array.from(applicableSet).some(
           (service) =>
             normalizeService(f.service).includes(service) ||
-            service.includes(normalizeService(f.service))
-        )
+            service.includes(normalizeService(f.service)),
+        ),
       );
 
-      // ✅ STEP 4: Remove duplicates
       const availableServices = Array.from(
         new Map(
           commonServices.map((item) => [
             `${normalizeService(item.service)}-${item.zone}`,
             item,
-          ])
-        ).values()
+          ]),
+        ).values(),
       );
 
       setFinalServices(availableServices);
-      // console.log("availableServices", availableServices);
     }
   }, [filteredServices, applicableRates]);
 
-  //fetching amount details
+  // Guard amount details fetch — skip when modifying
   useEffect(() => {
+    if (isModifying) return;
     if (!selectedService || !applicableRates || !finalServices) return;
+    if (!applicableRates || !Array.isArray(applicableRates)) return;
 
-    // Check if ratesApplicable exists and is an array
-    if (!applicableRates || !Array.isArray(applicableRates)) {
-      // console.log(
-//         "ratesApplicable is not available or not an array",
-//         applicableRates
-//       );
-      return;
-    }
-
-    // 1. Find zone from finalServices
     const finalService = finalServices.find(
-      (s) => s.service === selectedService
+      (s) => s.service === selectedService,
     );
     const zone = finalService?.zone;
 
-    // console.log("finalService", finalService);
-
-    // 2. Find first applicable rateTariff for selectedService safely
     const ratesArray = applicableRates || [];
     const matchingRate = ratesArray.find((r) => r.service === selectedService);
     const rateTariff = matchingRate?.rateTariff || "";
 
-    // console.log("Determined zone:", zone);
-    // console.log("Determined rateTariff:", rateTariff);
-    // console.log("Chargable Weight:", chargeableWt);
-
-    // Only fetch if all required values are present
     if (!zone || !rateTariff || !chargeableWt) return;
 
     const fetchAmountDetails = async () => {
       try {
-        // console.log(
-//           "Fetching amount details with:",
-//           selectedService,
-//           zone,
-//           rateTariff,
-//           chargeableWt
-//         );
         const response = await axios.get(
-          `${server}/portal/create-shipment/get-rates?service=${selectedService}&zone=${zone}&rateTariff=${rateTariff}&chargeableWt=${chargeableWt}`
+          `${server}/portal/create-shipment/get-rates?service=${selectedService}&zone=${zone}&rateTariff=${rateTariff}&chargeableWt=${chargeableWt}`,
         );
-        // console.log("Amount Details Response:", response.data);
         setAmountDetails(response.data);
       } catch (error) {
         console.error("Error fetching amount details:", error);
@@ -672,23 +564,25 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     };
 
     fetchAmountDetails();
-  }, [selectedService, applicableRates, finalServices, chargeableWt]);
+  }, [
+    selectedService,
+    applicableRates,
+    finalServices,
+    chargeableWt,
+    isModifying,
+  ]);
 
-  // Fetch Customer, Branch, and Tax Settings from backend
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [branchRes, taxRes] = await Promise.all([
           axios.get(
-            `${server}/branch-master/get-branch?code=${account?.branch}`
+            `${server}/branch-master/get-branch?code=${account?.branch}`,
           ),
           axios.get(`${server}/tax-settings`),
         ]);
-
         setBranch(branchRes.data);
         setTaxSettings(taxRes.data);
-        // console.log("Fetched Branch:", branchRes.data);
-        // console.log("Fetched Tax Settings:", taxRes.data);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -697,15 +591,10 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     fetchData();
   }, [account]);
 
-  // Calculate base amount and GST once (on amountDetails change)
+  // Guard base amount calculation — skip when modifying
   useEffect(() => {
+    if (isModifying) return;
     if (amountDetails && account && branch && taxSettings) {
-      // console.log(
-//         "Updating form with amount details:",
-//         amountDetails,
-//         taxSettings
-//       );
-
       const rate = amountDetails.rate || 0;
       let basicAmount = 0;
 
@@ -715,15 +604,11 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
         basicAmount = rate * (Number(chargeableWt) || 0);
       }
 
-      // Determine GST applicability
       const gstApplicable = account.gst === "GST-Additional";
-
-      // Determine same-state or inter-state
       const sameState =
         account.gstNo?.substring(0, 2).toUpperCase() ===
         branch.serviceTax?.substring(0, 2).toUpperCase();
 
-      // ✅ Extract tax rates from array
       const sgstObj = taxSettings.find((t) => t.tax === "SGST");
       const cgstObj = taxSettings.find((t) => t.tax === "CGST");
       const igstObj = taxSettings.find((t) => t.tax === "IGST");
@@ -732,37 +617,22 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       const cgstRate = sameState ? cgstObj?.taxAmount || 0 : 0;
       const igstRate = !sameState ? igstObj?.taxAmount || 0 : 0;
 
-      // console.log("GST Applicability:", gstApplicable);
-      // console.log(
-//         "Tax Rates - SGST:",
-//         sgstRate,
-//         "CGST:",
-//         cgstRate,
-//         "IGST:",
-//         igstRate
-//       );
-
-      // Compute GST amounts
       const sgstAmt = gstApplicable ? basicAmount * sgstRate : 0;
       const cgstAmt = gstApplicable ? basicAmount * cgstRate : 0;
       const igstAmt = gstApplicable ? basicAmount * igstRate : 0;
 
-      // ✅ baseGrandTotal should include GST only once
       const baseGrandTotal = basicAmount + sgstAmt + cgstAmt + igstAmt;
 
-      // Update form
       setValue("basicAmount", basicAmount);
       setValue("sgst", sgstAmt);
       setValue("cgst", cgstAmt);
       setValue("igst", igstAmt);
-      setValue("baseGrandTotal", baseGrandTotal); // <-- contains GST once
-      setValue("grandTotal", baseGrandTotal); // initialize grand total
-
-      // console.log("Calculated baseGrandTotal:", baseGrandTotal);
+      setValue("baseGrandTotal", baseGrandTotal);
+      setValue("grandTotal", baseGrandTotal);
     }
-  }, [amountDetails, account, branch, taxSettings, chargeableWt]);
+  }, [amountDetails, account, branch, taxSettings, chargeableWt, isModifying]);
 
-  // Calculate GRAND TOTAL with adjustments (without re-adding GST)
+  // Grand total watcher — handles both normal mode and modify mode
   const isUpdatingRef = useRef(false);
 
   useEffect(() => {
@@ -771,9 +641,51 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     const subscription = watch((values) => {
       if (isUpdatingRef.current) return;
 
-      const baseGrandTotal = Number(values.baseGrandTotal) || 0;
+      // MODIFY MODE: recalculate GST on manualAmount as base
+      if (isModifying) {
+        const manualAmt = Number(values.manualAmount) || 0;
+        if (manualAmt === 0) return;
 
-      // Skip if no base amount calculated yet
+        const gstApplicable = account.gst === "GST-Additional";
+        const sameState =
+          account.gstNo?.substring(0, 2).toUpperCase() ===
+          branch.serviceTax?.substring(0, 2).toUpperCase();
+
+        const sgstObj = taxSettings.find((t) => t.tax === "SGST");
+        const cgstObj = taxSettings.find((t) => t.tax === "CGST");
+        const igstObj = taxSettings.find((t) => t.tax === "IGST");
+
+        const sgstRate = sameState ? sgstObj?.taxAmount || 0 : 0;
+        const cgstRate = sameState ? cgstObj?.taxAmount || 0 : 0;
+        const igstRate = !sameState ? igstObj?.taxAmount || 0 : 0;
+
+        const sgstAmt = gstApplicable ? manualAmt * sgstRate : 0;
+        const cgstAmt = gstApplicable ? manualAmt * cgstRate : 0;
+        const igstAmt = gstApplicable ? manualAmt * igstRate : 0;
+
+        const grandTotal =
+          manualAmt +
+          sgstAmt +
+          cgstAmt +
+          igstAmt +
+          Number(values.handlingAmount || 0) +
+          Number(values.miscChg || 0) +
+          Number(values.overWtHandling || 0) +
+          Number(values.cashRecvAmount || 0) -
+          Number(values.discount || 0);
+
+        isUpdatingRef.current = true;
+        setValue("basicAmount", manualAmt);
+        setValue("sgst", sgstAmt);
+        setValue("cgst", cgstAmt);
+        setValue("igst", igstAmt);
+        setValue("grandTotal", grandTotal);
+        isUpdatingRef.current = false;
+        return;
+      }
+
+      // NORMAL MODE: use baseGrandTotal
+      const baseGrandTotal = Number(values.baseGrandTotal) || 0;
       if (baseGrandTotal === 0) return;
 
       const {
@@ -813,12 +725,10 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [setValue, account, branch, taxSettings]);
+  }, [setValue, account, branch, taxSettings, isModifying]);
 
-  //extracting zone from filtered services
   useEffect(() => {
     const selectedServiceLocal = watch("service");
-    // console.log("Selected Service:", selectedServiceLocal);
     setSelectedService(selectedServiceLocal);
 
     if (!filteredServices || !Array.isArray(filteredServices)) {
@@ -826,17 +736,12 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       return;
     }
 
-    // Find the object where service matches selectedServiceLocal
     const matchedZone = filteredServices.find(
-      (item) => item.service === selectedServiceLocal
+      (item) => item.service === selectedServiceLocal,
     );
-
-    // Extract the zone if found
     const zoneNumber = matchedZone ? matchedZone.zone : null;
-    // console.log("Extracted Zone:", zoneNumber);
   }, [watch("service"), filteredServices]);
 
-  //handle date formatting
   useEffect(() => {
     const formatDate = (date) => {
       const formattedDate =
@@ -845,7 +750,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
         (date.getMonth() + 1).toString().padStart(2, "0") +
         "/" +
         date.getFullYear().toString();
-
       return formattedDate;
     };
 
@@ -858,7 +762,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     }
   }, [fetchedAwbData]);
 
-  //handle refresh btn
   const [awbreset, setAwbreset] = useState(false);
   const handleRefresh = () => {
     setAwbreset(!awbreset);
@@ -868,9 +771,11 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     setValue("invoiceValue", "");
     setIsHold(false);
     setIsEdit(false);
+    setIsModifying(false);
+    setFetchedAwbData({});
+    setNewShipment(null);
   };
 
-  //handle codelist
   const columns = useMemo(() => {
     const columnMapping = {
       "Airway Bill Entry": [
@@ -881,129 +786,152 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     return columnMapping["Airway Bill Entry"] || [];
   }, []);
 
-  //fetching data in shipments
+  // ✅ Fetch existing extra charges record using the full AWB as entered
   useEffect(() => {
     const fetchExtraChargesData = async () => {
-      if (awbNo) {
-        try {
-          const response = await axios.get(
-            `${server}/extraCharges?awbNo=${awbNo}`
-          );
-
-          if (!response.data || response.data.notFound) {
-            setNewShipment("new");
-            // console.log("hello");
-          } else {
-            clearErrors("awbNo");
-            setIsEdit(true);
-
-            // 👇 Normalize key names here
-            const data = response.data;
-            const normalizedData = {
-              ...data,
-              reference: data.referenceNo,
-              origin: data.origin,
-              sector: data.sector,
-              destination: data.destination,
-              service: data.service,
-              accountCode: data.accountCode,
-              name: data.customer,
-              shipperFullName: data.consignor,
-              shipperAddressLine1: data["consignor-addressLine1"],
-              shipperAddressLine2: data["consignor-addressLine2"],
-              shipperPincode: data["consignor-pincode"],
-              shipperCity: data["consignor-city"],
-              shipperState: data["consignor-state"],
-              shipperPhoneNumber: data["consignor-telephone"],
-              shipperKycType: data["consignor-idType"],
-              shipperKycNumber: data["consignor-idNumber"],
-              receiverFullName: data.consignee,
-              receiverAddressLine1: data["consignee-addressLine1"],
-              receiverAddressLine2: data["consignee-addressLine2"],
-              receiverPincode: data["consignee-zipcode"],
-              receiverCity: data["consignee-city"],
-              receiverState: data["consignee-state"],
-              receiverPhoneNumber: data["consignee-telephone"],
-              receiverEmail: data["consignee-emailID"],
-              shipmentType: data.shipmentType,
-              pcs: data.pcs,
-              totalActualWt: data.actualWt,
-              totalVolWt: data.volWt,
-              volDiscount: data.discount ?? data.volDisc ?? 0,
-              payment: data.payment,
-              totalInvoiceValue: data.invoiceValue,
-              basicAmt: data.basicAmount,
-              sgst: data.sgst,
-              cgst: data.cgst,
-              igst: data.igst,
-              totalAmt: data.grandTotal,
-              boxes: data.volumeContent,
-              shipmentAndPackageDetails: data.invoiceContent
-                ? Object.values(data.invoiceContent).flat()
-                : [],
-            };
-
-            // 🧠 Admin check before setting
-            if (user.role.toLowerCase() === "admin") {
-              setNewShipment("old");
-              setFetchedAwbData(normalizedData);
-            }
-
-            // console.log("Normalized ExtraCharges:", normalizedData);
-          }
-        } catch (error) {
-          console.error("Error fetching airway bill data:", error);
-          setNewShipment("new");
-        }
-      } else {
+      if (!awbNo) {
         clearErrors("awbNo");
         setNewShipment(null);
+        setFetchedAwbData({});
+        return;
+      }
+
+      try {
+        const cleanAwbNo = awbNo.trim();
+        if (!cleanAwbNo) return;
+
+        const response = await axios.get(
+          `${server}/portal/create-shipment/extra-charges?awbNo=${cleanAwbNo}`,
+        );
+
+        if (!response.data || response.data.notFound) {
+          // No existing extra charges record — treat as new
+          setNewShipment("new");
+          setIsEdit(false);
+          console.log("No existing extra charges record - new shipment");
+        } else {
+          clearErrors("awbNo");
+          setIsEdit(true);
+          setNewShipment("old");
+
+          const data = response.data;
+          const normalizedData = {
+            ...data,
+            reference: data.reference,
+            origin: data.origin,
+            sector: data.sector,
+            destination: data.destination,
+            service: data.service,
+            accountCode: data.accountCode,
+            name: data.customer,
+            shipperFullName: data.shipperFullName,
+            shipperAddressLine1: data.shipperAddressLine1,
+            shipperAddressLine2: data.shipperAddressLine2,
+            shipperPincode: data.shipperPincode,
+            shipperCity: data.shipperCity,
+            shipperState: data.shipperState,
+            shipperPhoneNumber: data.shipperPhoneNumber,
+            shipperKycType: data.shipperKycType,
+            shipperKycNumber: data.shipperKycNumber,
+            receiverFullName: data.receiverFullName,
+            receiverAddressLine1: data.receiverAddressLine1,
+            receiverAddressLine2: data.receiverAddressLine2,
+            receiverPincode: data.receiverPincode,
+            receiverCity: data.receiverCity,
+            receiverState: data.receiverState,
+            receiverPhoneNumber: data.receiverPhoneNumber,
+            receiverEmail: data.receiverEmail,
+            shipmentType: data.shipmentType,
+            pcs: data.pcs,
+            totalActualWt: data.totalActualWt,
+            totalVolWt: data.totalVolWt,
+            volDiscount: data.volDisc ?? 0,
+            payment: data.payment,
+            totalInvoiceValue: data.totalInvoiceValue,
+            basicAmt: data.basicAmt,
+            sgst: data.sgst,
+            cgst: data.cgst,
+            igst: data.igst,
+            totalAmt: data.totalAmt,
+            boxes: data.boxes,
+            shipmentAndPackageDetails: data.shipmentAndPackageDetails
+              ? Object.values(data.shipmentAndPackageDetails).flat()
+              : [],
+            manualAmount: data.manualAmount,
+            handlingAmount: data.handlingAmount,
+            miscChg: data.miscChg,
+            miscChgReason: data.miscChgReason,
+            overWtHandling: data.overWtHandling,
+            cashRecvAmount: data.cashRecvAmount,
+            balanceAmt: data.balanceAmt,
+            hikeAmt: data.hikeAmt,
+            fuelAmt: data.fuelAmt,
+            fuelPercentage: data.fuelPercentage,
+            duty: data.duty,
+            currency: data.currency,
+            currencys: data.currencys,
+            runNo: data.runNo,
+            bag: data.bag,
+            alMawb: data.alMawb,
+            flight: data.flight,
+            obc: data.obc,
+            runDate: data.runDate,
+            network: data.network,
+            holdReason: data.holdReason,
+            otherHoldReason: data.otherHoldReason,
+            operationRemark: data.operationRemark,
+            isHold: data.isHold,
+            // ✅ Keep original awbNo for mawbNo display
+            awbNo: data.awbNo,
+          };
+
+          setFetchedAwbData(normalizedData);
+        }
+      } catch (error) {
+        console.error("Error fetching extra charges data:", error);
+        setNewShipment("new");
+        setIsEdit(false);
       }
     };
 
     fetchExtraChargesData();
-  }, [awbNo]);
+  }, [awbNo, server]);
 
+  // ✅ If no extra charges record found, try fetching original shipment data to pre-fill form
   useEffect(() => {
     const fetchAwbData = async () => {
-      if (awbNo) {
-        try {
-          // Extract possible prefix (like EX-, RF-, RT-, AD-, etc.)
-          const prefixMatch = awbNo.match(/^(EX|RF|RT|AD|RB|WD)-/i);
-          const prefix = prefixMatch ? prefixMatch[1].toUpperCase() : null;
+      if (!awbNo || newShipment !== "new") return;
 
-          // Remove prefix before sending request to server
-          const cleanAwbNo = prefixMatch
-            ? awbNo.replace(/^(EX|RF|RT|AD|RB|WD)-/i, "")
-            : awbNo;
+      try {
+        const cleanAwbNo = awbNo.trim();
+        if (!cleanAwbNo) return;
 
-          const response = await axios.get(
-            `${server}/portal/create-shipment?awbNo=${cleanAwbNo}`
-          );
-          if (!response.data || response.data.notFound) {
-            setFetchedAwbData({});
-          } else {
-            clearErrors("awbNo");
-            if (newShipment == "new") {
-              setFetchedAwbData(response.data);
-              setIsEdit(true);
-              // console.log(response.data);
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching airway bill data:", error);
+        const response = await axios.get(
+          `${server}/portal/create-shipment?awbNo=${cleanAwbNo}`,
+        );
+
+        if (!response.data || response.data.notFound) {
           setFetchedAwbData({});
+        } else {
+          clearErrors("awbNo");
+          // Pre-fill form with original shipment data
+          // Keep awbNo for mawbNo display only — do NOT set isEdit(true)
+          const { awbNo: _originalAwbNo, ...originalDataWithoutAwb } =
+            response.data;
+          setFetchedAwbData({
+            ...originalDataWithoutAwb,
+            awbNo: _originalAwbNo,
+          });
         }
-      } else {
-        clearErrors("awbNo");
+      } catch (error) {
+        console.error("Error fetching airway bill data:", error);
         setFetchedAwbData({});
       }
     };
 
     fetchAwbData();
-  }, [awbNo]);
+  }, [awbNo, newShipment]);
 
-  //fetching data in bagging
   const [fetchedBaggingData, setFetchedBaggingData] = useState({});
 
   useEffect(() => {
@@ -1012,26 +940,22 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       if (regex.test(awbNo)) {
         try {
           const response = await axios.get(`${server}/bagging`);
-          // console.log("Bagging API response:", response.data);
 
           if (!response.data || response.data.length === 0) {
-            // console.log("No bagging data found");
             setFetchedBaggingData({});
             return;
           }
 
           let foundAwbData = null;
 
-          // Search through all bagging records to find the matching AWB
           for (const baggingRecord of response.data) {
             if (baggingRecord.rowData && Array.isArray(baggingRecord.rowData)) {
               const awbRecord = baggingRecord.rowData.find(
                 (row) =>
-                  row.awbNo && row.awbNo.toLowerCase() === awbNo.toLowerCase()
+                  row.awbNo && row.awbNo.toLowerCase() === awbNo.toLowerCase(),
               );
 
               if (awbRecord) {
-                // Found the AWB in this bagging record
                 foundAwbData = {
                   runNo: baggingRecord.runNo || "",
                   flight: baggingRecord.flight || "",
@@ -1044,16 +968,14 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                   sector: baggingRecord.sector || "",
                   date: baggingRecord.date || "",
                 };
-                break; // Exit loop once found
+                break;
               }
             }
           }
 
           if (foundAwbData) {
-            // console.log("Found AWB in bagging data:", foundAwbData);
             setFetchedBaggingData(foundAwbData);
           } else {
-            // console.log(`AWB ${awbNo} not found in any bagging record`);
             setFetchedBaggingData({});
           }
         } catch (error) {
@@ -1061,7 +983,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
           setFetchedBaggingData({});
         }
       } else {
-        // Invalid AWB format - clear bagging data
         setFetchedBaggingData({});
       }
     };
@@ -1069,77 +990,41 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
     fetchBaggingData();
   }, [awbNo]);
 
-  // Add this useEffect to update the Run Details fields when bagging data is fetched
-  // useEffect(() => {
-  //   if (fetchedBaggingData && Object.keys(fetchedBaggingData).length > 0) {
-  //     // Update Run Details fields with bagging data
-  //     setValue("runNo", fetchedBaggingData.runNo || "");
-  //     setValue("bag", fetchedBaggingData.bagNo || "");
-  //     setValue("clubNo", fetchedBaggingData.totalClubNo || "");
-  //     setValue("flight", fetchedBaggingData.flight || "");
-  //     setValue("obc", fetchedBaggingData.obc || "");
-  //     setValue("alMawb", fetchedBaggingData.alMawb || "");
-  //   } else {
-  //     // Clear Run Details fields when no bagging data is found
-  //     setValue("runNo", "");
-  //     setValue("bag", "");
-  //     setValue("clubNo", "");
-  //     setValue("flight", "");
-  //     setValue("obc", "");
-  //     setValue("alMawb", "");
-  //   }
-  // }, [fetchedBaggingData, setValue]);
-
-  // Add handler for content changes
   const handleSetInvoiceContent = useCallback((data) => {
     setInvoiceContent(data);
-    // console.log(invoiceContent);
   }, []);
 
-  // Sync invoiceContent with form state
   useEffect(() => {
     setValue("invoiceContent", invoiceContent);
-    // console.log("Invoice Content Updated:", invoiceContent);
   }, [invoiceContent]);
 
-  // Add handler for volume content changes
   const handleSetVolumeContent = useCallback((data) => {
-    // Remove any nested self-reference before storing
     const cleanedData = data.map(({ volumeWeightTable, ...rest }) => rest);
     setVolumeContent(cleanedData);
-    // console.log("Clean Volume Content Updated:", cleanedData);
   }, []);
 
-  // Sync volumeContent with form state
   useEffect(() => {
     setValue("volumeContent", volumeContent);
-    // console.log("Volume Content Updated:", volumeContent);
   }, [volumeContent]);
 
-  // Populate form when fetchedAwbData changes
   useEffect(() => {
     if (fetchedAwbData && Object.keys(fetchedAwbData).length > 0) {
-      // Basic shipment details
       setValue("referenceNo", fetchedAwbData.reference || "");
       setValue("origin", fetchedAwbData.origin || "");
       setValue("sector", fetchedAwbData.sector || "");
       setValue("destination", fetchedAwbData.destination || "");
       setValue("service", fetchedAwbData.service || "");
-
-      // Customer details
       setValue("code", fetchedAwbData.accountCode || "");
       setValue("customer", fetchedAwbData.name || "");
       setValue("accountBalance", fetchedAwbData.accountBalance || "");
-
-      // Consignor details
       setValue("consignor", fetchedAwbData.shipperFullName || "");
       setValue(
         "consignor-addressLine1",
-        fetchedAwbData.shipperAddressLine1 || ""
+        fetchedAwbData.shipperAddressLine1 || "",
       );
       setValue(
         "consignor-addressLine2",
-        fetchedAwbData.shipperAddressLine2 || ""
+        fetchedAwbData.shipperAddressLine2 || "",
       );
       setValue("consignor-pincode", fetchedAwbData.shipperPincode || "");
       setValue("consignor-city", fetchedAwbData.shipperCity || "");
@@ -1147,24 +1032,20 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       setValue("consignor-telephone", fetchedAwbData.shipperPhoneNumber || "");
       setValue("consignor-idType", fetchedAwbData.shipperKycType || "");
       setValue("consignor-idNumber", fetchedAwbData.shipperKycNumber || "");
-
-      // Consignee details
       setValue("consignee", fetchedAwbData.receiverFullName || "");
       setValue(
         "consignee-addressLine1",
-        fetchedAwbData.receiverAddressLine1 || ""
+        fetchedAwbData.receiverAddressLine1 || "",
       );
       setValue(
         "consignee-addressLine2",
-        fetchedAwbData.receiverAddressLine2 || ""
+        fetchedAwbData.receiverAddressLine2 || "",
       );
       setValue("consignee-zipcode", fetchedAwbData.receiverPincode || "");
       setValue("consignee-city", fetchedAwbData.receiverCity || "");
       setValue("consignee-state", fetchedAwbData.receiverState || "");
       setValue("consignee-telephone", fetchedAwbData.receiverPhoneNumber || "");
       setValue("consignee-emailID", fetchedAwbData.receiverEmail || "");
-
-      // Weight details
       setValue("shipmentType", fetchedAwbData.shipmentType || "NDox");
       setValue("pcs", fetchedAwbData.boxes?.length || 0);
       setValue("actualWt", fetchedAwbData.totalActualWt || 0);
@@ -1172,24 +1053,18 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       setValue("volWt", fetchedAwbData.totalVolWt || 0);
       setValue("volDisc", fetchedAwbData.volDiscount || 0);
       setValue("payment", fetchedAwbData.payment || "Credit");
-
-      // Invoice details
       setValue("currencys", fetchedAwbData.currencys || "INR");
       setValue("invoiceValue", fetchedAwbData.totalInvoiceValue || 0);
-
-      // Run details
+      // ✅ mawbNo shows the original shipment AWB
       setValue("mawbNo", fetchedAwbData.awbNo || "");
       setValue("bag", fetchedAwbData.bag || "");
       setValue("billNo", fetchedAwbData.billNo || "");
       setValue("manifestNo", fetchedAwbData.manifestNo || "");
-
       setValue("runNo", fetchedAwbData.runNo || "");
       setValue("flight", fetchedAwbData.flight || "");
       setValue("obc", fetchedAwbData.obc || "");
       setValue("alMawb", fetchedAwbData.alMawb || "");
       setValue("runDate", fetchedAwbData.runDate || "");
-
-      // Amount details
       setValue("basicAmount", fetchedAwbData.basicAmt || 0);
       setValue("discount", fetchedAwbData.volDiscount || 0);
       setValue("sgst", fetchedAwbData.sgst || 0);
@@ -1208,17 +1083,13 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
       setValue("fuelAmt", fetchedAwbData.fuelAmt || 0);
       setValue("cashRecvAmount", fetchedAwbData.cashRecvAmount || 0);
       setValue("balanceAmount", fetchedAwbData?.balanceAmt || 0);
-
-      //invoice content
+      setValue("baseGrandTotal", fetchedAwbData.totalAmt || 0);
       setValue("content", fetchedAwbData.content || []);
-
-      //hold details
       setIsHold(fetchedAwbData.isHold || false);
       setValue("holdReason", fetchedAwbData.holdReason || "");
       setValue("otherHoldReason", fetchedAwbData.otherHoldReason || "");
       setValue("operationRemark", fetchedAwbData.operationRemark || "");
 
-      // If you have invoice content and volume content in the fetched data
       if (fetchedAwbData.shipmentAndPackageDetails) {
         setInvoiceContent(fetchedAwbData.shipmentAndPackageDetails);
       }
@@ -1226,32 +1097,22 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
         setVolumeContent(fetchedAwbData.boxes);
       }
     } else {
-      // Clear form when no data is found (new shipment)
-      // You can add form reset logic here if needed
       setValue("customer", "");
       setValue("accountBalance", "");
       setIsHold(false);
       setInvContent([]);
-      // console.log("No AWB data found - new shipment");
     }
   }, [fetchedAwbData, setValue]);
 
-  //holdreason dynamic rendering
   const [holdReason, setHoldReason] = useState("");
   useEffect(() => {
     const grandTotal = watch("grandTotal");
     const availableBalance = account?.leftOverBalance
-      ? -account.leftOverBalance // convert negative to positive “available” amount
+      ? -account.leftOverBalance
       : 0;
-    // console.log("availableBalance", availableBalance, "grandTotal", grandTotal);
     if (availableBalance < grandTotal) {
       setHoldReason("Insufficient balance");
       setIsHold(true);
-      // console.log(
-//         "holdreason dynamic rendering",
-//         account?.leftOverBalance,
-//         grandTotal
-//       );
     } else {
       setIsHold(false);
       setHoldReason("");
@@ -1267,23 +1128,46 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
       <form
-        className=" flex flex-col gap-3"
+        className="flex flex-col gap-3"
         onSubmit={handleSubmit(handleAWBEntry)}
       >
+        {/* Header */}
         <div className="flex flex-col relative">
-          <div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-gray-600"
+              >
+                <path d="M19 12H5" />
+                <path d="M12 19l-7-7 7-7" />
+              </svg>
+            </button>
             <Heading
               title={`Extra Charges`}
               bulkUploadBtn="hidden"
               onRefresh={handleRefresh}
             />
           </div>
-          <div className="absolute left-[170px] mt-1">
-            <span className=" text-[#0A7DC1] text-xs select-none bg-[#0A7DC11F] border-2 border-[#0A7DC1] rounded-xl px-2 py-1">
+          <div className="absolute left-[210px] mt-1">
+            <span className="text-[#0A7DC1] text-xs select-none bg-[#0A7DC11F] border-2 border-[#0A7DC1] rounded-xl px-2 py-1">
               Billing
             </span>
           </div>
         </div>
+
         <div className="flex gap-6 mt-2">
           <div className="w-full flex flex-col gap-4">
             {/* Airway Bill Number and Shipment Origin / Destination */}
@@ -1291,24 +1175,26 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
               <div className="flex gap-3 justify-between">
                 <div className="flex flex-col gap-3 w-1/2">
                   <RedLabelHeading label={`Airway Bill Number`} />
-                  <InputBoxYellowWithPrefix
-                    register={register}
-                    placeholder={""}
-                    inputValue={awbNo}
-                    setValue={setValue}
-                    resetFactor={awbreset}
-                    value={`awbNo`}
-                    error={errors.awbNo}
-                    trigger={trigger}
-                    validation={{
-                      required: "AWB Number is required",
-                    }}
-                    prefix={extraCharges}
-                  />
+                  {/* ✅ Show selected charge type as read-only badge + plain AWB input */}
+                  <div className="flex gap-2 items-center">
+                    <span className="text-xs font-semibold bg-yellow-100 border border-yellow-400 text-yellow-700 rounded px-2 py-2 whitespace-nowrap select-none">
+                      {prefixCode}
+                    </span>
+                    <InputBox
+                      placeholder={""}
+                      register={register}
+                      setValue={setValue}
+                      resetFactor={awbreset}
+                      value="awbNo"
+                      error={errors.awbNo}
+                      trigger={trigger}
+                      validation={{ required: "AWB Number is required" }}
+                    />
+                  </div>
                 </div>
                 <div className="flex flex-col gap-3 w-full">
                   <RedLabelHeading label={`Shipment Origin / Destination`} />
-                  <div className="flex gap-3 justify-between ">
+                  <div className="flex gap-3 justify-between">
                     <DummyInputBoxWithLabelTransparent
                       watch={watch}
                       label={`Date`}
@@ -1365,7 +1251,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
             {/* Customer Details */}
             <div className="flex flex-col gap-3">
               <RedLabelHeading label={`Customer Details`} />
-              <div className="flex gap-3 ">
+              <div className="flex gap-3">
                 <div>
                   <InputBox
                     placeholder="Code"
@@ -1416,7 +1302,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
 
             {/* Consignor/Consignee Details */}
             <div className="flex gap-6">
-              <div className="w-full flex flex-col gap-3 ">
+              <div className="w-full flex flex-col gap-3">
                 <RedLabelHeading label={`Consignor Details`} />
                 <InputBox
                   placeholder="Consignor"
@@ -1430,7 +1316,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                   trigger={trigger}
                   validation={{ required: "Consignor is required" }}
                 />
-
                 <InputBox
                   placeholder="Address Line 1"
                   register={register}
@@ -1467,10 +1352,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     initialValue={fetchedAwbData?.shipperPincode || ""}
                     validation={{
                       required: "Pincode is required",
-                      pattern: {
-                        value: /^\d{6}$/,
-                        message: "Invalid pincode",
-                      },
+                      pattern: { value: /^\d{6}$/, message: "Invalid pincode" },
                     }}
                   />
                   <InputBox
@@ -1508,7 +1390,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                   disabled={isEdit}
                   initialValue={fetchedAwbData?.shipperPhoneNumber || ""}
                   validation={{
-                    required: "Telephone is required",
                     pattern: {
                       value: /^\d{10}$/,
                       message: "Invalid telephone number",
@@ -1553,7 +1434,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                 </div>
               </div>
 
-              <div className="w-full flex flex-col gap-3 ">
+              <div className="w-full flex flex-col gap-3">
                 <RedLabelHeading label={`Consignee Details`} />
                 <InputBox
                   placeholder="Consignee"
@@ -1567,7 +1448,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                   trigger={trigger}
                   initialValue={fetchedAwbData?.receiverFullName || ""}
                 />
-
                 <InputBox
                   placeholder="Address Line 1"
                   register={register}
@@ -1588,7 +1468,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                   value="consignee-addressLine2"
                   error={errors["consignee-addressLine2"]}
                   disabled={isEdit}
-                  validation={{ required: "Address Line 2 is required" }}
                   trigger={trigger}
                   initialValue={fetchedAwbData?.receiverAddressLine2 || ""}
                 />
@@ -1601,9 +1480,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     value="consignee-zipcode"
                     error={errors["consignee-zipcode"]}
                     disabled={isEdit}
-                    validation={{
-                      required: "Zipcode is required",
-                    }}
+                    validation={{ required: "Zipcode is required" }}
                     trigger={trigger}
                     initialValue={fetchedAwbData?.receiverPincode || ""}
                   />
@@ -1641,7 +1518,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                   error={errors["consignee-telephone"]}
                   disabled={isEdit}
                   validation={{
-                    required: "Telephone is required",
                     pattern: {
                       value: /^\d{10}$/,
                       message: "Invalid telephone number",
@@ -1690,7 +1566,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                         initialValue={fetchedAwbData?.network || ""}
                       />
                     </div>
-
                     <DummyInputBoxDarkGray
                       register={register}
                       placeholder={`DEL`}
@@ -1708,7 +1583,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     value={`service`}
                     defaultValue={fetchedAwbData.service || ""}
                     disabled={isEdit}
-                    // resetFactor={resetServiceAndDestination}
                   />
                   <div className="flex gap-2">
                     <div className="relative w-full">
@@ -1738,7 +1612,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                         />
                       </button>
                     </div>
-
                     <DummyInputBoxWithLabelDarkGray
                       register={register}
                       placeholder={`0.00 %`}
@@ -1791,7 +1664,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     />
                   </div>
                   <div className="flex gap-2">
-                    <div className="relative ">
+                    <div className="relative">
                       <DummyInputBoxWithLabelTransparent
                         label="Chargable Wt."
                         register={register}
@@ -1817,7 +1690,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
               </div>
             </div>
 
-            {/* Invoice Content  */}
+            {/* Invoice Content */}
             <div className="w-full flex flex-col gap-3">
               <RedLabelHeading label={`Invoice Content (F9)`} />
               <div className="flex flex-col gap-3">
@@ -1903,7 +1776,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     />
                   </div>
                 </div>
-
                 <div className="flex gap-2">
                   <RedCheckboxBase
                     label={"Hold"}
@@ -1987,8 +1859,8 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
             </div>
           </div>
 
-          {/* Run details  */}
-          <div className=" flex flex-col gap-2.5">
+          {/* Run details */}
+          <div className="flex flex-col gap-2.5">
             <div className="flex flex-col gap-3">
               <RedLabelHeading label={`Run Details`} />
               <div className="flex flex-col gap-3">
@@ -2028,7 +1900,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     inputValue={fetchedAwbData?.runDate || ""}
                   />
                 </div>
-
                 <div className="flex gap-2">
                   <DummyInputBoxWithLabelDarkGray
                     register={register}
@@ -2069,7 +1940,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
 
             <div className="flex flex-col gap-3">
               <RedLabelHeading label={`Amount Details`} />
-              <div className="flex flex-col gap-2.5 ">
+              <div className="flex flex-col gap-2.5">
                 <div className="flex gap-2">
                   <DummyInputBoxWithLabelLightGray
                     inputValue={fetchedAwbData?.basicAmt || 0.0}
@@ -2087,7 +1958,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     setValue={setValue}
                     resetFactor={awbreset}
                     value={`manualAmount`}
-                    disabled={isEdit}
+                    disabled={isEdit && !isModifying}
                     className={"bg-white"}
                     inputValue={fetchedAwbData?.manualAmount || "0.00"}
                   />
@@ -2100,7 +1971,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     setValue={setValue}
                     resetFactor={awbreset}
                     value={`cashRecvAmount`}
-                    disabled={isEdit}
+                    disabled={isEdit && !isModifying}
                     className={"bg-white"}
                     inputValue={fetchedAwbData?.cashRecvAmount || "0.00"}
                   />
@@ -2111,7 +1982,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     setValue={setValue}
                     resetFactor={awbreset}
                     value={`balanceAmount`}
-                    disabled={isEdit}
+                    disabled={isEdit && !isModifying}
                     className={"bg-white"}
                   />
                 </div>
@@ -2123,7 +1994,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     setValue={setValue}
                     resetFactor={awbreset}
                     value={`handlingAmount`}
-                    disabled={isEdit}
+                    disabled={isEdit && !isModifying}
                     className={"bg-white"}
                     inputValue={fetchedAwbData?.handlingAmount || "0.00"}
                   />
@@ -2134,7 +2005,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     setValue={setValue}
                     resetFactor={awbreset}
                     value={`miscChg`}
-                    disabled={isEdit}
+                    disabled={isEdit && !isModifying}
                     className={"bg-white"}
                     inputValue={fetchedAwbData?.miscChg || "0.00"}
                   />
@@ -2145,7 +2016,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                   setValue={setValue}
                   resetFactor={awbreset}
                   value={`miscChgReason`}
-                  disabled={isEdit}
+                  disabled={isEdit && !isModifying}
                   className={"bg-white"}
                   inputValue={fetchedAwbData?.miscChgReason || " "}
                 />
@@ -2156,7 +2027,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                   setValue={setValue}
                   resetFactor={awbreset}
                   value={`duty`}
-                  disabled={isEdit}
+                  disabled={isEdit && !isModifying}
                   className={"bg-white"}
                 />
                 <div className="flex gap-2">
@@ -2167,7 +2038,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     setValue={setValue}
                     resetFactor={awbreset}
                     value={`overWtHandling`}
-                    disabled={isEdit}
+                    disabled={isEdit && !isModifying}
                     className={"bg-white"}
                     inputValue={fetchedAwbData?.overWtHandling || "0.00"}
                   />
@@ -2178,7 +2049,7 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     setValue={setValue}
                     resetFactor={awbreset}
                     value={`hikeAmt`}
-                    disabled={isEdit}
+                    disabled={isEdit && !isModifying}
                     className={"bg-white"}
                   />
                 </div>
@@ -2217,7 +2088,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     value={`discountAmt`}
                   />
                 </div>
-
                 <div className="flex gap-2">
                   <DummyInputBoxWithLabelYellow
                     register={register}
@@ -2238,7 +2108,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                     inputValue={fetchedAwbData?.cgst || 0.0}
                   />
                 </div>
-
                 <div className="flex gap-2">
                   <DummyInputBoxWithLabelYellow
                     register={register}
@@ -2273,13 +2142,20 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
             <div className="flex flex-col gap-3 mt-1">
               <div className="flex gap-2">
                 <OutlinedButtonRed
-                  onClick={(data) => {
-                    setBtnAction("modify");
+                  onClick={() => {
                     setIsEdit(false);
-                    // console.log(data);
+                    setIsModifying(true);
+                    setBtnAction("save");
+                    setValue("basicAmount", 0);
+                    setValue("sgst", 0);
+                    setValue("cgst", 0);
+                    setValue("igst", 0);
+                    setValue("grandTotal", 0);
+                    setValue("baseGrandTotal", 0);
+                    setValue("manualAmount", "");
                   }}
                   disabled={isEdit == false || newShipment == null}
-                  type="submit"
+                  type="button"
                   label={`Modify`}
                   perm="Billing Edit"
                 />
@@ -2292,7 +2168,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                   label={`Save`}
                 />
               </div>
-
               <div className="flex gap-2">
                 <OutlinedButtonRed
                   onClick={() => {
@@ -2305,7 +2180,6 @@ function ApplyExtraCharges({ extraCharges, onClose }) {
                 />
                 <OutlinedButtonRed label={`Refresh`} onClick={handleRefresh} />
               </div>
-              {/* <OutlinedButtonRed label={`Close`} onClick={() => onClose()} /> */}
             </div>
           </div>
         </div>
