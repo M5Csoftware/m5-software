@@ -374,7 +374,7 @@ function Sidebar() {
       </ul>
       <UpdateNotification />
       <div className="px-8 pb-4 text-[10px] flex flex-col gap-0.5 font-bold text-green-1">
-        <div className="opacity-60">Current: {appVersion}</div>
+        {/* <div className="opacity-60">Current: {appVersion}</div> */}
         {latestVersion && (
           <div className={`${latestVersion !== appVersion ? "text-amber-600" : "opacity-60"}`}>
             Latest: {latestVersion}
