@@ -91,15 +91,17 @@ function SaleWithCollectionReport() {
   const handleShow = async (page = 1) => {
     const formData = watch();
 
-    // Validate: Either account code OR date range must be provided (or both)
-    if (!formData.Customer && (!formData.from || !formData.to)) {
-      showNotification("error", "Please provide either Customer Code or Date Range");
+    // Validate: Dates are mandatory for Account Code/Customer Search
+    if (!formData.Customer) {
+      showNotification("error", "Please provide a Customer Code.");
       return;
     }
 
-    // Validate: If only dates are provided without account code
-    if (!formData.Customer && (formData.from || formData.to)) {
-      showNotification("error", "Date range can only be used with Customer Code");
+    if (!formData.from || !formData.to) {
+      showNotification(
+        "error",
+        "From and To dates are required for Account Code Search.",
+      );
       return;
     }
 
@@ -626,7 +628,6 @@ function SaleWithCollectionReport() {
               setValue={setValue}
               value={`from`}
               placeholder="From"
-              disabled={!accountCode}
             />
             <DateInputBox
               key={`to-${formKey}`}
@@ -634,7 +635,6 @@ function SaleWithCollectionReport() {
               setValue={setValue}
               value={`to`}
               placeholder="To"
-              disabled={!accountCode}
             />
             <div>
               <OutlinedButtonRed 
@@ -664,7 +664,7 @@ function SaleWithCollectionReport() {
           />
         </div>
         <div>
-          <span className="text-red">*Full Ledger Leave Blank Date Range</span>
+          <span className="text-red">Dates are mandatory with Customer Code</span>
         </div>
       </div>
 
