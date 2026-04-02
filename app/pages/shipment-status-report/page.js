@@ -147,7 +147,34 @@ const ShipmentStatusReport = () => {
   const fetchShipmentsWithPagination = async (filters, page = 1) => {
     setIsLoading(true);
     
-    if (!filters.from || !filters.to) {
+    // Check if dates are mandatory based on specific filters
+    const mandatoryPresence = !!(
+      filters.code ||
+      filters.branch ||
+      filters.sector ||
+      filters.destination ||
+      filters.network ||
+      filters.service ||
+      filters.counterPart ||
+      (filters.status && filters.status !== "All")
+    );
+    const optionalPresence = !!(filters.runNumber || filters.origin);
+
+    if (mandatoryPresence) {
+      if (!filters.from || !filters.to) {
+        setNotification({
+          visible: true,
+          message: "From and To dates are required for specific filter searches.",
+          type: "error",
+        });
+        setShipments([]);
+        setIsLoading(false);
+        return;
+      }
+    } else if (optionalPresence) {
+      // Dates are optional
+    } else if (!filters.from || !filters.to) {
+      // General behavior: require dates
       setNotification({
         visible: true,
         message: "Please select From and To dates",
