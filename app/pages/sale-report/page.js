@@ -15,7 +15,8 @@ import { useForm } from "react-hook-form";
 import { useDebounce } from "@/app/hooks/useDebounce";
 
 const SalesReport = () => {
-  const { register, setValue, getValues, reset, handleSubmit, watch } = useForm();
+  const { register, setValue, getValues, reset, handleSubmit, watch } =
+    useForm();
   const values = watch();
   const debouncedValues = useDebounce(values, 800);
   const [demoRadio, setDemoRadio] = useState("Sale Details");
@@ -50,7 +51,7 @@ const SalesReport = () => {
   const [overallTotals, setOverallTotals] = useState({
     totalActualWeight: 0,
     totalChargeableWeight: 0,
-    grandTotal: 0
+    grandTotal: 0,
   });
 
   const showNotification = (type, message) => {
@@ -187,7 +188,7 @@ const SalesReport = () => {
     const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
     saveAs(
       new Blob([wbout], { type: "application/octet-stream" }),
-      "SalesReport.xlsx"
+      "SalesReport.xlsx",
     );
     showNotification("success", "Sale Report Downloaded");
   };
@@ -240,7 +241,7 @@ const SalesReport = () => {
       { key: "date", label: "Date" },
       { key: "shipmentForwarder", label: "Shipment Forwarder" },
     ],
-    []
+    [],
   );
 
   const handleSearch = async (page = 1) => {
@@ -248,9 +249,25 @@ const SalesReport = () => {
       setLoading(true);
       const values = getValues(); // Use direct values for search
 
-      const { from, to } = values;
+      const { from, to, runNumber, customer, branch, origin, sector, payment } = values;
 
-      if (!from || !to) {
+      // Check if dates are mandatory based on specific filters
+      const mandatoryPresence = !!(payment || branch || sector || customer);
+      const optionalPresence = !!(runNumber || origin);
+
+      if (mandatoryPresence) {
+        if (!from || !to) {
+          showNotification(
+            "error",
+            "From and To dates are required for Payment, Branch, Sector or Customer Search.",
+          );
+          setLoading(false);
+          return;
+        }
+      } else if (optionalPresence) {
+        // Dates are optional when searching by Run Number or Origin
+      } else if (!from || !to) {
+        // Existing behavior: Require dates if no specific optional filter is provided
         showNotification("error", "Please select both From and To dates.");
         setLoading(false);
         return;
@@ -265,9 +282,20 @@ const SalesReport = () => {
       params.append("limit", pageLimit);
 
       const filterKeys = [
-        "runNumber", "customer", "branch", "origin", "sector", "destination",
-        "network", "counterPart", "company", "state", "payment",
-        "accountManager", "salePerson", "saleRefPerson",
+        "runNumber",
+        "customer",
+        "branch",
+        "origin",
+        "sector",
+        "destination",
+        "network",
+        "counterPart",
+        "company",
+        "state",
+        "payment",
+        "accountManager",
+        "salePerson",
+        "saleRefPerson",
       ];
 
       filterKeys.forEach((key) => {
@@ -319,17 +347,29 @@ const SalesReport = () => {
           });
         } else {
           // Fallback if backend doesn't provide overall totals
-          const pageActualWeight = mapped.reduce((sum, row) => sum + (row.actWeight || 0), 0);
-          const pageChargeableWeight = mapped.reduce((sum, row) => sum + (row.chgWeight || 0), 0);
-          const pageGrandTotal = mapped.reduce((sum, row) => sum + (row.grandTotal || 0), 0);
+          const pageActualWeight = mapped.reduce(
+            (sum, row) => sum + (row.actWeight || 0),
+            0,
+          );
+          const pageChargeableWeight = mapped.reduce(
+            (sum, row) => sum + (row.chgWeight || 0),
+            0,
+          );
+          const pageGrandTotal = mapped.reduce(
+            (sum, row) => sum + (row.grandTotal || 0),
+            0,
+          );
           setOverallTotals({
             totalActualWeight: pageActualWeight,
             totalChargeableWeight: pageChargeableWeight,
-            grandTotal: pageGrandTotal
+            grandTotal: pageGrandTotal,
           });
         }
 
-        showNotification("success", `Found ${pagination.totalRecords} rows (Page ${pagination.currentPage} of ${pagination.totalPages})`);
+        showNotification(
+          "success",
+          `Found ${pagination.totalRecords} rows (Page ${pagination.currentPage} of ${pagination.totalPages})`,
+        );
       } else {
         showNotification("error", `Failed to fetch: ${json.message}`);
       }
@@ -342,7 +382,7 @@ const SalesReport = () => {
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
     handleSearch(newPage);
   };
 
@@ -467,7 +507,7 @@ const SalesReport = () => {
     setOverallTotals({
       totalActualWeight: 0,
       totalChargeableWeight: 0,
-      grandTotal: 0
+      grandTotal: 0,
     });
 
     // Reset notifications
@@ -544,7 +584,7 @@ const SalesReport = () => {
               selectedValue={demoRadio}
               setSelectedValue={setDemoRadio}
             />
-          )
+          ),
         )}
       </div>
 
@@ -713,8 +753,13 @@ const SalesReport = () => {
                   setValue={setValue}
                   label={"Consignor Detail Wise"}
                 />
-              </div>               <div className="w-[200px]">
-                <SimpleButton name={loading ? "Searching..." : "Search"} type="submit" disabled={loading} />
+              </div>{" "}
+              <div className="w-[200px]">
+                <SimpleButton
+                  name={loading ? "Searching..." : "Search"}
+                  type="submit"
+                  disabled={loading}
+                />
               </div>
             </div>
           </div>
@@ -750,7 +795,6 @@ const SalesReport = () => {
             </div>
             <PaginationControls />
           </div>
-
 
           {isFullScreen && (
             <div className="fixed inset-0 z-50 p-10 bg-white">
@@ -789,17 +833,17 @@ const SalesReport = () => {
                       {totalChargeableWeight}Kg
                     </span>
                   </div>
-                    <div className="pr-3">
-                      Grand Total:{" "}
-                      <span className="text-[#EA1B40] tracking-wider pr-3">
-                        {grandTotalValue}
-                      </span>
-                    </div>
+                  <div className="pr-3">
+                    Grand Total:{" "}
+                    <span className="text-[#EA1B40] tracking-wider pr-3">
+                      {grandTotalValue}
+                    </span>
                   </div>
-                  <PaginationControls />
                 </div>
+                <PaginationControls />
               </div>
-            )}
+            </div>
+          )}
 
           <div className="flex  justify-between">
             <div className="w-36">
