@@ -375,18 +375,18 @@ function BookingReportWithAmount() {
       filters.Customer ||
       filters.Destination
     );
-    const optionalPresence = !!(filters.Origin);
+    const optionalPresence = !!(filters.Origin || filters.RunNo);
 
-    if (mandatoryPresence) {
-      if (!filters.from || !filters.to) {
+    if (optionalPresence) {
+      // Origin or Run Number present: Dates are optional even if mandatory filters are present
+    } else if (mandatoryPresence) {
+      if (!filters.from || !to) {
         showNotification(
           "error",
           "From and To dates are required for specific filter searches.",
         );
         return;
       }
-    } else if (optionalPresence) {
-      // Dates are optional
     } else if (!filters.from || !filters.to) {
       // General behavior: require dates
       showNotification("error", "Please select both From and To dates");
@@ -408,6 +408,7 @@ function BookingReportWithAmount() {
         toDate: range.to,
         accountCode: filters.Customer?.trim().toUpperCase() || null,
         branch: filters.Branch?.trim().toUpperCase() || null,
+        runNo: filters.RunNo?.trim().toUpperCase() || null,
         origin: filters.Origin?.trim().toUpperCase() || null,
         sector: filters.Sector?.trim().toUpperCase() || null,
         destination: filters.Destination?.trim().toUpperCase() || null,
@@ -492,6 +493,7 @@ function BookingReportWithAmount() {
       Origin: getValues("Origin"),
       Sector: getValues("Sector"),
       Destination: getValues("Destination"),
+      RunNo: getValues("RunNo"),
     };
 
     // Store filters for pagination
@@ -520,6 +522,7 @@ function BookingReportWithAmount() {
     // Clear all form data
     setValue("Branch", "");
     setValue("Origin", "");
+    setValue("RunNo", "");
     setValue("Sector", "");
     setValue("Destination", "");
     setValue("Customer", "");
@@ -643,6 +646,12 @@ function BookingReportWithAmount() {
               register={register}
               setValue={setValue}
               value="Origin"
+            />
+            <InputBox
+              placeholder="Run Number"
+              register={register}
+              setValue={setValue}
+              value="RunNo"
             />
             <InputBox
               placeholder="Sector"
