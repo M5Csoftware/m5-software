@@ -185,18 +185,13 @@ const ShipmentStatusReport = () => {
       return;
     }
 
-    const fromParsed = parseDateDDMMYYYY(filters.from);
-    const toParsed = parseDateDDMMYYYY(filters.to);
+    const fromParsed = filters.from ? parseDateDDMMYYYY(filters.from) : null;
+    const toParsed = filters.to ? parseDateDDMMYYYY(filters.to) : null;
 
-    if (
-      !fromParsed ||
-      !toParsed ||
-      isNaN(fromParsed.getTime()) ||
-      isNaN(toParsed.getTime())
-    ) {
+    if (mandatoryPresence && (!fromParsed || !toParsed)) {
       setNotification({
         visible: true,
-        message: "Invalid date format",
+        message: "From and To dates are required for specific filter searches.",
         type: "error",
       });
       setShipments([]);
@@ -204,13 +199,32 @@ const ShipmentStatusReport = () => {
       return;
     }
 
-    fromParsed.setHours(0, 0, 0, 0);
-    toParsed.setHours(23, 59, 59, 999);
+    if (filters.from || filters.to) {
+      if (
+        (filters.from && (!fromParsed || isNaN(fromParsed.getTime()))) ||
+        (filters.to && (!toParsed || isNaN(toParsed.getTime())))
+      ) {
+        setNotification({
+          visible: true,
+          message: "Invalid date format",
+          type: "error",
+        });
+        setShipments([]);
+        setIsLoading(false);
+        return;
+      }
+    }
 
     // Build query parameters
     const params = new URLSearchParams();
-    params.append('from', fromParsed.toISOString());
-    params.append('to', toParsed.toISOString());
+    if (fromParsed) {
+      fromParsed.setHours(0, 0, 0, 0);
+      params.append('from', fromParsed.toISOString());
+    }
+    if (toParsed) {
+      toParsed.setHours(23, 59, 59, 999);
+      params.append('to', toParsed.toISOString());
+    }
     
     // Add other filters if they exist
     if (filters.code) params.append('code', filters.code.toUpperCase());

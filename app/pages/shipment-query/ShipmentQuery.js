@@ -14,14 +14,11 @@ import React, { useState, useContext, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import axios from "axios";
-import { useAlertCheck } from "@/app/hooks/useAlertCheck";
 import NotificationFlag from "@/app/components/Notificationflag";
-import { AlertModal } from "@/app/components/AlertModal";
 
 const ShipmentQuery = ({ setRegisterComplaint }) => {
   const { register, setValue, watch } = useForm();
   const { server } = useContext(GlobalContext);
-  const { checkAlert } = useAlertCheck();
   const [runDetails, setRunDetails] = useState([]);
   const [shipmentQuery, setshipmentQuery] = useState({});
   const [eventActivityData, setEventActivityData] = useState([]);
@@ -34,9 +31,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
   const [statusKey, setStatusKey] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Alert Modal State
-  const [alertModalOpen, setAlertModalOpen] = useState(false);
-  const [alertData, setAlertData] = useState({ message: "", awbNo: "" });
 
   const [notification, setNotification] = useState({
     type: "success",
@@ -97,15 +91,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
     try {
       // console.log(awbNo);
 
-      // Check for alerts first
-      const alertResult = await checkAlert(awbNo);
-      if (alertResult.hasAlert) {
-        setAlertData({
-          message: alertResult.message,
-          awbNo: alertResult.awbNo,
-        });
-        setAlertModalOpen(true);
-      }
 
       const response = await axios.get(
         `${server}/shipment-query?awbNo=${awbNo.toUpperCase()}`,
@@ -458,7 +443,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
     setChildShipmentsData([]);
     setEventActivityData([]);
     setConsigneeDetail({});
-    setAlertModalOpen(false);
+
     setNotification({ type: "", message: "", visible: false });
     setRunDetails([]);
     setChildShipmentsData([]);
@@ -479,13 +464,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
 
-      <AlertModal
-        isOpen={alertModalOpen}
-        onClose={() => setAlertModalOpen(false)}
-        awbNo={alertData.awbNo}
-        message={alertData.message}
-        title="Shipment Alert"
-      />
 
       <Heading
         title="Shipment Query"

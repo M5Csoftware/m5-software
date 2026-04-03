@@ -58,29 +58,57 @@ function SaleSummary() {
     ],
     []
   );
-
   const handleShow = async (page = 1) => {
     const filters = getValues();
-    if (!filters.from || !filters.to) {
+    const mandatoryPresence = !!(
+      filters.Payment !== "All" ||
+      filters.Branch ||
+      filters.Sector ||
+      filters.Destination ||
+      filters.Network ||
+      filters["Couter Part"] ||
+      filters.salePerson !== "All" ||
+      filters.saleRefPerson !== "All" ||
+      filters.Company !== "All" ||
+      filters.Customer ||
+      filters.State
+    );
+    const optionalPresence = !!(filters["Run Number"] || filters.Origin);
+
+    if (mandatoryPresence) {
+      if (!filters.from || !filters.to) {
+        showNotification(
+          "error",
+          "From and To dates are required for specific filter searches."
+        );
+        return;
+      }
+    } else if (optionalPresence) {
+      // Dates are optional
+    } else if (!filters.from || !filters.to) {
       showNotification("error", "Please select from and to dates");
       return;
     }
 
-    const fromObj = parseDateDDMMYYYY(filters.from);
-    const toObj = parseDateDDMMYYYY(filters.to);
+    const fromObj = filters.from ? parseDateDDMMYYYY(filters.from) : null;
+    const toObj = filters.to ? parseDateDDMMYYYY(filters.to) : null;
 
-    if (!fromObj || !toObj || isNaN(fromObj.getTime()) || isNaN(toObj.getTime())) {
+    if (
+      (filters.from && (!fromObj || isNaN(fromObj.getTime()))) ||
+      (filters.to && (!toObj || isNaN(toObj.getTime())))
+    ) {
       showNotification("error", "Invalid date format");
       return;
     }
+
+    if (fromObj) fromObj.setHours(0, 0, 0, 0);
+    if (toObj) toObj.setHours(23, 59, 59, 999);
 
     setLoading(true);
     setCurrentFilters(filters);
 
     try {
       const queryParams = new URLSearchParams({
-        from: fromObj.toISOString(),
-        to: toObj.toISOString(),
         summary: "true",
         runNo: filters["Run Number"] || "",
         payment: filters.Payment !== "All" ? filters.Payment : "",
@@ -98,6 +126,9 @@ function SaleSummary() {
         page: page.toString(),
         limit: pageLimit.toString(),
       });
+
+      if (fromObj) queryParams.append("from", fromObj.toISOString());
+      if (toObj) queryParams.append("to", toObj.toISOString());
 
       const res = await axios.get(`${server}/sale-report-with-hold?${queryParams.toString()}`);
       
