@@ -128,7 +128,34 @@ function SaleSummarySectorWise() {
       customerCode: watch("customerCode")
     };
 
-    if (!values.from || !values.to) {
+    // Check if dates are mandatory based on specific filters
+    const mandatoryPresence = !!(
+      values.payment ||
+      values.branch ||
+      values.sector ||
+      values.customerCode ||
+      values.destination ||
+      values.network ||
+      values.counterPart ||
+      values.salePerson ||
+      values.saleRefPerson ||
+      values.company
+    );
+    const optionalPresence = !!(values.runNumber || values.origin);
+
+    if (mandatoryPresence) {
+      if (!values.from || !values.to) {
+        setNotification({
+          type: "error",
+          message: "From and To dates are required for specific filter searches.",
+          visible: true,
+        });
+        return;
+      }
+    } else if (optionalPresence) {
+      // Dates are optional
+    } else if (!values.from || !values.to) {
+      // General behavior: require dates
       setNotification({
         type: "error",
         message: "Please select From and To dates",

@@ -311,15 +311,34 @@ function PaymentCollectionReport() {
 
   const handleShowData = (e) => {
     e.preventDefault();
-    
+
+    const { from, to, modeFilter, Branch, Customer } = formData;
+
+    // Check if dates are mandatory based on specific filters
+    const mandatoryPresence = !!(modeFilter || Branch || Customer);
+
+    if (mandatoryPresence) {
+      if (!from || !to) {
+        showNotification(
+          "error",
+          "From and To dates are required for Payment, Branch, or Customer Search.",
+        );
+        return;
+      }
+    } else if (!from || !to) {
+      // General behavior: require dates if everything else is empty
+      showNotification("error", "Please select both From and To dates.");
+      return;
+    }
+
     const filters = {
-      modeFilter: formData.modeFilter || "",
+      modeFilter: modeFilter || "",
       receiptFilter: formData.receiptFilter || "",
-      Branch: formData.Branch || "",
-      Customer: formData.Customer || "",
+      Branch: Branch || "",
+      Customer: Customer || "",
       State: formData.State || "",
-      from: formData.from || "",
-      to: formData.to || "",
+      from: from || "",
+      to: to || "",
     };
 
     // Store filters for pagination

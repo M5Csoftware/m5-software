@@ -253,37 +253,50 @@ const NewBookingReport = () => {
   // Update the onSubmit function to use the new fetchReports function
   const onSubmit = async (data) => {
     try {
-      // console.log("Form data received:", data);
+      const { from, to, runNumber, origin, sector, branch, code, salePerson, destination, service } = data;
 
-      // Validate dates before submission
-      if (!data.from || !data.to) {
+      // Check if dates are mandatory based on specific filters
+      const mandatoryPresence = !!(branch || sector || code || salePerson || destination || service);
+      const optionalPresence = !!(runNumber || origin);
+
+      if (mandatoryPresence) {
+        if (!from || !to) {
+          showNotification(
+            "error",
+            "From and To dates are required for specific filter searches.",
+          );
+          return;
+        }
+      } else if (optionalPresence) {
+        // Dates are optional
+      } else if (!from || !to) {
         showNotification("error", "Please select both From and To dates");
         return;
       }
 
-      // Parse DD/MM/YYYY format from DateInputBox
-      const fromDate = parseDateDDMMYYYY(data.from);
-      const toDate = parseDateDDMMYYYY(data.to);
+      let fromDateObj = null;
+      let toDateObj = null;
 
-      // console.log("Parsed dates:", { fromDate, toDate });
+      if (from && to) {
+        fromDateObj = parseDateDDMMYYYY(from);
+        toDateObj = parseDateDDMMYYYY(to);
 
-      // Check if dates are valid
-      if (
-        !fromDate ||
-        !toDate ||
-        isNaN(fromDate.getTime()) ||
-        isNaN(toDate.getTime())
-      ) {
-        showNotification(
-          "error",
-          "Invalid date format. Please select valid dates.",
-        );
-        return;
+        if (
+          !fromDateObj ||
+          !toDateObj ||
+          isNaN(fromDateObj.getTime()) ||
+          isNaN(toDateObj.getTime())
+        ) {
+          showNotification(
+            "error",
+            "Invalid date format. Please select valid dates.",
+          );
+          return;
+        }
+
+        fromDateObj.setHours(0, 0, 0, 0);
+        toDateObj.setHours(23, 59, 59, 999);
       }
-
-      // Set time ranges for proper filtering
-      fromDate.setHours(0, 0, 0, 0);
-      toDate.setHours(23, 59, 59, 999);
 
       // Build filters object
       const filters = {
@@ -295,8 +308,8 @@ const NewBookingReport = () => {
         branch: data.branch?.toUpperCase() || "",
         destination: data.destination?.toUpperCase() || "",
         service: data.service?.toUpperCase() || "",
-        from: fromDate.toISOString(),
-        to: toDate.toISOString(),
+        from: fromDateObj ? fromDateObj.toISOString() : "",
+        to: toDateObj ? toDateObj.toISOString() : "",
         holdShipments,
         skipMum,
         skipAmd,
@@ -565,7 +578,6 @@ const NewBookingReport = () => {
               placeholder="From"
               trigger={trigger}
               error={errors.from}
-              validation={{ required: "From date is required" }}
               maxToday
               resetFactor={added}
             />
@@ -579,9 +591,6 @@ const NewBookingReport = () => {
               maxToday
               trigger={trigger}
               error={errors.to}
-              validation={{
-                required: "To date is required",
-              }}
               resetFactor={added}
             />
           </div>

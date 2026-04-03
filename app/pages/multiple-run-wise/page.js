@@ -127,6 +127,40 @@ const MultipleRunWise = () => {
       try {
         const fromRaw = watch("from");
         const toRaw = watch("to");
+        const branch = watch("branch");
+        const sector = watch("sector");
+        const accountCodeVal = watch("accountCode");
+        const origin = watch("origin");
+        const destination = watch("destination");
+        const network = watch("network");
+        const counterPart = watch("counterPart");
+
+        // Check if dates are mandatory based on specific filters
+        const mandatoryPresence = !!(
+          branch ||
+          sector ||
+          accountCodeVal ||
+          destination ||
+          network ||
+          counterPart
+        );
+        const hasRunNumbers = runNumbers && runNumbers.length > 0;
+        const optionalPresence = !!(hasRunNumbers || origin);
+
+        if (mandatoryPresence && (!fromRaw || !toRaw)) {
+          showNotification(
+            "error",
+            "From and To dates are required for specific filter searches.",
+          );
+          setLoading(false);
+          return;
+        }
+
+        if (!mandatoryPresence && !optionalPresence && (!fromRaw || !toRaw)) {
+          showNotification("error", "Please select From and To dates");
+          setLoading(false);
+          return;
+        }
 
         let fromISO = "";
         let toISO = "";

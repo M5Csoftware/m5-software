@@ -208,19 +208,51 @@ const ForwardingNumberReport = () => {
     setIsLoading(true);
     
     try {
-      // Check if at least one filter is provided
-      const hasFilter = Object.keys(filters).some(
-        (key) => filters[key] && filters[key].toString().trim() !== ""
+      // Check if dates are mandatory based on specific filters
+      const mandatoryPresence = !!(
+        filters.branch ||
+        filters.sector ||
+        filters.code ||
+        filters.counterPart ||
+        filters.destination ||
+        filters.service ||
+        filters.network
       );
-      if (!hasFilter) {
-        setNotification({
-          visible: true,
-          message: "Please select at least one filter",
-          type: "error",
-        });
-        setShipments([]);
-        setIsLoading(false);
-        return;
+      const optionalPresence = !!(filters.runNumber || filters.origin);
+
+      if (mandatoryPresence) {
+        if (!filters.from || !filters.to) {
+          setNotification({
+            visible: true,
+            message: "From and To dates are required for specific filter searches.",
+            type: "error",
+          });
+          setShipments([]);
+          setIsLoading(false);
+          return;
+        }
+      } else if (optionalPresence) {
+        // Dates are optional
+      } else {
+        // Check if at least one filter is provided
+        const hasFilter = Object.keys(filters).some(
+          (key) => filters[key] && filters[key].toString().trim() !== ""
+        );
+        if (!hasFilter) {
+          setNotification({
+            visible: true,
+            message: "Please select at least one filter",
+            type: "error",
+          });
+          setShipments([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        // If they provided some other filter (not mandatory/optional lists), 
+        // we should check if dates are needed. 
+        // For ForwardingNumberReport, the rule is "at least one filter".
+        // So if they provided a filter not in our mandatory/optional lists, we let it through.
       }
       
       let fromParsed = null;

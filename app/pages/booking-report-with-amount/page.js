@@ -368,7 +368,27 @@ function BookingReportWithAmount() {
 
   // Function to fetch data with pagination
   const fetchDataWithPagination = async (filters, page = 1) => {
-    if (!filters.from || !filters.to) {
+    // Check if dates are mandatory based on specific filters
+    const mandatoryPresence = !!(
+      filters.Branch ||
+      filters.Sector ||
+      filters.Customer ||
+      filters.Destination
+    );
+    const optionalPresence = !!(filters.Origin);
+
+    if (mandatoryPresence) {
+      if (!filters.from || !filters.to) {
+        showNotification(
+          "error",
+          "From and To dates are required for specific filter searches.",
+        );
+        return;
+      }
+    } else if (optionalPresence) {
+      // Dates are optional
+    } else if (!filters.from || !filters.to) {
+      // General behavior: require dates
       showNotification("error", "Please select both From and To dates");
       return;
     }
@@ -702,7 +722,7 @@ function BookingReportWithAmount() {
         </div>
         <div>
           <span className="text-red text-sm">
-            *Enter Date Range to Show Data
+            *Enter Date Range to Show Data (Optional for Origin)
           </span>
         </div>
       </div>
