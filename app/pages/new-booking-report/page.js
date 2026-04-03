@@ -259,7 +259,9 @@ const NewBookingReport = () => {
       const mandatoryPresence = !!(branch || sector || code || salePerson || destination || service);
       const optionalPresence = !!(runNumber || origin);
 
-      if (mandatoryPresence) {
+      if (optionalPresence) {
+        // Run Number or Origin present: Dates are optional even if mandatory filters are present
+      } else if (mandatoryPresence) {
         if (!from || !to) {
           showNotification(
             "error",
@@ -267,8 +269,6 @@ const NewBookingReport = () => {
           );
           return;
         }
-      } else if (optionalPresence) {
-        // Dates are optional
       } else if (!from || !to) {
         showNotification("error", "Please select both From and To dates");
         return;
