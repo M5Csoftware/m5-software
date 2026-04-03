@@ -201,9 +201,33 @@ function SaleReportWithDummyNumber() {
   };
 
   const handleShow = async (page = 1) => {
-    const formData = watch();
+    const mandatoryPresence = !!(
+      formData.payment ||
+      formData.branch ||
+      formData.sector ||
+      formData.destination ||
+      formData.network ||
+      formData.counterPart ||
+      formData.salePerson ||
+      formData.saleRefPerson ||
+      formData.company ||
+      formData.accountManager ||
+      formData.customerCode
+    );
+    const optionalPresence = !!(formData.runNumber || formData.origin);
 
-    if (!formData.from || !formData.to) {
+    if (mandatoryPresence) {
+      if (!formData.from || !formData.to) {
+        setNotification({
+          type: "error",
+          message: "From and To dates are required for specific filter searches.",
+          visible: true,
+        });
+        return;
+      }
+    } else if (optionalPresence) {
+      // Dates are optional
+    } else if (!formData.from || !formData.to) {
       setNotification({
         type: "error",
         message: "Please select From and To dates",
@@ -217,14 +241,15 @@ function SaleReportWithDummyNumber() {
 
     try {
       const queryParams = new URLSearchParams({
-        fromDate: formData.from,
-        toDate: formData.to,
         withBookingDate: withBookingDate.toString(),
         withUnbilled: withUnbilled.toString(),
         withDHL: withDHL.toString(),
         page: page,
         limit: pageLimit,
       });
+
+      if (formData.from) queryParams.append("fromDate", formData.from);
+      if (formData.to) queryParams.append("toDate", formData.to);
 
       // Add optional filters
       if (formData.runNumber) queryParams.append("runNumber", formData.runNumber);
