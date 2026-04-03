@@ -169,8 +169,8 @@ function SaleSummarySectorWise() {
     
     try {
       const params = new URLSearchParams();
-      params.append("from", values.from);
-      params.append("to", values.to);
+      if (values.from) params.append("from", values.from);
+      if (values.to) params.append("to", values.to);
       params.append("page", page);
       params.append("limit", pageLimit);
       
