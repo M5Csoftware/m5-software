@@ -123,6 +123,33 @@ const RtoShipmentReport = () => {
       const from = filters.from || "";
       const to = filters.to || "";
 
+      // Check if dates are mandatory based on specific filters
+      const mandatoryPresence = !!(
+        branch ||
+        sector ||
+        code ||
+        destination
+      );
+      const optionalPresence = !!(origin);
+
+      if (mandatoryPresence) {
+        if (!from || !to) {
+          showNotification(
+            "error",
+            "From and To dates are required for specific filter searches.",
+          );
+          setLoading(false);
+          return;
+        }
+      } else if (optionalPresence) {
+        // Dates are optional
+      } else if (!from || !to) {
+        // General behavior: require dates
+        showNotification("error", "Please select From and To dates");
+        setLoading(false);
+        return;
+      }
+
       // Validate date range
       if (from && to && new Date(dmyToYmd(from)) > new Date(dmyToYmd(to))) {
         showNotification("error", "'From' date cannot be later than 'To' date");
