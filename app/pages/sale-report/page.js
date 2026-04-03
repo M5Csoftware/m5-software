@@ -276,8 +276,8 @@ const SalesReport = () => {
       setCurrentFilters(values);
 
       const params = new URLSearchParams();
-      params.append("from", from);
-      params.append("to", to);
+      if (from) params.append("from", from);
+      if (to) params.append("to", to);
       params.append("page", page);
       params.append("limit", pageLimit);
 
