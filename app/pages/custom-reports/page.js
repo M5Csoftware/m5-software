@@ -465,9 +465,7 @@ const CustomReports = () => {
               onClick={resetFields}
             />
           </div>
-          <div>
-            <OutlinedButtonRed label={"Save Template"} type="button" saveIcon />
-          </div>
+
           <div>
             <SimpleButton
               name={"Generate Report"}
