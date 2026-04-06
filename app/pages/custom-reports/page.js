@@ -420,7 +420,17 @@ const CustomReports = () => {
                   title="Status"
                   value="status"
                   resetFactor={resetFactor}
-                  options={["DEL"]}
+                  options={[
+                    "All",
+                    "Booked",
+                    "Inscan",
+                    "Manifested",
+                    "In Transit",
+                    "Out for Delivery",
+                    "Delivered",
+                    "RTO",
+                    "Hold",
+                  ]}
                 />
               </div>
               <div className="flex gap-4">
