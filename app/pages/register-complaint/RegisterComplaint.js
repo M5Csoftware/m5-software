@@ -2,7 +2,7 @@
 import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { LabeledDropdown } from "@/app/components/Dropdown";
 import { DummyInputBoxWithLabelDarkGray } from "@/app/components/DummyInputBox";
-import Heading from "@/app/components/Heading";
+import Heading, { RedLabelHeading } from "@/app/components/Heading";
 import InputBox, { SearchInputBox } from "@/app/components/InputBox";
 import { TableWithSorting } from "@/app/components/Table";
 import React, { useState, useContext, useEffect } from "react";
@@ -546,7 +546,7 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
       key={formKey}
     >
       {/* Header with Back Button */}
-      <div className="flex items-center justify-between mb-2">
+      {/* <div className="flex items-center justify-between mb-2">
         <button
           type="button"
           onClick={handleBack}
@@ -566,7 +566,7 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
             />
           </svg>
         </button>
-      </div>
+      </div> */}
       <Heading
         title="Register Complaint"
         bulkUploadBtn="hidden"
@@ -605,12 +605,15 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
 
       {activeTab === "Register" ? (
         <React.Fragment>
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
             {/* Header Row */}
             <div className="flex gap-3">
               <div className="flex gap-9 w-full">
-                <div className="flex flex-col gap-3 w-full">
-                  <div className="flex gap-2 w-7/8">
+                <div className="flex flex-col w-full">
+                  <div className="flex mt-4 flex-col gap-1 w-7/8">
+                    <div>
+                      <RedLabelHeading label={`Enter Awb No`} />
+                    </div>
                     <InputBox
                       key={`awbNo-${formKey}`}
                       placeholder="Airwaybill Number"
@@ -625,48 +628,54 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
                       initialValue={watch("awbNo")}
                       trigger={trigger}
                     />
-                    <DummyInputBoxWithLabelDarkGray
-                      key={`complaintID-${formKey}`}
-                      label="Complaint ID"
-                      register={register}
-                      setValue={setValue}
-                      value="complaintID"
-                      inputValue={complaintID}
-                      resetFactor={resetFactor}
-                      reset={reset}
-                    />
-                    <DummyInputBoxWithLabelDarkGray
-                      key={`date-${formKey}`}
-                      register={register}
-                      setValue={setValue}
-                      value={"date"}
-                      label="Date"
-                      inputValue={displayDate}
-                    />
                   </div>
                 </div>
               </div>
               <div className="flex gap-3 w-full">
-                <div className="w-3/4">
-                  <div className="w-full">
-                    <InputBox
-                      key={`complaintNo-${formKey}`}
-                      placeholder="Complaint Number"
-                      register={register}
-                      setValue={setValue}
-                      value="complaintNo"
-                      initialValue={watch("complaintNo")}
-                      onChange={(e) =>
-                        setValue("complaintNo", e.target.value.toUpperCase())
-                      }
-                    />
+                <div className="w-full">
+                  <div className="py-3 px-4 bg-gray-100 rounded-lg flex flex-col gap-2">
+                    <div>
+                      <RedLabelHeading label={`Search with Complaint Number`} />
+                    </div>
+                    <div className="w-full flex gap-3">
+                      <DummyInputBoxWithLabelDarkGray
+                        key={`date-${formKey}`}
+                        register={register}
+                        setValue={setValue}
+                        value={"date"}
+                        label="Date"
+                        inputValue={displayDate}
+                      />
+                      <DummyInputBoxWithLabelDarkGray
+                        key={`complaintID-${formKey}`}
+                        label="Complaint ID"
+                        register={register}
+                        setValue={setValue}
+                        value="complaintID"
+                        inputValue={complaintID}
+                        resetFactor={resetFactor}
+                        reset={reset}
+                      />
+
+                      <InputBox
+                        key={`complaintNo-${formKey}`}
+                        placeholder="Complaint Number"
+                        register={register}
+                        setValue={setValue}
+                        value="complaintNo"
+                        initialValue={watch("complaintNo")}
+                        onChange={(e) =>
+                          setValue("complaintNo", e.target.value.toUpperCase())
+                        }
+                      />
+                      <div className="">
+                        <OutlinedButtonRed
+                          label="Search"
+                          onClick={() => handleSearch(watch("complaintNo"))}
+                        />
+                      </div>
+                    </div>{" "}
                   </div>
-                </div>
-                <div className="w-1/4">
-                  <OutlinedButtonRed
-                    label="Search"
-                    onClick={() => handleSearch(watch("complaintNo"))}
-                  />
                 </div>
               </div>
             </div>
@@ -891,8 +900,8 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
           </div>
         </React.Fragment>
       ) : (
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-3">
+        <div className="flex gap-6 pt-3">
+          <div className="flex flex-col w-2/3 gap-3">
             <div className="font-semibold text-red text-sm uppercase">
               Track Complaints
             </div>
@@ -915,39 +924,40 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
                 />
               </div>
             </div>
-          </div>
-          <div className="w-full">
-            <TableWithSorting
-              register={register}
-              setValue={setValue}
-              name="trackResults"
-              columns={[
-                { key: "complaintID", label: "Complaint ID" },
-                { key: "complaintNo", label: "Complaint No" },
-                { key: "date", label: "Date" },
-                { key: "complaintType", label: "Type" },
-                { key: "caseType", label: "Case Type" },
-                { key: "status", label: "Status" },
-                { key: "assignTo", label: "Assigned To" },
-                { key: "view", label: "Action" },
-              ]}
-              rowData={trackComplaints.map((c) => ({
-                ...c,
-                date: format(new Date(c.date), "dd/MM/yyyy"),
-                view: (
-                  <button
-                    type="button"
-                    onClick={() => handleViewComplaint(c.complaintID)}
-                    className="text-red font-semibold hover:underline"
-                  >
-                    View
-                  </button>
-                ),
-              }))}
-            />
+            <div className="w-full">
+              <TableWithSorting
+                register={register}
+                setValue={setValue}
+                name="trackResults"
+                className={`h-[45vh]`}
+                columns={[
+                  { key: "complaintID", label: "Complaint ID" },
+                  { key: "complaintNo", label: "Complaint No" },
+                  { key: "date", label: "Date" },
+                  { key: "complaintType", label: "Type" },
+                  { key: "caseType", label: "Case Type" },
+                  { key: "status", label: "Status" },
+                  { key: "assignTo", label: "Assigned To" },
+                  { key: "view", label: "Action" },
+                ]}
+                rowData={trackComplaints.map((c) => ({
+                  ...c,
+                  date: format(new Date(c.date), "dd/MM/yyyy"),
+                  view: (
+                    <button
+                      type="button"
+                      onClick={() => handleViewComplaint(c.complaintID)}
+                      className="text-red font-semibold hover:underline"
+                    >
+                      View
+                    </button>
+                  ),
+                }))}
+              />
+            </div>
           </div>
 
-          <div className="flex flex-col gap-3 pt-6 border-t border-gray-200">
+          <div className="flex w-1/3 flex-col gap-3 border-gray-200">
             <div className="font-semibold text-red text-sm uppercase">
               Search Complaint History
             </div>
@@ -971,6 +981,7 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
                 name="history"
                 columns={columns}
                 rowData={rowData}
+                className={`h-[44vh]`}
               />
             </div>
           </div>
