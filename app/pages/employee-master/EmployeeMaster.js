@@ -224,6 +224,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-Airwaybill Log": false,
     "permission-Booking With Sale": false,
     "permission-New Booking Report": false,
+    "permission-Custom Reports": false,
   };
 
   const [checkboxStates, setCheckboxStates] = useState(defaultCheckboxState);
@@ -399,6 +400,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-Airwaybill Log",
       "permission-Booking With Sale",
       "permission-New Booking Report",
+      "permission-Custom Reports",
     ],
   };
 
@@ -543,9 +545,9 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       // Extra safety: Set dashboard again after a brief delay
       setTimeout(() => {
         // console.log(
-//           "Setting dashboard from editEmployeeData:",
-//           editEmployeeData.dashboardAccess,
-//         );
+        //           "Setting dashboard from editEmployeeData:",
+        //           editEmployeeData.dashboardAccess,
+        //         );
         setValue("dashboard", editEmployeeData.dashboardAccess || []);
       }, 100);
     }
@@ -644,9 +646,9 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
         // Extra safety: Set dashboard again
         setTimeout(() => {
           // console.log(
-//             "Setting dashboard from fetched data:",
-//             data.dashboardAccess,
-//           );
+          //             "Setting dashboard from fetched data:",
+          //             data.dashboardAccess,
+          //           );
           setValue("dashboard", data.dashboardAccess || []);
         }, 100);
       } catch (err) {
