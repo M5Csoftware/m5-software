@@ -106,34 +106,55 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
   const fetchDataWithPagination = async (filters, page = 1) => {
     setIsLoading(true);
 
-    if (!filters.from || !filters.to) {
-      console.log("please select from and to dates");
+    const mandatoryPresence = !!(
+      filters.payment ||
+      filters.branch ||
+      filters.sector ||
+      filters.destination ||
+      filters.network ||
+      filters.counterPart ||
+      filters.salePerson ||
+      filters.saleRefPerson ||
+      filters.company ||
+      filters.accountCode ||
+      filters.state
+    );
+    const optionalPresence = !!(filters.runNumber || filters.origin);
+
+    if (mandatoryPresence) {
+      if (!filters.from || !filters.to) {
+        showNotification(
+          "error",
+          "From and To dates are required for specific filter searches."
+        );
+        setIsLoading(false);
+        return;
+      }
+    } else if (optionalPresence) {
+      // Dates are optional
+    } else if (!filters.from || !filters.to) {
       showNotification("error", "Please select from and to dates");
       setIsLoading(false);
       return;
     }
 
     // Convert to Date objects
-    const fromObj = parseDateDDMMYYYY(filters.from);
-    const toObj = parseDateDDMMYYYY(filters.to);
+    const fromObj = filters.from ? parseDateDDMMYYYY(filters.from) : null;
+    const toObj = filters.to ? parseDateDDMMYYYY(filters.to) : null;
 
     if (
-      !fromObj ||
-      !toObj ||
-      isNaN(fromObj.getTime()) ||
-      isNaN(toObj.getTime())
+      (filters.from && (!fromObj || isNaN(fromObj.getTime()))) ||
+      (filters.to && (!toObj || isNaN(toObj.getTime())))
     ) {
       showNotification("error", "Invalid date format");
       setIsLoading(false);
       return;
     }
 
-    fromObj.setHours(0, 0, 0, 0);
-    toObj.setHours(23, 59, 59, 999);
+    if (fromObj) fromObj.setHours(0, 0, 0, 0);
+    if (toObj) toObj.setHours(23, 59, 59, 999);
 
     const queryParams = new URLSearchParams({
-      from: fromObj.toISOString(),
-      to: toObj.toISOString(),
       runNo: filters.runNumber || "",
       payment: filters.payment !== "All" ? filters.payment : "", // 👈 skip if All
       branch: filters.branch || "",
@@ -152,6 +173,9 @@ function SaleDetails({ isFullscreen, setIsFullscreen }) {
       page: page.toString(),
       limit: pageLimit.toString(),
     });
+
+    if (fromObj) queryParams.append("from", fromObj.toISOString());
+    if (toObj) queryParams.append("to", toObj.toISOString());
 
     console.log("Fetching with pagination:", { page, limit: pageLimit });
 

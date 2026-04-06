@@ -147,7 +147,9 @@ const MultipleRunWise = () => {
         const hasRunNumbers = runNumbers && runNumbers.length > 0;
         const optionalPresence = !!(hasRunNumbers || origin);
 
-        if (mandatoryPresence && (!fromRaw || !toRaw)) {
+        if (optionalPresence) {
+          // Run Numbers or Origin present: Dates are optional even if mandatory filters are present
+        } else if (mandatoryPresence && (!fromRaw || !toRaw)) {
           showNotification(
             "error",
             "From and To dates are required for specific filter searches.",

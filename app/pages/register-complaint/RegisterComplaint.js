@@ -2,7 +2,7 @@
 import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { LabeledDropdown } from "@/app/components/Dropdown";
 import { DummyInputBoxWithLabelDarkGray } from "@/app/components/DummyInputBox";
-import Heading from "@/app/components/Heading";
+import Heading, { RedLabelHeading } from "@/app/components/Heading";
 import InputBox, { SearchInputBox } from "@/app/components/InputBox";
 import { TableWithSorting } from "@/app/components/Table";
 import React, { useState, useContext, useEffect } from "react";
@@ -12,6 +12,7 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import { useAuth } from "@/app/Context/AuthContext";
 import NotificationFlag from "@/app/components/Notificationflag";
 import { format } from "date-fns";
+import { RadioButtonLarge } from "@/app/components/RadioButton";
 
 const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
   const {
@@ -52,11 +53,21 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [manualSearch, setManualSearch] = useState(false);
   const [formKey, setFormKey] = useState(0);
+  const [activeTab, setActiveTab] = useState("Register");
+  const [trackAwbNo, setTrackAwbNo] = useState("");
+  const [trackComplaints, setTrackComplaints] = useState([]);
+  const [trackSearchLoading, setTrackSearchLoading] = useState(false);
+
+  const awbNo = watch("awbNo");
+  // Sync trackAwbNo with awbNo when switching to Track tab
+  useEffect(() => {
+    if (activeTab === "Track" && !trackAwbNo && awbNo) {
+      setTrackAwbNo(awbNo);
+    }
+  }, [activeTab, awbNo, trackAwbNo]);
 
   const showNotification = (type, message) =>
     setNotification({ type, message, visible: true });
-
-  const awbNo = watch("awbNo");
 
   const formatDDMMYYYY = (value) => {
     if (!value) return "";
@@ -286,38 +297,8 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
     }
 
     const checkAwbNo = async () => {
-      const regex = /^[A-Z]{1,3}\d{6,}$/i;
-
-      if (!regex.test(awbNo)) {
-        setError("awbNo", {
-          type: "manual",
-          message:
-            "Invalid AWB format. Use 1-3 letters followed by 6+ digits (e.g., ABC123456)",
-        });
-        setResetFactor(!resetFactor);
-        return;
-      } else {
-        clearErrors("awbNo");
-      }
-
+      clearErrors("awbNo");
       try {
-        // console.log(
-        //           "📦 Fetching shipment from:",
-        //           `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`
-        //         );
-        const shipmentResponse = await axios.get(
-          `${server}/portal/get-shipments?awbNo=${awbNo.toUpperCase()}`,
-        );
-      } catch (error) {
-        console.error("Error fetching AWB details:", error);
-        setRegisteredComplaint(null);
-      }
-
-      try {
-        // console.log(
-        //           "🎫 Fetching complaint from:",
-        //           `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`
-        //         );
         const response = await axios.get(
           `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`,
         );
@@ -332,9 +313,6 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
       } catch (error) {
         console.error("Error fetching registered complaint:", error);
         setRegisteredComplaint(null);
-        // console.log(
-        //           "🔄 Registered complaint set to null (this is normal if no complaint exists yet)"
-        //         );
       }
     };
 
@@ -441,18 +419,12 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
 
   const handleRefresh = () => {
     setFormKey((prev) => prev + 1);
-
-    // Reset all toggle states
     setResetReassign(!resetReassign);
     setResetFactor(!resetFactor);
     setResetComplaintRemark(!resetComplaintRemark);
-
-    // Reset form
     reset();
-
     const currentDate = new Date();
     const formattedCurrentDate = formatDDMMYYYY(currentDate);
-
     setValue("actionUser", user?.userId);
     setValue("closeRemark", "");
     setValue("status", "Open");
@@ -463,8 +435,6 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
     setValue("reAssignTo", "");
     setValue("complaintRemark", "");
     setValue("awbNo", "");
-
-    // Reset state
     setDate(currentDate);
     setDisplayDate(formattedCurrentDate);
     setComplaintNo("");
@@ -473,22 +443,18 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
     setRegisteredComplaint(null);
     setSearchTerm("");
     setManualSearch(false);
-    setComplaintNo("");
-    setComplaintID("");
-
-    showNotification("success", "Form refreshed successfully");
-
-    showNotification("success", "Form refreshed successfully");
     clearErrors();
+    showNotification("success", "Form refreshed successfully");
   };
 
-  const handleSearch = async () => {
-    if (!searchTerm)
+  const handleSearch = async (termManual) => {
+    const term = termManual || searchTerm || watch("complaintNo");
+    if (!term)
       return showNotification("error", "Enter Complaint No or ID to search");
 
     try {
       const response = await axios.get(
-        `${server}/register-complaint/search?complaintNo=${searchTerm}&complaintID=${searchTerm}`,
+        `${server}/register-complaint/search?complaintNo=${term}&complaintID=${term}`,
       );
       if (response.data.success) {
         setManualSearch(true);
@@ -515,6 +481,60 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
     }
   };
 
+  const handleTrackSearch = async () => {
+    const searchVal = trackAwbNo || watch("trackAwbNo") || awbNo;
+    if (!searchVal)
+      return showNotification("error", "Enter AWB Number to track");
+
+    setTrackSearchLoading(true);
+    try {
+      const response = await axios.get(
+        `${server}/register-complaint/track?awbNo=${searchVal}`,
+      );
+      if (response.data.success) {
+        setTrackComplaints(response.data.complaints);
+        showNotification("success", "Complaints fetched successfully");
+      }
+    } catch (err) {
+      console.error("Error fetching complaints for tracking:", err);
+      const msg = err.response?.data?.message || "Complaints not found!";
+      showNotification("error", msg);
+      setTrackComplaints([]);
+    } finally {
+      setTrackSearchLoading(false);
+    }
+  };
+
+  const handleViewComplaint = async (complaintID) => {
+    setSearchTerm(complaintID);
+    setActiveTab("Register");
+    try {
+      const response = await axios.get(
+        `${server}/register-complaint/search?complaintNo=${complaintID}&complaintID=${complaintID}`,
+      );
+      if (response.data.success) {
+        setManualSearch(true);
+        const complaintData = response.data.complaint;
+        setValue("awbNo", complaintData.awbNo);
+
+        if (complaintData.date) {
+          complaintData.date = formatDDMMYYYY(complaintData.date);
+        }
+        setRegisteredComplaint(complaintData);
+
+        if (trigger) {
+          await trigger("awbNo");
+        }
+
+        setManualSearch(false);
+        showNotification("success", "Complaint details loaded");
+      }
+    } catch (err) {
+      console.error("Error viewing complaint:", err);
+      showNotification("error", "Failed to load complaint details!");
+    }
+  };
+
   const handleBack = () => {
     setRegisterComplaint(false);
   };
@@ -526,7 +546,7 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
       key={formKey}
     >
       {/* Header with Back Button */}
-      <div className="flex items-center justify-between mb-2">
+      {/* <div className="flex items-center justify-between mb-2">
         <button
           type="button"
           onClick={handleBack}
@@ -546,12 +566,34 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
             />
           </svg>
         </button>
-      </div>
+      </div> */}
       <Heading
         title="Register Complaint"
         bulkUploadBtn="hidden"
         onRefresh={handleRefresh}
       />
+
+      <div className="flex w-full gap-3 mt-4">
+        <RadioButtonLarge
+          id="Register"
+          label="Register Complaint"
+          name="complaint-tab"
+          register={register}
+          setValue={setValue}
+          selectedValue={activeTab}
+          setSelectedValue={setActiveTab}
+        />
+        <RadioButtonLarge
+          id="Track"
+          label="Track Complaints"
+          name="complaint-tab"
+          register={register}
+          setValue={setValue}
+          selectedValue={activeTab}
+          setSelectedValue={setActiveTab}
+        />
+      </div>
+
       <div className="w-[150px]"></div>
 
       <NotificationFlag
@@ -561,290 +603,390 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
 
-      <div className="flex flex-col gap-3">
-        <div className="font-semibold text-red text-sm">Complaint Details</div>
-        <div className="flex gap-9">
-          <div className="flex flex-col gap-3 w-full">
-            <div className="flex gap-2">
-              <InputBox
-                key={`awbNo-${formKey}`}
-                placeholder="Airwaybill Number"
-                register={register}
-                setValue={setValue}
-                resetFactor={resetReassign}
-                value="awbNo"
-                error={errors.awbNo}
-                validation={{
-                  required: "AWB No is required",
-                }}
-                initialValue={watch("awbNo")}
-                trigger={trigger}
-              />
-            </div>
-          </div>
-          <div className="flex gap-2 w-full">
-            <DummyInputBoxWithLabelDarkGray
-              key={`complaintNo-${formKey}`}
-              label="Complaint Number"
-              register={register}
-              setValue={setValue}
-              value="complaintNo"
-              inputValue={complainNo}
-              resetFactor={resetFactor}
-              reset={reset}
-            />
-            <DummyInputBoxWithLabelDarkGray
-              key={`complaintID-${formKey}`}
-              label="Complaint ID"
-              register={register}
-              setValue={setValue}
-              value="complaintID"
-              inputValue={complaintID}
-              resetFactor={resetFactor}
-              reset={reset}
-            />
-            <DummyInputBoxWithLabelDarkGray
-              key={`date-${formKey}`}
-              register={register}
-              setValue={setValue}
-              value={"date"}
-              label="Date"
-              inputValue={displayDate}
-            />
-          </div>
-        </div>
-      </div>
+      {activeTab === "Register" ? (
+        <React.Fragment>
+          <div className="flex flex-col gap-3">
+            {/* Header Row */}
+            <div className="flex gap-3">
+              <div className="flex gap-9 w-full">
+                <div className="flex flex-col w-full">
+                  <div className="flex mt-4 flex-col gap-1 w-7/8">
+                    <div>
+                      <RedLabelHeading label={`Enter Awb No`} />
+                    </div>
+                    <InputBox
+                      key={`awbNo-${formKey}`}
+                      placeholder="Airwaybill Number"
+                      register={register}
+                      setValue={setValue}
+                      resetFactor={resetReassign}
+                      value="awbNo"
+                      error={errors.awbNo}
+                      validation={{
+                        required: "AWB No is required",
+                      }}
+                      initialValue={watch("awbNo")}
+                      trigger={trigger}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 w-full">
+                <div className="w-full">
+                  <div className="py-3 px-4 bg-gray-100 rounded-lg flex flex-col gap-2">
+                    <div>
+                      <RedLabelHeading label={`Search with Complaint Number`} />
+                    </div>
+                    <div className="w-full flex gap-3">
+                      <DummyInputBoxWithLabelDarkGray
+                        key={`date-${formKey}`}
+                        register={register}
+                        setValue={setValue}
+                        value={"date"}
+                        label="Date"
+                        inputValue={displayDate}
+                      />
+                      <DummyInputBoxWithLabelDarkGray
+                        key={`complaintID-${formKey}`}
+                        label="Complaint ID"
+                        register={register}
+                        setValue={setValue}
+                        value="complaintID"
+                        inputValue={complaintID}
+                        resetFactor={resetFactor}
+                        reset={reset}
+                      />
 
-      <div className="flex gap-9">
-        <div className="w-full flex flex-col gap-3">
-          <div className="font-semibold text-red text-sm">
-            Complaint Details
-          </div>
-          <div className="flex flex-col gap-4">
-            <LabeledDropdown
-              key={`complaintType-${formKey}`}
-              options={["High-Priority", "Priority", "Regular"]}
-              register={register}
-              setValue={setValue}
-              title="Complaint Type"
-              value="complaintType"
-              error={errors.complaintType}
-              defaultValue={registeredComplaint?.complaintType || ""}
-              validation={{
-                required: "Complaint type is required",
-              }}
-              trigger={trigger}
-              disabled={registeredComplaint !== null}
-              resetFactor={resetFactor}
-            />
-            <LabeledDropdown
-              key={`complaintSource-${formKey}`}
-              options={["Telephone", "Email", "WhatsApp"]}
-              register={register}
-              setValue={setValue}
-              title="Complaint Source"
-              value="complaintSource"
-              error={errors.complaintSource}
-              defaultValue={registeredComplaint?.complaintSource || ""}
-              validation={{
-                required: "Complaint source is required",
-              }}
-              trigger={trigger}
-              disabled={registeredComplaint !== null}
-              resetFactor={resetFactor}
-            />
-            <LabeledDropdown
-              key={`caseType-${formKey}`}
-              options={[
-                "ADDRESS QUERY",
-                "CNEE NOT AVAILABLE",
-                "WRONG DELIVERY",
-                "NEED FWB NUMBER",
-                "SHORT DELIVERY",
-                "NOT CONNECTED CASES",
-                "LOST PARCELS",
-              ]}
-              register={register}
-              setValue={setValue}
-              title="Case Type"
-              value="caseType"
-              error={errors.caseType}
-              defaultValue={registeredComplaint?.caseType || ""}
-              validation={{
-                required: "Case type is required",
-              }}
-              trigger={trigger}
-              disabled={registeredComplaint !== null}
-              resetFactor={resetFactor}
-            />
-            <LabeledDropdown
-              key={`assignTo-${formKey}`}
-              options={employees}
-              register={register}
-              setValue={setValue}
-              title="Assign To"
-              value="assignTo"
-              defaultValue={registeredComplaint?.assignTo || watch("assignTo")}
-              error={errors.assignTo}
-              validation={{
-                required: "Assign to is required",
-              }}
-              trigger={trigger}
-              disabled={registeredComplaint !== null}
-              resetFactor={resetFactor}
-            />
-            <div className="flex gap-2 w-full">
-              <LabeledDropdown
-                key={`status-${formKey}`}
-                options={["Open", "Close", "Process Claim", "Claim Processed"]}
+                      <InputBox
+                        key={`complaintNo-${formKey}`}
+                        placeholder="Complaint Number"
+                        register={register}
+                        setValue={setValue}
+                        value="complaintNo"
+                        initialValue={watch("complaintNo")}
+                        onChange={(e) =>
+                          setValue("complaintNo", e.target.value.toUpperCase())
+                        }
+                      />
+                      <div className="">
+                        <OutlinedButtonRed
+                          label="Search"
+                          onClick={() => handleSearch(watch("complaintNo"))}
+                        />
+                      </div>
+                    </div>{" "}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Complaint Details Section */}
+            <div className="w-full flex flex-col gap-3">
+              <div className="font-semibold text-red text-sm uppercase">
+                Complaint Details
+              </div>
+              <div className="flex gap-3 w-full">
+                <div className="flex flex-col gap-4 w-full">
+                  <LabeledDropdown
+                    key={`complaintType-${formKey}`}
+                    options={["High-Priority", "Priority", "Regular"]}
+                    register={register}
+                    setValue={setValue}
+                    title="Complaint Type"
+                    value="complaintType"
+                    error={errors.complaintType}
+                    defaultValue={registeredComplaint?.complaintType || ""}
+                    validation={{
+                      required: "Complaint type is required",
+                    }}
+                    trigger={trigger}
+                    disabled={registeredComplaint !== null}
+                    resetFactor={resetFactor}
+                  />
+                  <LabeledDropdown
+                    key={`complaintSource-${formKey}`}
+                    options={["Telephone", "Email", "WhatsApp"]}
+                    register={register}
+                    setValue={setValue}
+                    title="Complaint Source"
+                    value="complaintSource"
+                    error={errors.complaintSource}
+                    defaultValue={registeredComplaint?.complaintSource || ""}
+                    validation={{
+                      required: "Complaint source is required",
+                    }}
+                    trigger={trigger}
+                    disabled={registeredComplaint !== null}
+                    resetFactor={resetFactor}
+                  />
+                </div>
+                <div className="flex flex-col gap-4 w-full">
+                  <LabeledDropdown
+                    key={`caseType-${formKey}`}
+                    options={[
+                      "ADDRESS QUERY",
+                      "CNEE NOT AVAILABLE",
+                      "WRONG DELIVERY",
+                      "NEED FWB NUMBER",
+                      "SHORT DELIVERY",
+                      "NOT CONNECTED CASES",
+                      "LOST PARCELS",
+                    ]}
+                    register={register}
+                    setValue={setValue}
+                    title="Case Type"
+                    value="caseType"
+                    error={errors.caseType}
+                    defaultValue={registeredComplaint?.caseType || ""}
+                    validation={{
+                      required: "Case type is required",
+                    }}
+                    trigger={trigger}
+                    disabled={registeredComplaint !== null}
+                    resetFactor={resetFactor}
+                  />
+                  <LabeledDropdown
+                    key={`assignTo-${formKey}`}
+                    options={employees}
+                    register={register}
+                    setValue={setValue}
+                    title="Assign To"
+                    value="assignTo"
+                    defaultValue={
+                      registeredComplaint?.assignTo || watch("assignTo")
+                    }
+                    error={errors.assignTo}
+                    validation={{
+                      required: "Assign to is required",
+                    }}
+                    trigger={trigger}
+                    disabled={registeredComplaint !== null}
+                    resetFactor={resetFactor}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 w-full">
+                <LabeledDropdown
+                  key={`status-${formKey}`}
+                  options={[
+                    "Open",
+                    "Close",
+                    "Process Claim",
+                    "Claim Processed",
+                  ]}
+                  register={register}
+                  setValue={setValue}
+                  title="Status"
+                  value="status"
+                  defaultValue={registeredComplaint?.status || "Open"}
+                  trigger={trigger}
+                  disabled
+                  resetFactor={resetFactor}
+                />
+                <div className="w-full">
+                  <OutlinedButtonRed
+                    onClick={() => handleReopenComplaint()}
+                    disabled={
+                      registeredComplaint?.status === "Open" ||
+                      registeredComplaint === null
+                    }
+                    label="Complaint Re-open"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Remarks and Assignments */}
+            <div className="flex flex-col gap-3">
+              <InputBox
+                key={`complaintRemark-${formKey}`}
+                placeholder="Complaint Remark"
                 register={register}
                 setValue={setValue}
-                title="Status"
-                value="status"
-                defaultValue={registeredComplaint?.status || "Open"}
-                trigger={trigger}
-                disabled
-                resetFactor={resetFactor}
+                value="complaintRemark"
+                disabled={registeredComplaint?.status === "Close"}
+                resetFactor={resetComplaintRemark}
               />
-              <div className="w-full">
-                <OutlinedButtonRed
-                  onClick={() => handleReopenComplaint()}
-                  disabled={
-                    registeredComplaint?.status === "Open" ||
-                    registeredComplaint === null
-                  }
-                  label="Complaint Re-open"
-                />
+              <DummyInputBoxWithLabelDarkGray
+                key={`operationRemark-${formKey}`}
+                register={register}
+                setValue={setValue}
+                value="operationRemark"
+                label="Operation Remark"
+                inputValue={registeredComplaint?.operationRemark || ""}
+              />
+              <div className="flex gap-2">
+                <div className="w-full">
+                  <InputBox
+                    key={`closeRemark-${formKey}`}
+                    register={register}
+                    setValue={setValue}
+                    placeholder="Close Remark"
+                    value="closeRemark"
+                    disabled={
+                      registeredComplaint === null ||
+                      registeredComplaint?.status === "Close"
+                    }
+                  />
+                </div>
+                <div className="w-[255px] whitespace-nowrap">
+                  <OutlinedButtonRed
+                    disabled={
+                      registeredComplaint === null ||
+                      registeredComplaint?.status === "Close"
+                    }
+                    onClick={() => handleCloseComplaint()}
+                    label="Complaint Resolved"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 w-full">
+                <div className="w-full">
+                  <LabeledDropdown
+                    key={`reAssignTo-${formKey}`}
+                    options={employees}
+                    register={register}
+                    setValue={setValue}
+                    title="Re-Assign To"
+                    value="reAssignTo"
+                    disabled={
+                      registeredComplaint === null ||
+                      registeredComplaint?.status === "Close"
+                    }
+                    resetFactor={resetReassign}
+                  />
+                </div>
+                <div className="w-[275px]">
+                  <OutlinedButtonRed
+                    onClick={() => handleReassign()}
+                    disabled={
+                      registeredComplaint === null ||
+                      registeredComplaint?.status === "Close"
+                    }
+                    label="Re-Assign"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Submit and Prioritize Buttons */}
+            <div className="flex justify-between">
+              <div></div>
+              <div className="flex gap-2">
+                <div>
+                  <OutlinedButtonRed
+                    onClick={() => handlePrioritize()}
+                    disabled={
+                      registeredComplaint === null ||
+                      registeredComplaint?.complaintType === "High-Priority"
+                    }
+                    label="Prioritize"
+                  />
+                </div>
+                <div>
+                  <SimpleButton
+                    name={
+                      registeredComplaint?.status === "Open"
+                        ? "Update Complaint"
+                        : "Register Complaint"
+                    }
+                    type="submit"
+                    disabled={registeredComplaint?.status === "Close"}
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="w-full flex flex-col gap-3">
-          <div className="font-semibold text-red text-sm">Search History</div>
-          <div className="flex gap-2 w-full">
+        </React.Fragment>
+      ) : (
+        <div className="flex gap-6 pt-3">
+          <div className="flex flex-col w-2/3 gap-3">
+            <div className="font-semibold text-red text-sm uppercase">
+              Track Complaints
+            </div>
+            <div className="flex gap-2">
+              <div className="w-full">
+                <InputBox
+                  placeholder="Enter Airwaybill Number to track"
+                  register={register}
+                  setValue={setValue}
+                  value="trackAwbNo"
+                  initialValue={trackAwbNo}
+                  onChange={(e) => setTrackAwbNo(e.target.value.toUpperCase())}
+                />
+              </div>
+              <div className="w-[150px]">
+                <OutlinedButtonRed
+                  label={trackSearchLoading ? "Tracking..." : "Track"}
+                  onClick={handleTrackSearch}
+                  disabled={trackSearchLoading}
+                />
+              </div>
+            </div>
             <div className="w-full">
-              <SearchInputBox
-                key={`searchTerm-${formKey}`}
-                placeholder="Search by Complaint No or ID"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+              <TableWithSorting
+                register={register}
+                setValue={setValue}
+                name="trackResults"
+                className={`h-[45vh]`}
+                columns={[
+                  { key: "complaintID", label: "Complaint ID" },
+                  { key: "complaintNo", label: "Complaint No" },
+                  { key: "date", label: "Date" },
+                  { key: "complaintType", label: "Type" },
+                  { key: "caseType", label: "Case Type" },
+                  { key: "status", label: "Status" },
+                  { key: "assignTo", label: "Assigned To" },
+                  { key: "view", label: "Action" },
+                ]}
+                rowData={trackComplaints.map((c) => ({
+                  ...c,
+                  date: format(new Date(c.date), "dd/MM/yyyy"),
+                  view: (
+                    <button
+                      type="button"
+                      onClick={() => handleViewComplaint(c.complaintID)}
+                      className="text-red font-semibold hover:underline"
+                    >
+                      View
+                    </button>
+                  ),
+                }))}
               />
             </div>
-            <div className="w-[50%]">
-              <OutlinedButtonRed label="Search" onClick={handleSearch} />
+          </div>
+
+          <div className="flex w-1/3 flex-col gap-3 border-gray-200">
+            <div className="font-semibold text-red text-sm uppercase">
+              Search Complaint History
+            </div>
+            <div className="flex gap-2 w-full">
+              <div className="w-full">
+                <SearchInputBox
+                  key={`searchTerm-${formKey}`}
+                  placeholder="Search by Complaint No or ID"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value.toUpperCase())}
+                />
+              </div>
+              <div className="w-[150px]">
+                <OutlinedButtonRed label="Search" onClick={handleSearch} />
+              </div>
+            </div>
+            <div className="py-2">
+              <TableWithSorting
+                register={register}
+                setValue={setValue}
+                name="history"
+                columns={columns}
+                rowData={rowData}
+                className={`h-[44vh]`}
+              />
             </div>
           </div>
-          <div className="py-2 flex-1">
-            <TableWithSorting
-              register={register}
-              setValue={setValue}
-              name="history"
-              columns={columns}
-              rowData={rowData}
-            />
-          </div>
         </div>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <InputBox
-          key={`complaintRemark-${formKey}`}
-          placeholder="Complaint Remark"
-          register={register}
-          setValue={setValue}
-          value="complaintRemark"
-          disabled={registeredComplaint?.status === "Close"}
-          resetFactor={resetComplaintRemark}
-        />
-        <DummyInputBoxWithLabelDarkGray
-          key={`operationRemark-${formKey}`}
-          register={register}
-          setValue={setValue}
-          value="operationRemark"
-          label="Operation Remark"
-          inputValue={registeredComplaint?.operationRemark || ""}
-        />
-        <div className="flex gap-2">
-          <div className="w-full">
-            <InputBox
-              key={`closeRemark-${formKey}`}
-              register={register}
-              setValue={setValue}
-              placeholder="Close Remark"
-              value="closeRemark"
-              disabled={
-                registeredComplaint === null ||
-                registeredComplaint?.status === "Close"
-              }
-            />
-          </div>
-          <div className="w-[255px] whitespace-nowrap">
-            <OutlinedButtonRed
-              disabled={
-                registeredComplaint === null ||
-                registeredComplaint?.status === "Close"
-              }
-              onClick={() => handleCloseComplaint()}
-              label="Complaint Resolved"
-            />
-          </div>
-        </div>
-        <div className="flex gap-2 w-full">
-          <div className="w-full">
-            <LabeledDropdown
-              key={`reAssignTo-${formKey}`}
-              options={employees}
-              register={register}
-              setValue={setValue}
-              title="Re-Assign To"
-              value="reAssignTo"
-              disabled={
-                registeredComplaint === null ||
-                registeredComplaint?.status === "Close"
-              }
-              resetFactor={resetReassign}
-            />
-          </div>
-          <div className="w-[275px]">
-            <OutlinedButtonRed
-              onClick={() => handleReassign()}
-              disabled={
-                registeredComplaint === null ||
-                registeredComplaint?.status === "Close"
-              }
-              label="Re-Assign"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-between">
-        <div></div>
-        <div className="flex gap-2">
-          <div>
-            <OutlinedButtonRed
-              onClick={() => handlePrioritize()}
-              disabled={
-                registeredComplaint === null ||
-                registeredComplaint?.complaintType === "High-Priority"
-              }
-              label="Prioritize"
-            />
-          </div>
-          <div>
-            <SimpleButton
-              name={
-                registeredComplaint?.status === "Open"
-                  ? "Update Complaint"
-                  : "Register Complaint"
-              }
-              type="submit"
-              disabled={registeredComplaint?.status === "Close"}
-            />
-          </div>
-        </div>
-      </div>
+      )}
     </form>
   );
 };
