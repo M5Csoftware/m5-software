@@ -27,7 +27,7 @@ function Sidebar() {
     setActiveFolder((prev) =>
       prev.includes(folder)
         ? prev.filter((item) => item !== folder)
-        : [...prev, folder]
+        : [...prev, folder],
     );
   };
 
@@ -48,10 +48,10 @@ function Sidebar() {
     }
     setActiveTabs((prev) =>
       prev.some(
-        (item) => item.folder === folder && item.subfolder === subfolder
+        (item) => item.folder === folder && item.subfolder === subfolder,
       )
         ? prev
-        : [...prev, tab]
+        : [...prev, tab],
     );
     setCurrentTab(subfolder);
   };
@@ -198,7 +198,13 @@ function Sidebar() {
     },
     {
       name: "Reports",
-      subfolders: ["Booking Report", "Airwaybill Log", "Booking With Sale", "New Booking Report"],
+      subfolders: [
+        "Booking Report",
+        "Airwaybill Log",
+        "Booking With Sale",
+        "New Booking Report",
+        "Custom Reports",
+      ],
     },
   ];
 
@@ -259,7 +265,8 @@ function Sidebar() {
     const fetchVersion = async () => {
       try {
         if (window.__TAURI__) {
-          const invokeFn = window.__TAURI__?.tauri?.invoke ?? window.__TAURI__?.invoke;
+          const invokeFn =
+            window.__TAURI__?.tauri?.invoke ?? window.__TAURI__?.invoke;
           if (invokeFn) {
             const version = await invokeFn("get_app_version");
             setAppVersion(`v${version}`);
@@ -267,7 +274,8 @@ function Sidebar() {
         }
 
         // Fetch remote version for "Latest" display
-        const VERSION_URL = "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json";
+        const VERSION_URL =
+          "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json";
         const res = await fetch(VERSION_URL + "?t=" + Date.now());
         if (res.ok) {
           const data = await res.json();
@@ -302,7 +310,9 @@ function Sidebar() {
           )}
         </div>
         <div className="flex justify-start pl-6 items-center w-full mt-3">
-          <span className="text-xs font-semibold tracking-wide text-green-1">Login ID: {user.userId}</span>
+          <span className="text-xs font-semibold tracking-wide text-green-1">
+            Login ID: {user.userId}
+          </span>
         </div>
       </div>
 
@@ -313,10 +323,11 @@ function Sidebar() {
             setActiveTabs((prev) =>
               prev.some(
                 (item) =>
-                  item.folder === tab.folder && item.subfolder === tab.subfolder
+                  item.folder === tab.folder &&
+                  item.subfolder === tab.subfolder,
               )
                 ? prev
-                : [...prev, tab]
+                : [...prev, tab],
             );
             setCurrentTab("Dashboard");
           }}
@@ -376,7 +387,9 @@ function Sidebar() {
       <div className="px-8 pb-4 text-[10px] flex flex-col gap-0.5 font-bold text-green-1">
         {/* <div className="opacity-60">Current: {appVersion}</div> */}
         {latestVersion && (
-          <div className={`${latestVersion !== appVersion ? "text-amber-600" : "opacity-60"}`}>
+          <div
+            className={`${latestVersion !== appVersion ? "text-amber-600" : "opacity-60"}`}
+          >
             Latest: {latestVersion}
           </div>
         )}
@@ -417,8 +430,9 @@ const Folder = ({
     <li className="my-1 flex flex-col gap-1">
       <div
         onClick={() => toggleFolder(name)}
-        className={`flex gap-1 font-semibold cursor-pointer p-1 hover:bg-foggy-white rounded-md transition-all ${activeFolder.includes(name) || isFolderActive ? "bg-foggy-white" : ""
-          }`}
+        className={`flex gap-1 font-semibold cursor-pointer p-1 hover:bg-foggy-white rounded-md transition-all ${
+          activeFolder.includes(name) || isFolderActive ? "bg-foggy-white" : ""
+        }`}
       >
         <Image
           src={
@@ -433,20 +447,23 @@ const Folder = ({
         <span>{name}</span>
       </div>
       <ul
-        className={`ml-10 overflow-hidden transition-all flex flex-col  duration-300 ${activeFolder.includes(name) ? "max-h-screen " : "max-h-0 "
-          }`}
+        className={`ml-10 overflow-hidden transition-all flex flex-col  duration-300 ${
+          activeFolder.includes(name) ? "max-h-screen " : "max-h-0 "
+        }`}
       >
         {subfolders.map((subfolder, index) => (
           <li
             key={index}
             onClick={() => handleSubfolderClick(name, subfolder)}
-            className={`p-1 my-0.5 cursor-pointer hover:bg-foggy-white rounded-md ${subfolder === "Report" ? "font-semibold" : ""
-              } ${activeTabs.some(
-                (tab) => tab.folder === name && tab.subfolder === subfolder
+            className={`p-1 my-0.5 cursor-pointer hover:bg-foggy-white rounded-md ${
+              subfolder === "Report" ? "font-semibold" : ""
+            } ${
+              activeTabs.some(
+                (tab) => tab.folder === name && tab.subfolder === subfolder,
               )
                 ? "bg-foggy-white"
                 : ""
-              }`}
+            }`}
           >
             {subfolder}
           </li>
@@ -467,8 +484,9 @@ const Folder = ({
           ].some((item) => hasPerm(item)) && (
             <li
               onClick={() => handleSubfolderClick(name, "Report")}
-              className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${operationreportOpen ? "bg-foggy-white" : ""
-                }`}
+              className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${
+                operationreportOpen ? "bg-foggy-white" : ""
+              }`}
             >
               <span>Report</span>
               <Image
@@ -503,13 +521,15 @@ const Folder = ({
               <li
                 key={index}
                 onClick={() => handleSubfolderClick(name, item)}
-                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${operationreportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                  }  ${activeTabs.some(
-                    (tab) => tab.folder === name && tab.subfolder === item
+                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                  operationreportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
+                }  ${
+                  activeTabs.some(
+                    (tab) => tab.folder === name && tab.subfolder === item,
                   )
                     ? "bg-foggy-white"
                     : ""
-                  }`}
+                }`}
               >
                 {item}
               </li>
@@ -528,8 +548,9 @@ const Folder = ({
           ].some((item) => hasPerm(item)) && (
             <li
               onClick={() => handleSubfolderClick(name, "Report")}
-              className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${reportOpen ? "bg-foggy-white" : ""
-                }`}
+              className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${
+                reportOpen ? "bg-foggy-white" : ""
+              }`}
             >
               <span>Report</span>
               <Image
@@ -561,13 +582,15 @@ const Folder = ({
               <li
                 key={index}
                 onClick={() => handleSubfolderClick(name, item)}
-                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${reportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                  }  ${activeTabs.some(
-                    (tab) => tab.folder === name && tab.subfolder === item
+                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                  reportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
+                }  ${
+                  activeTabs.some(
+                    (tab) => tab.folder === name && tab.subfolder === item,
                   )
                     ? "bg-foggy-white"
                     : ""
-                  }`}
+                }`}
               >
                 {item}
               </li>
@@ -577,8 +600,9 @@ const Folder = ({
           ["Branch Manifest Report"].some((item) => hasPerm(item)) && (
             <li
               onClick={() => handleSubfolderClick(name, "Report")}
-              className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${branchreportOpen ? "bg-foggy-white" : ""
-                }`}
+              className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${
+                branchreportOpen ? "bg-foggy-white" : ""
+              }`}
             >
               <span>Report</span>
               <Image
@@ -601,13 +625,15 @@ const Folder = ({
               <li
                 key={index}
                 onClick={() => handleSubfolderClick(name, item)}
-                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${branchreportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                  }  ${activeTabs.some(
-                    (tab) => tab.folder === name && tab.subfolder === item
+                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                  branchreportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
+                }  ${
+                  activeTabs.some(
+                    (tab) => tab.folder === name && tab.subfolder === item,
                   )
                     ? "bg-foggy-white"
                     : ""
-                  }`}
+                }`}
               >
                 {item}
               </li>
@@ -629,8 +655,9 @@ const Folder = ({
           ].some((item) => hasPerm(item)) && (
             <li
               onClick={() => setAccountReportOpen(!accountReportOpen)}
-              className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${accountReportOpen ? "bg-foggy-white" : ""
-                }`}
+              className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${
+                accountReportOpen ? "bg-foggy-white" : ""
+              }`}
             >
               <span>Report</span>
               <Image
@@ -665,13 +692,15 @@ const Folder = ({
               <li
                 key={index}
                 onClick={() => handleSubfolderClick(name, item)}
-                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${accountReportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                  }  ${activeTabs.some(
-                    (tab) => tab.folder === name && tab.subfolder === item
+                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                  accountReportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
+                }  ${
+                  activeTabs.some(
+                    (tab) => tab.folder === name && tab.subfolder === item,
                   )
                     ? "bg-foggy-white"
                     : ""
-                  }`}
+                }`}
               >
                 {item}
               </li>
@@ -685,8 +714,9 @@ const Folder = ({
           ].some((item) => hasPerm(item)) && (
             <li
               onClick={() => setAccountSummaryOpen(!accountSummaryOpen)}
-              className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${accountSummaryOpen ? "bg-foggy-white" : ""
-                }`}
+              className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${
+                accountSummaryOpen ? "bg-foggy-white" : ""
+              }`}
             >
               <span>Summary</span>
               <Image
@@ -715,13 +745,15 @@ const Folder = ({
               <li
                 key={index}
                 onClick={() => handleSubfolderClick(name, item)}
-                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${accountSummaryOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                  }  ${activeTabs.some(
-                    (tab) => tab.folder === name && tab.subfolder === item
+                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                  accountSummaryOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
+                }  ${
+                  activeTabs.some(
+                    (tab) => tab.folder === name && tab.subfolder === item,
                   )
                     ? "bg-foggy-white"
                     : ""
-                  }`}
+                }`}
               >
                 {item}
               </li>
@@ -730,8 +762,9 @@ const Folder = ({
         {name === "Billing" && (
           <li
             onClick={() => setBillingReportOpen(!billingReportOpen)}
-            className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${billingReportOpen ? "bg-foggy-white" : ""
-              }`}
+            className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${
+              billingReportOpen ? "bg-foggy-white" : ""
+            }`}
           >
             <span>Report</span>
             <Image
@@ -769,13 +802,15 @@ const Folder = ({
               <li
                 key={index}
                 onClick={() => handleSubfolderClick(name, item)}
-                className={`ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${billingReportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                  }  ${activeTabs.some(
-                    (tab) => tab.folder === name && tab.subfolder === item
+                className={`ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                  billingReportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
+                }  ${
+                  activeTabs.some(
+                    (tab) => tab.folder === name && tab.subfolder === item,
                   )
                     ? "bg-foggy-white"
                     : ""
-                  }`}
+                }`}
               >
                 {item}
               </li>
