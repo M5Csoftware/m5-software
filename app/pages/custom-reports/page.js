@@ -412,7 +412,7 @@ const CustomReports = () => {
                   title="Shipment Type"
                   value="shipmentType"
                   resetFactor={resetFactor}
-                  options={["Dox", "nDox"]}
+                  options={["Dox", "NDox"]}
                 />
                 <LabeledDropdown
                   setValue={setValue}
