@@ -276,7 +276,7 @@ const CustomReports = () => {
     setReportData([]);
   };
 
-  const { server } = useContext(GlobalContext);
+  const { server, sectors } = useContext(GlobalContext);
 
   return (
     <div>
@@ -404,7 +404,7 @@ const CustomReports = () => {
                   title="Sector"
                   value="sector"
                   resetFactor={resetFactor}
-                  options={["DEL"]}
+                  options={sectors.map((s) => s.name)}
                 />
                 <LabeledDropdown
                   setValue={setValue}
@@ -412,7 +412,7 @@ const CustomReports = () => {
                   title="Shipment Type"
                   value="shipmentType"
                   resetFactor={resetFactor}
-                  options={["abc"]}
+                  options={["Dox", "nDox"]}
                 />
                 <LabeledDropdown
                   setValue={setValue}
