@@ -20,6 +20,21 @@ import Calendar from "react-calendar";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/themes/airbnb.css";
 
+const UPPERCASE_FIELDS = [
+  "code",
+  "panNo",
+  "gstNo",
+  "cinNo",
+  "awbNo",
+  "eventCode",
+  "accountCode",
+  "customerCode",
+  "runNumber",
+  "runNo",
+  "airwaybillNumber",
+  "clubbingNumber",
+];
+
 export default function InputBox({
   placeholder,
   register,
@@ -35,7 +50,6 @@ export default function InputBox({
   trigger,
   type = "input",
   disabled = false,
-  // ...props
 }) {
   const [isFocused, setIsFocused] = useState(false);
   const [inputValue, setInputValue] = useState(initialValue || "");
@@ -45,26 +59,16 @@ export default function InputBox({
 
   const handleChange = (e) => {
     let newValue = e.target.value;
-    if (
-      [
-        "code",
-        "panNo",
-        "gstNo",
-        "cinNo",
-        "awbNo",
-        "eventCode",
-        "accountCode",
-        "customerCode",
-        "runNumber",
-        "runNo",
-        "airwaybillNumber",
-        "clubbingNumber",
-      ].includes(value)
-    ) {
+
+    if (UPPERCASE_FIELDS.includes(value)) {
       newValue = newValue.toUpperCase();
+      setInputValue(newValue);
+      setValue(value, newValue);
+    } else {
+      setInputValue(newValue); // display as typed
+      setValue(value, newValue.toLowerCase()); // store normalized for search
     }
-    setInputValue(newValue);
-    setValue(value, newValue);
+
     if (trigger) {
       trigger(value);
     }
@@ -93,7 +97,6 @@ export default function InputBox({
         className={`border border-[#979797] outline-none bg-transparent rounded-md h-8 px-4 py-2 w-full ${
           disabled ? "bg-white-smoke" : ""
         }  ${className}`}
-        // {...props}
       />
       {placeholder && (
         <label
@@ -129,7 +132,6 @@ export default function InputBox({
         } ${error ? "border-red" : "border-[#979797]"} ${
           disabled ? "bg-white-smoke" : ""
         }  ${className}`}
-        // {...props}
       />
 
       {placeholder && (
@@ -178,12 +180,13 @@ export function InputBoxMultipleEntry({
 
   const handleKeyDown = (e) => {
     if (e.key === " " && currentInput.trim() !== "") {
-      // Add the current input as a new card
-      setEntries((prevEntries) => [...prevEntries, currentInput.trim()]);
-      setCurrentInput(""); // Clear the input field
-      e.preventDefault(); // Prevent space from being added
+      setEntries((prevEntries) => [
+        ...prevEntries,
+        currentInput.trim().toLowerCase(),
+      ]);
+      setCurrentInput("");
+      e.preventDefault();
     } else if (e.key === "Backspace" && currentInput === "") {
-      // Remove the last entry if input is empty
       setEntries((prevEntries) => prevEntries.slice(0, -1));
     }
   };
@@ -212,7 +215,6 @@ export function InputBoxMultipleEntry({
         `}
       >
         <div className="flex flex-nowrap gap-1.5 items-center">
-          {/* Display entries as tags */}
           {entries.map((entry, index) => (
             <div
               key={index}
@@ -230,7 +232,6 @@ export function InputBoxMultipleEntry({
             </div>
           ))}
 
-          {/* Input field */}
           <input
             id={value}
             {...register(value)}
@@ -245,7 +246,6 @@ export function InputBoxMultipleEntry({
         </div>
       </div>
 
-      {/* Floating label */}
       <span
         className={`
           absolute 
@@ -283,8 +283,16 @@ export function InputBoxRed({
   const handleBlur = () => setIsFocused(false);
 
   const handleChange = (e) => {
-    setInputValue(e.target.value);
-    setValue(value, e.target.value); // Update form value in react-hook-form
+    const newValue = e.target.value;
+
+    if (UPPERCASE_FIELDS.includes(value)) {
+      const upper = newValue.toUpperCase();
+      setInputValue(upper);
+      setValue(value, upper);
+    } else {
+      setInputValue(newValue);
+      setValue(value, newValue.toLowerCase());
+    }
   };
 
   const isPlaceholderFloating = isFocused || inputValue !== "";
@@ -342,11 +350,16 @@ export function InputBoxYellow({
 
   const handleChange = (e) => {
     let newValue = e.target.value;
-    if (["code", "panNo", "gstNo", "cinNo", "awbNo", "customerCode", "runNumber", "runNo", "airwaybillNumber", "clubbingNumber"].includes(value)) {
+
+    if (UPPERCASE_FIELDS.includes(value)) {
       newValue = newValue.toUpperCase();
+      setInputValue(newValue);
+      setValue(value, newValue);
+    } else {
+      setInputValue(newValue);
+      setValue(value, newValue.toLowerCase());
     }
-    setInputValue(newValue);
-    setValue(value, newValue);
+
     if (trigger) {
       trigger(value);
     }
@@ -415,7 +428,7 @@ export function InputBoxYellowWithPrefix({
   const handleBlur = () => setIsFocused(false);
 
   const getCleanPrefix = () => {
-    if (!prefix) return ""; // default fallback
+    if (!prefix) return "";
     const match = prefix.match(/^([A-Z]{2,3})\s*-/i);
     if (match && match[1]) {
       return match[1].trim().toUpperCase();
@@ -428,19 +441,15 @@ export function InputBoxYellowWithPrefix({
     const cleanPrefix = getCleanPrefix();
 
     if (value === "awbNo") {
-      // Remove any existing prefix (like EX-, RF-, etc.)
       newValue = newValue
         .replace(/^[A-Z]{2}[-\s]*/, "")
-        .replace(/[^A-Z0-9]/g, ""); // allow only letters/numbers
-
-      // Limit to 10 characters after prefix
+        .replace(/[^A-Z0-9]/g, "");
       newValue = newValue.substring(0, 10);
-
-      // Re-apply prefix
       newValue = `${cleanPrefix}-${newValue}`;
     }
 
     setInputValue(newValue);
+    // awbNo is always uppercase; store as-is
     setValue(value, newValue);
     if (trigger) trigger(value);
   };
@@ -517,7 +526,7 @@ export function NumberInputBox({
 
   const handleChange = (e) => {
     setInputValue(e.target.value);
-    setValue(value, e.target.value); // Update form value in react-hook-form
+    setValue(value, e.target.value);
   };
 
   const isPlaceholderFloating = isFocused || inputValue !== "";
@@ -527,7 +536,7 @@ export function NumberInputBox({
   }, [initialValue]);
 
   useEffect(() => {
-    setInputValue(""); // Reset input value when resetFactor changes
+    setInputValue("");
   }, [resetFactor]);
 
   return (
@@ -572,17 +581,15 @@ export function FractionNumberInputBox({
   const handleChange = (e) => {
     const newValue = e.target.value;
     setInputValue(newValue);
-    setValue(value, newValue); // Update form value in react-hook-form
+    setValue(value, newValue);
   };
 
   const isPlaceholderFloating = isFocused || inputValue !== "";
 
-  // Update when initialValue changes (from fetched data)
   useEffect(() => {
     setInputValue(initialValue || "");
   }, [initialValue]);
 
-  // Reset when resetFactor changes
   useEffect(() => {
     setInputValue("");
     setValue(value, "");
@@ -599,7 +606,7 @@ export function FractionNumberInputBox({
         onBlur={handleBlur}
         min="0.00"
         max="100.00"
-        step="0.01" // Allow fractional values with 2 decimal places
+        step="0.01"
         className="border border-[#979797] outline-none rounded-md h-8 px-4 py-2 w-full"
       />
       <span
@@ -614,90 +621,6 @@ export function FractionNumberInputBox({
     </div>
   );
 }
-
-// export function DateInputBox({
-//   placeholder = "Date",
-//   value,
-//   register,
-//   setValue,
-//   initialValue = "",
-//   resetFactor = false,
-//   minToday = false,
-//   maxToday = false,
-//   todayDate = false,
-//   error,
-//   trigger,
-//   validation = {},
-//   disabled = false,
-// }) {
-//   const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
-//   const [isFocused, setIsFocused] = useState(false);
-//   const [inputValue, setInputValue] = useState(
-//     todayDate ? today : initialValue || ""
-//   );
-
-//   const handleFocus = () => setIsFocused(true);
-//   const handleBlur = () => setIsFocused(false);
-
-//   const handleChange = (e) => {
-//     const newValue = e.target.value;
-//     setInputValue(newValue);
-//     setValue(value, newValue);
-//     if (trigger) trigger(value);
-//   };
-
-//   const isPlaceholderFloating = isFocused || inputValue !== "";
-
-//   // Update input value when initialValue changes
-//   useEffect(() => {
-//     setInputValue(todayDate ? today : initialValue || "");
-//   }, [initialValue, todayDate]);
-
-//   // Reset input value when resetFactor changes
-//   useEffect(() => {
-//     setInputValue(todayDate ? today : "");
-//     setValue(value, todayDate ? today : null);
-//   }, [resetFactor]);
-
-//   return (
-//     <div className="relative w-full">
-//       <input
-//         type="date"
-//         {...register(value, validation)}
-//         min={minToday ? today : ""}
-//         max={maxToday ? today : ""}
-//         value={inputValue}
-//         id={value}
-//         onChange={handleChange}
-//         onFocus={handleFocus}
-//         onBlur={handleBlur}
-//         disabled={disabled}
-//         className={`border outline-none rounded-md h-10 px-4 py-2 w-full bg-transparent
-//           ${error ? "border-red" : "border-[#979797]"}
-//           ${disabled ? "bg-white-smoke" : ""}
-//           ${isPlaceholderFloating ? "" : "text-transparent"}`}
-//       />
-
-//       {placeholder && (
-//         <label
-//           htmlFor={value}
-//           className={`absolute transition-all px-2 left-4
-//             ${
-//               isPlaceholderFloating
-//                 ? "-top-2 text-xs z-10 pb-0 font-semibold text-[#979797] bg-white h-4"
-//                 : `${
-//                     error ? "top-1/3" : "top-1/2"
-//                   } -translate-y-1/2 text-sm text-[#979797]`
-//             }`}
-//         >
-//           {placeholder}
-//         </label>
-//       )}
-
-//       {error && <span className="text-red text-xs">{error.message}</span>}
-//     </div>
-//   );
-// }
 
 export function DateInputBox({
   placeholder = "Date",
@@ -721,19 +644,16 @@ export function DateInputBox({
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Theme colors
   const themeRed = "#EA1B40";
-  const themeRedHover = "#D01738"; // Slightly darker for hover
-  const themeLightRed = "#FEF0F3"; // Light red for background highlights
+  const themeRedHover = "#D01738";
+  const themeLightRed = "#FEF0F3";
 
-  // Parse DD/MM/YYYY to Date object
   function parseDate(dateStr) {
     if (!dateStr) return null;
     const [day, month, year] = dateStr.split("/");
     return new Date(year, month - 1, day);
   }
 
-  // Format Date to DD/MM/YYYY
   function formatDate(dateObj) {
     if (!dateObj || isNaN(dateObj.getTime())) return "";
     const day = String(dateObj.getDate()).padStart(2, "0");
@@ -742,11 +662,9 @@ export function DateInputBox({
     return `${day}/${month}/${year}`;
   }
 
-  // Get today's date
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Initialize date
   useEffect(() => {
     if (todayDate) {
       setDate(today);
@@ -763,7 +681,6 @@ export function DateInputBox({
     }
   }, []);
 
-  // Handle resetFactor - clear the date input when resetFactor changes
   useEffect(() => {
     setDate(null);
     setDisplayValue("");
@@ -772,7 +689,6 @@ export function DateInputBox({
     }
   }, [resetFactor]);
 
-  // Handle date selection from calendar
   const handleDateSelect = (selectedDate) => {
     setDate(selectedDate);
     const formatted = formatDate(selectedDate);
@@ -787,12 +703,10 @@ export function DateInputBox({
     setIsFocused(true);
   };
 
-  // Helper function to set today's date
   const setTodayDate = () => {
     handleDateSelect(today);
   };
 
-  // Handle manual input
   const handleManualInput = (e) => {
     let valueInput = e.target.value;
     let numbers = valueInput.replace(/\D/g, "");
@@ -838,9 +752,7 @@ export function DateInputBox({
     }
   };
 
-  // Handle keyboard shortcuts for today's date
   const handleKeyDown = (e) => {
-    // Enter on empty/incomplete input sets today
     if (
       e.key === "Enter" &&
       (!displayValue ||
@@ -850,13 +762,11 @@ export function DateInputBox({
       e.preventDefault();
       setTodayDate();
     }
-    // Tab on empty input sets today
     if (e.key === "Tab" && (!displayValue || displayValue === "  /  /    ")) {
       setTodayDate();
     }
   };
 
-  // Handle focus
   const handleFocus = (e) => {
     setIsFocused(true);
     if (!displayValue) {
@@ -864,7 +774,6 @@ export function DateInputBox({
     }
   };
 
-  // Handle blur
   const handleBlur = (e) => {
     if (displayValue === "  /  /    ") {
       setDisplayValue("");
@@ -877,7 +786,6 @@ export function DateInputBox({
     }, 100);
   };
 
-  // Custom navigation label for month/year
   const formatMonthYear = (locale, date) => {
     return date.toLocaleDateString("en-US", {
       month: "long",
@@ -885,12 +793,10 @@ export function DateInputBox({
     });
   };
 
-  // Custom format for day of week
   const formatShortWeekday = (locale, date) => {
     return date.toLocaleDateString("en-US", { weekday: "narrow" });
   };
 
-  // Close calendar when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
@@ -915,7 +821,6 @@ export function DateInputBox({
 
   return (
     <div className="relative w-full min-w-0" ref={wrapperRef}>
-      {/* Hidden input for react-hook-form registration */}
       <input
         type="hidden"
         {...(register ? register(value, validation) : {})}
@@ -923,7 +828,6 @@ export function DateInputBox({
       />
 
       <div className="relative">
-        {/* Custom visible input */}
         <input
           ref={inputRef}
           type="text"
@@ -950,7 +854,6 @@ export function DateInputBox({
           }}
         />
 
-        {/* Calendar icon */}
         <div
           className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 cursor-pointer pointer-events-auto hover:text-gray-700"
           onClick={() => {
@@ -964,7 +867,6 @@ export function DateInputBox({
           <CalendarIcon className="h-5 w-5" />
         </div>
 
-        {/* Custom floating label */}
         {placeholder && (
           <label
             htmlFor={value}
@@ -982,7 +884,6 @@ export function DateInputBox({
         )}
       </div>
 
-      {/* Custom Calendar Popup */}
       {showCalendar && !disabled && (
         <div className="absolute z-50 mt-0.5 shadow-sm bg-white border border-gray-200 rounded-sm p-0.5 min-w-[200px]">
           <Calendar
@@ -996,7 +897,7 @@ export function DateInputBox({
                 year: "2-digit",
               })
             }
-            formatShortWeekday={() => ""} // Hide weekday headers completely
+            formatShortWeekday={() => ""}
             prevLabel={<ChevronLeft className="h-2 w-2" />}
             nextLabel={<ChevronRight className="h-2 w-2" />}
             prev2Label={null}
@@ -1005,7 +906,6 @@ export function DateInputBox({
             className="border-0 font-sans"
           />
 
-          {/* Remove footer completely or make it just a close button */}
           <div className="mt-0.5 pt-0.5 border-t border-gray-100 flex justify-end">
             <button
               className="text-xs text-white px-1 py-0.5 rounded-sm font-medium text-[10px]"
@@ -1021,9 +921,7 @@ export function DateInputBox({
         <span className="text-red text-xs mt-1 block">{error.message}</span>
       )}
 
-      {/* Custom CSS for calendar with theme colors */}
       <style jsx global>{`
-        /* Micro calendar */
         .react-calendar {
           border: none !important;
           font-family: inherit !important;
@@ -1034,7 +932,6 @@ export function DateInputBox({
           padding: 0 !important;
         }
 
-        /* Remove all unnecessary spacing */
         .react-calendar__navigation {
           display: flex !important;
           align-items: center !important;
@@ -1070,12 +967,10 @@ export function DateInputBox({
           font-size: 0.6rem !important;
         }
 
-        /* Hide weekday headers completely */
         .react-calendar__month-view__weekdays {
           display: none !important;
         }
 
-        /* Micro date cells */
         .react-calendar__tile {
           max-width: 100% !important;
           text-align: center !important;
@@ -1095,40 +990,34 @@ export function DateInputBox({
           background-color: #f3f4f6 !important;
         }
 
-        /* Compact month view grid */
         .react-calendar__month-view__days {
           gap: 0.0625rem !important;
         }
 
-        /* Today's date - minimal styling */
         .react-calendar__tile--now {
           background: ${themeLightRed} !important;
           color: ${themeRed} !important;
           font-weight: 600 !important;
         }
 
-        /* Selected date - minimal styling */
         .react-calendar__tile--active {
           background: ${themeRed} !important;
           color: white !important;
           font-weight: 600 !important;
         }
 
-        /* Disabled dates */
         .react-calendar__tile--disabled {
           background-color: transparent !important;
           color: #d1d5db !important;
           cursor: not-allowed !important;
         }
 
-        /* Remove all focus outlines for minimal look */
         .react-calendar__tile:focus,
         .react-calendar__navigation button:focus {
           outline: none !important;
           box-shadow: none !important;
         }
 
-        /* Make tile container more compact */
         .react-calendar__month-view__days__day {
           padding: 0 !important;
         }
@@ -1143,7 +1032,6 @@ export function ImageInputBox({
   setValue,
   value,
   resetFactor = false,
-
   setUrl,
 }) {
   const [isPlaceholderFloating, setIsPlaceholderFloating] = useState(false);
@@ -1153,34 +1041,32 @@ export function ImageInputBox({
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
-      setIsPlaceholderFloating(true); // Float the placeholder
-      setFileName(file.name); // Set the file name
+      setIsPlaceholderFloating(true);
+      setFileName(file.name);
       setFile(file);
     } else {
-      setIsPlaceholderFloating(false); // Reset placeholder
-      setFileName(""); // Clear the file name
+      setIsPlaceholderFloating(false);
+      setFileName("");
       setFile(null);
     }
   };
 
   const handleClearFile = () => {
-    setFileName(""); // Clear the file name
-    setValue(value, null); // Set the form value to null
-    setIsPlaceholderFloating(false); // Reset placeholder
+    setFileName("");
+    setValue(value, null);
+    setIsPlaceholderFloating(false);
     setFile(null);
   };
 
   const handleImageUpload = (file) => {
-    // Create a new FileReader to read the file as base64
     const reader = new FileReader();
 
     reader.onloadend = () => {
-      const base64String = reader.result; // This is the base64 string
-      setValue(value, base64String); // Set the form value to the base64 string
-      setUrl(base64String); // Set the preview URL
+      const base64String = reader.result;
+      setValue(value, base64String);
+      setUrl(base64String);
     };
 
-    // Read the file as a base64 string
     if (file) {
       reader.readAsDataURL(file);
     }
@@ -1196,7 +1082,7 @@ export function ImageInputBox({
         <input
           id={value}
           {...register(value)}
-          onChange={handleFileChange} // Handle file selection
+          onChange={handleFileChange}
           type="file"
           className="border border-[#979797] outline-none bg-transparent rounded-md h-8 px-4 py-2 w-full opacity-0 absolute z-10 cursor-pointer"
           accept=".png, .jpg, .jpeg"
@@ -1253,6 +1139,20 @@ export function SearchInputBox({
   onKeyDown,
   onChange,
 }) {
+  const handleChange = (e) => {
+    if (onChange) {
+      // Normalize search query to lowercase so it matches regardless of case
+      const normalized = {
+        ...e,
+        target: {
+          ...e.target,
+          value: e.target.value.toLowerCase(),
+        },
+      };
+      onChange(normalized);
+    }
+  };
+
   return (
     <div className="border rounded-md overflow-hidden border-french-gray flex items-center gap-2 w-full pl-6 text-sm">
       <Image
@@ -1271,7 +1171,7 @@ export function SearchInputBox({
         value={value}
         onBlur={onBlur}
         onKeyDown={onKeyDown}
-        onChange={onChange}
+        onChange={handleChange}
       />
     </div>
   );
@@ -1285,17 +1185,15 @@ export function DisplayInput({
 }) {
   const [entries, setEntries] = useState([]);
 
-  // Sync entries with parent valueArray
   useEffect(() => {
     if (Array.isArray(valueArray)) setEntries(valueArray);
   }, [valueArray]);
 
-  // Remove an entry
   const removeEntry = (index) => {
-    if (disabled) return; // prevent removal when disabled
+    if (disabled) return;
     const newEntries = entries.filter((_, i) => i !== index);
     setEntries(newEntries);
-    setValue?.(newEntries); // update parent if setter provided
+    setValue?.(newEntries);
   };
 
   return (
@@ -1362,28 +1260,22 @@ export const MultipleEntryInputBox = forwardRef(
     const [currentInput, setCurrentInput] = useState("");
     const containerRef = useRef(null);
 
-    // expose clearAll method
-    // expose clearAll + getValues method
     useImperativeHandle(ref, () => ({
       clearAll: () => {
         setEntries([]);
         setCurrentInput("");
         setValue(value, []);
       },
-      getValues: () => entries, // ✅ this lets parent access all AWB numbers
+      getValues: () => entries,
     }));
 
-    // ✅ only update form value when entries count changes
     useEffect(() => {
-      // prevent duplicate writes
       setValue(value, [...entries], {
         shouldValidate: false,
         shouldDirty: false,
       });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [entries.length]);
 
-    // reset form trigger
     useEffect(() => {
       if (resetFactor) {
         setEntries([]);
@@ -1394,8 +1286,9 @@ export const MultipleEntryInputBox = forwardRef(
     const handleKeyDown = (e) => {
       if ((e.key === " " || e.key === "Enter") && currentInput.trim() !== "") {
         e.preventDefault();
-        if (!entries.includes(currentInput.trim())) {
-          setEntries((prev) => [...prev, currentInput.trim()]);
+        const normalized = currentInput.trim().toUpperCase(); // AWB entries stay uppercase
+        if (!entries.includes(normalized)) {
+          setEntries((prev) => [...prev, normalized]);
         }
         setCurrentInput("");
       } else if (e.key === "Backspace" && currentInput === "") {
@@ -1408,7 +1301,7 @@ export const MultipleEntryInputBox = forwardRef(
       const pastedText = e.clipboardData.getData("text");
       const newEntries = pastedText
         .split(/[\s,]+/)
-        .map((t) => t.trim())
+        .map((t) => t.trim().toUpperCase()) // normalize pasted entries
         .filter((t) => t !== "");
       setEntries((prev) => [...new Set([...prev, ...newEntries])]);
     };
@@ -1443,7 +1336,7 @@ export const MultipleEntryInputBox = forwardRef(
           <input
             name={value}
             value={currentInput}
-            onChange={(e) => setCurrentInput(e.target.value.toUpperCase())} // convert to uppercase
+            onChange={(e) => setCurrentInput(e.target.value.toUpperCase())}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder={placeholder}
