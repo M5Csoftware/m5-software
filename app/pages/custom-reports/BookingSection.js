@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 const BookingSection = ({ onChange, preSelectedFields = [] }) => {
   const sections = {
     "Shipment Info": [
-      "AWB Number",
       "Reference Number",
       "Booking Date",
       "Shipment Type",
@@ -51,7 +50,9 @@ const BookingSection = ({ onChange, preSelectedFields = [] }) => {
     Object.entries(sections).forEach(([title, children]) => {
       const allSelected = children.every((c) => preSelectedFields.includes(c));
       initialState[`title-${title}`] = allSelected;
-      children.forEach((c) => (initialState[c] = preSelectedFields.includes(c)));
+      children.forEach(
+        (c) => (initialState[c] = preSelectedFields.includes(c)),
+      );
     });
     return initialState;
   });
