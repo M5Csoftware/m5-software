@@ -7,7 +7,7 @@ const OperationsSection = ({ onChange, preSelectedFields = [] }) => {
       "Pickup Status",
       "Received At Hub",
       "Bag Number",
-      "Manifested By",
+      "Bagged By",
       "Manifest Date",
     ],
     Routing: [
@@ -15,15 +15,12 @@ const OperationsSection = ({ onChange, preSelectedFields = [] }) => {
       "Destination Airport",
       "Flight Number",
       "Offload Reason",
-      "Rescheduled Flight",
     ],
     "Tracking / Status": [
       "Current Status",
       "Status Date",
-      "Delivered By",
       "Delivery Date",
       "POD Available",
-      "POD File",
     ],
   };
 
