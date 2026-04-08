@@ -24,7 +24,9 @@ const CustomReports = () => {
     Billing: [],
   });
 
-  const allSelectedFields = [...new Set(Object.values(selectedFields).flat())];
+  const allSelectedFields = [
+    ...new Set(["AWB Number", ...Object.values(selectedFields).flat()]),
+  ];
 
   const dynamicColumns = allSelectedFields.map((field) => ({
     key: field.toLowerCase().replace(/\s+/g, "_").replace(/[^\w]/g, ""), // convert to safe key
