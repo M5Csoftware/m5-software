@@ -6,20 +6,20 @@ const BillingSection = ({ onChange, preSelectedFields = [] }) => {
     Charges: [
       "Base Freight",
       "Fuel Surcharge",
-      "Other Charges",
+      "Misc Charges",
+      "Misc Chg Reason",
       "Discount",
       "Total Amount",
     ],
-    Taxation: ["GST Rate", "GST Amount", "HSN Code"],
+    Taxation: ["CGST", "SGST", "IGST", "HSN Code"],
     "Invoice Info": [
       "Invoice Number",
       "Invoice Date",
       "Payment Status",
       "Payment Mode",
-      "Billing Cycle",
     ],
     "Account Link": ["Account Code", "Billed By"],
-    Documents: ["Invoice File", "Receipt File"],
+    Documents: ["Bill No"],
   };
 
   // Build dynamic state based on preSelectedFields
@@ -28,7 +28,9 @@ const BillingSection = ({ onChange, preSelectedFields = [] }) => {
     Object.entries(sections).forEach(([title, children]) => {
       const allSelected = children.every((c) => preSelectedFields.includes(c));
       initialState[`title-${title}`] = allSelected;
-      children.forEach((c) => (initialState[c] = preSelectedFields.includes(c)));
+      children.forEach(
+        (c) => (initialState[c] = preSelectedFields.includes(c)),
+      );
     });
     return initialState;
   });

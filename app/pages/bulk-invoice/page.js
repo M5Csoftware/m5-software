@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import Image from "next/image";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import NotificationFlag from "@/app/components/Notificationflag";
+import { useAuth } from "@/app/Context/AuthContext";
 
 function RedCheckbox({ id, isChecked, onChange, label }) {
   return (
@@ -63,6 +64,7 @@ const BulkInvoice = () => {
   const [customerList, setCustomerList] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const { server } = useContext(GlobalContext);
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [allCustomers, setAllCustomers] = useState([]);
 
@@ -283,7 +285,7 @@ const BulkInvoice = () => {
       const res = await axios.post(`${server}/billing-bulk-invoice`, {
         invoices: invoicesData,
         branch: selectedBranch,
-        createdBy: "bulk",
+        createdBy: user?.userId || "bulk",
         invoiceDate: invoiceISO,
         fromDate: fromISO,
         toDate: toISO,

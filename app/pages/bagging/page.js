@@ -24,6 +24,7 @@ import JsBarcode from "jsbarcode";
 import { jsPDF } from "jspdf";
 import { useAlertCheck } from "@/app/hooks/useAlertCheck";
 import { AlertModal } from "@/app/components/AlertModal";
+import { useAuth } from "@/app/Context/AuthContext";
 
 // Custom Input Component for Bag Number that properly updates
 const BagNumberInput = ({ value, onChange, disabled, placeholder }) => {
@@ -345,6 +346,7 @@ const Bagging = () => {
   const [awbNumberValue, setAwbNumberValue] = useState("");
 
   const { server } = useContext(GlobalContext);
+  const { user } = useAuth();
   const { checkAlert } = useAlertCheck();
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [alertData, setAlertData] = useState({ message: "", awbNo: "" });
@@ -1593,8 +1595,9 @@ const Bagging = () => {
 
       // Send finalize flag to backend
       const response = await axios.put(`${server}/bagging`, {
-        runNo: formData.runNo,
+        runNo: formData.runNo.toUpperCase(),
         finalize: true,
+        finalizedBy: user?.userId || "System",
       });
 
       if (response.status === 200) {
