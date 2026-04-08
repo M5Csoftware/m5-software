@@ -16,7 +16,6 @@ const CustomerServiceSection = ({ onChange, preSelectedFields = [] }) => {
       "Raised Date",
       "Handled By",
       "CS Remarks",
-      "Communication Log",
     ],
     Resolution: ["Status", "Resolution Date", "TAT"],
   };
