@@ -354,7 +354,7 @@ const InvoiceMain = ({ fYear }) => {
       fromDate: fromISO ? new Date(fromISO) : null,
       toDate: toISO ? new Date(toISO) : null,
       branch: formData.branch || "",
-      createdBy: "Admin",
+      createdBy: user?.userId || "Admin",
 
       customer: {
         accountCode: formData.code || "",
