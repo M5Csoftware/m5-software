@@ -143,8 +143,11 @@ function SaleSummarySectorWise() {
     );
     const optionalPresence = !!(values.runNumber || values.origin);
 
-    if (mandatoryPresence) {
-      if (!values.from || !values.to) {
+    if (optionalPresence) {
+      // Dates are optional
+    } else if (mandatoryPresence) {
+      if (!values.from  || !values.to) {
+
         setNotification({
           type: "error",
           message: "From and To dates are required for specific filter searches.",
@@ -152,8 +155,6 @@ function SaleSummarySectorWise() {
         });
         return;
       }
-    } else if (optionalPresence) {
-      // Dates are optional
     } else if (!values.from || !values.to) {
       // General behavior: require dates
       setNotification({

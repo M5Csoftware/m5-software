@@ -78,11 +78,15 @@ const AwbWish = ({ refreshKey }) => {
         // works for master + child
         setValue("forwarder", data.forwarder || "");
         setValue("forwardingNumber", data.forwardingNo || "");
+        setValue("coLoader", data.coLoader || "");
+        setValue("coLoaderNumber", data.coLoaderNumber || "");
 
         setRowData([
           {
             forwarder: data.forwarder || "",
             forwardingNo: data.forwardingNo || "",
+            coLoader: data.coLoader || "",
+            coLoaderNumber: data.coLoaderNumber || "",
             source: data.source, // optional
           },
         ]);
