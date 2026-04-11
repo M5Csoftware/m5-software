@@ -448,7 +448,10 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
   };
 
   const handleSearch = async (termManual) => {
-    const term = termManual || searchTerm || watch("complaintNo");
+    const term =
+      typeof termManual === "string" || typeof termManual === "number"
+        ? termManual
+        : searchTerm || watch("complaintNo");
     if (!term)
       return showNotification("error", "Enter Complaint No or ID to search");
 
@@ -656,18 +659,23 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
                         resetFactor={resetFactor}
                         reset={reset}
                       />
+                      <div className="p-0 m-0 w-full bg-white">
+                        <InputBox
+                          key={`complaintNo-${formKey}`}
+                          placeholder="Complaint Number"
+                          register={register}
+                          setValue={setValue}
+                          value="complaintNo"
+                          initialValue={watch("complaintNo")}
+                          onChange={(e) =>
+                            setValue(
+                              "complaintNo",
+                              e.target.value.toUpperCase(),
+                            )
+                          }
+                        />
+                      </div>
 
-                      <InputBox
-                        key={`complaintNo-${formKey}`}
-                        placeholder="Complaint Number"
-                        register={register}
-                        setValue={setValue}
-                        value="complaintNo"
-                        initialValue={watch("complaintNo")}
-                        onChange={(e) =>
-                          setValue("complaintNo", e.target.value.toUpperCase())
-                        }
-                      />
                       <div className="">
                         <OutlinedButtonRed
                           label="Search"
