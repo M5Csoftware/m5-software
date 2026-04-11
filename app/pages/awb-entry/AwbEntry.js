@@ -2981,7 +2981,7 @@ function AwbEntry() {
                       <button
                         type="button"
                         onClick={() => {
-                            openVolumeWtWindow();
+                          openVolumeWtWindow();
                         }}
                         className="absolute top-1/4 right-4"
                       >
@@ -3137,7 +3137,7 @@ function AwbEntry() {
                       <button
                         type="button"
                         onClick={() => {
-                            openInvoiceDetailsWindow();
+                          openInvoiceDetailsWindow();
                         }}
                         className="absolute top-1/4 right-4"
                       >
