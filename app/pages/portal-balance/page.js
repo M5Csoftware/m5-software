@@ -11,9 +11,10 @@ import NotificationFlag from "@/app/components/Notificationflag";
 
 const PortalBalance = () => {
   const { register, setValue, reset, getValues, watch } = useForm();
-  const { server, setToggleCodeList, toggleCodeList } = useContext(GlobalContext);
+  const { server, setToggleCodeList, toggleCodeList } =
+    useContext(GlobalContext);
 
-  const [loading, setLoading] = useState(false);       // only for Show button
+  const [loading, setLoading] = useState(false); // only for Show button
   const [fetchingName, setFetchingName] = useState(false); // silent background fetch
   const [customerData, setCustomerData] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -84,7 +85,7 @@ const PortalBalance = () => {
       try {
         setFetchingName(true);
         const res = await axios.get(
-          `${server}/customer-account?accountCode=${code.trim().toUpperCase()}`
+          `${server}/customer-account?accountCode=${code.trim().toUpperCase()}`,
         );
         if (res.data) {
           setValue("client", res.data.name || res.data.companyName || "");
@@ -111,7 +112,7 @@ const PortalBalance = () => {
     try {
       setLoading(true);
       const res = await axios.get(
-        `${server}/customer-account?accountCode=${codeValue}`
+        `${server}/customer-account?accountCode=${codeValue}`,
       );
 
       if (!res.data) {
@@ -121,10 +122,16 @@ const PortalBalance = () => {
 
       const name = res.data.name || res.data.companyName || "";
       // ✅ FIX: leftOverBalance is the actual field from the API
-      const balance = res.data.leftOverBalance ?? res.data.portalBalance ?? res.data.balance ?? "0";
+      const balance =
+        res.data.leftOverBalance ??
+        res.data.portalBalance ??
+        res.data.balance ??
+        "0";
 
       console.log("💰 Full API Response:", res.data);
-      console.log(`👤 Customer: ${name} | 💳 leftOverBalance raw: ${res.data.leftOverBalance} | Showing: ${balance}`);
+      console.log(
+        `👤 Customer: ${name} | 💳 leftOverBalance raw: ${res.data.leftOverBalance} | Showing: ${balance}`,
+      );
 
       setValue("client", name);
       setValue("portalBalance", String(balance));
@@ -150,24 +157,54 @@ const PortalBalance = () => {
     try {
       setFetchingName(true);
       const res = await axios.get(
-        `${server}/customer-account?accountCode=${accountCode}`
+        `${server}/customer-account?accountCode=${accountCode}`,
       );
       if (res.data) {
-          const name = res.data.name || res.data.companyName || rowData.name;
-          const balance = res.data.leftOverBalance ?? res.data.portalBalance ?? res.data.balance ?? "0";
+        const name = res.data.name || res.data.companyName || rowData.name;
+        const balance =
+          res.data.leftOverBalance ??
+          res.data.portalBalance ??
+          res.data.balance ??
+          "0";
 
-          console.log("💰 Full API Response (CodeList):", res.data);
-          console.log(`👤 Customer: ${name} | 💳 leftOverBalance raw: ${res.data.leftOverBalance} | Showing: ${balance}`);
+        console.log("💰 Full API Response (CodeList):", res.data);
+        console.log(
+          `👤 Customer: ${name} | 💳 leftOverBalance raw: ${res.data.leftOverBalance} | Showing: ${balance}`,
+        );
 
-          setValue("client", name);
-          setValue("portalBalance", String(balance));
-          showNotification("success", "Customer loaded");
-        }
+        setValue("client", name);
+        setValue("portalBalance", String(balance));
+        showNotification("success", "Customer loaded");
+      }
     } catch (err) {
       console.error("Error loading customer:", err.message);
       showNotification("error", "Failed to load customer data");
     } finally {
       setFetchingName(false);
+    }
+  };
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    if (e.target.tagName === "BUTTON") {
+      e.target.click();
+      return;
+    }
+
+    const container = e.currentTarget;
+    const inputs = Array.from(
+      container.querySelectorAll(
+        'input:not([disabled]):not([readonly]):not([type="checkbox"])',
+      ),
+    );
+    const currentIndex = inputs.indexOf(e.target);
+
+    if (currentIndex !== -1 && currentIndex < inputs.length - 1) {
+      inputs[currentIndex + 1].focus();
+    } else {
+      // Last input → trigger Show Balance
+      handleShowBalance(e);
     }
   };
 
@@ -191,11 +228,15 @@ const PortalBalance = () => {
       { key: "accountCode", label: "Account Code" },
       { key: "name", label: "Customer Name" },
     ],
-    []
+    [],
   );
 
   return (
-    <div className="flex flex-col gap-9" key={refreshKey}>
+    <div
+      className="flex flex-col gap-9"
+      key={refreshKey}
+      onKeyDown={handleKeyDown}
+    >
       <NotificationFlag
         type={notification.type}
         message={notification.message}
@@ -265,11 +306,7 @@ const PortalBalance = () => {
           </div>
 
           <div>
-            <SimpleButton
-              type="button"
-              name="Clear"
-              onClick={handleClear}
-            />
+            <SimpleButton type="button" name="Clear" onClick={handleClear} />
           </div>
         </div>
       </div>

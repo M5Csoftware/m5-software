@@ -55,7 +55,7 @@ const ComplaintReport = () => {
       { key: "accountCode", label: "Customer Code" },
       { key: "name", label: "Customer Name" },
     ],
-    []
+    [],
   );
 
   // Fetch all customer accounts for code list
@@ -74,7 +74,7 @@ const ComplaintReport = () => {
           accounts.map((acc) => ({
             accountCode: acc.accountCode,
             name: acc.name,
-          }))
+          })),
         );
       }
     } catch (error) {
@@ -156,8 +156,8 @@ const ComplaintReport = () => {
       console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       const complaintsRes = await axios.get(`${server}/complaint-report`, {
-        params: { 
-          from: fromFormatted, 
+        params: {
+          from: fromFormatted,
           to: toFormatted,
           page,
           limit: pageLimit,
@@ -183,7 +183,7 @@ const ComplaintReport = () => {
           (report) =>
             report.customerCode &&
             report.customerCode.toString().toLowerCase() ===
-              code.trim().toLowerCase()
+              code.trim().toLowerCase(),
         );
       }
 
@@ -194,7 +194,7 @@ const ComplaintReport = () => {
             report.sector
               .toString()
               .toLowerCase()
-              .includes(runNumber.trim().toLowerCase())
+              .includes(runNumber.trim().toLowerCase()),
         );
       }
 
@@ -205,7 +205,7 @@ const ComplaintReport = () => {
             report.actionUser
               .toString()
               .toLowerCase()
-              .includes(branch.trim().toLowerCase())
+              .includes(branch.trim().toLowerCase()),
         );
       }
 
@@ -213,7 +213,7 @@ const ComplaintReport = () => {
         filteredReports = filteredReports.filter(
           (report) =>
             report.status &&
-            report.status.toLowerCase() === statusFilter.trim().toLowerCase()
+            report.status.toLowerCase() === statusFilter.trim().toLowerCase(),
         );
       }
 
@@ -221,10 +221,10 @@ const ComplaintReport = () => {
       setCurrentPage(pagination.currentPage);
       setTotalPages(pagination.totalPages);
       setTotalRecords(pagination.totalRecords);
-      
+
       showNotification(
-        "success", 
-        `Complaint report fetched successfully. Found ${filteredReports.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`
+        "success",
+        `Complaint report fetched successfully. Found ${filteredReports.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`,
       );
     } catch (error) {
       console.error("Error fetching complaint report:", error);
@@ -238,10 +238,10 @@ const ComplaintReport = () => {
   const onSubmit = async (data) => {
     // Store filters for pagination
     setCurrentFilters(data);
-    
+
     // Reset to page 1 for new search
     setCurrentPage(1);
-    
+
     // Fetch first page
     await fetchReports(data, 1);
   };
@@ -249,10 +249,10 @@ const ComplaintReport = () => {
   // Handle page change
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
-    
+
     // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
     // Fetch new page
     fetchReports(currentFilters, newPage);
   };
@@ -261,7 +261,7 @@ const ComplaintReport = () => {
   const handleLimitChange = (e) => {
     const newLimit = parseInt(e.target.value, 10);
     setPageLimit(newLimit);
-    
+
     // If we have current filters, refetch with new limit (reset to page 1)
     if (currentFilters) {
       setCurrentPage(1);
@@ -320,7 +320,7 @@ const ComplaintReport = () => {
       .map((r) =>
         Object.values(r)
           .map((val) => `"${val}"`)
-          .join(",")
+          .join(","),
       )
       .join("\n");
     const csvContent = `${headers}\n${rows}`;
@@ -331,6 +331,29 @@ const ComplaintReport = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    if (e.target.tagName === "BUTTON") {
+      e.target.click();
+      return;
+    }
+
+    const form = e.target.form;
+    const inputs = Array.from(
+      form.querySelectorAll(
+        'input:not([disabled]):not([readonly]):not([type="checkbox"]), select:not([disabled])',
+      ),
+    );
+    const currentIndex = inputs.indexOf(e.target);
+
+    if (currentIndex !== -1 && currentIndex < inputs.length - 1) {
+      inputs[currentIndex + 1].focus();
+    } else {
+      handleSubmit(onSubmit)();
+    }
   };
 
   useEffect(() => {
@@ -345,7 +368,7 @@ const ComplaintReport = () => {
     const fetchClient = async () => {
       try {
         const res = await axios.get(
-          `${server}/customer-account?accountCode=${code.trim()}`
+          `${server}/customer-account?accountCode=${code.trim()}`,
         );
 
         const name = res.data?.name || "";
@@ -372,7 +395,7 @@ const ComplaintReport = () => {
             Showing <span className="font-medium">{reports.length}</span> of{" "}
             <span className="font-medium">{totalRecords}</span> records
           </div>
-          
+
           <div className="flex items-center gap-2">
             <label htmlFor="limit" className="text-sm text-gray-600">
               Rows per page:
@@ -407,21 +430,25 @@ const ComplaintReport = () => {
           >
             Previous
           </button>
-          
+
           <span className="px-3 py-1 text-sm">
             Page {currentPage} of {totalPages}
           </span>
-          
+
           <button
             onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            disabled={
+              currentPage === totalPages || isLoading || !currentFilters
+            }
             className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
             Next
           </button>
           <button
             onClick={() => handlePageChange(totalPages)}
-            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            disabled={
+              currentPage === totalPages || isLoading || !currentFilters
+            }
             className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
             Last
@@ -439,7 +466,11 @@ const ComplaintReport = () => {
         visible={notification.visible}
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-9">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col gap-9"
+        onKeyDown={handleKeyDown}
+      >
         <Heading
           title="Complaint Report"
           bulkUploadBtn="hidden"
@@ -564,9 +595,7 @@ const ComplaintReport = () => {
           {/* Footer actions */}
           <div className="flex justify-between mt-1">
             <div className="text-sm text-gray-600">
-              {totalRecords > 0 && (
-                <span>Total Records: {totalRecords}</span>
-              )}
+              {totalRecords > 0 && <span>Total Records: {totalRecords}</span>}
             </div>
           </div>
         </div>

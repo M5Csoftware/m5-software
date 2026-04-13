@@ -52,7 +52,7 @@ function AccountLedgerMail() {
       { key: "branch", label: "Branch" },
       { key: "salePerson", label: "Sale Person" },
     ],
-    []
+    [],
   );
 
   const codeListColumns = useMemo(
@@ -60,7 +60,7 @@ function AccountLedgerMail() {
       { key: "userId", label: "User ID" },
       { key: "userName", label: "User Name" },
     ],
-    []
+    [],
   );
 
   const toISODate = (val) => {
@@ -88,7 +88,7 @@ function AccountLedgerMail() {
   const fetchSalesEmployees = async () => {
     try {
       const response = await axios.get(
-        `${server}/employee-master/employees?department=Sales`
+        `${server}/employee-master/employees?department=Sales`,
       );
       if (response.data.success) {
         setSalesEmployees(response.data.data || []);
@@ -155,7 +155,7 @@ function AccountLedgerMail() {
       showNotification(
         "error",
         error.response?.data?.message ||
-          "Error fetching data. Please try again."
+          "Error fetching data. Please try again.",
       );
       setRowData([]);
     } finally {
@@ -190,7 +190,7 @@ function AccountLedgerMail() {
         {
           accountCodes,
           withHoldAWB,
-        }
+        },
       );
 
       if (response.data.success) {
@@ -205,12 +205,12 @@ function AccountLedgerMail() {
 
         showNotification(
           "success",
-          `${files.length} Excel file(s) generated successfully and uploaded to Cloudinary`
+          `${files.length} Excel file(s) generated successfully and uploaded to Cloudinary`,
         );
       } else {
         showNotification(
           "error",
-          response.data.message || "Failed to generate Excel files"
+          response.data.message || "Failed to generate Excel files",
         );
       }
     } catch (error) {
@@ -218,7 +218,7 @@ function AccountLedgerMail() {
       showNotification(
         "error",
         error.response?.data?.message ||
-          "Error generating Excel files. Please try again."
+          "Error generating Excel files. Please try again.",
       );
     } finally {
       setExcelLoading(false);
@@ -244,7 +244,7 @@ function AccountLedgerMail() {
         {
           files: generatedFiles,
           customers: selectedItems,
-        }
+        },
       );
 
       if (response.data.success) {
@@ -253,14 +253,14 @@ function AccountLedgerMail() {
         if (!failedEmails || failedEmails.length === 0) {
           showNotification(
             "success",
-            `Emails sent successfully to ${sentEmails.length} customer(s)`
+            `Emails sent successfully to ${sentEmails.length} customer(s)`,
           );
           // Reset generated files after successful sending
           setGeneratedFiles([]);
         } else {
           showNotification(
             "error",
-            `${sentEmails.length} email(s) sent. Failed for ${failedEmails.length} customer(s).`
+            `${sentEmails.length} email(s) sent. Failed for ${failedEmails.length} customer(s).`,
           );
         }
 
@@ -268,7 +268,7 @@ function AccountLedgerMail() {
       } else {
         showNotification(
           "error",
-          response.data.message || "Failed to send emails"
+          response.data.message || "Failed to send emails",
         );
       }
     } catch (error) {
@@ -276,7 +276,7 @@ function AccountLedgerMail() {
       showNotification(
         "error",
         error.response?.data?.message ||
-          "Error sending emails. Please try again."
+          "Error sending emails. Please try again.",
       );
     } finally {
       setSendLoading(false);
@@ -312,10 +312,38 @@ function AccountLedgerMail() {
       setToggleCodeList(false);
     }
   };
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    if (e.target.tagName === "BUTTON") {
+      e.target.click();
+      return;
+    }
+
+    const form = e.target.form;
+    const inputs = Array.from(
+      form.querySelectorAll(
+        'input:not([disabled]):not([type="checkbox"]), select:not([disabled])',
+      ),
+    );
+    const currentIndex = inputs.indexOf(e.target);
+
+    if (currentIndex !== -1 && currentIndex < inputs.length - 1) {
+      inputs[currentIndex + 1].focus();
+    } else {
+      // Last input → trigger Show
+      handleShow(e);
+    }
+  };
 
   return (
     <>
-      <form className="flex flex-col gap-3" key={formKey}>
+      <form
+        className="flex flex-col gap-3"
+        key={formKey}
+        onKeyDown={handleKeyDown}
+      >
         <Heading
           title={`Account Ledger Mail`}
           bulkUploadBtn="hidden"
