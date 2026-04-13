@@ -72,7 +72,7 @@ const TrackingReport = () => {
       { key: "accountCode", label: "Customer Code" },
       { key: "name", label: "Customer Name" },
     ],
-    []
+    [],
   );
 
   const showNotification = (type, message) => {
@@ -99,7 +99,7 @@ const TrackingReport = () => {
           accounts.map((acc) => ({
             accountCode: acc.accountCode,
             name: acc.name,
-          }))
+          })),
         );
       }
     } catch (error) {
@@ -154,7 +154,7 @@ const TrackingReport = () => {
 
       // Build query parameters
       const params = {};
-      
+
       // Date range
       if (from && to) {
         const fromParsed = parseDateDDMMYYYY(from);
@@ -187,12 +187,15 @@ const TrackingReport = () => {
       if (network) params.network = network;
       if (service) params.service = service;
       if (counterPart) params.counterPart = counterPart;
-      
+
       // Pagination parameters
       params.page = page;
       params.limit = pageLimit;
 
-      console.log("Fetching tracking data with pagination:", { page, limit: pageLimit });
+      console.log("Fetching tracking data with pagination:", {
+        page,
+        limit: pageLimit,
+      });
 
       const response = await axios.get(`${server}/tracking-report`, { params });
 
@@ -210,11 +213,11 @@ const TrackingReport = () => {
         setCurrentPage(pagination.currentPage);
         setTotalPages(pagination.totalPages);
         setTotalRecords(pagination.totalRecords);
-        
+
         if (responseData.length > 0) {
           showNotification(
-            "success", 
-            `Found ${responseData.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`
+            "success",
+            `Found ${responseData.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`,
           );
         } else {
           showNotification("info", "No records found");
@@ -239,10 +242,10 @@ const TrackingReport = () => {
   // Handle page change
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
-    
+
     // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
     // Fetch new page
     fetchTrackingData(currentFilters, newPage);
   };
@@ -251,7 +254,7 @@ const TrackingReport = () => {
   const handleLimitChange = (e) => {
     const newLimit = parseInt(e.target.value, 10);
     setPageLimit(newLimit);
-    
+
     // If we have current filters, refetch with new limit (reset to page 1)
     if (currentFilters) {
       setCurrentPage(1);
@@ -312,10 +315,10 @@ const TrackingReport = () => {
 
     // Store filters for pagination
     setCurrentFilters(data);
-    
+
     // Reset to page 1 for new search
     setCurrentPage(1);
-    
+
     // Fetch first page
     fetchTrackingData(data, 1);
   };
@@ -358,6 +361,30 @@ const TrackingReport = () => {
     setTotalRecords(0);
     setCurrentFilters(null);
   };
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    if (e.target.tagName === "BUTTON") {
+      e.target.click();
+      return;
+    }
+
+    const form = e.target.form;
+    const inputs = Array.from(
+      form.querySelectorAll(
+        'input:not([disabled]):not([readonly]):not([type="checkbox"]), select:not([disabled])',
+      ),
+    );
+    const currentIndex = inputs.indexOf(e.target);
+
+    if (currentIndex !== -1 && currentIndex < inputs.length - 1) {
+      inputs[currentIndex + 1].focus();
+    } else {
+      // Last input → submit the form
+      handleSubmit(onSubmit)();
+    }
+  };
 
   // Handle code list action
   const handleCodeListAction = (action, data) => {
@@ -390,7 +417,7 @@ const TrackingReport = () => {
       XLSX.utils.book_append_sheet(wb, ws, "Tracking Report");
       XLSX.writeFile(
         wb,
-        `tracking_report_${new Date().toISOString().split("T")[0]}.xlsx`
+        `tracking_report_${new Date().toISOString().split("T")[0]}.xlsx`,
       );
 
       showNotification("success", "Excel file downloaded successfully");
@@ -416,7 +443,7 @@ const TrackingReport = () => {
               const value = row[col.key] || "";
               return `"${value.toString().replace(/"/g, '""')}"`;
             })
-            .join(",")
+            .join(","),
         )
         .join("\n");
       const fullCsvContent = headers + "\n" + csvContent;
@@ -453,7 +480,7 @@ const TrackingReport = () => {
             Showing <span className="font-medium">{rowData.length}</span> of{" "}
             <span className="font-medium">{totalRecords}</span> records
           </div>
-          
+
           <div className="flex items-center gap-2">
             <label htmlFor="limit" className="text-sm text-gray-600">
               Rows per page:
@@ -488,11 +515,11 @@ const TrackingReport = () => {
           >
             Previous
           </button>
-          
+
           <span className="px-3 py-1 text-sm">
             Page {currentPage} of {totalPages}
           </span>
-          
+
           <button
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages || loading || !currentFilters}
@@ -514,7 +541,11 @@ const TrackingReport = () => {
 
   return (
     <>
-      <form className="flex flex-col gap-9" onSubmit={handleSubmit(onSubmit)}>
+      <form
+        className="flex flex-col gap-9"
+        onSubmit={handleSubmit(onSubmit)}
+        onKeyDown={handleKeyDown}
+      >
         <NotificationFlag
           type={notification.type}
           message={notification.message}
@@ -689,9 +720,7 @@ const TrackingReport = () => {
 
           <div className="flex justify-between">
             <div className="text-sm text-gray-600">
-              {totalRecords > 0 && (
-                <span>Total Records: {totalRecords}</span>
-              )}
+              {totalRecords > 0 && <span>Total Records: {totalRecords}</span>}
             </div>
           </div>
         </div>

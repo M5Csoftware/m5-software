@@ -115,7 +115,7 @@ function BookingReportWithAmount() {
       { key: "shipmentContent", label: "Shipment Content" },
       { key: "holdReason", label: "Hold Reason" },
     ],
-    []
+    [],
   );
 
   // Download utility functions
@@ -186,7 +186,7 @@ function BookingReportWithAmount() {
       console.error("Error downloading CSV:", error);
       showNotification(
         "error",
-        "Error downloading CSV file. Please try again."
+        "Error downloading CSV file. Please try again.",
       );
     }
   };
@@ -271,7 +271,7 @@ function BookingReportWithAmount() {
       XLSX.utils.book_append_sheet(
         workbook,
         worksheet,
-        "Booking Report with Amount"
+        "Booking Report with Amount",
       );
 
       // Create filename
@@ -349,7 +349,7 @@ function BookingReportWithAmount() {
           if (error.response?.status !== 404) {
             console.error(
               "Unexpected error:",
-              error.response?.data?.error || error.message
+              error.response?.data?.error || error.message,
             );
           }
         } finally {
@@ -380,7 +380,7 @@ function BookingReportWithAmount() {
     if (optionalPresence) {
       // Origin or Run Number present: Dates are optional even if mandatory filters are present
     } else if (mandatoryPresence) {
-      if (!filters.from || !to) {
+      if (!filters.from || !filters.to) {
         showNotification(
           "error",
           "From and To dates are required for specific filter searches.",
@@ -432,7 +432,7 @@ function BookingReportWithAmount() {
         }
 
         console.log(
-          `Loaded ${shipments.length} records (Page ${pagination?.currentPage || page} of ${pagination?.totalPages || 1})`
+          `Loaded ${shipments.length} records (Page ${pagination?.currentPage || page} of ${pagination?.totalPages || 1})`,
         );
         console.log("Applied filters:", response.data.data.filters);
 
@@ -441,7 +441,7 @@ function BookingReportWithAmount() {
         } else {
           showNotification(
             "success",
-            `Found ${shipments.length} records (Page ${pagination?.currentPage || page} of ${pagination?.totalPages || 1})`
+            `Found ${shipments.length} records (Page ${pagination?.currentPage || page} of ${pagination?.totalPages || 1})`,
           );
         }
       } else {
@@ -466,7 +466,7 @@ function BookingReportWithAmount() {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
 
     // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     // Fetch new page
     fetchDataWithPagination(currentFilters, newPage);
@@ -532,7 +532,7 @@ function BookingReportWithAmount() {
     setWithBalance(false);
     setRowData([]);
     setAllData([]);
-    
+
     // Reset pagination
     setCurrentPage(1);
     setTotalPages(1);
@@ -540,6 +540,29 @@ function BookingReportWithAmount() {
     setCurrentFilters(null);
 
     showNotification("success", "Page refreshed successfully");
+  };
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    if (e.target.tagName === "BUTTON") {
+      e.target.click();
+      return;
+    }
+
+    const form = e.target.form;
+    const inputs = Array.from(
+      form.querySelectorAll(
+        'input:not([disabled]):not([type="checkbox"]), select:not([disabled])',
+      ),
+    );
+    const currentIndex = inputs.indexOf(e.target);
+
+    if (currentIndex !== -1 && currentIndex < inputs.length - 1) {
+      inputs[currentIndex + 1].focus();
+    } else {
+      handleShow();
+    }
   };
 
   // Pagination component
@@ -613,7 +636,11 @@ function BookingReportWithAmount() {
   };
 
   return (
-    <form className="flex flex-col gap-3" onSubmit={(e) => e.preventDefault()}>
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={(e) => e.preventDefault()}
+      onKeyDown={handleKeyDown}
+    >
       <NotificationFlag
         type={notification.type}
         message={notification.message}
@@ -773,9 +800,7 @@ function BookingReportWithAmount() {
         {/* Total Records Display */}
         <div className="flex justify-between mt-2">
           <div className="text-sm text-gray-600">
-            {totalRecords > 0 && (
-              <span>Total Records: {totalRecords}</span>
-            )}
+            {totalRecords > 0 && <span>Total Records: {totalRecords}</span>}
           </div>
         </div>
       </div>

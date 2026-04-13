@@ -109,7 +109,7 @@ const AmountLog = () => {
     const fetchCustomer = async () => {
       try {
         const res = await fetch(
-          `${server}/amount-log?onlyCustomer=true&accountCode=${accountCode.trim().toUpperCase()}`
+          `${server}/amount-log?onlyCustomer=true&accountCode=${accountCode.trim().toUpperCase()}`,
         );
         const data = await res.json();
         setCustomerName(data.customerName || "");
@@ -144,7 +144,7 @@ const AmountLog = () => {
     const filtered = customerList.filter(
       (c) =>
         c.accountCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.name.toLowerCase().includes(searchTerm.toLowerCase())
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()),
     );
     setFilteredCustomers(filtered);
   }, [searchTerm, customerList]);
@@ -185,7 +185,7 @@ const AmountLog = () => {
       }
 
       const responseData = await res.json();
-      
+
       // Handle response with pagination
       const shipmentsData = responseData.data || [];
       const pagination = responseData.pagination || {
@@ -204,8 +204,8 @@ const AmountLog = () => {
         setTotalPages(pagination.totalPages);
         setTotalRecords(pagination.totalRecords);
         showNotification(
-          "success", 
-          `Found ${shipmentsData.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`
+          "success",
+          `Found ${shipmentsData.length} records (Page ${pagination.currentPage} of ${pagination.totalPages})`,
         );
       }
     } catch (err) {
@@ -222,7 +222,7 @@ const AmountLog = () => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
 
     // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     // Fetch new page
     fetchDataWithPagination(currentFilters, newPage);
@@ -268,7 +268,7 @@ const AmountLog = () => {
       columns.reduce((acc, col) => {
         acc[col.label] = row[col.key];
         return acc;
-      }, {})
+      }, {}),
     );
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -290,6 +290,32 @@ const AmountLog = () => {
     if (isFullscreen) window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isFullscreen]);
+  const handleEnterKey = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    // If Enter is pressed on a button, click it
+    if (e.target.tagName === "BUTTON") {
+      e.target.click();
+      return;
+    }
+
+    // Get all focusable inputs/selects in the container
+    const container = e.currentTarget;
+    const focusable = Array.from(
+      container.querySelectorAll(
+        'input:not([disabled]):not([type="checkbox"]), select:not([disabled])',
+      ),
+    );
+    const currentIndex = focusable.indexOf(e.target);
+
+    if (currentIndex !== -1 && currentIndex < focusable.length - 1) {
+      focusable[currentIndex + 1].focus();
+    } else {
+      // Last input → trigger Show
+      fetchData();
+    }
+  };
 
   useEffect(() => {
     const fetchCodeList = async () => {
@@ -377,7 +403,7 @@ const AmountLog = () => {
   };
 
   return (
-    <div className="">
+    <div className="" onKeyDown={handleEnterKey}>
       <NotificationFlag
         type={notification.type}
         message={notification.message}
@@ -464,15 +490,15 @@ const AmountLog = () => {
           </div>
 
           <div className="w-[200px]">
-            <OutlinedButtonRed 
-              label={loading ? "Loading..." : "Show"} 
+            <OutlinedButtonRed
+              label={loading ? "Loading..." : "Show"}
               onClick={fetchData}
               disabled={loading}
             />
           </div>
           <div>
-            <SimpleButton 
-              name={"Download"} 
+            <SimpleButton
+              name={"Download"}
               onClick={downloadTable}
               disabled={rowData.length === 0}
             />
@@ -494,9 +520,7 @@ const AmountLog = () => {
           {/* Total Records Display */}
           <div className="flex justify-between mt-2">
             <div className="text-sm text-gray-600">
-              {totalRecords > 0 && (
-                <span>Total Records: {totalRecords}</span>
-              )}
+              {totalRecords > 0 && <span>Total Records: {totalRecords}</span>}
             </div>
           </div>
         </div>
@@ -522,9 +546,7 @@ const AmountLog = () => {
           </div>
           <div className="flex justify-end mt-4">
             <div className="text-sm text-gray-600">
-              {totalRecords > 0 && (
-                <span>Total Records: {totalRecords}</span>
-              )}
+              {totalRecords > 0 && <span>Total Records: {totalRecords}</span>}
             </div>
           </div>
         </div>
