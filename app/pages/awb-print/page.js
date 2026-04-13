@@ -20,6 +20,7 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import NotificationFlag from "@/app/components/Notificationflag";
 import { startTransition } from "react";
 import MultipleInvoice from "./MultipleInvoice";
+import pushAWBLog from "@/app/lib/pushAWBLog";
 
 const AwbPrint = () => {
   const [demoRadio, setDemoRadio] = useState("awbWise");
@@ -242,6 +243,17 @@ const AwbWise = forwardRef((props, ref) => {
         "success",
         `Successfully downloaded ${allInvoiceData.length} invoices!`
       );
+      
+      // Log label prints
+      for (const inv of allInvoiceData) {
+        pushAWBLog({
+          server,
+          awbNo: inv.awbNo,
+          action: "AWB Label Printed (Bulk)",
+          actionUser: "11111111",
+          meta: { size, component: "MultipleAwb Print" }
+        }).catch(err => console.error(err));
+      }
 
       setMultipleInvoicesData([]);
     } catch (err) {
@@ -344,6 +356,15 @@ const AwbWise = forwardRef((props, ref) => {
                       "success",
                       `Invoice for AWB ${awbNo} downloaded`
                     );
+
+                    // Log label print
+                    await pushAWBLog({
+                      server,
+                      awbNo: awbNo,
+                      action: "AWB Label Printed",
+                      actionUser: "11111111",
+                      meta: { size, component: "AwbWise Print" }
+                    }).catch(err => console.error(err));
                   } catch (err) {
                     console.error(err);
                     showNotification(
@@ -638,6 +659,18 @@ const RunWise = forwardRef((props, ref) => {
         "success",
         `Successfully generated ${allData.length} invoices in one PDF`
       );
+
+      // Log label prints
+      for (const inv of allData) {
+        pushAWBLog({
+          server,
+          awbNo: inv.awbNo,
+          action: "AWB Label Printed (Run Wise)",
+          actionUser: "11111111",
+          meta: { size: watch("size"), runNo: watch("runNo") }
+        }).catch(err => console.error(err));
+      }
+
       setMultipleInvoicesData([]);
     } catch (err) {
       console.error(err);
@@ -945,6 +978,15 @@ const ManifestNo = forwardRef((props, ref) => {
         await new Promise((resolve) => setTimeout(resolve, 500));
         await invoiceRef.current?.downloadPdf();
         showNotification("success", `Invoice for AWB ${data.awbNo} downloaded`);
+
+        // Log label print
+        await pushAWBLog({
+          server,
+          awbNo: data.awbNo,
+          action: "AWB Label Printed (Manifest)",
+          actionUser: "11111111",
+          meta: { manifestNo, size }
+        }).catch(err => console.error(err));
       }
       showNotification(
         "success",
