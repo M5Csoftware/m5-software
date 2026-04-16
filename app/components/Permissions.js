@@ -101,6 +101,14 @@ const Permissions = ({
             register={register}
             setValue={setValue}
           />
+          <PermissionSection
+            title="title-Import"
+            permissions={permissionGroups["title-Import"]}
+            checkboxStates={checkboxStates}
+            toggleCheckboxState={toggleCheckboxState}
+            register={register}
+            setValue={setValue}
+          />
         </div>
         {/* 
         <div className="flex items-start mt-4 pr-6 text-center justify-center w-[200px]">
