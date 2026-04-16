@@ -160,8 +160,11 @@ const ShipmentStatusReport = () => {
     );
     const optionalPresence = !!(filters.runNumber || filters.origin);
 
-    if (mandatoryPresence) {
-      if (!filters.from || !filters.to) {
+    if (optionalPresence) {
+      // Dates are optional
+    } else if (mandatoryPresence) {
+      if (!filters.from  || !filters.to) {
+
         setNotification({
           visible: true,
           message: "From and To dates are required for specific filter searches.",
@@ -171,8 +174,6 @@ const ShipmentStatusReport = () => {
         setIsLoading(false);
         return;
       }
-    } else if (optionalPresence) {
-      // Dates are optional
     } else if (!filters.from || !filters.to) {
       // General behavior: require dates
       setNotification({

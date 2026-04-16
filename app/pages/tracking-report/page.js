@@ -279,16 +279,17 @@ const TrackingReport = () => {
     const mandatoryPresence = !!(branch || sector || code);
     const optionalPresence = !!(runNumber || data.origin);
 
-    if (mandatoryPresence) {
-      if (!from || !to) {
+    if (optionalPresence) {
+      // Dates are optional
+    } else if (mandatoryPresence) {
+      if (!from  || !to) {
+
         showNotification(
           "error",
           "From and To dates are required for Branch, Sector, or Account Code searches.",
         );
         return;
       }
-    } else if (optionalPresence) {
-      // Dates are optional
     } else if (
       !runNumber &&
       !code &&

@@ -1,4 +1,5 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
+import dayjs from "dayjs";
 import MonthYearPicker, {
   DataCardWithTable,
   StatusCard,
@@ -10,10 +11,131 @@ import YearRangePicker, {
 } from "./CPDashboardComponents";
 import { ArrowUp } from "lucide-react";
 import { GlobalContext } from "@/app/lib/GlobalContext";
+import { useAuth } from "@/app/Context/AuthContext";
 
-const CounterPartDashboard = () => {
-  const [location, setLocation] = useState("New Delhi"); // selected location
-  const locationOptions = ["New Delhi", "Mumbai", "Ahmedabad"]; // your options
+export default function CounterPartDashboard() {
+  const [location, setLocation] = useState("New Delhi");
+  const [incomingStats, setIncomingStats] = useState({
+    remaining: 0,
+    resolved: 0,
+  });
+
+  const [counterPartInfo, setCounterPartInfo] = useState({
+    name: "",
+    code: "",
+  });
+
+  const [rows, setRows] = useState([]);
+  const [data, setData] = useState([]);
+  const [runSummaryMonth, setRunSummaryMonth] = useState(dayjs());
+  const [rtoSummaryMonth, setRtoSummaryMonth] = useState(dayjs());
+  const [incomingDateRange, setIncomingDateRange] = useState("today");
+  const [chartYear, setChartYear] = useState(dayjs().year());
+
+  const { server } = useContext(GlobalContext);
+  const { user } = useAuth();
+
+  const fetchCounterPartInfo = async () => {
+    if (user?.userId) {
+      try {
+        const response = await fetch(
+          `${server}/employee-master?userId=${user.userId}`
+        );
+        const data = await response.json();
+        if (data && data.counterpart) {
+          setCounterPartInfo({
+            name: data.counterpart,
+            code: data.counterpartCode || "",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch counterpart info:", error);
+      }
+    }
+  };
+
+  const fetchIncomingStats = async () => {
+    try {
+      let url = `${server}/dashboard/counterpart/stats?location=${location}&range=${incomingDateRange}&year=${chartYear}`;
+      if (counterPartInfo.name) {
+        url += `&counterpart=${counterPartInfo.name}`;
+      }
+      const response = await fetch(url);
+      const result = await response.json();
+      if (result.success && result.stats) {
+        setIncomingStats(result.stats.incoming);
+      }
+    } catch (error) {
+      console.error("Failed to fetch incoming stats:", error);
+    }
+  };
+
+  const fetchRunSummary = async () => {
+    if (!counterPartInfo.name) return;
+    try {
+      const from = runSummaryMonth.startOf("month").format("YYYY-MM-DD");
+      const to = runSummaryMonth.endOf("month").format("YYYY-MM-DD");
+      const response = await fetch(
+        `${server}/run-summary?counterpart=${counterPartInfo.name}&fromDate=${from}&toDate=${to}&limit=10`
+      );
+      const result = await response.json();
+      if (result.success) {
+        const mappedRows = result.data.map((item) => ({
+          runNo: item.runNo,
+          arrivalDate: item.flightDate,
+          departureDate: "-",
+          bagsCount: item.countBag,
+          awbCount: item.countAwb,
+          pcsCount: item.pcsCount,
+          totalWt: `${item.totalActualWt} kg`,
+        }));
+        setRows(mappedRows);
+      }
+    } catch (error) {
+      console.error("Failed to fetch run summary:", error);
+    }
+  };
+
+  const fetchRTOSummary = async () => {
+    if (!counterPartInfo.name) return;
+    try {
+      const from = rtoSummaryMonth.startOf("month").format("YYYY-MM-DD");
+      const to = rtoSummaryMonth.endOf("month").format("YYYY-MM-DD");
+      const response = await fetch(
+        `${server}/rto-shipment-report?counterpart=${counterPartInfo.name}&from=${from}&to=${to}&limit=5`
+      );
+      const result = await response.json();
+      if (result.success) {
+        const mappedRto = result.data.map((item) => ({
+          id: item.awbNo,
+          date: item.date,
+          status: item.shipmentRemark || "RTO",
+          carrier: item.origin,
+        }));
+        setData(mappedRto);
+      }
+    } catch (error) {
+      console.error("Failed to fetch RTO summary:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCounterPartInfo();
+  }, [user]);
+
+  useEffect(() => {
+    fetchIncomingStats();
+  }, [location, incomingDateRange, counterPartInfo, chartYear]);
+
+  useEffect(() => {
+    fetchRunSummary();
+  }, [runSummaryMonth, counterPartInfo]);
+
+  useEffect(() => {
+    fetchRTOSummary();
+  }, [rtoSummaryMonth, counterPartInfo]);
+
+  const locationOptions = ["New Delhi", "Mumbai", "Ahmedabad"];
   const { setActiveTabs, setCurrentTab } = useContext(GlobalContext);
 
   const columns = [
@@ -25,94 +147,44 @@ const CounterPartDashboard = () => {
     { key: "pcsCount", label: "Pcs" },
     { key: "totalWt", label: "Total Weight" },
   ];
-  const rows = [
-    {
-      runNo: "RN-1021",
-      arrivalDate: "2025-10-01",
-      departureDate: "2025-10-02",
-      bagsCount: 12,
-      awbCount: 48,
-      pcsCount: 320,
-      totalWt: "1,245 kg",
-    },
-    {
-      runNo: "RN-1022",
-      arrivalDate: "2025-10-03",
-      departureDate: "2025-10-03",
-      bagsCount: 9,
-      awbCount: 36,
-      pcsCount: 250,
-      totalWt: "980 kg",
-    },
-    {
-      runNo: "RN-1023",
-      arrivalDate: "2025-10-05",
-      departureDate: "2025-10-06",
-      bagsCount: 15,
-      awbCount: 60,
-      pcsCount: 410,
-      totalWt: "1,560 kg",
-    },
-  ];
 
   const totalRow = {
     runNo: "Total",
     arrivalDate: "",
     departureDate: "",
-    bagsCount: 36,
-    awbCount: 144,
-    pcsCount: 980,
-    totalWt: "3,785 kg",
+    bagsCount: rows.reduce((acc, curr) => acc + (curr.bagsCount || 0), 0),
+    awbCount: rows.reduce((acc, curr) => acc + (curr.awbCount || 0), 0),
+    pcsCount: rows.reduce((acc, curr) => acc + (curr.pcsCount || 0), 0),
+    totalWt: `${rows
+      .reduce((acc, curr) => acc + parseFloat(curr.totalWt || 0), 0)
+      .toFixed(2)} kg`,
   };
-
-  const data = [
-    {
-      id: "M5937583290",
-      date: "01/05/2025",
-      status: "Recipient Refused",
-      carrier: "UPS",
-    },
-    {
-      id: "M5937583290",
-      date: "01/05/2025",
-      status: "Recipient Refused",
-      carrier: "FedEx",
-    },
-    {
-      id: "M5937583290",
-      date: "01/05/2025",
-      status: "Recipient Refused",
-      carrier: "UPS",
-    },
-    {
-      id: "M5937583290",
-      date: "01/05/2025",
-      status: "Recipient Refused",
-      carrier: "FedEx",
-    },
-    {
-      id: "M5937583290",
-      date: "01/05/2025",
-      status: "Recipient Refused",
-      carrier: "UPS",
-    },
-  ];
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="w-full flex justify-end">
-        <span
-          className="bg-red text-white px-4 py-1 rounded mb-2 text-sm cursor-pointer"
-          onClick={() => {
-            setActiveTabs((prev) => [
-              ...prev,
-              { folder: "Operations", subfolder: "CounterPartInscan" },
-            ]);
-            setCurrentTab("CounterPartInscan");
-          }}
-        >
-          Inscan Run
-        </span>
+      {/* Header section with Counterpart dynamic info */}
+      <div className="flex">
+        <div className="flex items-center gap-3 text-sm w-[50%]">
+          <h2 className="font-semibold">CounterPart :</h2>
+          <span className="tracking-wider text-xs bg-blue-100 shadow-sm text-blue-500 px-2 py-1 rounded">
+            {counterPartInfo.name || "No Counterpart found"}
+            {counterPartInfo.code && ` (${counterPartInfo.code})`}
+          </span>
+        </div>
+        <div className="w-full flex justify-end">
+          <span
+            className="bg-red text-white px-4 py-1 rounded mb-2 text-sm cursor-pointer"
+            onClick={() => {
+              setActiveTabs((prev) => [
+                ...prev,
+                { folder: "Operations", subfolder: "CounterPartInscan" },
+              ]);
+              setCurrentTab("CounterPartInscan");
+            }}
+          >
+            Inscan Run
+          </span>
+        </div>
       </div>
 
       {/* Upper Status Cards */}
@@ -121,12 +193,15 @@ const CounterPartDashboard = () => {
           <div className="w-1/2">
             <StatusCard
               title="INCOMING SHIPMENTS"
-              greenCount={20}
-              redCount={50}
-              greenText="Remaining"
-              redText="Resolved"
+              greenCount={incomingStats.remaining}
+              redCount={incomingStats.resolved}
+              greenText="Incoming"
+              redText="Delivered"
+              range={incomingDateRange}
+              onDateChange={setIncomingDateRange}
             />
           </div>
+
           <div className="w-1/2">
             <StatusCard
               title="SHIPMENTS (WAREHOUSE)"
@@ -159,7 +234,10 @@ const CounterPartDashboard = () => {
             <h2 className="text-lg font-semibold">
               Shipment Received from Hub
             </h2>
-            <YearRangePicker />
+            <YearRangePicker
+              selectedYear={chartYear}
+              onChange={setChartYear}
+            />
           </div>
           <div className="flex justify-between p-6">
             <div className="flex gap-10">
@@ -216,6 +294,8 @@ const CounterPartDashboard = () => {
             onLocationChange={(value) => setLocation(value)}
             data={data}
             maxRows={5}
+            selectedMonth={rtoSummaryMonth}
+            onMonthChange={setRtoSummaryMonth}
           />
         </div>
       </div>
@@ -228,10 +308,10 @@ const CounterPartDashboard = () => {
           rowData={rows}
           totalRow={totalRow}
           onSeeAll={() => console.log("See All Clicked")}
+          selectedMonth={runSummaryMonth}
+          onMonthChange={setRunSummaryMonth}
         />
       </div>
     </div>
   );
-};
-
-export default CounterPartDashboard;
+}
