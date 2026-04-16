@@ -256,34 +256,25 @@ export function SummaryCardWithSeeAll({
   );
 }
 
-export function CounterPartChart() {
-  const data = [
-    { name: "Jan", delhi: 4000, mumbai: 2400, Ahmedabad: 2400 },
-    { name: "Feb", delhi: 3000, mumbai: 1398, Ahmedabad: 3400 },
-    { name: "Mar", delhi: 2000, mumbai: 9800, Ahmedabad: 3908 },
-    { name: "Apr", delhi: 2780, mumbai: 3908, Ahmedabad: 3908 },
-    { name: "May", delhi: 1890, mumbai: 4800, Ahmedabad: 1908 },
-    { name: "Jun", delhi: 2390, mumbai: 3800, Ahmedabad: 1908 },
-    { name: "Jul", delhi: 3490, mumbai: 4300, Ahmedabad: 1908 },
-    { name: "Aug", delhi: 2000, mumbai: 9800, Ahmedabad: 3908 },
-    { name: "Sep", delhi: 2780, mumbai: 3908, Ahmedabad: 3908 },
-    { name: "Oct", delhi: 3490, mumbai: 4300, Ahmedabad: 1908 },
-    { name: "Nov", delhi: 2780, mumbai: 3908, Ahmedabad: 3908 },
-    { name: "Dec", delhi: 3490, mumbai: 4300, Ahmedabad: 1908 },
-  ];
+export function CounterPartChart({ data = [] }) {
 
   // tiny custom shape to add padding between stacked bars
-  const CustomBar = ({ x, y, width, height, fill }) => (
-    <rect
-      x={x + 1.5}
-      y={y + 1.5}
-      width={width - 3}
-      height={height - 1}
-      fill={fill}
-      rx={3}
-      ry={3}
-    />
-  );
+  const CustomBar = ({ x, y, width, height, fill }) => {
+    const finalWidth = width - 3;
+    const finalHeight = height - 1;
+    if (finalWidth <= 0 || finalHeight <= 0) return null;
+    return (
+      <rect
+        x={x + 1.5}
+        y={y + 1.5}
+        width={finalWidth}
+        height={finalHeight}
+        fill={fill}
+        rx={3}
+        ry={3}
+      />
+    );
+  };
 
   return (
     <div className="bg-white p-4 rounded-lg w-full h-[400px]">
@@ -341,13 +332,13 @@ export default function YearRangePicker({
 
   const currentYear = dayjs().year();
   // Max allowed year for selection when disabledFuture=true:
-  const maxAllowedYear = disabledFuture ? currentYear - 1 : Infinity;
+  const maxAllowedYear = disabledFuture ? currentYear : Infinity;
 
-  // Default academic year = previous calendar year (so in 2025 default is 2024)
+  // Default year = current calendar year
   const getDefaultYear = () =>
     selectedYear !== undefined && selectedYear !== null
       ? selectedYear
-      : currentYear - 1;
+      : currentYear;
 
   const [showCalendar, setShowCalendar] = useState(false);
   const [year, setYear] = useState(getDefaultYear());

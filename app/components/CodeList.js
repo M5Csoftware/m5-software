@@ -162,6 +162,8 @@ export default function CodeList({ data, columns, name, handleAction }) {
     if (!toggleCodeList) return;
 
     const handleClickOutside = (e) => {
+      if (e.target.closest(".codelist-container")) return;
+      
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         setToggleCodeList(false);
       }
@@ -256,7 +258,7 @@ export default function CodeList({ data, columns, name, handleAction }) {
       ref={containerRef}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
-      className={`border fixed bg-white top-2 bottom-2 z-50 border-alice-blue rounded-lg w-[428px] overflow-auto hidden-scrollbar transition-all ${
+      className={`codelist-container border fixed bg-white top-2 bottom-2 z-50 border-alice-blue rounded-lg w-[428px] overflow-auto hidden-scrollbar transition-all ${
         toggleCodeList ? "right-2" : "-right-[450px]"
       }`}
     >
