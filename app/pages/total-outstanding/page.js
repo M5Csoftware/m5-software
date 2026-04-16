@@ -84,7 +84,7 @@ function General() {
           accounts.map((acc) => ({
             accountCode: acc.accountCode,
             name: acc.name,
-          }))
+          })),
         );
       }
     } catch (error) {
@@ -105,9 +105,12 @@ function General() {
     const startIndex = (currentPage - 1) * pageLimit;
     const endIndex = startIndex + pageLimit;
     setPaginatedData(rowData.slice(startIndex, endIndex));
-    
+
     // Reset to page 1 if current page is beyond available pages
-    if (rowData.length > 0 && currentPage > Math.ceil(rowData.length / pageLimit)) {
+    if (
+      rowData.length > 0 &&
+      currentPage > Math.ceil(rowData.length / pageLimit)
+    ) {
       setCurrentPage(1);
     }
   }, [rowData, currentPage, pageLimit]);
@@ -238,7 +241,7 @@ function General() {
     if (newPage < 1 || newPage > totalPages) return;
 
     // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     setCurrentPage(newPage);
   };
@@ -254,7 +257,7 @@ function General() {
   const fetchDataWithPagination = async (url, params = {}) => {
     setLoading(true);
     setError("");
-    
+
     try {
       // Add pagination parameters
       const paginatedParams = {
@@ -278,7 +281,7 @@ function General() {
     try {
       setLoading(true);
       setError("");
-      
+
       const response = await axios.get(`${server}/total-outstanding`, {
         params: {
           page: 1,
@@ -334,10 +337,10 @@ function General() {
       setTotalRecords(pagination.totalRecords);
       setTotalPages(pagination.totalPages);
       setCurrentPage(pagination.currentPage);
-      
+
       showNotification(
         "success",
-        `Found ${transformedData.length} customer accounts (Page ${pagination.currentPage} of ${pagination.totalPages})`
+        `Found ${transformedData.length} customer accounts (Page ${pagination.currentPage} of ${pagination.totalPages})`,
       );
     } catch (err) {
       console.error("Error fetching customer accounts:", err);
@@ -416,17 +419,17 @@ function General() {
       setTotalRecords(pagination.totalRecords);
       setTotalPages(pagination.totalPages);
       setCurrentPage(pagination.currentPage);
-      
+
       showNotification(
         "success",
-        `Found ${transformedData.length} records for selected date range (Page ${pagination.currentPage} of ${pagination.totalPages})`
+        `Found ${transformedData.length} records for selected date range (Page ${pagination.currentPage} of ${pagination.totalPages})`,
       );
     } catch (err) {
       console.error("Error fetching customer accounts by date:", err);
       setError("Failed to fetch customer accounts for the selected date range");
       showNotification(
         "error",
-        "Failed to fetch customer accounts for the selected date range"
+        "Failed to fetch customer accounts for the selected date range",
       );
     } finally {
       setLoading(false);
@@ -438,7 +441,7 @@ function General() {
       setLoading(true);
       setError("");
       const response = await axios.get(
-        `${server}/total-outstanding?accountCode=${accountCode.toUpperCase()}`
+        `${server}/total-outstanding?accountCode=${accountCode.toUpperCase()}`,
       );
 
       if (response.data) {
@@ -483,7 +486,7 @@ function General() {
         setTotalRecords(1);
         setTotalPages(1);
         setCurrentPage(1);
-        
+
         showNotification("success", "Customer account loaded successfully");
       }
     } catch (err) {
@@ -511,7 +514,11 @@ function General() {
     return rowData
       .filter((item) => !item.isGroupTotal && !item.isSpacer)
       .reduce((total, item) => {
-        return total + parseFloat(item.totalOutstanding || 0) + parseFloat(item.advance || 0);
+        return (
+          total +
+          parseFloat(item.totalOutstanding || 0) +
+          parseFloat(item.advance || 0)
+        );
       }, 0)
       .toFixed(2);
   };
@@ -540,7 +547,7 @@ function General() {
       { key: "creditBalance", label: "Credit Balance" },
       { key: "osWithoutHold", label: "OS without Hold" },
     ],
-    []
+    [],
   );
 
   const codeListColumns = useMemo(
@@ -548,7 +555,7 @@ function General() {
       { key: "accountCode", label: "Customer Code" },
       { key: "name", label: "Customer Name" },
     ],
-    []
+    [],
   );
 
   const handleSearchChange = (e) => {
@@ -589,7 +596,7 @@ function General() {
                 ? `"${value.replace(/"/g, '""')}"`
                 : value;
             })
-            .join(",")
+            .join(","),
         ),
       ].join("\n");
 
@@ -599,7 +606,7 @@ function General() {
       link.setAttribute("href", url);
       link.setAttribute(
         "download",
-        `customer_accounts_${new Date().getTime()}.csv`
+        `customer_accounts_${new Date().getTime()}.csv`,
       );
       document.body.appendChild(link);
       link.click();
@@ -624,7 +631,7 @@ function General() {
       const wsData = [
         columns.map((col) => col.label),
         ...dataToDownload.map((row) =>
-          columns.map((col) => row[col.key] || "")
+          columns.map((col) => row[col.key] || ""),
         ),
       ];
 
@@ -689,13 +696,37 @@ function General() {
   // Pagination component
   const PaginationControls = () => {
     if (totalPages <= 1 && rowData.length === 0) return null;
+    const handleKeyDown = (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+
+      if (e.target.tagName === "BUTTON") {
+        e.target.click();
+        return;
+      }
+
+      const form = e.target.form;
+      const inputs = Array.from(
+        form.querySelectorAll(
+          'input:not([disabled]):not([type="checkbox"]), select:not([disabled])',
+        ),
+      );
+      const currentIndex = inputs.indexOf(e.target);
+
+      if (currentIndex !== -1 && currentIndex < inputs.length - 1) {
+        inputs[currentIndex + 1].focus();
+      } else {
+        // Last input → trigger Show (or Show All if no customer code)
+        handleShow();
+      }
+    };
 
     return (
       <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">{paginatedData.length}</span> of{" "}
-            <span className="font-medium">{totalRecords}</span> records
+            Showing <span className="font-medium">{paginatedData.length}</span>{" "}
+            of <span className="font-medium">{totalRecords}</span> records
           </div>
 
           <div className="flex items-center gap-2">
@@ -758,7 +789,11 @@ function General() {
 
   return (
     <>
-      <form className="flex flex-col gap-3" key={formKey}>
+      <form
+        className="flex flex-col gap-3"
+        key={formKey}
+        onKeyDown={handleKeyDown}
+      >
         <NotificationFlag
           type={notification.type}
           message={notification.message}
@@ -878,10 +913,10 @@ function General() {
                 rowData={paginatedData}
                 className="border-b-0 rounded-b-none h-[45vh]"
               />
-              
+
               {/* Pagination Controls */}
               <PaginationControls />
-              
+
               <div className="flex justify-between items-center border border-t-0 border-[#D0D5DD] border-opacity-75 bg-[#D0D5DDB8] text-gray-900 rounded rounded-t-none font-sans px-4 py-2">
                 <div className="text-sm text-gray-600">
                   {totalRecords > 0 && (

@@ -55,7 +55,7 @@ function RTOShipment() {
     try {
       if (!accountCode) return "";
       const customerResponse = await axios.get(
-        `${server}/customer-account?accountCode=${accountCode.toUpperCase()}`
+        `${server}/customer-account?accountCode=${accountCode.toUpperCase()}`,
       );
       return customerResponse.data?.name || "";
     } catch (err) {
@@ -92,7 +92,7 @@ function RTOShipment() {
       // console.log("Fetching customer for account code:", accountCode);
 
       const response = await axios.get(
-        `${server}/customer-account?accountCode=${accountCode.toUpperCase()}`
+        `${server}/customer-account?accountCode=${accountCode.toUpperCase()}`,
       );
 
       // console.log("Customer Response:", response.data);
@@ -115,7 +115,7 @@ function RTOShipment() {
       } else {
         showNotification(
           "error",
-          error.response?.data?.message || "Failed to fetch customer data"
+          error.response?.data?.message || "Failed to fetch customer data",
         );
       }
       setCustomerNameFromAccount("");
@@ -144,7 +144,7 @@ function RTOShipment() {
       // console.log("Fetching data for AWB:", awbNumber);
 
       const response = await axios.get(
-        `${server}/rto-shipment?awbNo=${awbNumber.toUpperCase()}`
+        `${server}/rto-shipment?awbNo=${awbNumber.toUpperCase()}`,
       );
 
       // console.log("Response:", response.data);
@@ -160,14 +160,14 @@ function RTOShipment() {
       } else {
         showNotification(
           "error",
-          response.data.message || "Shipment not found"
+          response.data.message || "Shipment not found",
         );
       }
     } catch (error) {
       console.error("Error fetching shipment data:", error);
       showNotification(
         "error",
-        error.response?.data?.message || "Failed to fetch shipment data"
+        error.response?.data?.message || "Failed to fetch shipment data",
       );
     } finally {
       setLoading(false);
@@ -178,7 +178,7 @@ function RTOShipment() {
   const calculateTotals = (data) => {
     const weight = data.reduce(
       (sum, item) => sum + (parseFloat(item.weight) || 0),
-      0
+      0,
     );
     const bagNumbers = data
       .map((item) => parseFloat(item.bagNo))
@@ -223,7 +223,7 @@ function RTOShipment() {
       ) {
         showNotification(
           "error",
-          "All shipments must belong to the same customer account"
+          "All shipments must belong to the same customer account",
         );
         return;
       }
@@ -254,7 +254,7 @@ function RTOShipment() {
       updatedData = [...rowData];
       updatedData[editingRowIndex] = newRow;
       setEditingRowIndex(null);
-      
+
       // Log AWB modification
       const customerName = await getCustomerName(formValues.customerCode);
       await pushAWBLog({
@@ -265,12 +265,12 @@ function RTOShipment() {
         actionUser: user?.userId,
         department: "Operations",
       });
-      
+
       showNotification("success", "Shipment updated successfully");
     } else {
       // Add new row
       updatedData = [...rowData, newRow];
-      
+
       // Log AWB addition
       const customerName = await getCustomerName(formValues.customerCode);
       await pushAWBLog({
@@ -281,7 +281,7 @@ function RTOShipment() {
         actionUser: user?.userId,
         department: "Operations",
       });
-      
+
       showNotification("success", "Shipment added successfully");
     }
 
@@ -318,7 +318,7 @@ function RTOShipment() {
 
     showNotification(
       "info",
-      "Editing shipment. Modify and click Add to update."
+      "Editing shipment. Modify and click Add to update.",
     );
   };
 
@@ -393,10 +393,16 @@ function RTOShipment() {
     if (e.key === "Enter") {
       e.preventDefault();
 
+      // If Enter is pressed on a button, trigger its click
+      if (e.target.tagName === "BUTTON") {
+        e.target.click();
+        return;
+      }
+
       // Get all input elements in the form
       const form = e.target.form;
       const inputs = Array.from(
-        form.querySelectorAll('input:not([type="checkbox"]), select, textarea')
+        form.querySelectorAll('input:not([type="checkbox"]), select, textarea'),
       );
       const currentIndex = inputs.indexOf(e.target);
 
@@ -442,7 +448,7 @@ function RTOShipment() {
 
       const response = await axios.post(
         `${server}/rto-shipment/send-alert`,
-        payload
+        payload,
       );
 
       if (response.data.success) {
@@ -460,26 +466,26 @@ function RTOShipment() {
         }
 
         showNotification("success", response.data.message);
-        
+
         // Clear table data and AWB entry fields after successful alert
         setRowData([]);
         setTotalWeight(0);
         setTotalBags(0);
         clearAllFields();
-        
+
         // Keep CD details and checkboxes intact
         // Only clear AWB-related fields
       } else {
         showNotification(
           "error",
-          response.data.message || "Failed to send alerts"
+          response.data.message || "Failed to send alerts",
         );
       }
     } catch (error) {
       console.error("Error sending alert:", error);
       showNotification(
         "error",
-        error.response?.data?.message || "Failed to send alerts"
+        error.response?.data?.message || "Failed to send alerts",
       );
     } finally {
       setSendingAlert(false);
@@ -490,7 +496,7 @@ function RTOShipment() {
   const handleRefresh = () => {
     // Reset all form fields
     reset();
-    
+
     // Clear all state variables
     setRowData([]);
     setTotalWeight(0);
@@ -504,10 +510,10 @@ function RTOShipment() {
     setEditingRowIndex(null);
     setLoading(false);
     setSendingAlert(false);
-    
+
     // Force re-render
     setRefreshKey((prev) => prev + 1);
-    
+
     // Show success notification
     showNotification("success", "Form refreshed successfully");
   };
@@ -562,11 +568,15 @@ function RTOShipment() {
       { key: "removedItem", label: "Removed Items" },
       { key: "actions", label: "Actions" },
     ],
-    []
+    [],
   );
 
   return (
-    <form className="flex flex-col gap-3" onKeyDown={handleKeyDown} key={refreshKey}>
+    <form
+      className="flex flex-col gap-3"
+      onKeyDown={handleKeyDown}
+      key={refreshKey}
+    >
       <NotificationFlag
         type={notification.type}
         message={notification.message}
@@ -722,8 +732,8 @@ function RTOShipment() {
                 loading
                   ? "Loading..."
                   : editingRowIndex !== null
-                  ? "Update"
-                  : "Add"
+                    ? "Update"
+                    : "Add"
               }
               onClick={handleAdd}
               disabled={loading}
