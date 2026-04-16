@@ -69,12 +69,20 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
   const showNotification = (type, message) =>
     setNotification({ type, message, visible: true });
 
-  const formatDDMMYYYY = (value) => {
+  const formatDDMMYYYY = React.useCallback((value) => {
     if (!value) return "";
+
+    // If it's already in DD/MM/YYYY format, return as is
+    if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4}/.test(value)) {
+      return value;
+    }
+
     const d = value instanceof Date ? value : new Date(value);
-    if (isNaN(d.getTime())) return "";
+    if (isNaN(d.getTime())) {
+      return typeof value === "string" ? value : "";
+    }
     return d.toLocaleDateString("en-GB");
-  };
+  }, []);
 
   // Set initial AWB number from props
   useEffect(() => {
@@ -296,6 +304,11 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
       return;
     }
 
+    // Skip auto-sync if we already have the complaint for this AWB loaded
+    if (registeredComplaint && registeredComplaint.awbNo === awbNo) {
+      return;
+    }
+
     const checkAwbNo = async () => {
       clearErrors("awbNo");
       try {
@@ -317,7 +330,7 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
     };
 
     checkAwbNo();
-  }, [awbNo, manualSearch, server]);
+  }, [awbNo, manualSearch, server, registeredComplaint, formatDDMMYYYY]);
 
   useEffect(() => {
     setValue("actionUser", user?.userId);
@@ -342,15 +355,12 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
         let timeStr = "-";
 
         if (h.date) {
-          try {
-            const parsedDate = new Date(h.date);
-
-            if (!isNaN(parsedDate.getTime())) {
-              dateStr = parsedDate.toLocaleDateString("en-GB");
-              timeStr = format(parsedDate, "HH:mm:ss");
-            }
-          } catch (e) {
-            console.error("Failed to parse date:", h.date, e);
+          const parsedDate = new Date(h.date);
+          if (!isNaN(parsedDate.getTime())) {
+            dateStr = parsedDate.toLocaleDateString("en-GB");
+            timeStr = format(parsedDate, "HH:mm:ss");
+          } else if (typeof h.date === "string") {
+            dateStr = h.date;
           }
         }
 
@@ -364,7 +374,14 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
 
       setRowData(formattedHistory);
 
-      setDate(new Date(registeredComplaint?.date));
+      setDate(
+        registeredComplaint?.date
+          ? new Date(
+              registeredComplaint.date.split("/").reverse().join("-") +
+                "T00:00:00",
+            )
+          : new Date(),
+      );
       setComplaintNo(registeredComplaint?.complaintNo);
       setComplaintID(registeredComplaint?.complaintID);
     } else {
@@ -950,7 +967,7 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
                 ]}
                 rowData={trackComplaints.map((c) => ({
                   ...c,
-                  date: format(new Date(c.date), "dd/MM/yyyy"),
+                  date: formatDDMMYYYY(c.date),
                   view: (
                     <button
                       type="button"
