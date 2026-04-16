@@ -227,6 +227,12 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-Booking With Sale": false,
     "permission-New Booking Report": false,
     "permission-Custom Reports": false,
+
+    "title-Import": false,
+    "permission-AWB Import Entry": false,
+    "permission-Import Booking Report": false,
+    "permission-Import Shipment Status Report": false,
+    "permission-Import POD Entry": false,
   };
 
   const [checkboxStates, setCheckboxStates] = useState(defaultCheckboxState);
@@ -404,6 +410,13 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-New Booking Report",
       "permission-Custom Reports",
     ],
+
+    "title-Import": [
+      "permission-AWB Import Entry",
+      "permission-Import Booking Report",
+      "permission-Import Shipment Status Report",
+      "permission-Import POD Entry",
+    ],
   };
 
   const departmentPermissionMap = {
@@ -413,13 +426,20 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "title-Customer Care",
       "title-Booking",
       "title-Accounts",
+      "title-Import",
     ],
-    Operations: ["title-Operations", "title-Booking", "title-Reports"],
+    Operations: [
+      "title-Operations",
+      "title-Booking",
+      "title-Reports",
+      "title-Import",
+    ],
     "Customer Support": [
       "title-Booking",
       "title-Operations",
       "title-Customer Care",
       "title-Reports",
+      "title-Import",
     ],
     Account: [
       "title-Booking",
@@ -428,6 +448,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "title-Reports",
       "title-Accounts",
       "title-Billing",
+      "title-Import",
     ],
     Billing: [
       "title-Master (Administrative Control)",
@@ -437,8 +458,14 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "title-Billing",
       "title-Customer Care",
       "title-Reports",
+      "title-Import",
     ],
-    "Sale Support": ["title-Booking", "title-Operations", "title-Accounts"],
+    "Sale Support": [
+      "title-Booking",
+      "title-Operations",
+      "title-Accounts",
+      "title-Import",
+    ],
     Management: [
       "title-Master (Administrative Control)",
       "title-Booking",
@@ -447,6 +474,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "title-Billing",
       "title-Customer Care",
       "title-Reports",
+      "title-Import",
     ],
   };
 
