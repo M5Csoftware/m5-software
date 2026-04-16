@@ -36,6 +36,8 @@ export function AuthProvider({ children }) {
       department: userData.department,
       dashboardAccess: userData.dashboardAccess || [],
       permissions: userData.permissions || {},
+      counterpart: userData.counterpart,
+      counterpartCode: userData.counterpartCode,
     };
 
     if (rememberMe) {

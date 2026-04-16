@@ -129,7 +129,36 @@ const ChildShipmentStatusReport = () => {
   const fetchShipmentsWithPagination = async (filters, page = 1) => {
     setIsLoading(true);
 
-    if (!filters.from || !filters.to) {
+    // Check if dates are mandatory based on specific filters
+    const mandatoryPresence = !!(
+      filters.code ||
+      filters.client ||
+      filters.branch ||
+      filters.sector ||
+      filters.destination ||
+      filters.network ||
+      filters.service ||
+      filters.counterPart ||
+      (filters.status && filters.status !== "All")
+    );
+    const optionalPresence = !!(filters.runNumber || filters.origin);
+
+    if (optionalPresence) {
+      // Dates are optional
+    } else if (mandatoryPresence) {
+      if (!filters.from  || !filters.to) {
+
+        setNotification({
+          visible: true,
+          message: "From and To dates are required for specific filter searches.",
+          type: "error",
+        });
+        setShipments([]);
+        setIsLoading(false);
+        return;
+      }
+    } else if (!filters.from || !filters.to) {
+      // General behavior: require dates
       setNotification({
         visible: true,
         message: "Please select From and To dates",
@@ -140,18 +169,13 @@ const ChildShipmentStatusReport = () => {
       return;
     }
 
-    const fromParsed = parseDateDDMMYYYY(filters.from);
-    const toParsed = parseDateDDMMYYYY(filters.to);
+    const fromParsed = filters.from ? parseDateDDMMYYYY(filters.from) : null;
+    const toParsed = filters.to ? parseDateDDMMYYYY(filters.to) : null;
 
-    if (
-      !fromParsed ||
-      !toParsed ||
-      isNaN(fromParsed.getTime()) ||
-      isNaN(toParsed.getTime())
-    ) {
+    if (mandatoryPresence && (!fromParsed || !toParsed)) {
       setNotification({
         visible: true,
-        message: "Invalid date format",
+        message: "From and To dates are required for specific filter searches.",
         type: "error",
       });
       setShipments([]);
@@ -159,13 +183,32 @@ const ChildShipmentStatusReport = () => {
       return;
     }
 
-    fromParsed.setHours(0, 0, 0, 0);
-    toParsed.setHours(23, 59, 59, 999);
+    if (filters.from || filters.to) {
+      if (
+        (filters.from && (!fromParsed || isNaN(fromParsed.getTime()))) ||
+        (filters.to && (!toParsed || isNaN(toParsed.getTime())))
+      ) {
+        setNotification({
+          visible: true,
+          message: "Invalid date format",
+          type: "error",
+        });
+        setShipments([]);
+        setIsLoading(false);
+        return;
+      }
+    }
 
     // Build query parameters
     const params = new URLSearchParams();
-    params.append('from', fromParsed.toISOString());
-    params.append('to', toParsed.toISOString());
+    if (fromParsed) {
+      fromParsed.setHours(0, 0, 0, 0);
+      params.append('from', fromParsed.toISOString());
+    }
+    if (toParsed) {
+      toParsed.setHours(23, 59, 59, 999);
+      params.append('to', toParsed.toISOString());
+    }
     
     // Add other filters if they exist
     if (filters.code) params.append('code', filters.code);

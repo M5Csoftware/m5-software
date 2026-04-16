@@ -242,7 +242,6 @@ const App = () => {
     codeListConfig,
   } = useContext(GlobalContext);
 
-  const [view, setView] = useState(0);
 
   // Disable right-click with proper cleanup
   useEffect(() => {
@@ -397,10 +396,12 @@ const App = () => {
   const [tabHistory, setTabHistory] = useState([0]); // 0 is Dashboard
   const MAX_MOUNTED_TABS = 10;
 
-  // Update view and track mounted tabs when currentTab changes
+  // Derive active view ID directly from currentTab to avoid state lag
+  const activeViewId = tabMapping[currentTab] || 0;
+
+  // Update track mounted tabs when currentTab changes
   useEffect(() => {
     const newView = tabMapping[currentTab] || 0;
-    setView(newView);
 
     // LRU Tracking: Move current tab to the front of history
     setTabHistory((prev) => {
@@ -579,6 +580,9 @@ const App = () => {
     return () => controller.abort();
   }, [refetch, server]);
 
+  // Merge the active view with mounted tabs to ensure it's always rendered immediately
+  const tabsToRender = Array.from(new Set([...Array.from(mountedTabs), activeViewId]));
+
   return (
     <main className="flex">
       <Sidebar />
@@ -594,12 +598,12 @@ const App = () => {
         <Tabs />
         <div className="w-full px-12 py-10 h-[95vh] overflow-auto text-eerie-black table-scrollbar">
           {/* Render all mounted tabs but only show the active one */}
-          {Array.from(mountedTabs).map((tabView) => {
+          {tabsToRender.map((tabView) => {
             const Component = dynamicPages[tabView] || Dashboard;
             return (
               <div
                 key={tabView}
-                style={{ display: view === tabView ? "block" : "none" }}
+                style={{ display: activeViewId === tabView ? "block" : "none" }}
               >
                 <Component />
               </div>

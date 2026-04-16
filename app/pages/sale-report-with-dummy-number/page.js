@@ -216,8 +216,11 @@ function SaleReportWithDummyNumber() {
     );
     const optionalPresence = !!(formData.runNumber || formData.origin);
 
-    if (mandatoryPresence) {
-      if (!formData.from || !formData.to) {
+    if (optionalPresence) {
+      // Dates are optional
+    } else if (mandatoryPresence) {
+      if (!formData.from  || !formData.to) {
+
         setNotification({
           type: "error",
           message: "From and To dates are required for specific filter searches.",
@@ -225,8 +228,6 @@ function SaleReportWithDummyNumber() {
         });
         return;
       }
-    } else if (optionalPresence) {
-      // Dates are optional
     } else if (!formData.from || !formData.to) {
       setNotification({
         type: "error",

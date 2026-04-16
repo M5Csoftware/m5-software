@@ -24,9 +24,9 @@ export function DataCardWithTableTotal({
   title = "",
   className = "",
   disabled = false,
+  selectedMonth,
+  onMonthChange = () => {},
 }) {
-  const [selectedMonth, setSelectedMonth] = useState(dayjs());
-
   useEffect(() => {
     if (setValue && name) setValue(`${name}Table`, rowData);
   }, [rowData]);
@@ -42,7 +42,7 @@ export function DataCardWithTableTotal({
         <h2 className="text-base font-semibold text-gray-800">{title}</h2>
         <MonthYearPicker
           selectedDate={selectedMonth}
-          onChange={setSelectedMonth}
+          onChange={onMonthChange}
           disabledFuture={true}
         />
       </div>
@@ -109,21 +109,22 @@ export function SummaryCardWithSeeAll({
   data = [],
   onSeeAll,
   maxRows,
+  selectedMonth,
+  onMonthChange = () => {},
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState(selectedLocation || "");
   const currentMonth = dayjs();
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const dropdownRef = useRef(null);
 
   const handlePrevMonth = () => {
-    setSelectedMonth((prev) => prev.subtract(1, "month"));
+    onMonthChange(selectedMonth.subtract(1, "month"));
   };
 
   const handleNextMonth = () => {
     const nextMonth = selectedMonth.add(1, "month");
     if (nextMonth.isAfter(currentMonth)) return;
-    setSelectedMonth(nextMonth);
+    onMonthChange(nextMonth);
   };
 
   // Close arrow if clicked outside
