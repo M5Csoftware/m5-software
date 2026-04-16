@@ -692,34 +692,34 @@ function General() {
       setToggleCodeList(false);
     }
   };
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    if (e.target.tagName === "BUTTON") {
+      e.target.click();
+      return;
+    }
+
+    const form = e.target.form;
+    const inputs = Array.from(
+      form.querySelectorAll(
+        'input:not([disabled]):not([type="checkbox"]), select:not([disabled])',
+      ),
+    );
+    const currentIndex = inputs.indexOf(e.target);
+
+    if (currentIndex !== -1 && currentIndex < inputs.length - 1) {
+      inputs[currentIndex + 1].focus();
+    } else {
+      // Last input → trigger Show (or Show All if no customer code)
+      handleShow();
+    }
+  };
 
   // Pagination component
   const PaginationControls = () => {
     if (totalPages <= 1 && rowData.length === 0) return null;
-    const handleKeyDown = (e) => {
-      if (e.key !== "Enter") return;
-      e.preventDefault();
-
-      if (e.target.tagName === "BUTTON") {
-        e.target.click();
-        return;
-      }
-
-      const form = e.target.form;
-      const inputs = Array.from(
-        form.querySelectorAll(
-          'input:not([disabled]):not([type="checkbox"]), select:not([disabled])',
-        ),
-      );
-      const currentIndex = inputs.indexOf(e.target);
-
-      if (currentIndex !== -1 && currentIndex < inputs.length - 1) {
-        inputs[currentIndex + 1].focus();
-      } else {
-        // Last input → trigger Show (or Show All if no customer code)
-        handleShow();
-      }
-    };
 
     return (
       <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
