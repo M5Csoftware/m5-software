@@ -12,16 +12,13 @@ function Sidebar() {
   const [operationreportOpen, setOperationreportOpen] = useState(false);
   const [branchreportOpen, setBranchreportOpen] = useState(false);
   const [billingReportOpen, setBillingReportOpen] = useState(false);
+  const [activeMode, setActiveMode] = useState("Export"); // "Export" | "Import"
 
   const [accountReportOpen, setAccountReportOpen] = useState(false);
   const [accountSummaryOpen, setAccountSummaryOpen] = useState(false);
   const { activeTabs, setActiveTabs, setCurrentTab } =
     useContext(GlobalContext);
   const { user } = useAuth();
-
-  // useEffect(() => {
-  //   // console.log("User Permissions:", user?.permissions);
-  // }, [user]);
 
   const toggleFolder = (folder) => {
     setActiveFolder((prev) =>
@@ -35,15 +32,12 @@ function Sidebar() {
     const tab = { folder, subfolder };
     if (folder === "Customer Care" && subfolder === "Report") {
       toggleReportOpen(!reportOpen);
-      // console.log(reportOpen);
       return;
     } else if (folder === "Operations" && subfolder === "Report") {
       setOperationreportOpen(!operationreportOpen);
-      // console.log(operationreportOpen);
       return;
     } else if (folder === "Booking" && subfolder === "Report") {
       setBranchreportOpen(!branchreportOpen);
-      // console.log(branchreportOpen);
       return;
     }
     setActiveTabs((prev) =>
@@ -56,7 +50,7 @@ function Sidebar() {
     setCurrentTab(subfolder);
   };
 
-  const folders = [
+  const exportFolders = [
     {
       name: "Admin",
       subfolders: [
@@ -69,14 +63,12 @@ function Sidebar() {
         "Fuel Settings",
         "Shipper Tariff",
         "Shipper Tariff Bulk",
-        // "Modify Shipper Tariff",
         "Assign Customer & Target",
         "Assign Sector",
         "Custom Reports",
         "KYC Verification",
         "API Management",
         "Service Master",
-        // "Customer Discount",
         "Delete Shipment",
       ],
     },
@@ -93,7 +85,6 @@ function Sidebar() {
         "RTO Shipment",
         "International Pickup Order",
         "Alert Messages",
-        // "Branch Manifest Report",
       ],
     },
     {
@@ -132,34 +123,15 @@ function Sidebar() {
         "Zone",
         "Rate Sheet",
         "Expense Entry",
-        // "Payment Receipt Summary",
-        // "Total Outstanding",
-        // "Run Wise Sale Report",
         "Amount Log",
         "Credit Note",
-        // "Credit Summary Report",
         "Debit Note",
-        // "Debit Summary Report",
-        // "Claim For Lost Shipment",
-        // "Claim For Lost Shipment Summary",
-        // "Discount Credit Note",
-        // "Discount Credit Note Summary",
-        //"Payment Collection Report",
         "Account Ledger Mail",
-        // "Sale With Collection Report",
-        // "Sale With Total Receiving",
-        // "Booking Report With Amount",
-        // "Credit Limit Report",
-        // "Credit Limit Report With Days",
-
-        // "Month Sale",
-        // "New Sale Report",
         "Rate Calculator",
       ],
     },
     {
       name: "Billing",
-
       subfolders: [
         "AWB Billing",
         "Invoice",
@@ -189,10 +161,7 @@ function Sidebar() {
         "Portal Balance",
         "Ticket Dashboard",
         "Upload Shipping Bill",
-        "Run Process", //From Operation Duplicate
-
-        // "Portal Ticket Details",
-
+        "Run Process",
         "Offload Shipment",
       ],
     },
@@ -208,22 +177,18 @@ function Sidebar() {
     },
   ];
 
-  // const permissionKeyMap = {
-  //   "Account Ledger": "Acc-Account Ledger",
-  //   "Sale With Collection Report": "ACC-Sale With Collection Report",
-  //   "Credit Limit Report": "ACC-Credit Limit Report",
-  //   "Credit Limit Report With Days": "ACC-Credit Limit Report With Days",
-  //   "Month Sale": "ACC-Month Sale",
-
-  //   "Sales Report": "Bill-Sales Report",
-  //   "Sale Summary Sector Wise": "Bill-Sale Summary Sector Wise",
-  //   "Day Wise Sale": "Bill-Day Wise Sale",
-
-  //   "Run Summary": "CC-Run Summary",
-  //   "Offload Shipment": "CC-Offload Shipment",
-
-  //   "Booking Report": "Rep-Booking Report",
-  // };
+  // Import folders — add your import components/subfolders here when ready
+ const importFolders = [
+  {
+    name: "Import",
+    subfolders: [
+      "AWB Import Entry",
+      "Import Booking Report",
+      "Import Shipment Status Report",
+      "Import POD Entry",
+    ],
+  },
+];
 
   const permissionKeyMap = {
     "Account Ledger": ["Acc-Account Ledger", "Bill-Account Ledger"],
@@ -247,7 +212,6 @@ function Sidebar() {
     "Booking Report": ["Rep-Booking Report"],
   };
 
-  // Permission checker for sidebar
   const hasPerm = (name) => {
     const mapping = permissionKeyMap[name];
 
@@ -273,7 +237,6 @@ function Sidebar() {
           }
         }
 
-        // Fetch remote version for "Latest" display
         const VERSION_URL =
           "https://raw.githubusercontent.com/M5Csoftware/m5-software/main/version.json";
         const res = await fetch(VERSION_URL + "?t=" + Date.now());
@@ -288,6 +251,8 @@ function Sidebar() {
     fetchVersion();
   }, []);
 
+  const activeFolders = activeMode === "Export" ? exportFolders : importFolders;
+
   return (
     <nav className="flex flex-col min-w-56 w-[15vw] gap-3 text-gunmetal bg-seasalt h-screen overflow-auto hidden-scrollbar">
       <div className="sticky top-0 flex flex-col gap-3 bg-seasalt">
@@ -296,19 +261,31 @@ function Sidebar() {
         </div>
         <hr />
 
+        {/* Export / Import Toggle */}
         <div className="rounded-md w-fit mx-auto flex justify-between text-sm font-semibold overflow-hidden">
           {user?.permissions?.Export && (
-            <span className="w-28 text-center py-1 cursor-pointer bg-platinum">
+            <span
+              onClick={() => setActiveMode("Export")}
+              className={`w-28 text-center py-1 cursor-pointer transition-colors ${
+                activeMode === "Export" ? "bg-platinum" : "bg-foggy-white"
+              }`}
+            >
               Export
             </span>
           )}
 
           {user?.permissions?.Import && (
-            <span className="w-28 text-center py-1 cursor-pointer bg-foggy-white">
+            <span
+              onClick={() => setActiveMode("Import")}
+              className={`w-28 text-center py-1 cursor-pointer transition-colors ${
+                activeMode === "Import" ? "bg-platinum" : "bg-foggy-white"
+              }`}
+            >
               Import
             </span>
           )}
         </div>
+
         <div className="flex justify-start pl-6 items-center w-full mt-3">
           <span className="text-xs font-semibold tracking-wide text-green-1">
             Login ID: {user.userId}
@@ -316,76 +293,129 @@ function Sidebar() {
         </div>
       </div>
 
-      <ul className="mx-4 text-sm">
-        <li
-          onClick={() => {
-            const tab = { folder: "Dashboard", subfolder: "Dashboard" }; // Treat it as a single tab
-            setActiveTabs((prev) =>
-              prev.some(
-                (item) =>
-                  item.folder === tab.folder &&
-                  item.subfolder === tab.subfolder,
-              )
-                ? prev
-                : [...prev, tab],
-            );
-            setCurrentTab("Dashboard");
-          }}
-          className="flex gap-1 font-semibold items-center cursor-pointer hover:bg-foggy-white transition-all p-1 rounded-md"
-        >
-          <Image src="/dashboard.svg" alt="" width={16} height={24} />
-          <span>Dashboard</span>
-        </li>
+      {/* Import Mode */}
+      {activeMode === "Import" ? (
+        <ul className="mx-4 text-sm">
+          {importFolders.length === 0 ? (
+            <li className="p-2 text-sm text-gray-400 italic">
+              Import modules coming soon...
+            </li>
+          ) : (
+            importFolders.map((folder, index) => {
+              const titleKey = `title-${folder.name}`;
+              if (titleKey in (user?.permissions || {})) {
+                if (!user.permissions[titleKey]) return null;
+              }
 
-        {folders.map((folder, index) => {
-          // title permission key
-          const titleKey = `title-${folder.name}`;
+              const allowedSubfolders = folder.subfolders.filter((sub) => {
+                const mapping = permissionKeyMap[sub];
+                if (Array.isArray(mapping)) {
+                  return mapping.some(
+                    (perm) => user?.permissions?.[perm] === true,
+                  );
+                }
+                const key = mapping || sub;
+                return user?.permissions?.[key] === true;
+              });
 
-          // If title permission exists and is false → block whole folder
-          if (titleKey in (user?.permissions || {})) {
-            if (!user.permissions[titleKey]) return null;
-          }
+              if (allowedSubfolders.length === 0) return null;
 
-          // Filter subfolders
-          const allowedSubfolders = folder.subfolders.filter((sub) => {
-            const mapping = permissionKeyMap[sub];
+              return (
+                <Folder
+                  key={index}
+                  name={folder.name}
+                  subfolders={allowedSubfolders}
+                  activeFolder={activeFolder}
+                  toggleFolder={toggleFolder}
+                  activeTabs={activeTabs}
+                  handleSubfolderClick={handleSubfolderClick}
+                  reportOpen={reportOpen}
+                  operationreportOpen={operationreportOpen}
+                  branchreportOpen={branchreportOpen}
+                  accountReportOpen={accountReportOpen}
+                  setAccountReportOpen={setAccountReportOpen}
+                  accountSummaryOpen={accountSummaryOpen}
+                  setAccountSummaryOpen={setAccountSummaryOpen}
+                  billingReportOpen={billingReportOpen}
+                  setBillingReportOpen={setBillingReportOpen}
+                  hasPerm={hasPerm}
+                />
+              );
+            })
+          )}
+        </ul>
+      ) : (
+        /* Export Mode */
+        <ul className="mx-4 text-sm">
+          <li
+            onClick={() => {
+              const tab = { folder: "Dashboard", subfolder: "Dashboard" };
+              setActiveTabs((prev) =>
+                prev.some(
+                  (item) =>
+                    item.folder === tab.folder &&
+                    item.subfolder === tab.subfolder,
+                )
+                  ? prev
+                  : [...prev, tab],
+              );
+              setCurrentTab("Dashboard");
+            }}
+            className="flex gap-1 font-semibold items-center cursor-pointer hover:bg-foggy-white transition-all p-1 rounded-md"
+          >
+            <Image src="/dashboard.svg" alt="" width={16} height={24} />
+            <span>Dashboard</span>
+          </li>
 
-            if (Array.isArray(mapping)) {
-              return mapping.some((perm) => user?.permissions?.[perm] === true);
+          {exportFolders.map((folder, index) => {
+            const titleKey = `title-${folder.name}`;
+
+            if (titleKey in (user?.permissions || {})) {
+              if (!user.permissions[titleKey]) return null;
             }
 
-            const key = mapping || sub;
-            return user?.permissions?.[key] === true;
-          });
+            const allowedSubfolders = folder.subfolders.filter((sub) => {
+              const mapping = permissionKeyMap[sub];
 
-          if (allowedSubfolders.length === 0) return null;
+              if (Array.isArray(mapping)) {
+                return mapping.some(
+                  (perm) => user?.permissions?.[perm] === true,
+                );
+              }
 
-          return (
-            <Folder
-              key={index}
-              name={folder.name}
-              subfolders={allowedSubfolders}
-              activeFolder={activeFolder}
-              toggleFolder={toggleFolder}
-              activeTabs={activeTabs}
-              handleSubfolderClick={handleSubfolderClick}
-              reportOpen={reportOpen}
-              operationreportOpen={operationreportOpen}
-              branchreportOpen={branchreportOpen}
-              accountReportOpen={accountReportOpen}
-              setAccountReportOpen={setAccountReportOpen}
-              accountSummaryOpen={accountSummaryOpen}
-              setAccountSummaryOpen={setAccountSummaryOpen}
-              billingReportOpen={billingReportOpen}
-              setBillingReportOpen={setBillingReportOpen}
-              hasPerm={hasPerm}
-            />
-          );
-        })}
-      </ul>
+              const key = mapping || sub;
+              return user?.permissions?.[key] === true;
+            });
+
+            if (allowedSubfolders.length === 0) return null;
+
+            return (
+              <Folder
+                key={index}
+                name={folder.name}
+                subfolders={allowedSubfolders}
+                activeFolder={activeFolder}
+                toggleFolder={toggleFolder}
+                activeTabs={activeTabs}
+                handleSubfolderClick={handleSubfolderClick}
+                reportOpen={reportOpen}
+                operationreportOpen={operationreportOpen}
+                branchreportOpen={branchreportOpen}
+                accountReportOpen={accountReportOpen}
+                setAccountReportOpen={setAccountReportOpen}
+                accountSummaryOpen={accountSummaryOpen}
+                setAccountSummaryOpen={setAccountSummaryOpen}
+                billingReportOpen={billingReportOpen}
+                setBillingReportOpen={setBillingReportOpen}
+                hasPerm={hasPerm}
+              />
+            );
+          })}
+        </ul>
+      )}
+
       <UpdateNotification />
       <div className="px-8 pb-4 text-[10px] flex flex-col gap-0.5 font-bold text-green-1">
-        {/* <div className="opacity-60">Current: {appVersion}</div> */}
         {latestVersion && (
           <div
             className={`${latestVersion !== appVersion ? "text-amber-600" : "opacity-60"}`}
@@ -394,10 +424,6 @@ function Sidebar() {
           </div>
         )}
       </div>
-      {/* </div>
-      <div className="pr-4 pl-1 sticky bottom-2">
-        <SimpleButton name={"Logout"} onClick={logout} />
-      </div> */}
     </nav>
   );
 }
@@ -423,7 +449,6 @@ const Folder = ({
   setBillingReportOpen = false,
   hasPerm,
 }) => {
-  // Check if any tab in activeTabs corresponds to this folder
   const isFolderActive = activeTabs.some((tab) => tab.folder === name);
 
   return (
@@ -447,7 +472,7 @@ const Folder = ({
         <span>{name}</span>
       </div>
       <ul
-        className={`ml-10 overflow-hidden transition-all flex flex-col  duration-300 ${
+        className={`ml-10 overflow-hidden transition-all flex flex-col duration-300 ${
           activeFolder.includes(name) ? "max-h-screen " : "max-h-0 "
         }`}
       >
@@ -468,6 +493,7 @@ const Folder = ({
             {subfolder}
           </li>
         ))}
+
         {name === "Operations" &&
           [
             "Child AWB No Report",
@@ -502,7 +528,7 @@ const Folder = ({
             </li>
           )}
 
-        {name == "Operations" &&
+        {name === "Operations" &&
           [
             "Child AWB No Report",
             "Manifest Report",
@@ -521,9 +547,9 @@ const Folder = ({
               <li
                 key={index}
                 onClick={() => handleSubfolderClick(name, item)}
-                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                className={`ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
                   operationreportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                }  ${
+                } ${
                   activeTabs.some(
                     (tab) => tab.folder === name && tab.subfolder === item,
                   )
@@ -566,7 +592,7 @@ const Folder = ({
             </li>
           )}
 
-        {name == "Customer Care" &&
+        {name === "Customer Care" &&
           [
             "Tracking Report",
             "Complaint Report",
@@ -582,9 +608,9 @@ const Folder = ({
               <li
                 key={index}
                 onClick={() => handleSubfolderClick(name, item)}
-                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                className={`ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
                   reportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                }  ${
+                } ${
                   activeTabs.some(
                     (tab) => tab.folder === name && tab.subfolder === item,
                   )
@@ -618,16 +644,16 @@ const Folder = ({
             </li>
           )}
 
-        {name == "Booking" &&
+        {name === "Booking" &&
           ["Branch Manifest Report"]
             .filter((item) => hasPerm(item))
             .map((item, index) => (
               <li
                 key={index}
                 onClick={() => handleSubfolderClick(name, item)}
-                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                className={`ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
                   branchreportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                }  ${
+                } ${
                   activeTabs.some(
                     (tab) => tab.folder === name && tab.subfolder === item,
                   )
@@ -673,7 +699,7 @@ const Folder = ({
             </li>
           )}
 
-        {name == "Account" &&
+        {name === "Account" &&
           [
             "Total Outstanding",
             "Run Wise Sale Report",
@@ -692,9 +718,9 @@ const Folder = ({
               <li
                 key={index}
                 onClick={() => handleSubfolderClick(name, item)}
-                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                className={`ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
                   accountReportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                }  ${
+                } ${
                   activeTabs.some(
                     (tab) => tab.folder === name && tab.subfolder === item,
                   )
@@ -732,22 +758,20 @@ const Folder = ({
             </li>
           )}
 
-        {name == "Account" &&
+        {name === "Account" &&
           [
             "Payment Receipt Summary",
             "Credit Summary Report",
             "Debit Summary Report",
-            // "Claim For Lost Shipment Summary",
-            // "Discount Credit Note Summary",
           ]
             .filter((item) => hasPerm(item))
             .map((item, index) => (
               <li
                 key={index}
                 onClick={() => handleSubfolderClick(name, item)}
-                className={` ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                className={`ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
                   accountSummaryOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                }  ${
+                } ${
                   activeTabs.some(
                     (tab) => tab.folder === name && tab.subfolder === item,
                   )
@@ -804,7 +828,7 @@ const Folder = ({
                 onClick={() => handleSubfolderClick(name, item)}
                 className={`ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
                   billingReportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
-                }  ${
+                } ${
                   activeTabs.some(
                     (tab) => tab.folder === name && tab.subfolder === item,
                   )

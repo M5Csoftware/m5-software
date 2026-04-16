@@ -214,6 +214,10 @@ const dynamicPages = {
   132: dynamic(() => import("./pages/customer-discount/page"), { ssr: false }),
   133: dynamic(() => import("./pages/new-booking-report/page"), { ssr: false }),
   134: dynamic(() => import("./pages/delete-shipment/page"), { ssr: false }),
+  135: dynamic(() => import("./pages/awb-import-entry/page"), { ssr: false }),
+  136: dynamic(() => import("./pages/import-booking-report/page"), { ssr: false }),
+  137: dynamic(() => import("./pages/import-shipment-status-report/page"), { ssr: false }),
+  138: dynamic(() => import("./pages/import-pod-entry/page"), { ssr: false }),
 };
 
 const App = () => {
@@ -383,6 +387,10 @@ const App = () => {
     "Customer Discount": 132,
     "New Booking Report": 133,
     "Delete Shipment": 134,
+    "AWB Import Entry": 135,
+    "Import Booking Report": 136,
+    "Import Shipment Status Report": 137,
+    "Import POD Entry": 138,
   };
 
   // State for LRU tracking
