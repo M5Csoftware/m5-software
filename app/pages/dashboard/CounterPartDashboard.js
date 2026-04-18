@@ -15,10 +15,26 @@ import { useAuth } from "@/app/Context/AuthContext";
 
 export default function CounterPartDashboard() {
   const [location, setLocation] = useState("New Delhi");
+  const defaultChartData = [
+    { name: "Jan", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+    { name: "Feb", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+    { name: "Mar", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+    { name: "Apr", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+    { name: "May", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+    { name: "Jun", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+    { name: "Jul", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+    { name: "Aug", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+    { name: "Sep", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+    { name: "Oct", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+    { name: "Nov", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+    { name: "Dec", delhi: 0, mumbai: 0, Ahmedabad: 0 },
+  ];
+
   const [incomingStats, setIncomingStats] = useState({
     remaining: 0,
     resolved: 0,
   });
+  const [chartData, setChartData] = useState(defaultChartData);
 
   const [counterPartInfo, setCounterPartInfo] = useState({
     name: "",
@@ -62,8 +78,13 @@ export default function CounterPartDashboard() {
       }
       const response = await fetch(url);
       const result = await response.json();
-      if (result.success && result.stats) {
-        setIncomingStats(result.stats.incoming);
+      if (result?.success && result?.stats) {
+        setIncomingStats(result.stats.incoming || { remaining: 0, resolved: 0 });
+        if (result.stats.monthlyStats && result.stats.monthlyStats.length > 0) {
+          setChartData(result.stats.monthlyStats);
+        } else {
+          setChartData(defaultChartData);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch incoming stats:", error);
@@ -160,6 +181,12 @@ export default function CounterPartDashboard() {
       .toFixed(2)} kg`,
   };
 
+  const thisYearTotal = (chartData || []).reduce(
+    (acc, curr) => acc + (curr?.delhi || 0) + (curr?.mumbai || 0) + (curr?.Ahmedabad || 0),
+    0
+  );
+  const monthlyAverage = Math.round(thisYearTotal / 12);
+
   return (
     <div className="flex flex-col gap-3">
       {/* Header section with Counterpart dynamic info */}
@@ -246,7 +273,7 @@ export default function CounterPartDashboard() {
                 <h2 className="tracking-wide text-[#71717A]">
                   Monthly Average
                 </h2>
-                <span className="text-xl">5,003</span>
+                <span className="text-xl">{monthlyAverage.toLocaleString()}</span>
                 <span className="text-xs text-[#14A166] flex items-center gap-1">
                   <ArrowUp
                     size={16}
@@ -258,7 +285,7 @@ export default function CounterPartDashboard() {
               {/* Right */}
               <div className="flex flex-col">
                 <h2 className="tracking-wide text-[#71717A]">This Year</h2>
-                <span className="text-xl ">60,422</span>
+                <span className="text-xl ">{thisYearTotal.toLocaleString()}</span>
                 <span className="text-xs text-[#14A166] flex items-center gap-1">
                   <ArrowUp
                     size={16}
@@ -283,7 +310,7 @@ export default function CounterPartDashboard() {
               </div>
             </div>
           </div>
-          <CounterPartChart />
+          <CounterPartChart data={chartData || []} />
         </div>
         <div className="border shadow-sm rounded-lg w-1/3">
           <SummaryCardWithSeeAll
