@@ -36,10 +36,10 @@ const NewImportBookingReport = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [pageLimit, setPageLimit] = useState(50); // Records per page
-  const [currentFilters, setCurrentFilters] = useState(null); // Store filters for pagination
+  const [pageLimit, setPageLimit] = useState(50);
+  const [currentFilters, setCurrentFilters] = useState(null);
 
-  // Watch the code field for changes
+  // Watch fields
   const codeValue = watch("code");
 
   // Notification state
@@ -54,17 +54,15 @@ const NewImportBookingReport = () => {
   const baseColumns = [
     { key: "awbNo", label: "AwbNo" },
     { key: "createdAt", label: "ShipmentDate" },
-    { key: "runNo", label: "RunNo" },
-    { key: "bagNo", label: "BagNo" },
-    { key: "flight", label: "Flight Date" },
+    { key: "status", label: "Status" },
     { key: "manifestNo", label: "Manifest Number" },
-    { key: "branch", label: "Branch" },
+    { key: "alMawbNo", label: "AlMawbNo" },
     { key: "origin", label: "Origin Name" },
     { key: "sector", label: "Sector" },
     { key: "destination", label: "DestinationName" },
     { key: "accountCode", label: "CustomerCode" },
     { key: "name", label: "Customer Name" },
-    { key: "salesPersonName", label: "Sales Person Name" },
+    
     { key: "receiverFullName", label: "ConsigneeName" },
     { key: "receiverAddressLine1", label: "ConsigneeAddressLine1" },
     { key: "receiverCity", label: "ConsigneeCity" },
@@ -85,25 +83,22 @@ const NewImportBookingReport = () => {
     { key: "content", label: "Shipment Content" },
     { key: "totalInvoiceValue", label: "Custom Value" },
     { key: "currency", label: "Currency" },
-    { key: "containerNo", label: "ContainerNo" },
     { key: "isHold", label: "Hold Shipment" },
     { key: "holdReason", label: "Hold Reason" },
     { key: "otherHoldReason", label: "Hold Reason 2" },
     { key: "unholdDate", label: "Unhold Date" },
-    { key: "csb", label: "CSB" },
+    
     { key: "userBranch", label: "User Branch" },
     { key: "insertUser", label: "Insert User" },
-    { key: "localMfNo", label: "LocalMfNo" },
+    
     { key: "entryType", label: "Entry Type" },
-    { key: "isQuickInscan", label: "Quick Inscan" },
   ];
 
   // Dynamically add Master AWB column when includeChild is checked
   const columns = useMemo(() => {
     if (includeChild) {
-      // Insert Master AWB column right after AwbNo (at index 1)
       return [
-        baseColumns[0], // AwbNo
+        baseColumns[0],
         { key: "masterAwbNo", label: "Master AWB" },
         ...baseColumns.slice(1),
       ];
@@ -111,7 +106,7 @@ const NewImportBookingReport = () => {
     return baseColumns;
   }, [includeChild]);
 
-  // ✅ Fetch customer name when code is entered
+  // Fetch customer name when code is entered
   useEffect(() => {
     const fetchCustomerName = async () => {
       if (!codeValue || codeValue.trim() === "") {
@@ -120,7 +115,6 @@ const NewImportBookingReport = () => {
       }
 
       try {
-        // Fetch customer account by code
         const response = await axios.get(
           `${server}/customer-account?accountCode=${codeValue.trim().toUpperCase()}`,
         );
@@ -140,7 +134,6 @@ const NewImportBookingReport = () => {
       }
     };
 
-    // Debounce the API call to avoid too many requests
     const timeoutId = setTimeout(() => {
       fetchCustomerName();
     }, 500);
@@ -155,7 +148,7 @@ const NewImportBookingReport = () => {
     if (parts.length !== 3) return null;
 
     const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+    const month = parseInt(parts[1], 10) - 1;
     const year = parseInt(parts[2], 10);
 
     return new Date(year, month, day);
@@ -165,7 +158,6 @@ const NewImportBookingReport = () => {
   const fetchReports = async (filters, page = 1) => {
     setIsLoading(true);
     try {
-      // Build query parameters for GET request
       const params = new URLSearchParams({
         code: filters.code || "",
         runNumber: filters.runNumber || "",
@@ -187,16 +179,14 @@ const NewImportBookingReport = () => {
         limit: pageLimit.toString(),
       });
 
-      console.log("Fetching reports with pagination:", { page, limit: pageLimit });
+      console.log("Fetching import reports with pagination:", { page, limit: pageLimit });
 
-      // Use GET request
       const response = await axios.get(
-        `${server}/reports/new-booking-report?${params.toString()}`,
+        `${server}/reports/import-booking-report?${params.toString()}`,
       );
 
       console.log("API Response:", response.data);
 
-      // Handle response with pagination
       const responseData = response.data.data || [];
       const pagination = response.data.pagination || {
         currentPage: 1,
@@ -210,11 +200,7 @@ const NewImportBookingReport = () => {
       const filteredData = responseData.map((item) => {
         let filtered = {};
         allowedKeys.forEach((key) => {
-          if (
-            item[key] !== undefined &&
-            item[key] !== null &&
-            item[key] !== ""
-          ) {
+          if (item[key] !== undefined && item[key] !== null && item[key] !== "") {
             if (typeof item[key] === "boolean") {
               filtered[key] = item[key] ? "Yes" : "No";
             } else filtered[key] = item[key];
@@ -231,7 +217,7 @@ const NewImportBookingReport = () => {
       if (filteredData.length > 0) {
         showNotification(
           "success",
-          `New booking report generated (${filteredData.length} records, Page ${pagination.currentPage} of ${pagination.totalPages})`,
+          `Import booking report generated (${filteredData.length} records, Page ${pagination.currentPage} of ${pagination.totalPages})`,
         );
       } else {
         showNotification("error", "No records found for selected criteria");
@@ -239,9 +225,8 @@ const NewImportBookingReport = () => {
 
       return filteredData;
     } catch (error) {
-      console.error("Error Downloading report:", error);
-      const errorMessage =
-        error.response?.data?.error || "Error downloading booking report";
+      console.error("Error downloading report:", error);
+      const errorMessage = error.response?.data?.error || "Error downloading import booking report";
       setReports([]);
       showNotification("error", errorMessage);
       throw error;
@@ -250,17 +235,15 @@ const NewImportBookingReport = () => {
     }
   };
 
-  // Update the onSubmit function to use the new fetchReports function
   const onSubmit = async (data) => {
     try {
       const { from, to, runNumber, origin, sector, branch, code, salePerson, destination, service } = data;
 
-      // Check if dates are mandatory based on specific filters
       const mandatoryPresence = !!(branch || sector || code || salePerson || destination || service);
       const optionalPresence = !!(runNumber || origin);
 
       if (optionalPresence) {
-        // Run Number or Origin present: Dates are optional even if mandatory filters are present
+        // Run Number or Origin present: Dates are optional
       } else if (mandatoryPresence) {
         if (!from || !to) {
           showNotification(
@@ -281,16 +264,8 @@ const NewImportBookingReport = () => {
         fromDateObj = parseDateDDMMYYYY(from);
         toDateObj = parseDateDDMMYYYY(to);
 
-        if (
-          !fromDateObj ||
-          !toDateObj ||
-          isNaN(fromDateObj.getTime()) ||
-          isNaN(toDateObj.getTime())
-        ) {
-          showNotification(
-            "error",
-            "Invalid date format. Please select valid dates.",
-          );
+        if (!fromDateObj || !toDateObj || isNaN(fromDateObj.getTime()) || isNaN(toDateObj.getTime())) {
+          showNotification("error", "Invalid date format. Please select valid dates.");
           return;
         }
 
@@ -298,7 +273,6 @@ const NewImportBookingReport = () => {
         toDateObj.setHours(23, 59, 59, 999);
       }
 
-      // Build filters object
       const filters = {
         code: data.code?.toUpperCase() || "",
         runNumber: data.runNumber?.toUpperCase() || "",
@@ -320,24 +294,13 @@ const NewImportBookingReport = () => {
 
       console.log("Submitting filters:", filters);
       
-      // Store filters for pagination
       setCurrentFilters(filters);
-      
-      // Reset to page 1 for new search
       setCurrentPage(1);
-      
-      // Fetch first page
       await fetchReports(filters, 1);
 
-      // Populate client input from API response only if code was provided
       if (data.code && reports.length > 0) {
         const first = reports[0];
-        const clientName =
-          first.name ||
-          first.customer ||
-          first.customerName ||
-          first.client ||
-          "";
+        const clientName = first.name || first.customer || first.customerName || first.client || "";
         setValue("client", clientName);
       } else if (!data.code) {
         setValue("client", "");
@@ -347,23 +310,15 @@ const NewImportBookingReport = () => {
     }
   };
 
-  // Handle page change
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
-    
-    // Scroll to top of table
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    
-    // Fetch new page
     fetchReports(currentFilters, newPage);
   };
 
-  // Handle limit change
   const handleLimitChange = (e) => {
     const newLimit = parseInt(e.target.value, 10);
     setPageLimit(newLimit);
-    
-    // If we have current filters, refetch with new limit (reset to page 1)
     if (currentFilters) {
       setCurrentPage(1);
       fetchReports(currentFilters, 1);
@@ -385,7 +340,7 @@ const NewImportBookingReport = () => {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", "new-booking-report.csv");
+    link.setAttribute("download", "new-import-booking-report.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -397,14 +352,12 @@ const NewImportBookingReport = () => {
     setAdded(!added);
     setReports([]);
     setValue("client", "");
-    // Reset all checkboxes
     setHoldShipments(false);
     setSkipMum(false);
     setSkipAmd(false);
     setcsbV(false);
     setBalanceShipmet(false);
     setIncludeChild(false);
-    // Reset pagination
     setCurrentPage(1);
     setTotalPages(1);
     setTotalRecords(0);
@@ -412,7 +365,6 @@ const NewImportBookingReport = () => {
     showNotification("success", "Refreshed");
   };
 
-  // Pagination component
   const PaginationControls = () => {
     if (totalPages <= 1 && reports.length === 0) return null;
 
@@ -492,11 +444,12 @@ const NewImportBookingReport = () => {
       />
 
       <Heading
-        title={"New Booking Report"}
+        title={"Import Booking Report"}
         codeListBtn="hidden"
         onRefresh={handleRefresh}
         bulkUploadBtn="hidden"
       />
+      
       <div className="flex flex-col gap-4">
         <div className="flex gap-3 items-center">
           <InputBox
@@ -552,7 +505,6 @@ const NewImportBookingReport = () => {
             value={"salePerson"}
             resetFactor={added}
           />
-
           <InputBox
             placeholder={"Destination"}
             register={register}
@@ -636,6 +588,7 @@ const NewImportBookingReport = () => {
                 label="Skip AMD"
               />
             </div>
+            
             <div className="w-[90px]">
               <RedCheckbox
                 isChecked={csbV}
@@ -657,6 +610,7 @@ const NewImportBookingReport = () => {
                 label="Balance Shipment"
               />
             </div>
+            
             <div className="w-[150px]">
               <RedCheckbox
                 isChecked={includeChild}
@@ -673,25 +627,22 @@ const NewImportBookingReport = () => {
         <TableWithSorting
           register={register}
           setValue={setValue}
-          name="newBookingReportTable"
+          name="newImportBookingReportTable"
           columns={columns}
           rowData={reports}
           className={`h-72`}
         />
         
-        {/* Pagination Controls */}
         <PaginationControls />
         
         <div className="flex justify-between items-center">
           <div className="text-sm text-gray-600">
-            {totalRecords > 0 && (
-              <span>Total Records: {totalRecords}</span>
-            )}
+            {totalRecords > 0 && <span>Total Records: {totalRecords}</span>}
           </div>
 
           <div>
             <SimpleButton
-              disabled={reports.length == 0}
+              disabled={reports.length === 0}
               name={"Download"}
               onClick={handleDownloadCSV}
             />

@@ -19,7 +19,7 @@ import NotificationFlag from "@/app/components/Notificationflag";
 import pushAWBLog from "@/app/lib/pushAWBLog";
 
 const EVENT_CODE = "DLV";
-const STATUS_VALUE = "Delivered (POD Updated)";
+const STATUS_VALUE = "Shipment Delivered To Consignee";
 
 function PODEntryImport() {
   const { register, setValue, handleSubmit, reset, watch } = useForm({
@@ -39,8 +39,9 @@ function PODEntryImport() {
   const [excelPath, setExcelPath] = useState("");
   const [resetForm, setResetForm] = useState(false);
   const [eventData, setEventData] = useState({});
+  const [hasSearched, setHasSearched] = useState(false);
 
-  // ✅ FIX: Always keep eventCode and status set — survives resets and re-renders
+  // Always keep eventCode and status set — survives resets and re-renders
   useEffect(() => {
     setValue("eventCode", EVENT_CODE);
     setValue("status", STATUS_VALUE);
@@ -70,10 +71,16 @@ function PODEntryImport() {
     setSelectedItems([]);
     setSelectedFile(null);
     setExcelPath("");
+    setEventData({});
+    setHasSearched(false);
     setResetForm((prev) => !prev);
-    // ✅ FIX: Re-apply fixed values immediately after refresh
     setValue("eventCode", EVENT_CODE);
     setValue("status", STATUS_VALUE);
+    setValue("statusDate", "");
+    setValue("time(Use 24 hr Format)", "");
+    setValue("receiverName", "");
+    setValue("remark", "");
+    setValue("airwaybillNumber", "");
     showNotification("success", "Refreshed");
   };
 
@@ -110,12 +117,14 @@ function PODEntryImport() {
 
   const normalizeShipments = (s) => (Array.isArray(s) ? s : [s]);
 
+  // Search by AWB from Import Shipment collection
   const searchByAWB = async (awbNumber) => {
     try {
       setLoading(true);
+      setHasSearched(true);
 
       const response = await axios.get(
-        `${server}/portal/get-shipments?awbNo=${awbNumber.toUpperCase()}`,
+        `${server}/import-pod-entry?awbNo=${awbNumber.toUpperCase()}`,
       );
 
       const shipments = normalizeShipments(response.data.shipment).map((s) => ({
@@ -126,51 +135,39 @@ function PODEntryImport() {
       setRowData(shipments);
       setOriginalRowData(shipments);
 
-      showNotification("success", "AWB found");
+      // Check if already delivered
+      if (shipments[0]?.isDelivered) {
+        showNotification("warning", "This shipment already has POD entry");
+        // Load existing POD data
+        if (shipments[0]?.podEventDate) {
+          const existingData = {
+            eventDate: normalizeDate(shipments[0].podEventDate),
+            eventTime: shipments[0].podEventTime || "",
+            receiverName: shipments[0].podReceiverName || "",
+            remark: shipments[0].podRemark || "",
+          };
+          setEventData(existingData);
+          setValue("statusDate", existingData.eventDate);
+          setValue("time(Use 24 hr Format)", existingData.eventTime);
+          setValue("receiverName", existingData.receiverName);
+          setValue("remark", existingData.remark);
+        }
+      } else {
+        showNotification("success", "AWB found");
+        // Clear POD form for new entry
+        setEventData({});
+        setValue("statusDate", "");
+        setValue("time(Use 24 hr Format)", "");
+        setValue("receiverName", "");
+        setValue("remark", "");
+      }
     } catch (error) {
       setRowData([]);
       setOriginalRowData([]);
-      showNotification("error", "AWB not found");
+      setHasSearched(true);
+      showNotification("error", error.response?.data?.error || "AWB not found");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const eventbyAWB = async (awbNumber) => {
-    try {
-      const res = await axios.get(
-        `${server}/event-activity?awbNo=${awbNumber}`,
-      );
-
-      if (!res.data) {
-        showNotification("error", "No event data for this AWB");
-        return;
-      }
-
-      const e = res.data;
-      const last = (e.eventCode?.length || 1) - 1;
-
-      const latest = {
-        eventDate: normalizeDate(e.eventDate?.[last]),
-        eventTime: normalizeTime(e.eventTime?.[last]),
-        receiverName: e.receiverName || "",
-        remark: e.remark || "",
-      };
-
-      setEventData(latest);
-
-      setValue("statusDate", latest.eventDate);
-      setValue("time(Use 24 hr Format)", latest.eventTime);
-      setValue("receiverName", latest.receiverName);
-      setValue("remark", latest.remark);
-
-      // ✅ FIX: Re-assert fixed values after loading event data
-      setValue("eventCode", EVENT_CODE);
-      setValue("status", STATUS_VALUE);
-
-      showNotification("success", "Last event loaded");
-    } catch (err) {
-      showNotification("error", "Failed to load event");
     }
   };
 
@@ -197,10 +194,12 @@ function PODEntryImport() {
           sector: row["Sector"] || "",
           destination: row["Destination"] || "",
           receiverFullName: row["Consignee Name"] || "",
+          isDelivered: false,
         }));
 
         setRowData(shipments);
         setOriginalRowData(shipments);
+        setHasSearched(true);
 
         showNotification("success", "Excel loaded");
       } catch {
@@ -218,9 +217,9 @@ function PODEntryImport() {
         return showNotification("error", "Enter AWB number");
 
       await searchByAWB(form.airwaybillNumber);
-      await eventbyAWB(form.airwaybillNumber);
     } else {
       if (!selectedFile) return showNotification("error", "Select Excel file");
+      setHasSearched(true);
     }
   };
 
@@ -239,36 +238,79 @@ function PODEntryImport() {
     showNotification("success", "Selected removed");
   };
 
-  const deleteBulkAWB = async (list) => {
+  // Save POD entry to Import Shipment collection
+  const savePODEntry = async (data) => {
     try {
-      await axios.delete(`${server}/event-activity/podentry`, {
-        data: list,
-      });
-      showNotification("success", "Deleted successfully");
-    } catch {
-      showNotification("error", "Deletion failed");
-    }
-  };
+      const eventCode = data.eventCode || EVENT_CODE;
+      const status = data.status || STATUS_VALUE;
 
-  const handleRemoveSelected = () => {
-    if (selectedItems.length === 0)
-      return showNotification("error", "No items selected");
+      const list = selectedItems.length ? selectedItems : rowData;
 
-    deleteBulkAWB(selectedItems.map((i) => i.awbNo));
-  };
+      if (list.length === 0) {
+        showNotification("error", "No shipments to update");
+        return false;
+      }
 
-  const createPODActivity = async (data) => {
-    try {
-      await axios.post(`${server}/event-activity/podentry`, data);
-      showNotification("success", "POD saved");
-    } catch {
-      showNotification("error", "Failed to save POD");
-      throw new Error();
+      const payload = {
+        eventCode,
+        status,
+        eventDate: data.statusDate,
+        eventTime: data["time(Use 24 hr Format)"],
+        receiverName: data.receiverName,
+        remark: data.remark || "",
+        eventUser: user?.userName || user?.userId || "System",
+        awbList: list.map((i) => ({
+          awbNo: i.awbNo,
+          accountCode: i.accountCode,
+        })),
+      };
+
+      const response = await axios.post(`${server}/import-pod-entry`, payload);
+
+      if (response.status === 200) {
+        // Log each successful POD entry
+        const getCustomerName = async (accountCode) => {
+          if (!accountCode) return "";
+          try {
+            const res = await axios.get(
+              `${server}/customer-account?accountCode=${accountCode}`,
+            );
+            return res.data?.name || "";
+          } catch {
+            return "";
+          }
+        };
+
+        for (const item of list) {
+          try {
+            const customer = await getCustomerName(item.accountCode);
+            await pushAWBLog({
+              awbNo: item.awbNo,
+              accountCode: item.accountCode || "",
+              customer: customer || item.receiverFullName || "",
+              action: "POD Entry Generated (Import)",
+              actionUser: user?.userId || "System",
+              department: "Operations",
+            });
+          } catch (logErr) {
+            console.error("Failed to push AWB Log for:", item.awbNo, logErr);
+          }
+        }
+
+        showNotification("success", response.data.message);
+        handleRefresh();
+        return true;
+      }
+    } catch (error) {
+      console.error("Error saving POD entry:", error);
+      const errorMsg =
+        error.response?.data?.error || "Failed to save POD entry";
+      showNotification("error", errorMsg);
+      return false;
     }
   };
 
   const onSubmit = async (data) => {
-    // ✅ FIX: Fallback to constants in case form values are missing
     const eventCode = data.eventCode || EVENT_CODE;
     const status = data.status || STATUS_VALUE;
 
@@ -278,62 +320,78 @@ function PODEntryImport() {
       !data.statusDate ||
       !data["time(Use 24 hr Format)"] ||
       !data.receiverName
-    )
-      return showNotification("error", "Fill all required fields");
+    ) {
+      showNotification("error", "Fill all required fields");
+      return;
+    }
 
     const list = selectedItems.length ? selectedItems : rowData;
 
-    if (list.length === 0)
-      return showNotification("error", "No shipments to update");
+    if (list.length === 0) {
+      showNotification("error", "No shipments to update");
+      return;
+    }
 
-    const now = new Date();
+    // Check if any shipment is already delivered
+    const alreadyDelivered = list.filter((item) => item.isDelivered === true);
+    if (alreadyDelivered.length > 0) {
+      showNotification(
+        "error",
+        `${alreadyDelivered.length} shipment(s) already have POD entry. Please exclude them first.`,
+      );
+      return;
+    }
 
-    const payload = list.map((i) => ({
-      awbNo: i.awbNo,
-      eventDate: data.statusDate,
-      eventTime: data["time(Use 24 hr Format)"],
-      eventCode: eventCode, // ✅ uses guaranteed value
-      status: status, // ✅ uses guaranteed value
-      receiverName: data.receiverName,
-      remark: data.remark || "",
-      eventUser: user?.userName || "System",
-      eventLogTime: normalizeTime(now.toISOString()),
-    }));
+    await savePODEntry(data);
+  };
 
+  // Remove POD entry from Import Shipment
+  const removePODEntry = async (awbList) => {
     try {
-      await createPODActivity(payload);
+      let successCount = 0;
+      let failCount = 0;
 
-      // ✅ NEW: Batch Logging
-      const getCustomerName = async (accountCode) => {
-        if (!accountCode) return "";
+      for (const awbNo of awbList) {
         try {
-          const res = await axios.get(
-            `${server}/customer-account?accountCode=${accountCode}`,
-          );
-          return res.data?.name || "";
-        } catch {
-          return "";
-        }
-      };
-
-      for (const item of list) {
-        try {
-          const customer = await getCustomerName(item.accountCode);
-          await pushAWBLog({
-            awbNo: item.awbNo,
-            accountCode: item.accountCode || "",
-            customer: customer || item.receiverFullName || "",
-            action: "POD Entry Generated",
-            actionUser: user?.userId || "System",
-            department: "Operations",
-          });
-        } catch (logErr) {
-          console.error("❌ Failed to push AWB Log for:", item.awbNo, logErr);
+          await axios.delete(`${server}/import-pod-entry?awbNo=${awbNo}`);
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to remove POD for ${awbNo}:`, error);
+          failCount++;
         }
       }
 
-      handleRefresh();
-    } catch {}
+      if (successCount > 0) {
+        showNotification(
+          "success",
+          `POD removed for ${successCount} shipment(s)`,
+        );
+        handleRefresh();
+      }
+      if (failCount > 0) {
+        showNotification(
+          "error",
+          `Failed to remove POD for ${failCount} shipment(s)`,
+        );
+      }
+    } catch (error) {
+      showNotification("error", "Failed to remove POD entries");
+    }
+  };
+
+  const handleRemoveSelected = () => {
+    if (selectedItems.length === 0) {
+      showNotification("error", "No items selected");
+      return;
+    }
+
+    const confirmRemove = window.confirm(
+      `Are you sure you want to remove POD entry for ${selectedItems.length} shipment(s)?`,
+    );
+
+    if (confirmRemove) {
+      removePODEntry(selectedItems.map((i) => i.awbNo));
+    }
   };
 
   useEffect(() => {
@@ -349,12 +407,11 @@ function PODEntryImport() {
     );
 
     if (filtered.length === 0) {
-      showNotification("error", "No matching AWB");
       setRowData([]);
     } else {
       setRowData(filtered);
     }
-  }, [watch("additional_SearchTerm")]);
+  }, [watch("additional_SearchTerm"), originalRowData]);
 
   const downloadSampleCSV = () => {
     const csvData = [
@@ -368,7 +425,7 @@ function PODEntryImport() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "sample_pod_shipments.csv";
+    a.download = "sample_import_pod_shipments.csv";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -384,7 +441,7 @@ function PODEntryImport() {
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
       <Heading
-        title="POD Entry"
+        title="Import POD Entry"
         bulkUploadBtn="hidden"
         codeListBtn="hidden"
         onRefresh={handleRefresh}
@@ -457,29 +514,28 @@ function PODEntryImport() {
                   />
                   <div className="min-w-[120px]">
                     <OutlinedButtonRed
-                      label={"Search"}
+                      label={loading ? "Searching..." : "Search"}
                       onClick={handleSearch}
+                      disabled={loading}
                     />
                   </div>
                 </div>
               )}
             </div>
 
-            {/* AWB filter search */}
-            <div>
-              {demoRadio !== "AWB" && (
-                <div className="flex gap-2">
-                  <SearchInputBox
-                    placeholder="Search Airwaybill Below"
-                    name="additional_SearchTerm"
-                    register={register}
-                  />
-                </div>
-              )}
+            {/* AWB filter search - only show when there are results */}
+
+            <div className="flex gap-2">
+              <SearchInputBox
+                placeholder="Search Airwaybill Below"
+                name="additional_SearchTerm"
+                register={register}
+              />
             </div>
           </div>
 
-          {/* Results Table */}
+          {/* Results Table - Always show when hasSearched is true */}
+
           <div>
             <TableWithCheckbox
               register={register}
@@ -499,7 +555,8 @@ function PODEntryImport() {
           />
         </div>
 
-        {/* POD Entry Section */}
+        {/* POD Entry Section - Always show when hasSearched is true and there are results */}
+
         <div className="flex flex-col gap-3">
           <RedLabelHeading label={`Shipment POD Entry`} />
 
@@ -545,7 +602,7 @@ function PODEntryImport() {
               type="time"
               required={true}
               resetFactor={resetForm}
-              initialValue={eventData.eventTime || " "}
+              initialValue={eventData.eventTime || ""}
             />
           </div>
 
@@ -557,7 +614,7 @@ function PODEntryImport() {
               value="receiverName"
               required={true}
               resetFactor={resetForm}
-              initialValue={eventData.receiverName || " "}
+              initialValue={eventData.receiverName || ""}
             />
             <InputBox
               placeholder="Remark"
@@ -565,23 +622,26 @@ function PODEntryImport() {
               setValue={setValue}
               value="remark"
               resetFactor={resetForm}
-              initialValue={eventData.remark || " "}
+              initialValue={eventData.remark || ""}
             />
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-between">
-          <div></div>
-          <div className="flex gap-2">
-            <OutlinedButtonRed
-              label={"Remove"}
-              onClick={handleRemoveSelected}
-              perm="CC Deletion"
-            />
-            <SimpleButton name={"Save"} type="submit" />
+        {/* Action Buttons - Always show when hasSearched is true and there are results */}
+        {hasSearched && rowData.length > 0 && (
+          <div className="flex justify-between">
+            <div></div>
+            <div className="flex gap-2">
+              <OutlinedButtonRed
+                label={"Remove"}
+                onClick={handleRemoveSelected}
+                perm="CC Deletion"
+                disabled={selectedItems.length === 0}
+              />
+              <SimpleButton name={"Save"} type="submit" />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </form>
   );
