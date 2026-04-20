@@ -27,27 +27,74 @@ export default function UpdateNotification({ inTopBar = false }) {
   const [progress, setProgress] = useState(0);
   const [installError, setInstallError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  const [manualCheck, setManualCheck] = useState(false);
   const invokeRef = useRef(null);
   const updaterRef = useRef(null);
+  const checkIntervalRef = useRef(null);
 
   // ── Load Tauri APIs ───────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (process.env.NODE_ENV === "development") return;
 
     const load = async () => {
       try {
-        const { invoke } = await import("@tauri-apps/api/tauri");
-        const updater = await import("@tauri-apps/api/updater");
-        const { relaunch } = await import("@tauri-apps/api/process");
+        // Check if running in Tauri
+        const isTauri = !!(window.__TAURI__ || window.__TAURI_PLUGIN_UPDATER__);
 
-        invokeRef.current = invoke;
-        updaterRef.current = { ...updater, relaunch };
+        if (isTauri) {
+          console.log("[updater] Tauri environment detected");
 
-        console.log("[updater] Tauri API ready");
-        setApiReady(true);
+          // Try different import paths for Tauri APIs
+          let invoke, updater, relaunch;
+
+          try {
+            // Try newer Tauri v2 API
+            const tauriCore = await import("@tauri-apps/api/core");
+            const tauriUpdater = await import("@tauri-apps/api/updater");
+            const tauriProcess = await import("@tauri-apps/api/process");
+
+            invoke = tauriCore.invoke;
+            updater = tauriUpdater;
+            relaunch = tauriProcess.relaunch;
+          } catch (e1) {
+            console.log("[updater] Tauri v2 API not found, trying v1");
+            try {
+              // Try older Tauri v1 API
+              const tauriApi = await import("@tauri-apps/api/tauri");
+              const updaterApi = await import("@tauri-apps/api/updater");
+              const processApi = await import("@tauri-apps/api/process");
+
+              invoke = tauriApi.invoke;
+              updater = updaterApi;
+              relaunch = processApi.relaunch;
+            } catch (e2) {
+              console.log("[updater] Tauri API not available in development");
+              return;
+            }
+          }
+
+          invokeRef.current = invoke;
+          updaterRef.current = { ...updater, relaunch };
+          console.log("[updater] Tauri API ready");
+          setApiReady(true);
+
+          // Initial check
+          setTimeout(() => checkUpdate(), 2000);
+        } else {
+          console.log("[updater] Not running in Tauri environment");
+          // For development/testing, show mock update button
+          if (process.env.NODE_ENV === "development") {
+            setUpdateInfo({
+              has_update: true,
+              current_version: "0.1.0",
+              remote_version: "0.2.0",
+              notes: "Test update in development mode",
+              pub_date: new Date().toISOString(),
+            });
+          }
+        }
       } catch (e) {
-        console.log("[updater] Tauri API not available:", e.message);
+        console.log("[updater] Failed to load Tauri API:", e.message);
       }
     };
     load();
@@ -55,29 +102,51 @@ export default function UpdateNotification({ inTopBar = false }) {
 
   // ── Check for update via Rust command ────────────────────────────────
   const checkUpdate = useCallback(async () => {
-    if (!invokeRef.current) return;
+    if (!invokeRef.current) {
+      console.log("[updater] Invoke not ready");
+      return;
+    }
+
     try {
+      console.log("[updater] Checking for updates...");
       const info = await invokeRef.current("check_for_update");
-      console.log("[updater] Result:", info);
+      console.log("[updater] Check result:", info);
+
       if (info?.has_update) {
         const dismissedVer = localStorage.getItem(STORAGE_KEY);
         if (dismissedVer !== info.remote_version) {
           setUpdateInfo(info);
           setDismissed(false);
+          console.log("[updater] Update available:", info.remote_version);
+        } else {
+          console.log("[updater] Update dismissed for version:", dismissedVer);
         }
+      } else {
+        console.log("[updater] No update available");
       }
     } catch (err) {
-      console.warn("[updater] check failed:", err);
+      console.warn("[updater] Check failed:", err);
+    } finally {
+      setManualCheck(false);
     }
   }, []);
 
+  // Set up periodic checking
   useEffect(() => {
     if (!apiReady) return;
-    const t = setTimeout(checkUpdate, 3000);
-    const i = setInterval(checkUpdate, CHECK_INTERVAL_MS);
+
+    // Clear existing interval
+    if (checkIntervalRef.current) {
+      clearInterval(checkIntervalRef.current);
+    }
+
+    // Set up new interval
+    checkIntervalRef.current = setInterval(checkUpdate, CHECK_INTERVAL_MS);
+
     return () => {
-      clearTimeout(t);
-      clearInterval(i);
+      if (checkIntervalRef.current) {
+        clearInterval(checkIntervalRef.current);
+      }
     };
   }, [apiReady, checkUpdate]);
 
@@ -242,6 +311,13 @@ export default function UpdateNotification({ inTopBar = false }) {
     }
   };
 
+  // Force check for update manually
+  const handleManualCheck = () => {
+    setManualCheck(true);
+    checkUpdate();
+  };
+
+  // Don't render anything if no update is available
   if (!updateInfo || dismissed) return null;
 
   return (
@@ -291,7 +367,7 @@ export default function UpdateNotification({ inTopBar = false }) {
             <line x1="12" y1="12" x2="12" y2="21" />
             <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
           </svg>
-          Install Update
+          Update Available
         </button>
       ) : (
         /* ── Sidebar Banner ──────────────────────────────────────────────── */
@@ -334,7 +410,9 @@ export default function UpdateNotification({ inTopBar = false }) {
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: "white", fontSize: "11px", fontWeight: "700" }}>
+            <div
+              style={{ color: "white", fontSize: "11px", fontWeight: "700" }}
+            >
               Update Available
             </div>
             <div
@@ -485,7 +563,7 @@ export default function UpdateNotification({ inTopBar = false }) {
             >
               {installing
                 ? installStatus || "Please wait..."
-                : "A new version of M5C Logs is ready to install."}
+                : `Version ${updateInfo.remote_version} is ready to install.`}
             </p>
 
             {/* ── Progress bar (shown while installing) ── */}
@@ -592,7 +670,7 @@ export default function UpdateNotification({ inTopBar = false }) {
                       fontWeight: "600",
                     }}
                   >
-                    v{updateInfo.current_version}
+                    Current: v{updateInfo.current_version}
                   </span>
                   <svg
                     width="16"
@@ -617,7 +695,7 @@ export default function UpdateNotification({ inTopBar = false }) {
                       fontWeight: "700",
                     }}
                   >
-                    v{updateInfo.remote_version}
+                    New: v{updateInfo.remote_version}
                   </span>
                   {updateInfo.pub_date && (
                     <span
@@ -723,7 +801,7 @@ export default function UpdateNotification({ inTopBar = false }) {
                       <polyline points="7 10 12 15 17 10" />
                       <line x1="12" y1="15" x2="12" y2="3" />
                     </svg>
-                    Install Update
+                    Install Now
                   </button>
                   <button
                     onClick={handleDismiss}
