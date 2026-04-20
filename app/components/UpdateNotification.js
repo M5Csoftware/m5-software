@@ -44,37 +44,19 @@ export default function UpdateNotification({ inTopBar = false }) {
         if (isTauri) {
           console.log("[updater] Tauri environment detected");
 
-          // Try different import paths for Tauri APIs
-          let invoke, updater, relaunch;
+          // Use Tauri v1 API only
+          const tauriApi = await import("@tauri-apps/api/tauri");
+          const updaterApi = await import("@tauri-apps/api/updater");
+          const processApi = await import("@tauri-apps/api/process");
 
-          try {
-            // Try newer Tauri v2 API
-            const tauriCore = await import("@tauri-apps/api/core");
-            const tauriUpdater = await import("@tauri-apps/api/updater");
-            const tauriProcess = await import("@tauri-apps/api/process");
+          invokeRef.current = tauriApi.invoke;
+          updaterRef.current = {
+            checkUpdate: updaterApi.checkUpdate,
+            installUpdate: updaterApi.installUpdate,
+            onUpdaterEvent: updaterApi.onUpdaterEvent,
+            relaunch: processApi.relaunch,
+          };
 
-            invoke = tauriCore.invoke;
-            updater = tauriUpdater;
-            relaunch = tauriProcess.relaunch;
-          } catch (e1) {
-            console.log("[updater] Tauri v2 API not found, trying v1");
-            try {
-              // Try older Tauri v1 API
-              const tauriApi = await import("@tauri-apps/api/tauri");
-              const updaterApi = await import("@tauri-apps/api/updater");
-              const processApi = await import("@tauri-apps/api/process");
-
-              invoke = tauriApi.invoke;
-              updater = updaterApi;
-              relaunch = processApi.relaunch;
-            } catch (e2) {
-              console.log("[updater] Tauri API not available in development");
-              return;
-            }
-          }
-
-          invokeRef.current = invoke;
-          updaterRef.current = { ...updater, relaunch };
           console.log("[updater] Tauri API ready");
           setApiReady(true);
 
