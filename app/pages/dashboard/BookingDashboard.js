@@ -19,12 +19,10 @@ function BookingDashboard() {
   const { user } = useAuth();
 
   //  Selected date for each table
-  const [selectedDateForRunHandover, setSelectedDateForRunHandover] = useState(
-    dayjs()
-  );
-  const [selectedDateForOldShipment, setSelectedDateForOldShipment] = useState(
-    dayjs()
-  );
+  const [selectedDateForRunHandover, setSelectedDateForRunHandover] =
+    useState(dayjs());
+  const [selectedDateForOldShipment, setSelectedDateForOldShipment] =
+    useState(dayjs());
 
   //  Calendar popover visibility
   const [showCalendarForRunHandover, setShowCalendarForRunHandover] =
@@ -79,7 +77,7 @@ function BookingDashboard() {
             status: m.pickupType === "pending" ? "Pending" : "Drop",
             branch: m.branch || user.branch,
           };
-        })
+        }),
       );
 
       setManifests(transformed);
@@ -97,7 +95,7 @@ function BookingDashboard() {
       // console.log(user);
 
       const res = await axios.get(
-        `${server}/branch-bagging/getAll-runs?branch=${user.branch}`
+        `${server}/branch-bagging/getAll-runs?branch=${user.branch}`,
       );
       const data = [res.data] || [];
 
@@ -205,8 +203,8 @@ function BookingDashboard() {
     try {
       const awbResponses = await Promise.all(
         awbNumbers.map((awb) =>
-          axios.get(`${server}/portal/get-shipments?awbNo=${awb}`)
-        )
+          axios.get(`${server}/portal/get-shipments?awbNo=${awb}`),
+        ),
       );
 
       let totalPcs = 0;
@@ -236,7 +234,7 @@ function BookingDashboard() {
       try {
         // Add branch filter
         const res = await axios.get(
-          `${server}/portal/get-manifest/get-all?branch=${user.branch}`
+          `${server}/portal/get-manifest/get-all?branch=${user.branch}`,
         );
         const manifestData = res.data.manifests || [];
 
@@ -256,12 +254,12 @@ function BookingDashboard() {
               status: m.pickupType === "pending" ? "Pending" : "Drop",
               branch: m.branch || "N/A",
             };
-          })
+          }),
         );
 
         // Filter by user's branch
         const filteredByBranch = transformed.filter(
-          (m) => !m.branch || m.branch === "N/A" || m.branch === user.branch
+          (m) => !m.branch || m.branch === "N/A" || m.branch === user.branch,
         );
 
         setManifests(filteredByBranch);
@@ -352,7 +350,7 @@ function BookingDashboard() {
 
     if (type === "run") {
       const filtered = dropManifests.filter(
-        (m) => dayjs(m.date).format("YYYY-MM-DD") === formatted
+        (m) => dayjs(m.date).format("YYYY-MM-DD") === formatted,
       );
 
       setFilteredRunHandover(
@@ -361,13 +359,13 @@ function BookingDashboard() {
           m.awbCount,
           m.pcs,
           m.totalWeight + " Kg",
-        ])
+        ]),
       );
     }
 
     if (type === "pickup") {
       const filtered = pickupManifests.filter(
-        (m) => dayjs(m.date).format("YYYY-MM-DD") === formatted
+        (m) => dayjs(m.date).format("YYYY-MM-DD") === formatted,
       );
 
       setFilteredOldShipment(
@@ -383,7 +381,7 @@ function BookingDashboard() {
               }`
             : "N/A",
           m.status,
-        ])
+        ]),
       );
     }
   };
@@ -432,7 +430,7 @@ function BookingDashboard() {
     const datesArray = [
       ...Array(firstDayWeekIndex).fill(null),
       ...Array.from({ length: daysInMonth }, (_, i) =>
-        startOfMonth.date(i + 1)
+        startOfMonth.date(i + 1),
       ),
     ];
 
@@ -494,8 +492,8 @@ function BookingDashboard() {
                   isFuture
                     ? "text-gray-300 cursor-not-allowed"
                     : isSelected
-                    ? "bg-red text-white"
-                    : "hover:bg-gray-100"
+                      ? "bg-red text-white"
+                      : "hover:bg-gray-100"
                 }`}
               >
                 {date.date()}
@@ -566,11 +564,11 @@ function BookingDashboard() {
   // ---- APPLY TOTAL CALCULATION ----
   const totalsRun = calculateRunTotals(
     filteredRunHandover.length ? filteredRunHandover : runHandOver,
-    demoRadio
+    demoRadio,
   );
 
   const totalsPickup = calculatePickupTotals(
-    filteredOldShipment.length ? filteredOldShipment : oldShipment
+    filteredOldShipment.length ? filteredOldShipment : oldShipment,
   );
 
   const openDigitalTallyTab = () => {
@@ -580,7 +578,7 @@ function BookingDashboard() {
     // Prevent duplicate tab
     setActiveTabs((prev) => {
       const exists = prev.some(
-        (t) => t.folder === folder && t.subfolder === subfolder
+        (t) => t.folder === folder && t.subfolder === subfolder,
       );
       if (exists) return prev;
       return [...prev, { folder, subfolder }];
@@ -610,8 +608,8 @@ function BookingDashboard() {
           prev.map((m) =>
             m.manifestNumber === selectedManifest
               ? { ...m, pickupType: "pickup", status: "Pickup" }
-              : m
-          )
+              : m,
+          ),
         );
       }
     } catch (err) {
@@ -694,7 +692,7 @@ function BookingDashboard() {
                       } else {
                         handleDateSelect(newDate, "run");
                       }
-                    }
+                    },
                   )}
               </div>
               <div
@@ -864,7 +862,7 @@ function BookingDashboard() {
                       } else {
                         handleDateSelect(newDate, "pickup");
                       }
-                    }
+                    },
                   )}
               </div>
 

@@ -2483,10 +2483,15 @@ function AwbEntry() {
               onRefresh={handleRefresh}
             />
           </div>
-          <div className="absolute left-[205px] mt-1">
-            <span className=" text-[#0A7DC1] text-xs select-none bg-[#0A7DC11F] border-2 border-[#0A7DC1] rounded-xl px-2 py-1">
-              Awb Stage
+          <div className="absolute left-[205px] mt-1 flex items-center gap-2">
+            <span className=" text-[#0A7DC1] text-xs select-none bg-[#0A7DC11F] border-2 border-[#0A7DC1] rounded-xl px-2 py-1 font-bold">
+              {fetchedAwbData?.awbStage || "Booking"}
             </span>
+            {fetchedAwbData?.lastUpdatedByDept && (
+              <span className=" italic bg-green-100 px-4 py-1 text-xs text-green-3 border-[2px] border-green-3 rounded-xl">
+                Last Updated: {fetchedAwbData.lastUpdatedByDept}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex gap-3 mt-1">

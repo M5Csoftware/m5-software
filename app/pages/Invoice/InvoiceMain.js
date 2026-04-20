@@ -98,8 +98,8 @@ const InvoiceMain = ({ fYear }) => {
           branchesData.length > 0
             ? branchesData
             : [...new Set(invoicesData.map((inv) => inv.branch))].filter(
-              Boolean
-            );
+                Boolean,
+              );
 
         // console.log("✅ Branches detected:", uniqueBranches);
         setBranchFilterOptions(uniqueBranches);
@@ -127,7 +127,7 @@ const InvoiceMain = ({ fYear }) => {
 
     // ✅ Filter invoices by selected branch
     const filtered = allInvoices.filter(
-      (inv) => String(inv.branch).trim() === String(selectedBranch).trim()
+      (inv) => String(inv.branch).trim() === String(selectedBranch).trim(),
     );
 
     // ✅ Extract invoice numbers
@@ -183,7 +183,7 @@ const InvoiceMain = ({ fYear }) => {
       { key: "nonTaxableAmt", label: "Non-Taxable Amount" },
       { key: "totalAmt", label: "Grand Total" },
     ],
-    []
+    [],
   );
 
   useEffect(() => {
@@ -203,7 +203,7 @@ const InvoiceMain = ({ fYear }) => {
     const fetchCustomerDetails = async () => {
       try {
         const res = await fetch(
-          `${server}/customer-account?accountCode=${code}`
+          `${server}/customer-account?accountCode=${code}`,
         );
         if (!res.ok) throw new Error("Failed to fetch customer");
         const data = await res.json();
@@ -398,7 +398,7 @@ const InvoiceMain = ({ fYear }) => {
       }
 
       // console.log("✅ Saved Invoice:", data);
-      
+
       // ✅ Log "Invoice Generated" for each AWB in the invoice
       if (user?.userId) {
         for (const shipment of shipmentsPayload) {
@@ -416,11 +416,11 @@ const InvoiceMain = ({ fYear }) => {
               fromDate: formData.from,
               toDate: formData.to,
               branch: formData.branch,
-            }
+            },
           });
         }
       }
-      
+
       showNotification("success", "Invoice saved successfully!");
 
       // Send notification to customer
@@ -524,7 +524,7 @@ const InvoiceMain = ({ fYear }) => {
       } else {
         showNotification(
           "error",
-          "No shipments found for selected date range."
+          "No shipments found for selected date range.",
         );
       }
     } catch (err) {
@@ -555,7 +555,7 @@ const InvoiceMain = ({ fYear }) => {
 
     try {
       const url = `${server}/billing-invoice/invoice?invoiceNumber=${encodeURIComponent(
-        selectedInvoice
+        selectedInvoice,
       )}`;
       // console.log("📡 Fetching from:", url);
 
@@ -581,7 +581,7 @@ const InvoiceMain = ({ fYear }) => {
       setValue(
         "address",
         cust.address ||
-        [cust.address1, cust.address2].filter(Boolean).join(", ")
+          [cust.address1, cust.address2].filter(Boolean).join(", "),
       );
 
       if (data) {
@@ -610,27 +610,27 @@ const InvoiceMain = ({ fYear }) => {
         if (data.invoiceSummary) {
           setValue(
             "nonTaxableAmount",
-            data.invoiceSummary.nonTaxableAmount?.toFixed(2) || "0.00"
+            data.invoiceSummary.nonTaxableAmount?.toFixed(2) || "0.00",
           );
           setValue(
             "basicAmount",
-            data.invoiceSummary.basicAmount?.toFixed(2) || "0.00"
+            data.invoiceSummary.basicAmount?.toFixed(2) || "0.00",
           );
           setValue(
             "discountAmount",
-            data.invoiceSummary.discountAmount?.toFixed(2) || "0.00"
+            data.invoiceSummary.discountAmount?.toFixed(2) || "0.00",
           );
           setValue(
             "miscChg",
-            data.invoiceSummary.miscChg?.toFixed(2) || "0.00"
+            data.invoiceSummary.miscChg?.toFixed(2) || "0.00",
           );
           setValue(
             "fuelAmt",
-            data.invoiceSummary.fuelChg?.toFixed(2) || "0.00"
+            data.invoiceSummary.fuelChg?.toFixed(2) || "0.00",
           );
           setValue(
             "grandTotal",
-            data.invoiceSummary.grandTotal?.toFixed(2) || "0.00"
+            data.invoiceSummary.grandTotal?.toFixed(2) || "0.00",
           );
           setValue("sgst", data.invoiceSummary.sgst?.toFixed(2) || "0.00");
           setValue("cgst", data.invoiceSummary.cgst?.toFixed(2) || "0.00");
@@ -661,7 +661,7 @@ const InvoiceMain = ({ fYear }) => {
               item.date || item.shipmentDate || item.createdAt || null;
 
             const amount = Number(
-              item.amount ?? item.basicAmt ?? item.totalAmt ?? 0
+              item.amount ?? item.basicAmt ?? item.totalAmt ?? 0,
             );
             const discount = Number(item.discount ?? item.discountAmt ?? 0);
             const taxable = Number(item.taxableAmount ?? amount - discount);
@@ -709,7 +709,7 @@ const InvoiceMain = ({ fYear }) => {
       console.error("Error fetching invoice:", err);
       showNotification(
         "error",
-        "Error fetching invoice details: " + err.message
+        "Error fetching invoice details: " + err.message,
       );
     }
   };
@@ -727,13 +727,13 @@ const InvoiceMain = ({ fYear }) => {
 
   const executeRemoveInvoice = async () => {
     const invoiceNumber = watch("invoiceNumber");
-    
+
     try {
       const res = await fetch(
         `${server}/billing-invoice?invoiceNumber=${encodeURIComponent(
-          invoiceNumber
+          invoiceNumber,
         )}`,
-        { method: "DELETE" }
+        { method: "DELETE" },
       );
 
       if (!res.ok) throw new Error("Delete failed");
@@ -751,7 +751,7 @@ const InvoiceMain = ({ fYear }) => {
             details: {
               invoiceNumber: invoiceNumber,
               removedAt: new Date().toISOString(),
-            }
+            },
           });
         }
       }
