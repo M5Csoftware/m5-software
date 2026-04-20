@@ -38,13 +38,11 @@ export default function UpdateNotification({ inTopBar = false }) {
 
     const load = async () => {
       try {
-        // Check if running in Tauri
         const isTauri = !!(window.__TAURI__ || window.__TAURI_PLUGIN_UPDATER__);
 
         if (isTauri) {
           console.log("[updater] Tauri environment detected");
 
-          // Use Tauri v1 API only
           const tauriApi = await import("@tauri-apps/api/tauri");
           const updaterApi = await import("@tauri-apps/api/updater");
           const processApi = await import("@tauri-apps/api/process");
@@ -60,11 +58,9 @@ export default function UpdateNotification({ inTopBar = false }) {
           console.log("[updater] Tauri API ready");
           setApiReady(true);
 
-          // Initial check
           setTimeout(() => checkUpdate(), 2000);
         } else {
           console.log("[updater] Not running in Tauri environment");
-          // For development/testing, show mock update button
           if (process.env.NODE_ENV === "development") {
             setUpdateInfo({
               has_update: true,
@@ -117,12 +113,10 @@ export default function UpdateNotification({ inTopBar = false }) {
   useEffect(() => {
     if (!apiReady) return;
 
-    // Clear existing interval
     if (checkIntervalRef.current) {
       clearInterval(checkIntervalRef.current);
     }
 
-    // Set up new interval
     checkIntervalRef.current = setInterval(checkUpdate, CHECK_INTERVAL_MS);
 
     return () => {
@@ -150,7 +144,6 @@ export default function UpdateNotification({ inTopBar = false }) {
     let unlisten = null;
 
     try {
-      // Listen to download progress events
       if (updaterRef.current.onUpdaterEvent) {
         unlisten = await updaterRef.current.onUpdaterEvent(
           ({ error, status }) => {
@@ -199,7 +192,6 @@ export default function UpdateNotification({ inTopBar = false }) {
       setInstallStatus("Downloading update...");
       setProgress(30);
 
-      // This downloads AND installs
       await updaterRef.current.installUpdate();
 
       setInstallStatus("Download complete. Installing...");
@@ -218,7 +210,6 @@ export default function UpdateNotification({ inTopBar = false }) {
       console.error("[updater] install failed:", err);
       if (unlisten) unlisten();
 
-      // Enhanced error handling with specific messages
       let errMsg = err?.message || err?.toString() || "Unknown error";
       let shouldRetry = false;
 
@@ -226,7 +217,7 @@ export default function UpdateNotification({ inTopBar = false }) {
         errMsg =
           "Update file not found. The release may not be properly published. Please try again later or contact support.";
         shouldRetry = true;
-      } else if (errMsg.includes("signature") || errMsg.includes("signature")) {
+      } else if (errMsg.includes("signature")) {
         errMsg =
           "Signature verification failed. The update file may be corrupted. Please contact support.";
       } else if (
@@ -257,7 +248,6 @@ export default function UpdateNotification({ inTopBar = false }) {
         shouldRetry = true;
       }
 
-      // Auto-retry logic for network-related errors
       if (shouldRetry && retryCount < 3) {
         setRetryCount((prev) => prev + 1);
         setInstallStatus(`Retrying... (${retryCount + 1}/3)`);
@@ -293,18 +283,16 @@ export default function UpdateNotification({ inTopBar = false }) {
     }
   };
 
-  // Force check for update manually
   const handleManualCheck = () => {
     setManualCheck(true);
     checkUpdate();
   };
 
-  // Don't render anything if no update is available
   if (!updateInfo || dismissed) return null;
 
   return (
     <>
-      {/* ── Top-Bar compact button ───────────────────────────────────────── */}
+      {/* ── Top-Bar compact indicator ────────────────────────────────────── */}
       {inTopBar ? (
         <button
           onClick={() => setShowModal(true)}
@@ -313,43 +301,40 @@ export default function UpdateNotification({ inTopBar = false }) {
             display: "flex",
             alignItems: "center",
             gap: "5px",
-            background: "linear-gradient(135deg,#EA1B40,#c41535)",
-            border: "none",
-            borderRadius: "7px",
-            padding: "4px 9px",
+            background: "transparent",
+            border: "1px solid rgba(234,27,64,.45)",
+            borderRadius: "20px",
+            padding: "3px 8px 3px 6px",
             cursor: "pointer",
-            color: "white",
+            color: "#EA1B40",
             fontSize: "11px",
-            fontWeight: "700",
+            fontWeight: "600",
             whiteSpace: "nowrap",
-            boxShadow: "0 2px 8px rgba(234,27,64,.45)",
-            animation: "pulse-banner 2.5s ease-in-out infinite",
             userSelect: "none",
+            transition: "background 0.15s, border-color 0.15s",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-1px)";
-            e.currentTarget.style.boxShadow = "0 4px 14px rgba(234,27,64,.6)";
+            e.currentTarget.style.background = "rgba(234,27,64,.08)";
+            e.currentTarget.style.borderColor = "rgba(234,27,64,.7)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 2px 8px rgba(234,27,64,.45)";
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "rgba(234,27,64,.45)";
           }}
         >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="16 16 12 12 8 16" />
-            <line x1="12" y1="12" x2="12" y2="21" />
-            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
-          </svg>
-          Update Available
+          {/* Pulsing dot */}
+          <span
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              background: "#EA1B40",
+              display: "inline-block",
+              flexShrink: 0,
+              animation: "dot-pulse 2.5s ease-in-out infinite",
+            }}
+          />
+          Update available
         </button>
       ) : (
         /* ── Sidebar Banner ──────────────────────────────────────────────── */
@@ -441,8 +426,10 @@ export default function UpdateNotification({ inTopBar = false }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            /* Always blurred backdrop */
             background: "rgba(0,0,0,.5)",
-            backdropFilter: "blur(5px)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
             padding: "16px",
           }}
         >
@@ -811,6 +798,10 @@ export default function UpdateNotification({ inTopBar = false }) {
         @keyframes pulse-banner {
           0%,100% { box-shadow:0 2px 10px rgba(234,27,64,.4); }
           50%      { box-shadow:0 2px 18px rgba(234,27,64,.7); }
+        }
+        @keyframes dot-pulse {
+          0%,100% { opacity: 1; transform: scale(1); }
+          50%      { opacity: 0.5; transform: scale(0.75); }
         }
         @keyframes modal-in {
           from { opacity:0; transform:scale(.95) translateY(8px); }
