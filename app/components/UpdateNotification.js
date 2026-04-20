@@ -17,7 +17,7 @@ function formatDate(isoString) {
   }
 }
 
-export default function UpdateNotification() {
+export default function UpdateNotification({ inTopBar = false }) {
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -246,80 +246,129 @@ export default function UpdateNotification() {
 
   return (
     <>
-      {/* ── Sidebar Banner ─────────────────────────────────────────────── */}
-      <div
-        onClick={() => setShowModal(true)}
-        style={{
-          background: "linear-gradient(135deg,#EA1B40,#c41535)",
-          borderRadius: "10px",
-          padding: "10px 12px",
-          margin: "0 8px 6px 8px",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-          boxShadow: "0 2px 10px rgba(234,27,64,.4)",
-          userSelect: "none",
-          animation: "pulse-banner 2.5s ease-in-out infinite",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "translateY(-1px)";
-          e.currentTarget.style.boxShadow = "0 4px 16px rgba(234,27,64,.55)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 2px 10px rgba(234,27,64,.4)";
-        }}
-      >
-        <svg
-          width="17"
-          height="17"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="white"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ flexShrink: 0 }}
-        >
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-        </svg>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "white", fontSize: "11px", fontWeight: "700" }}>
-            Update Available
-          </div>
-          <div
-            style={{
-              color: "rgba(255,255,255,.88)",
-              fontSize: "10px",
-              marginTop: "1px",
-            }}
-          >
-            v{updateInfo.current_version} → v{updateInfo.remote_version}
-          </div>
-        </div>
+      {/* ── Top-Bar compact button ───────────────────────────────────────── */}
+      {inTopBar ? (
         <button
-          onClick={handleDismiss}
+          onClick={() => setShowModal(true)}
+          title={`Update available: v${updateInfo.current_version} → v${updateInfo.remote_version}`}
           style={{
-            background: "rgba(0,0,0,.18)",
-            border: "none",
-            color: "white",
-            cursor: "pointer",
-            width: "20px",
-            height: "20px",
-            borderRadius: "50%",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            fontSize: "13px",
-            flexShrink: 0,
-            padding: 0,
+            gap: "5px",
+            background: "linear-gradient(135deg,#EA1B40,#c41535)",
+            border: "none",
+            borderRadius: "7px",
+            padding: "4px 9px",
+            cursor: "pointer",
+            color: "white",
+            fontSize: "11px",
+            fontWeight: "700",
+            whiteSpace: "nowrap",
+            boxShadow: "0 2px 8px rgba(234,27,64,.45)",
+            animation: "pulse-banner 2.5s ease-in-out infinite",
+            userSelect: "none",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow = "0 4px 14px rgba(234,27,64,.6)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 2px 8px rgba(234,27,64,.45)";
           }}
         >
-          ×
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="white"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="16 16 12 12 8 16" />
+            <line x1="12" y1="12" x2="12" y2="21" />
+            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+          </svg>
+          Install Update
         </button>
-      </div>
+      ) : (
+        /* ── Sidebar Banner ──────────────────────────────────────────────── */
+        <div
+          onClick={() => setShowModal(true)}
+          style={{
+            background: "linear-gradient(135deg,#EA1B40,#c41535)",
+            borderRadius: "10px",
+            padding: "10px 12px",
+            margin: "0 8px 6px 8px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            boxShadow: "0 2px 10px rgba(234,27,64,.4)",
+            userSelect: "none",
+            animation: "pulse-banner 2.5s ease-in-out infinite",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow = "0 4px 16px rgba(234,27,64,.55)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 2px 10px rgba(234,27,64,.4)";
+          }}
+        >
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="white"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ flexShrink: 0 }}
+          >
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: "white", fontSize: "11px", fontWeight: "700" }}>
+              Update Available
+            </div>
+            <div
+              style={{
+                color: "rgba(255,255,255,.88)",
+                fontSize: "10px",
+                marginTop: "1px",
+              }}
+            >
+              v{updateInfo.current_version} → v{updateInfo.remote_version}
+            </div>
+          </div>
+          <button
+            onClick={handleDismiss}
+            style={{
+              background: "rgba(0,0,0,.18)",
+              border: "none",
+              color: "white",
+              cursor: "pointer",
+              width: "20px",
+              height: "20px",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "13px",
+              flexShrink: 0,
+              padding: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* ── Modal ──────────────────────────────────────────────────────── */}
       {showModal && (
