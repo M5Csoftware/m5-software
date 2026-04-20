@@ -448,7 +448,9 @@ const Bagging = () => {
       }
 
       try {
-        const response = await axios.get(`${server}/bagging?runNo=${runNo.toUpperCase()}`);
+        const response = await axios.get(
+          `${server}/bagging?runNo=${runNo.toUpperCase()}&userId=${user?.userId}`,
+        );
         const data = Array.isArray(response.data)
           ? response.data[0]
           : response.data;
@@ -493,7 +495,7 @@ const Bagging = () => {
         return null;
       }
     },
-    [server, setValue, showNotification]
+    [server, setValue, showNotification, user?.userId],
   );
 
   const fetchRunEntry = useCallback(
@@ -505,13 +507,13 @@ const Bagging = () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         const response = await axios.get(
-          `${server}/run-entry?runNo=${encodedRunNo}`,
+          `${server}/run-entry?runNo=${encodedRunNo}&userId=${user?.userId}`,
           {
             timeout: 10000,
             headers: {
               "Content-Type": "application/json",
             },
-          }
+          },
         );
 
         // console.log("Run entry response:", response.data);
@@ -531,7 +533,7 @@ const Bagging = () => {
         return null;
       }
     },
-    [server, showNotification]
+    [server, showNotification],
   );
 
   const calculateAndSetClubDetails = useCallback(
@@ -559,7 +561,7 @@ const Bagging = () => {
       setValue("totalAwb", totalAwb.toString());
       setValue("totalWeight", totalWeight.toFixed(2));
     },
-    [setValue, resetClubDetails]
+    [setValue, resetClubDetails],
   );
 
   const fetchClubbingData = useCallback(
@@ -571,7 +573,9 @@ const Bagging = () => {
       }
 
       try {
-        const response = await axios.get(`${server}/clubbing?runNo=${runNo.toUpperCase()}`);
+        const response = await axios.get(
+          `${server}/clubbing?runNo=${runNo.toUpperCase()}`,
+        );
         const data = Array.isArray(response.data)
           ? response.data
           : [response.data];
@@ -580,8 +584,8 @@ const Bagging = () => {
       } catch (error) {
         if (error.response?.status === 404) {
           // console.log(
-//             `No clubbing data found for run ${runNo} - this is normal`
-//           );
+          //             `No clubbing data found for run ${runNo} - this is normal`
+          //           );
           setClubbingData([]);
           resetClubDetails();
         } else {
@@ -591,7 +595,7 @@ const Bagging = () => {
         }
       }
     },
-    [server, calculateAndSetClubDetails, resetClubDetails]
+    [server, calculateAndSetClubDetails, resetClubDetails],
   );
 
   // NEW: Fetch AWB details with child AWB support
@@ -674,7 +678,7 @@ const Bagging = () => {
         const awbType = awbDetails.type === "child" ? "Child AWB" : "AWB";
         showNotification(
           "success",
-          `${awbType} ${awbNo} details loaded successfully`
+          `${awbType} ${awbNo} details loaded successfully`,
         );
 
         setAwbFetchInProgress(false);
@@ -693,7 +697,7 @@ const Bagging = () => {
         setAwbFetchInProgress(false);
       }
     },
-    [setValue, server, showNotification]
+    [setValue, server, showNotification],
   );
 
   const generateMhbsNumber = useCallback(
@@ -704,7 +708,7 @@ const Bagging = () => {
         setValue("mhbsNo", "");
       }
     },
-    [setValue]
+    [setValue],
   );
 
   const mapRunDataToForm = useCallback((runData) => {
@@ -756,7 +760,7 @@ const Bagging = () => {
     const numberOfAwb = rowData.length;
     const totalWeight = rowData.reduce(
       (sum, row) => sum + (parseFloat(row.bagWeight) || 0),
-      0
+      0,
     );
 
     return {
@@ -786,11 +790,11 @@ const Bagging = () => {
       const bagItems = rowData.filter((row) => row.bagNo === bagNo);
       const weight = bagItems.reduce(
         (sum, row) => sum + (parseFloat(row.bagWeight) || 0),
-        0
+        0,
       );
       return weight.toFixed(2);
     },
-    [rowData]
+    [rowData],
   );
 
   const handleNewBag = useCallback(() => {
@@ -882,7 +886,7 @@ const Bagging = () => {
         // Check AWB details using new endpoint (supports both master and child)
         try {
           const awbResponse = await axios.get(
-            `${server}/bagging?awbNo=${trimmedAwb}`
+            `${server}/bagging?awbNo=${trimmedAwb}`,
           );
           const awbData = awbResponse.data;
 
@@ -978,7 +982,7 @@ const Bagging = () => {
         // Check if AWB exists in clubbing data for current run (check both fields)
         try {
           const clubbingResponse = await axios.get(
-            `${server}/clubbing?runNo=${currentRunNo}`
+            `${server}/clubbing?runNo=${currentRunNo}`,
           );
           let allClubs = Array.isArray(clubbingResponse.data)
             ? clubbingResponse.data
@@ -1026,7 +1030,7 @@ const Bagging = () => {
             : [baggingResponse.data];
 
           allBagging = allBagging.filter(
-            (bag) => bag && bag.runNo && bag.runNo !== currentRunNo
+            (bag) => bag && bag.runNo && bag.runNo !== currentRunNo,
           );
 
           for (const bag of allBagging) {
@@ -1084,7 +1088,7 @@ const Bagging = () => {
         };
       }
     },
-    [server, rowData, watch]
+    [server, rowData, watch],
   );
 
   // getFilteredRowData - now after normalizeRowDataForDisplay
@@ -1172,8 +1176,9 @@ const Bagging = () => {
               runNo: data.runNo.toString(),
               action: "remove",
               item: { awbNo: oldAwbNo }, // Use the actual AWB identifier
+              userId: user?.userId,
             },
-            axiosConfig
+            axiosConfig,
           );
 
           // console.log("Adding updated AWB:", trimmedAwb);
@@ -1185,8 +1190,9 @@ const Bagging = () => {
               runNo: data.runNo.toString(),
               action: "add",
               item: newRow,
+              userId: user?.userId,
             },
-            axiosConfig
+            axiosConfig,
           );
 
           // console.log("Update response:", response.data);
@@ -1196,7 +1202,7 @@ const Bagging = () => {
 
           showNotification(
             "success",
-            `AWB ${trimmedAwb} updated successfully in Bag ${data.bagNo}!`
+            `AWB ${trimmedAwb} updated successfully in Bag ${data.bagNo}!`,
           );
 
           setEditingIndex(null);
@@ -1220,7 +1226,7 @@ const Bagging = () => {
               if (dateParts.length === 3) {
                 const [day, month, year] = dateParts;
                 parsedDate = new Date(
-                  `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+                  `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
                 );
               }
             }
@@ -1250,8 +1256,8 @@ const Bagging = () => {
 
             const response = await axios.post(
               `${server}/bagging`,
-              baggingData,
-              axiosConfig
+              { ...baggingData, userId: user?.userId },
+              axiosConfig,
             );
 
             // console.log("Bagging created successfully:", response.data);
@@ -1261,7 +1267,7 @@ const Bagging = () => {
 
             showNotification(
               "success",
-              `AWB ${trimmedAwb} added to Bag ${data.bagNo} successfully!`
+              `AWB ${trimmedAwb} added to Bag ${data.bagNo} successfully!`,
             );
           } else {
             // console.log("Adding item to existing bagging");
@@ -1276,8 +1282,8 @@ const Bagging = () => {
 
             const response = await axios.put(
               `${server}/bagging`,
-              saveData,
-              axiosConfig
+              { ...saveData, userId: user?.userId },
+              axiosConfig,
             );
 
             // console.log("Item added successfully:", response.data);
@@ -1287,7 +1293,7 @@ const Bagging = () => {
 
             showNotification(
               "success",
-              `AWB ${trimmedAwb} added to Bag ${data.bagNo} successfully!`
+              `AWB ${trimmedAwb} added to Bag ${data.bagNo} successfully!`,
             );
           }
 
@@ -1335,7 +1341,7 @@ const Bagging = () => {
       isFinalised,
       showNotification,
       clearErrors,
-    ]
+    ],
   );
 
   const handleEditRow = useCallback(
@@ -1375,7 +1381,7 @@ const Bagging = () => {
 
         showNotification(
           "success",
-          "Row loaded for editing. Weight shown is from bagging record."
+          "Row loaded for editing. Weight shown is from bagging record.",
         );
       }, 0);
     },
@@ -1386,7 +1392,7 @@ const Bagging = () => {
       isFinalised,
       clearErrors,
       showNotification,
-    ]
+    ],
   );
 
   const handleDeleteRow = useCallback(
@@ -1402,7 +1408,7 @@ const Bagging = () => {
       setItemToDelete({ index, awbNo: actualAwb });
       setDeleteModalOpen(true);
     },
-    [rowData, isFinalised]
+    [rowData, isFinalised],
   );
 
   const confirmDelete = useCallback(async () => {
@@ -1443,7 +1449,7 @@ const Bagging = () => {
           action: "remove",
           item: { awbNo: actualAwb },
         },
-        axiosConfig
+        axiosConfig,
       );
 
       if (response.data && response.data.rowData) {
@@ -1491,7 +1497,7 @@ const Bagging = () => {
       { key: "bagWeight", label: "Bag weight" },
       { key: "runNo", label: "Run No." },
     ],
-    []
+    [],
   );
 
   const handleBagSelection = useCallback(
@@ -1513,7 +1519,7 @@ const Bagging = () => {
       }
       setSearchAwbNo("");
     },
-    [setValue, selectedBag]
+    [setValue, selectedBag],
   );
 
   const handleSearchAwb = useCallback((e) => {
@@ -1588,7 +1594,7 @@ const Bagging = () => {
       if (!rowData?.length) {
         showNotification(
           "error",
-          "Please add at least one item to bag before finalizing"
+          "Please add at least one item to bag before finalizing",
         );
         return;
       }
@@ -1604,7 +1610,7 @@ const Bagging = () => {
         setIsFinalised(true);
         showNotification(
           "success",
-          "Bagging finalized successfully! All fields are now locked."
+          "Bagging finalized successfully! All fields are now locked.",
         );
 
         // Refresh the data to get the finalized timestamp
@@ -1770,7 +1776,7 @@ const Bagging = () => {
         } catch (barcodeError) {
           console.error(
             `Error generating barcode for bag ${bagNo}:`,
-            barcodeError
+            barcodeError,
           );
         }
       }
@@ -1784,13 +1790,13 @@ const Bagging = () => {
 
       showNotification(
         "success",
-        `Barcode PDF generated successfully for ${rowData.length} entries!`
+        `Barcode PDF generated successfully for ${rowData.length} entries!`,
       );
     } catch (error) {
       console.error("Error generating barcode PDF:", error);
       showNotification(
         "error",
-        `Error generating barcode PDF: ${error.message}`
+        `Error generating barcode PDF: ${error.message}`,
       );
     }
   }, [getValues, rowData, showNotification]);
@@ -1810,7 +1816,7 @@ const Bagging = () => {
         if (accountType && accountType !== "hubAirport") {
           showNotification(
             "error",
-            `This is not a Hub Airport run. Account type: ${accountType}`
+            `This is not a Hub Airport run. Account type: ${accountType}`,
           );
           setIsDisabled(true);
           return;
@@ -1921,7 +1927,7 @@ const Bagging = () => {
     const validateAwbAsync = async () => {
       const validation = await validateAwbGlobally(
         watch("awbNo").trim(),
-        editingIndex
+        editingIndex,
       );
 
       if (!validation.isValid) {

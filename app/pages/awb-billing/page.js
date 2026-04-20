@@ -2292,10 +2292,15 @@ function AwbBilling() {
               onRefresh={handleRefresh}
             />
           </div>
-          <div className="absolute left-[170px] mt-1">
-            <span className="text-[#0A7DC1] text-xs select-none bg-[#0A7DC11F] border-2 border-[#0A7DC1] rounded-xl px-2 py-1">
-              Billing Stage
+          <div className="absolute left-[170px] mt-1 flex items-center gap-2">
+            <span className="text-[#0A7DC1] text-xs select-none bg-[#0A7DC11F] border-2 border-[#0A7DC1] rounded-xl px-2 py-1 font-bold">
+              {fetchedAwbData?.awbStage || "Booking"}
             </span>
+            {fetchedAwbData?.lastUpdatedByDept && (
+              <span className=" italic bg-green-100 px-4 py-1 text-xs text-green-3 border-[2px] border-green-3 rounded-xl">
+                Last Updated: {fetchedAwbData.lastUpdatedByDept}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex gap-3 mt-1">
@@ -2790,7 +2795,7 @@ function AwbBilling() {
                       <button
                         type="button"
                         onClick={() => {
-                            openVolumeWtWindow();
+                          openVolumeWtWindow();
                         }}
                         className="absolute top-1/4 right-4"
                       >
@@ -2946,7 +2951,7 @@ function AwbBilling() {
                       <button
                         type="button"
                         onClick={() => {
-                            openInvoiceDetailsWindow();
+                          openInvoiceDetailsWindow();
                         }}
                         className="absolute top-1/4 right-4"
                       >
