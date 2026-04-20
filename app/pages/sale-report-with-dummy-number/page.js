@@ -393,7 +393,7 @@ function SaleReportWithDummyNumber() {
         <td>${row.GrandTotal || ''}</td>
         <td>${row.Currency1 || ''}</td>
         <td>${row.BillNo || ''}</td>
-        <td>${row.AwbCheck || ''}</td>
+        <td>${row.AwbStage || ''}</td>
         <td>${row.ShipmentRemark || ''}</td>
         <td>${row.CSB || ''}</td>
         <td>${row.HandlingTag || ''}</td>
@@ -482,7 +482,7 @@ function SaleReportWithDummyNumber() {
                 <th>Grand Total</th>
                 <th>Currency 1</th>
                 <th>Bill No</th>
-                <th>AWB Check</th>
+                <th>AWB Stage</th>
                 <th>Shipment Remark</th>
                 <th>CSB</th>
                 <th>Handling Tag</th>
@@ -581,7 +581,7 @@ function SaleReportWithDummyNumber() {
         "Grand Total": row.GrandTotal || 0,
         "Currency 1": row.Currency1 || '',
         "Bill No": row.BillNo || '',
-        "AWB Check": row.AwbCheck || '',
+        "AWB Stage": row.AwbStage || '',
         "Shipment Remark": row.ShipmentRemark || '',
         "CSB": row.CSB || '',
         "Handling Tag": row.HandlingTag || '',
@@ -645,7 +645,7 @@ function SaleReportWithDummyNumber() {
         "Grand Total": `Total: ${totals.grandTotal.toFixed(2)}`,
         "Currency 1": '',
         "Bill No": '',
-        "AWB Check": '',
+        "AWB Stage": '',
         "Shipment Remark": '',
         "CSB": '',
         "Handling Tag": '',
@@ -700,7 +700,7 @@ function SaleReportWithDummyNumber() {
       "Payment Type", "Billing Tag", "Basic Amount", "Rate Hike", "SGST", 
       "CGST", "IGST", "Handling", "OVWT", "Misc Charges", "Misc Remark", 
       "Fuel", "Non-Taxable", "Grand Total", "Currency 1", "Bill No", 
-      "AWB Check", "Shipment Remark", "CSB", "Handling Tag"
+      "AWB Stage", "Shipment Remark", "CSB", "Handling Tag"
     ];
 
     const rows = allRowData.map(row => [
@@ -720,7 +720,7 @@ function SaleReportWithDummyNumber() {
       row.RateHike || '', row.SGST || '', row.CGST || '', row.IGST || '',
       row.Handling || '', row.OVWT || '', row.Mischg || '', row.MiscRemark || '',
       row.Fuel || '', row.NonTaxable || '', row.GrandTotal || '', row.Currency1 || '',
-      row.BillNo || '', row.AwbCheck || '', row.ShipmentRemark || '', row.CSB || '',
+      row.BillNo || '', row.AwbStage || '', row.ShipmentRemark || '', row.CSB || '',
       row.HandlingTag || ''
     ]);
 
@@ -805,7 +805,7 @@ function SaleReportWithDummyNumber() {
       { key: "GrandTotal", label: "Grand Total" },
       { key: "Currency1", label: "Currency 1" },
       { key: "BillNo", label: "Bill No" },
-      { key: "AwbCheck", label: "AWB Check" },
+      { key: "AwbStage", label: "AWB Stage" },
       { key: "ShipmentRemark", label: "Shipment Remark" },
       { key: "CSB", label: "CSB" },
       { key: "HandlingTag", label: "Handling Tag" },

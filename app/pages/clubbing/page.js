@@ -19,6 +19,7 @@ import React, { useState, useEffect, useContext, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import axios from "axios";
 import NotificationFlag from "@/app/components/Notificationflag";
+import { useAuth } from "@/app/Context/AuthContext";
 import { show } from "@tauri-apps/api/app";
 import DataLockModal from "@/app/components/DataLockModal";
 
@@ -66,6 +67,7 @@ const Clubbing = () => {
   const [visibleFlag, setVisibleFlag] = useState(false);
 
   const { server } = useContext(GlobalContext);
+  const { user } = useAuth();
 
   // Watch form values
   const awbNo = watch("awbNo");
@@ -124,7 +126,7 @@ const Clubbing = () => {
 
       try {
         const response = await axios.get(
-          `${server}/clubbing/validate-awb?awbNo=${awbNo.trim()}`
+          `${server}/clubbing/validate-awb?awbNo=${awbNo.trim()}`,
         );
 
         const data = response.data;
@@ -148,7 +150,7 @@ const Clubbing = () => {
         };
       }
     },
-    [server]
+    [server],
   );
 
   // Updated validateAwbGlobally function
@@ -169,7 +171,7 @@ const Clubbing = () => {
           (row, index) =>
             row.awbNo &&
             row.awbNo.toLowerCase() === trimmedAwb.toLowerCase() &&
-            index !== editingIndex
+            index !== editingIndex,
         );
 
         if (localExists) {
@@ -205,8 +207,8 @@ const Clubbing = () => {
         // Check if already clubbed
         if (validationCheck.isCubbed) {
           // console.log(
-//             `AWB ${trimmedAwb} is already clubbed in Club ${validationCheck.clubNo}`
-//           );
+          //             `AWB ${trimmedAwb} is already clubbed in Club ${validationCheck.clubNo}`
+          //           );
           setIsValidatingAwb(false);
           return {
             isValid: false,
@@ -252,13 +254,13 @@ const Clubbing = () => {
             const awbExists = bag.rowData.some(
               (row) =>
                 row.awbNo &&
-                row.awbNo.toLowerCase() === trimmedAwb.toLowerCase()
+                row.awbNo.toLowerCase() === trimmedAwb.toLowerCase(),
             );
 
             if (awbExists) {
               // console.log(
-//                 `AWB ${trimmedAwb} found in Run ${bag.runNo} (Bagging)`
-//               );
+              //                 `AWB ${trimmedAwb} found in Run ${bag.runNo} (Bagging)`
+              //               );
               setIsValidatingAwb(false);
               return {
                 isValid: false,
@@ -287,7 +289,7 @@ const Clubbing = () => {
       currentClubData,
       rowData,
       checkIfAwbAlreadyCubbed,
-    ]
+    ],
   );
 
   // API functions - FIXED RunNo Validation
@@ -302,7 +304,7 @@ const Clubbing = () => {
       try {
         // console.log(`Validating run no: ${runNumber}`);
         const response = await axios.get(
-          `${server}/run-entry?runNo=${runNumber.trim().toUpperCase()}`
+          `${server}/run-entry?runNo=${runNumber.trim().toUpperCase()}`,
         );
         // console.log("Run No validation response:", response);
 
@@ -329,14 +331,14 @@ const Clubbing = () => {
         };
       }
     },
-    [server]
+    [server],
   );
 
   const fetchClubData = useCallback(
     async (clubNumber) => {
       try {
         const response = await axios.get(
-          `${server}/clubbing?clubNo=${clubNumber}`
+          `${server}/clubbing?clubNo=${clubNumber}`,
         );
 
         if (response.status === 200 && response.data) {
@@ -382,7 +384,7 @@ const Clubbing = () => {
         }
       }
     },
-    [setValue, clearErrors, server, showNotification]
+    [setValue, clearErrors, server, showNotification],
   );
 
   const clearAwbFormFields = useCallback(() => {
@@ -395,7 +397,7 @@ const Clubbing = () => {
     async (enteredAwbNo) => {
       try {
         const response = await axios.get(
-          `${server}/portal/create-shipment?awbNo=${enteredAwbNo}`
+          `${server}/portal/create-shipment?awbNo=${enteredAwbNo}`,
         );
         const result = response.data;
 
@@ -412,7 +414,7 @@ const Clubbing = () => {
           clearAwbFormFields();
           showNotification(
             "error",
-            `AWB ${enteredAwbNo} not found in shipments`
+            `AWB ${enteredAwbNo} not found in shipments`,
           );
         }
       } catch (error) {
@@ -421,7 +423,7 @@ const Clubbing = () => {
         showNotification("error", `AWB ${enteredAwbNo} not found in shipments`);
       }
     },
-    [setValue, server, clearAwbFormFields, showNotification]
+    [setValue, server, clearAwbFormFields, showNotification],
   );
 
   // Helper functions
@@ -542,7 +544,7 @@ const Clubbing = () => {
         showNotification("success", "Row loaded for editing");
       }
     },
-    [rowData, setValue, showNotification]
+    [rowData, setValue, showNotification],
   );
 
   const handleDeleteRow = useCallback(
@@ -566,7 +568,7 @@ const Clubbing = () => {
         setValue("bagWeight", "");
       }
     },
-    [editingIndex, setValue, showNotification]
+    [editingIndex, setValue, showNotification],
   );
 
   const handleTopEditButton = useCallback(() => {
@@ -609,7 +611,7 @@ const Clubbing = () => {
     if (deleteTarget) {
       try {
         const response = await axios.delete(
-          `${server}/clubbing?clubNo=${deleteTarget}`
+          `${server}/clubbing?clubNo=${deleteTarget}&userId=${user?.userId}`,
         );
         if (response.status === 200) {
           showNotification("success", "Club deleted successfully");
@@ -647,7 +649,7 @@ const Clubbing = () => {
             });
             showNotification(
               "error",
-              "Please fix validation errors before submitting"
+              "Please fix validation errors before submitting",
             );
             return;
           }
@@ -657,7 +659,7 @@ const Clubbing = () => {
         if (!rowData?.length) {
           showNotification(
             "error",
-            "Please add at least one AWB to the club before submitting."
+            "Please add at least one AWB to the club before submitting.",
           );
           return;
         }
@@ -669,13 +671,14 @@ const Clubbing = () => {
           service: data.service,
           remarks: data.remarks,
           rowData: rowData,
+          userId: user?.userId,
         };
 
         let response;
         if (isEditMode && currentClubData) {
           response = await axios.put(
             `${server}/clubbing?clubNo=${data.clubNo}`,
-            payload
+            payload,
           );
         } else {
           response = await axios.post(`${server}/clubbing`, payload);
@@ -691,11 +694,11 @@ const Clubbing = () => {
       } catch (error) {
         console.error(
           "Error saving data:",
-          error.response?.data || error.message
+          error.response?.data || error.message,
         );
         showNotification(
           "error",
-          "Error saving data. Please check console for details."
+          "Error saving data. Please check console for details.",
         );
       }
     },
@@ -708,7 +711,7 @@ const Clubbing = () => {
       completeReset,
       server,
       showNotification,
-    ]
+    ],
   );
 
   // Effects
@@ -746,7 +749,7 @@ const Clubbing = () => {
       const billsArray = Array.isArray(airwayBills) ? airwayBills : [];
 
       const matchedAwb = billsArray.find(
-        (bill) => bill.awbNo?.toLowerCase() === enteredAwbNo.toLowerCase()
+        (bill) => bill.awbNo?.toLowerCase() === enteredAwbNo.toLowerCase(),
       );
 
       if (matchedAwb) {
@@ -827,7 +830,7 @@ const Clubbing = () => {
 
     try {
       const response = await axios.put(
-        `${server}/clubbing/lock-club?clubNo=${clubNumber}`
+        `${server}/clubbing/lock-club?clubNo=${clubNumber}`,
       );
       if (response.status === 200) {
         showNotification("success", "Club locked successfully");
@@ -1050,8 +1053,8 @@ const Clubbing = () => {
             actionType === "delete"
               ? `Are you sure you want to delete club ${deleteTarget}?`
               : actionType === "lock"
-              ? "Are you sure you want to lock this club?"
-              : "Are you sure you want to create/update this club?"
+                ? "Are you sure you want to lock this club?"
+                : "Are you sure you want to create/update this club?"
           }
         />
       )}
@@ -1064,8 +1067,8 @@ const Clubbing = () => {
             actionType === "delete"
               ? `Are you sure you want to delete club ${deleteTarget}?`
               : actionType === "lock"
-              ? "Are you sure you want to lock this club?"
-              : "Are you sure you want to create/update this club?"
+                ? "Are you sure you want to lock this club?"
+                : "Are you sure you want to create/update this club?"
           }
         />
       )}

@@ -343,24 +343,24 @@ const BaggingWithBarcode = () => {
 
   const awbNo = watch("awbNo");
   const formatDateToDDMMYYYY = (dateValue) => {
-  if (!dateValue) return "";
-  
-  try {
-    const date = new Date(dateValue);
-    
-    // Check if date is valid
-    if (isNaN(date.getTime())) return "";
-    
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    
-    return `${day}/${month}/${year}`;
-  } catch (error) {
-    console.error("Error formatting date:", error);
-    return "";
-  }
-};
+    if (!dateValue) return "";
+
+    try {
+      const date = new Date(dateValue);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) return "";
+
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "";
+    }
+  };
 
   useEffect(() => {
     const checkForAlerts = async () => {
@@ -407,7 +407,7 @@ const BaggingWithBarcode = () => {
 
       try {
         const response = await axios.get(
-          `${server}/bagging-with-barcode?runNo=${runNo.toUpperCase()}`
+          `${server}/bagging-with-barcode?runNo=${runNo.toUpperCase()}`,
         );
         const data = Array.isArray(response.data)
           ? response.data[0]
@@ -423,7 +423,7 @@ const BaggingWithBarcode = () => {
             if (awb) {
               try {
                 const detailsResponse = await axios.get(
-                  `${server}/bagging-with-barcode?awbNo=${awb}&fullDetails=true`
+                  `${server}/bagging-with-barcode?awbNo=${awb}&fullDetails=true`,
                 );
                 return detailsResponse.data;
               } catch (error) {
@@ -464,7 +464,7 @@ const BaggingWithBarcode = () => {
         return null;
       }
     },
-    [server, setValue]
+    [server, setValue],
   );
 
   const fetchRunEntry = useCallback(
@@ -482,7 +482,7 @@ const BaggingWithBarcode = () => {
             headers: {
               "Content-Type": "application/json",
             },
-          }
+          },
         );
 
         return response.data;
@@ -491,7 +491,7 @@ const BaggingWithBarcode = () => {
         return null;
       }
     },
-    [server]
+    [server],
   );
 
   const calculateAndSetClubDetails = useCallback(
@@ -519,7 +519,7 @@ const BaggingWithBarcode = () => {
       setValue("totalAwb", totalAwb.toString());
       setValue("totalWeight", totalWeight.toFixed(2));
     },
-    [setValue, resetClubDetails]
+    [setValue, resetClubDetails],
   );
 
   const fetchClubbingData = useCallback(
@@ -531,7 +531,9 @@ const BaggingWithBarcode = () => {
       }
 
       try {
-        const response = await axios.get(`${server}/clubbing?runNo=${runNo.toUpperCase()}`);
+        const response = await axios.get(
+          `${server}/clubbing?runNo=${runNo.toUpperCase()}`,
+        );
         const data = Array.isArray(response.data)
           ? response.data
           : [response.data];
@@ -548,7 +550,7 @@ const BaggingWithBarcode = () => {
         }
       }
     },
-    [server, calculateAndSetClubDetails, resetClubDetails]
+    [server, calculateAndSetClubDetails, resetClubDetails],
   );
 
   const fetchAwbDetails = useCallback(
@@ -564,7 +566,7 @@ const BaggingWithBarcode = () => {
         setIsValidatingAwb(true);
 
         const response = await axios.get(
-          `${server}/bagging-with-barcode?awbNo=${awbNo}`
+          `${server}/bagging-with-barcode?awbNo=${awbNo}`,
         );
         const awbDetails = response.data;
 
@@ -618,13 +620,13 @@ const BaggingWithBarcode = () => {
 
         // Fetch full shipment details for columnsData
         const detailsResponse = await axios.get(
-          `${server}/bagging-with-barcode?awbNo=${awbNo}&fullDetails=true`
+          `${server}/bagging-with-barcode?awbNo=${awbNo}&fullDetails=true`,
         );
 
         if (detailsResponse.data) {
           setShipmentDetailsData((prev) => {
             const existing = prev.find(
-              (item) => item.mawbNo === awbNo || item.childAwbNo === awbNo
+              (item) => item.mawbNo === awbNo || item.childAwbNo === awbNo,
             );
             if (existing) return prev;
             return [...prev, detailsResponse.data];
@@ -637,7 +639,7 @@ const BaggingWithBarcode = () => {
         const awbType = awbDetails.type === "child" ? "Child AWB" : "AWB";
         showNotification(
           "success",
-          `${awbType} ${awbNo} details loaded successfully`
+          `${awbType} ${awbNo} details loaded successfully`,
         );
 
         setIsValidatingAwb(false);
@@ -656,7 +658,7 @@ const BaggingWithBarcode = () => {
         setIsValidatingAwb(false);
       }
     },
-    [setValue, server, showNotification]
+    [setValue, server, showNotification],
   );
 
   const generateMhbsNumber = useCallback(
@@ -667,7 +669,7 @@ const BaggingWithBarcode = () => {
         setValue("mhbsNo", "");
       }
     },
-    [setValue]
+    [setValue],
   );
 
   const mapRunDataToForm = useCallback((runData) => {
@@ -704,7 +706,7 @@ const BaggingWithBarcode = () => {
     const numberOfAwb = rowData.length;
     const totalWeight = rowData.reduce(
       (sum, row) => sum + (parseFloat(row.bagWeight) || 0),
-      0
+      0,
     );
 
     return {
@@ -733,11 +735,11 @@ const BaggingWithBarcode = () => {
       const bagItems = rowData.filter((row) => row.bagNo === bagNo);
       const weight = bagItems.reduce(
         (sum, row) => sum + (parseFloat(row.bagWeight) || 0),
-        0
+        0,
       );
       return weight.toFixed(2);
     },
-    [rowData]
+    [rowData],
   );
 
   const handleNewBag = useCallback(() => {
@@ -824,7 +826,7 @@ const BaggingWithBarcode = () => {
 
         try {
           const awbResponse = await axios.get(
-            `${server}/bagging-with-barcode?awbNo=${trimmedAwb}`
+            `${server}/bagging-with-barcode?awbNo=${trimmedAwb}`,
           );
           const awbData = awbResponse.data;
 
@@ -903,7 +905,7 @@ const BaggingWithBarcode = () => {
         };
       }
     },
-    [server, rowData, watch]
+    [server, rowData, watch],
   );
 
   const getFilteredRowData = useCallback(() => {
@@ -924,43 +926,43 @@ const BaggingWithBarcode = () => {
   }, [rowData, selectedBag, searchAwbNo, normalizeRowDataForDisplay]);
 
   const getFilteredShipmentDetails = useCallback(() => {
-  if (!shipmentDetailsData.length) return [];
+    if (!shipmentDetailsData.length) return [];
 
-  let filtered = shipmentDetailsData;
+    let filtered = shipmentDetailsData;
 
-  if (selectedBag && selectedBag.trim() !== "") {
-    const bagAwbs = rowData
-      .filter((row) => row.bagNo === selectedBag)
-      .map((row) => row.childShipment || row.awbNo);
+    if (selectedBag && selectedBag.trim() !== "") {
+      const bagAwbs = rowData
+        .filter((row) => row.bagNo === selectedBag)
+        .map((row) => row.childShipment || row.awbNo);
 
-    filtered = filtered.filter((detail) =>
-      bagAwbs.includes(detail.childAwbNo || detail.mawbNo)
-    );
-  }
+      filtered = filtered.filter((detail) =>
+        bagAwbs.includes(detail.childAwbNo || detail.mawbNo),
+      );
+    }
 
-  if (searchAwbNo.trim()) {
-    filtered = filtered.filter((detail) => {
-      const awb = detail.childAwbNo || detail.mawbNo || "";
-      return awb.toUpperCase().includes(searchAwbNo.trim());
-    });
-  }
+    if (searchAwbNo.trim()) {
+      filtered = filtered.filter((detail) => {
+        const awb = detail.childAwbNo || detail.mawbNo || "";
+        return awb.toUpperCase().includes(searchAwbNo.trim());
+      });
+    }
 
-  // Format dates in the filtered data
-  return filtered.map(detail => ({
-    ...detail,
-    date: formatDateToDDMMYYYY(detail.date)
-  }));
-}, [shipmentDetailsData, selectedBag, searchAwbNo, rowData]);
+    // Format dates in the filtered data
+    return filtered.map((detail) => ({
+      ...detail,
+      date: formatDateToDDMMYYYY(detail.date),
+    }));
+  }, [shipmentDetailsData, selectedBag, searchAwbNo, rowData]);
 
   const handleBarcodeConfirm = useCallback(
     (barcodeValue) => {
       setValue("barcodeNo", barcodeValue);
       showNotification(
         "success",
-        `Barcode ${barcodeValue} scanned successfully`
+        `Barcode ${barcodeValue} scanned successfully`,
       );
     },
-    [setValue, showNotification]
+    [setValue, showNotification],
   );
 
   const onSubmit = useCallback(
@@ -1029,7 +1031,7 @@ const BaggingWithBarcode = () => {
               action: "remove",
               item: { awbNo: oldAwbNo },
             },
-            axiosConfig
+            axiosConfig,
           );
 
           const response = await axios.put(
@@ -1039,7 +1041,7 @@ const BaggingWithBarcode = () => {
               action: "add",
               item: newRow,
             },
-            axiosConfig
+            axiosConfig,
           );
 
           setRowData(response.data.rowData || rowData);
@@ -1047,7 +1049,7 @@ const BaggingWithBarcode = () => {
 
           showNotification(
             "success",
-            `AWB ${trimmedAwb} updated successfully!`
+            `AWB ${trimmedAwb} updated successfully!`,
           );
 
           setEditingIndex(null);
@@ -1070,7 +1072,7 @@ const BaggingWithBarcode = () => {
               if (dateParts.length === 3) {
                 const [day, month, year] = dateParts;
                 parsedDate = new Date(
-                  `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+                  `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
                 );
               }
             }
@@ -1099,7 +1101,7 @@ const BaggingWithBarcode = () => {
             const response = await axios.post(
               `${server}/bagging-with-barcode`,
               baggingData,
-              axiosConfig
+              axiosConfig,
             );
 
             setExistingBaggingData(response.data);
@@ -1107,7 +1109,7 @@ const BaggingWithBarcode = () => {
 
             showNotification(
               "success",
-              `AWB ${trimmedAwb} added successfully!`
+              `AWB ${trimmedAwb} added successfully!`,
             );
           } else {
             const saveData = {
@@ -1119,7 +1121,7 @@ const BaggingWithBarcode = () => {
             const response = await axios.put(
               `${server}/bagging-with-barcode`,
               saveData,
-              axiosConfig
+              axiosConfig,
             );
 
             setRowData(response.data.rowData || [...rowData, newRow]);
@@ -1127,7 +1129,7 @@ const BaggingWithBarcode = () => {
 
             showNotification(
               "success",
-              `AWB ${trimmedAwb} added successfully!`
+              `AWB ${trimmedAwb} added successfully!`,
             );
           }
 
@@ -1171,7 +1173,7 @@ const BaggingWithBarcode = () => {
       isFinalised,
       showNotification,
       clearErrors,
-    ]
+    ],
   );
 
   const handleEditRow = useCallback(
@@ -1218,7 +1220,7 @@ const BaggingWithBarcode = () => {
       isFinalised,
       clearErrors,
       showNotification,
-    ]
+    ],
   );
 
   const handleDeleteRow = useCallback(
@@ -1233,7 +1235,7 @@ const BaggingWithBarcode = () => {
       setItemToDelete({ index, awbNo: actualAwb });
       setDeleteModalOpen(true);
     },
-    [rowData, isFinalised]
+    [rowData, isFinalised],
   );
 
   const confirmDelete = useCallback(async () => {
@@ -1273,7 +1275,7 @@ const BaggingWithBarcode = () => {
           action: "remove",
           item: { awbNo: actualAwb },
         },
-        axiosConfig
+        axiosConfig,
       );
 
       if (response.data && response.data.rowData) {
@@ -1284,7 +1286,7 @@ const BaggingWithBarcode = () => {
           prev.filter((detail) => {
             const detailAwb = detail.childAwbNo || detail.mawbNo;
             return detailAwb !== actualAwb;
-          })
+          }),
         );
       }
 
@@ -1330,7 +1332,7 @@ const BaggingWithBarcode = () => {
       { key: "bagWeight", label: "Weight" },
       { key: "runNo", label: "Run No." },
     ],
-    []
+    [],
   );
 
   const columnsData = useMemo(
@@ -1354,10 +1356,10 @@ const BaggingWithBarcode = () => {
       { key: "holdReason", label: "Hold Reason" },
       { key: "paymentType", label: "Payment Type" },
       { key: "billNo", label: "Bill No" },
-      { key: "awbStatus", label: "AWB Status" },
+      { key: "awbStage", label: "AWB Stage" },
       { key: "shipmentForwardingNo", label: "Shipment Forwarding No" },
     ],
-    []
+    [],
   );
 
   const handleBagSelection = useCallback(
@@ -1373,7 +1375,7 @@ const BaggingWithBarcode = () => {
       }
       setSearchAwbNo("");
     },
-    [setValue, selectedBag]
+    [setValue, selectedBag],
   );
 
   const handleSearchAwb = useCallback((e) => {
@@ -1395,7 +1397,7 @@ const BaggingWithBarcode = () => {
       if (!rowData?.length) {
         showNotification(
           "error",
-          "Please add at least one item before finalizing"
+          "Please add at least one item before finalizing",
         );
         return;
       }
@@ -1422,7 +1424,7 @@ const BaggingWithBarcode = () => {
 
       const response = await axios.put(
         `${server}/bagging-with-barcode`,
-        updateData
+        updateData,
       );
 
       if (response.status === 200 || response.status === 201) {
@@ -1541,7 +1543,7 @@ const BaggingWithBarcode = () => {
         } catch (barcodeError) {
           console.error(
             `Error generating barcode for bag ${bagNo}:`,
-            barcodeError
+            barcodeError,
           );
         }
       }
@@ -1555,7 +1557,7 @@ const BaggingWithBarcode = () => {
 
       showNotification(
         "success",
-        `Barcode PDF generated for ${rowData.length} entries!`
+        `Barcode PDF generated for ${rowData.length} entries!`,
       );
     } catch (error) {
       console.error("Error generating barcode PDF:", error);
@@ -1578,7 +1580,7 @@ const BaggingWithBarcode = () => {
         if (accountType && accountType !== "hubAirport") {
           showNotification(
             "error",
-            `This is not a Hub Airport run. Type: ${accountType}`
+            `This is not a Hub Airport run. Type: ${accountType}`,
           );
           setIsDisabled(true);
           return;
@@ -1927,7 +1929,6 @@ const BaggingWithBarcode = () => {
 
               {/* Action Buttons */}
               <div className="flex gap-2">
-                
                 {editingIndex !== null && (
                   <button
                     type="button"
