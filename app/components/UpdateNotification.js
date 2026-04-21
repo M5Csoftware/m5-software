@@ -288,22 +288,6 @@ export default function UpdateNotification({ inTopBar = false }) {
     checkUpdate();
   };
 
-  // ── Blur the app root when modal is open (Tauri-compatible) ──────────
-  useEffect(() => {
-    const root =
-      document.getElementById("__next") ||
-      document.getElementById("root") ||
-      document.querySelector("main") ||
-      document.body.firstElementChild;
-    if (!root) return;
-    if (showModal) {
-      root.classList.add("m5c-modal-blur");
-    } else {
-      root.classList.remove("m5c-modal-blur");
-    }
-    return () => root.classList.remove("m5c-modal-blur");
-  }, [showModal]);
-
   if (!updateInfo || dismissed) return null;
 
   return (
@@ -443,13 +427,18 @@ export default function UpdateNotification({ inTopBar = false }) {
             alignItems: "center",
             justifyContent: "center",
             padding: "16px",
-            background: "rgba(0,0,0,.35)",
           }}
         >
-          {/* Click-to-close scrim */}
+          {/* Blur layer — sits behind the card, captures clicks to close */}
           <div
             onClick={() => !installing && setShowModal(false)}
-            style={{ position: "absolute", inset: 0 }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,.45)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }}
           />
           <div
             onClick={(e) => e.stopPropagation()}
@@ -814,15 +803,6 @@ export default function UpdateNotification({ inTopBar = false }) {
       )}
 
       <style>{`
-        /* Blur the app content behind the modal — works in Tauri WebView */
-        .m5c-modal-blur {
-          filter: blur(6px) brightness(0.6);
-          -webkit-filter: blur(6px) brightness(0.6);
-          transition: filter 0.2s ease, -webkit-filter 0.2s ease;
-          pointer-events: none;
-          user-select: none;
-        }
-
         @keyframes pulse-banner {
           0%,100% { box-shadow:0 2px 10px rgba(234,27,64,.4); }
           50%      { box-shadow:0 2px 18px rgba(234,27,64,.7); }
