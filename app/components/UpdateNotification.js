@@ -1,14 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { createPortal } from "react-dom";
-
-// Renders children directly on document.body to escape any parent stacking context
-function ModalPortal({ children }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;
-  return createPortal(children, document.body);
-}
 
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const STORAGE_KEY = "m5c_dismissed_version";
@@ -26,7 +17,7 @@ function formatDate(isoString) {
   }
 }
 
-export default function UpdateNotification({ inTopBar = false }) {
+export default function UpdateNotification() {
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -36,52 +27,27 @@ export default function UpdateNotification({ inTopBar = false }) {
   const [progress, setProgress] = useState(0);
   const [installError, setInstallError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
-  const [manualCheck, setManualCheck] = useState(false);
   const invokeRef = useRef(null);
   const updaterRef = useRef(null);
-  const checkIntervalRef = useRef(null);
 
   // ── Load Tauri APIs ───────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (process.env.NODE_ENV === "development") return;
 
     const load = async () => {
       try {
-        const isTauri = !!(window.__TAURI__ || window.__TAURI_PLUGIN_UPDATER__);
+        const { invoke } = await import("@tauri-apps/api/tauri");
+        const updater = await import("@tauri-apps/api/updater");
+        const { relaunch } = await import("@tauri-apps/api/process");
 
-        if (isTauri) {
-          console.log("[updater] Tauri environment detected");
+        invokeRef.current = invoke;
+        updaterRef.current = { ...updater, relaunch };
 
-          const tauriApi = await import("@tauri-apps/api/tauri");
-          const updaterApi = await import("@tauri-apps/api/updater");
-          const processApi = await import("@tauri-apps/api/process");
-
-          invokeRef.current = tauriApi.invoke;
-          updaterRef.current = {
-            checkUpdate: updaterApi.checkUpdate,
-            installUpdate: updaterApi.installUpdate,
-            onUpdaterEvent: updaterApi.onUpdaterEvent,
-            relaunch: processApi.relaunch,
-          };
-
-          console.log("[updater] Tauri API ready");
-          setApiReady(true);
-
-          setTimeout(() => checkUpdate(), 2000);
-        } else {
-          console.log("[updater] Not running in Tauri environment");
-          if (process.env.NODE_ENV === "development") {
-            setUpdateInfo({
-              has_update: true,
-              current_version: "0.1.0",
-              remote_version: "0.2.0",
-              notes: "Test update in development mode",
-              pub_date: new Date().toISOString(),
-            });
-          }
-        }
+        console.log("[updater] Tauri API ready");
+        setApiReady(true);
       } catch (e) {
-        console.log("[updater] Failed to load Tauri API:", e.message);
+        console.log("[updater] Tauri API not available:", e.message);
       }
     };
     load();
@@ -89,49 +55,29 @@ export default function UpdateNotification({ inTopBar = false }) {
 
   // ── Check for update via Rust command ────────────────────────────────
   const checkUpdate = useCallback(async () => {
-    if (!invokeRef.current) {
-      console.log("[updater] Invoke not ready");
-      return;
-    }
-
+    if (!invokeRef.current) return;
     try {
-      console.log("[updater] Checking for updates...");
       const info = await invokeRef.current("check_for_update");
-      console.log("[updater] Check result:", info);
-
+      console.log("[updater] Result:", info);
       if (info?.has_update) {
         const dismissedVer = localStorage.getItem(STORAGE_KEY);
         if (dismissedVer !== info.remote_version) {
           setUpdateInfo(info);
           setDismissed(false);
-          console.log("[updater] Update available:", info.remote_version);
-        } else {
-          console.log("[updater] Update dismissed for version:", dismissedVer);
         }
-      } else {
-        console.log("[updater] No update available");
       }
     } catch (err) {
-      console.warn("[updater] Check failed:", err);
-    } finally {
-      setManualCheck(false);
+      console.warn("[updater] check failed:", err);
     }
   }, []);
 
-  // Set up periodic checking
   useEffect(() => {
     if (!apiReady) return;
-
-    if (checkIntervalRef.current) {
-      clearInterval(checkIntervalRef.current);
-    }
-
-    checkIntervalRef.current = setInterval(checkUpdate, CHECK_INTERVAL_MS);
-
+    const t = setTimeout(checkUpdate, 3000);
+    const i = setInterval(checkUpdate, CHECK_INTERVAL_MS);
     return () => {
-      if (checkIntervalRef.current) {
-        clearInterval(checkIntervalRef.current);
-      }
+      clearTimeout(t);
+      clearInterval(i);
     };
   }, [apiReady, checkUpdate]);
 
@@ -153,6 +99,7 @@ export default function UpdateNotification({ inTopBar = false }) {
     let unlisten = null;
 
     try {
+      // Listen to download progress events
       if (updaterRef.current.onUpdaterEvent) {
         unlisten = await updaterRef.current.onUpdaterEvent(
           ({ error, status }) => {
@@ -201,6 +148,7 @@ export default function UpdateNotification({ inTopBar = false }) {
       setInstallStatus("Downloading update...");
       setProgress(30);
 
+      // This downloads AND installs
       await updaterRef.current.installUpdate();
 
       setInstallStatus("Download complete. Installing...");
@@ -219,6 +167,7 @@ export default function UpdateNotification({ inTopBar = false }) {
       console.error("[updater] install failed:", err);
       if (unlisten) unlisten();
 
+      // Enhanced error handling with specific messages
       let errMsg = err?.message || err?.toString() || "Unknown error";
       let shouldRetry = false;
 
@@ -226,7 +175,7 @@ export default function UpdateNotification({ inTopBar = false }) {
         errMsg =
           "Update file not found. The release may not be properly published. Please try again later or contact support.";
         shouldRetry = true;
-      } else if (errMsg.includes("signature")) {
+      } else if (errMsg.includes("signature") || errMsg.includes("signature")) {
         errMsg =
           "Signature verification failed. The update file may be corrupted. Please contact support.";
       } else if (
@@ -257,6 +206,7 @@ export default function UpdateNotification({ inTopBar = false }) {
         shouldRetry = true;
       }
 
+      // Auto-retry logic for network-related errors
       if (shouldRetry && retryCount < 3) {
         setRetryCount((prev) => prev + 1);
         setInstallStatus(`Retrying... (${retryCount + 1}/3)`);
@@ -292,188 +242,112 @@ export default function UpdateNotification({ inTopBar = false }) {
     }
   };
 
-  const handleManualCheck = () => {
-    setManualCheck(true);
-    checkUpdate();
-  };
-
-  // ── Blur the app root when modal is open (Tauri-compatible) ──────────
-  useEffect(() => {
-    const root =
-      document.getElementById("__next") ||
-      document.getElementById("root") ||
-      document.querySelector("main") ||
-      document.body.firstElementChild;
-    if (!root) return;
-    if (showModal) {
-      root.classList.add("m5c-modal-blur");
-    } else {
-      root.classList.remove("m5c-modal-blur");
-    }
-    return () => root.classList.remove("m5c-modal-blur");
-  }, [showModal]);
-
   if (!updateInfo || dismissed) return null;
 
   return (
     <>
-      {/* ── Top-Bar compact indicator ────────────────────────────────────── */}
-      {inTopBar ? (
-        <button
-          onClick={() => setShowModal(true)}
-          title={`Update available: v${updateInfo.current_version} → v${updateInfo.remote_version}`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            background: "transparent",
-            border: "1px solid rgba(234,27,64,.4)",
-            borderRadius: "20px",
-            padding: "2px 7px 2px 5px",
-            cursor: "pointer",
-            color: "#EA1B40",
-            fontSize: "10px",
-            fontWeight: "600",
-            whiteSpace: "nowrap",
-            userSelect: "none",
-            lineHeight: 1,
-            transition: "background 0.15s, border-color 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(234,27,64,.07)";
-            e.currentTarget.style.borderColor = "rgba(234,27,64,.65)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.borderColor = "rgba(234,27,64,.4)";
-          }}
+      {/* ── Sidebar Banner ─────────────────────────────────────────────── */}
+      <div
+        onClick={() => setShowModal(true)}
+        style={{
+          background: "linear-gradient(135deg,#EA1B40,#c41535)",
+          borderRadius: "10px",
+          padding: "10px 12px",
+          margin: "0 8px 6px 8px",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          boxShadow: "0 2px 10px rgba(234,27,64,.4)",
+          userSelect: "none",
+          animation: "pulse-banner 2.5s ease-in-out infinite",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "translateY(-1px)";
+          e.currentTarget.style.boxShadow = "0 4px 16px rgba(234,27,64,.55)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 2px 10px rgba(234,27,64,.4)";
+        }}
+      >
+        <svg
+          width="17"
+          height="17"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="white"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ flexShrink: 0 }}
         >
-          {/* Pulsing dot */}
-          <span
-            style={{
-              width: "5px",
-              height: "5px",
-              borderRadius: "50%",
-              background: "#EA1B40",
-              display: "inline-block",
-              flexShrink: 0,
-              animation: "dot-pulse 2.5s ease-in-out infinite",
-            }}
-          />
-          Update
-        </button>
-      ) : (
-        /* ── Sidebar Banner ──────────────────────────────────────────────── */
-        <div
-          onClick={() => setShowModal(true)}
-          style={{
-            background: "linear-gradient(135deg,#EA1B40,#c41535)",
-            borderRadius: "10px",
-            padding: "10px 12px",
-            margin: "0 8px 6px 8px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            boxShadow: "0 2px 10px rgba(234,27,64,.4)",
-            userSelect: "none",
-            animation: "pulse-banner 2.5s ease-in-out infinite",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-1px)";
-            e.currentTarget.style.boxShadow = "0 4px 16px rgba(234,27,64,.55)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 2px 10px rgba(234,27,64,.4)";
-          }}
-        >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="white"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ flexShrink: 0 }}
-          >
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{ color: "white", fontSize: "11px", fontWeight: "700" }}
-            >
-              Update Available
-            </div>
-            <div
-              style={{
-                color: "rgba(255,255,255,.88)",
-                fontSize: "10px",
-                marginTop: "1px",
-              }}
-            >
-              v{updateInfo.current_version} → v{updateInfo.remote_version}
-            </div>
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: "white", fontSize: "11px", fontWeight: "700" }}>
+            Update Available
           </div>
-          <button
-            onClick={handleDismiss}
+          <div
             style={{
-              background: "rgba(0,0,0,.18)",
-              border: "none",
-              color: "white",
-              cursor: "pointer",
-              width: "20px",
-              height: "20px",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "13px",
-              flexShrink: 0,
-              padding: 0,
+              color: "rgba(255,255,255,.88)",
+              fontSize: "10px",
+              marginTop: "1px",
             }}
           >
-            ×
-          </button>
+            v{updateInfo.current_version} → v{updateInfo.remote_version}
+          </div>
         </div>
-      )}
-
-      {/* ── Modal ──────────────────────────────────────────────────────── */}
-      {showModal && (
-        <ModalPortal>
-        <div
+        <button
+          onClick={handleDismiss}
           style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 2147483647,
+            background: "rgba(0,0,0,.18)",
+            border: "none",
+            color: "white",
+            cursor: "pointer",
+            width: "20px",
+            height: "20px",
+            borderRadius: "50%",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "16px",
-            background: "rgba(0,0,0,.65)",
+            fontSize: "13px",
+            flexShrink: 0,
+            padding: 0,
           }}
         >
-          {/* Click-to-close scrim */}
-          <div
-            onClick={() => !installing && setShowModal(false)}
-            style={{ position: "absolute", inset: 0 }}
-          />
+          ×
+        </button>
+      </div>
+
+      {/* ── Modal ──────────────────────────────────────────────────────── */}
+      {showModal && (
+        <div
+          onClick={() => !installing && setShowModal(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,.5)",
+            backdropFilter: "blur(5px)",
+            padding: "16px",
+          }}
+        >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#ffffff",
+              background: "#fff",
               borderRadius: "18px",
               padding: "36px 36px 28px",
               maxWidth: "440px",
               width: "100%",
-              boxShadow: "0 24px 64px rgba(0,0,0,.5)",
+              boxShadow: "0 24px 64px rgba(0,0,0,.22)",
               position: "relative",
-              zIndex: 1,
               animation: "modal-in .2s ease-out",
-              opacity: 1,
             }}
           >
             {!installing && (
@@ -562,7 +436,7 @@ export default function UpdateNotification({ inTopBar = false }) {
             >
               {installing
                 ? installStatus || "Please wait..."
-                : `Version ${updateInfo.remote_version} is ready to install.`}
+                : "A new version of M5C Logs is ready to install."}
             </p>
 
             {/* ── Progress bar (shown while installing) ── */}
@@ -669,7 +543,7 @@ export default function UpdateNotification({ inTopBar = false }) {
                       fontWeight: "600",
                     }}
                   >
-                    Current: v{updateInfo.current_version}
+                    v{updateInfo.current_version}
                   </span>
                   <svg
                     width="16"
@@ -694,7 +568,7 @@ export default function UpdateNotification({ inTopBar = false }) {
                       fontWeight: "700",
                     }}
                   >
-                    New: v{updateInfo.remote_version}
+                    v{updateInfo.remote_version}
                   </span>
                   {updateInfo.pub_date && (
                     <span
@@ -800,7 +674,7 @@ export default function UpdateNotification({ inTopBar = false }) {
                       <polyline points="7 10 12 15 17 10" />
                       <line x1="12" y1="15" x2="12" y2="3" />
                     </svg>
-                    Install Now
+                    Install Update
                   </button>
                   <button
                     onClick={handleDismiss}
@@ -822,26 +696,12 @@ export default function UpdateNotification({ inTopBar = false }) {
             )}
           </div>
         </div>
-        </ModalPortal>
       )}
 
       <style>{`
-        /* Blur the app content behind the modal — works in Tauri WebView */
-        .m5c-modal-blur {
-          filter: blur(6px) brightness(0.6);
-          -webkit-filter: blur(6px) brightness(0.6);
-          transition: filter 0.2s ease, -webkit-filter 0.2s ease;
-          pointer-events: none;
-          user-select: none;
-        }
-
         @keyframes pulse-banner {
           0%,100% { box-shadow:0 2px 10px rgba(234,27,64,.4); }
           50%      { box-shadow:0 2px 18px rgba(234,27,64,.7); }
-        }
-        @keyframes dot-pulse {
-          0%,100% { opacity: 1; transform: scale(1); }
-          50%      { opacity: 0.5; transform: scale(0.75); }
         }
         @keyframes modal-in {
           from { opacity:0; transform:scale(.95) translateY(8px); }

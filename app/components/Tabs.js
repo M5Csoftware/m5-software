@@ -4,7 +4,6 @@ import { GlobalContext } from "../lib/GlobalContext";
 import Image from "next/image";
 import { SimpleButton } from "./Buttons";
 import { useAuth } from "../Context/AuthContext";
-import UpdateNotification from "./UpdateNotification";
 
 function Tabs() {
   const { activeTabs, setActiveTabs, currentTab, setCurrentTab } =
@@ -18,7 +17,7 @@ function Tabs() {
   // Handle close tab action
   const handleClose = (folder, subfolder) => {
     const newActiveTabs = activeTabs.filter(
-      (item) => !(item.folder === folder && item.subfolder === subfolder)
+      (item) => !(item.folder === folder && item.subfolder === subfolder),
     );
 
     // If the current tab is the last tab and is removed, set the previous tab as current tab
@@ -26,7 +25,7 @@ function Tabs() {
       setCurrentTab(null); // If no tabs remain, set current tab to null
     } else if (currentTab === subfolder) {
       const currentIndex = activeTabs.findIndex(
-        (item) => item.subfolder === currentTab
+        (item) => item.subfolder === currentTab,
       );
       const previousTab = newActiveTabs[currentIndex - 1] || newActiveTabs[0]; // Get the previous tab or first tab
       setCurrentTab(previousTab.subfolder);
@@ -74,7 +73,7 @@ function Tabs() {
 
         // Find the current tab index
         const currentIndex = activeTabs.findIndex(
-          (item) => item.subfolder === currentTab
+          (item) => item.subfolder === currentTab,
         );
 
         // Determine the next tab index (wrap around to the first tab if current tab is the last one)
@@ -91,7 +90,7 @@ function Tabs() {
 
         // Find the current tab index
         const currentIndex = activeTabs.findIndex(
-          (item) => item.subfolder === currentTab
+          (item) => item.subfolder === currentTab,
         );
 
         // Determine the previous tab index (wrap around to the last tab if current tab is the first one)
@@ -108,7 +107,7 @@ function Tabs() {
 
         // Find and remove the current tab from the activeTabs list
         const tabToClose = activeTabs.find(
-          (item) => item.subfolder === currentTab
+          (item) => item.subfolder === currentTab,
         );
         if (tabToClose) {
           handleClose(tabToClose.folder, tabToClose.subfolder);
@@ -182,8 +181,7 @@ function Tabs() {
           </ul>
         </div>
 
-        <div className="flex items-center justify-center gap-2 px-4 bg-gray-50 border-r min-w-fit">
-          <UpdateNotification inTopBar />
+        <div className="flex items-center justify-center px-4 bg-gray-50 border-r min-w-fit">
           <button
             onClick={handleLogoutClick}
             className="flex items-center justify-center hover:opacity-80 transition-opacity"
