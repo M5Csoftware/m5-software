@@ -1,11 +1,11 @@
 {
-  "version": "0.1.52",
-  "notes": "Location Change",
-  "pub_date": "2026-04-20T10:42:17Z",
+  "version": "0.1.53",
+  "notes": "Changes",
+  "pub_date": "2026-04-21T08:34:36Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYzJESjY3cHhyNjFEZElpc0FGU1Azc3VRbHhETENkajhrKzV0TGFsUXBkSWhzMzdrUGs1anlsK1h4OWdTYklLRGtadkpudnFsWGRHNXRhNjRIbHFtWHdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2NjgxNzM3CWZpbGU6TTVDIExvZ3NfMC4xLjUyX3g2NF9lbi1VUy5tc2kuemlwCmliRXhyOGFXdG80ZWdzQ1FYWlQzV3Noc2xHdVpoenBZODQwRjY1dk9ZSHptMnhYSkJ2MFRqVHdKZ3hXOXQ5dXA1TXlhZjBqdG10d2tnOE5WaTg3aUFnPT0K",
-      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.52/M5C.Logs_0.1.52_x64_en-US.msi.zip"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYzluWVhoRUNNclZkL1hFSTlTRTk1bnNKdTFZOHdKYnpJUVpveklVZm9RN2NwY2FTNUNiZ1ZJSUNMY1k5amhZNFJFZVB1VVVVa0J0SndrZ3Ywb3ZXTGdZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2NzYwNDc1CWZpbGU6TTVDIExvZ3NfMC4xLjUzX3g2NF9lbi1VUy5tc2kuemlwCkc1T0I4ckhJRCttNFlzT3dZL1ZUNDRVNzNaN1NHTkVWREFyZ25mUGpWbi92NlhiQ21aOWVtT29lZEgvM1l4WEpZWk5qZEtjd3FwQm9DRjVsaUN5TkJ3PT0K",
+      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.53/M5C.Logs_0.1.53_x64_en-US.msi.zip"
     }
   }
 }
