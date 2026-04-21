@@ -3,6 +3,7 @@ import React, { useState, useContext, useEffect } from "react";
 import Image from "next/image";
 import { GlobalContext } from "../lib/GlobalContext";
 import { useAuth } from "../Context/AuthContext";
+import UpdateNotification from "./UpdateNotification";
 
 // Sidebar component
 function Sidebar() {
@@ -177,17 +178,17 @@ function Sidebar() {
   ];
 
   // Import folders — add your import components/subfolders here when ready
- const importFolders = [
-  {
-    name: "Import",
-    subfolders: [
-      "AWB Import Entry",
-      "Import Booking Report",
-      "Import Shipment Status Report",
-      "Import POD Entry",
-    ],
-  },
-];
+  const importFolders = [
+    {
+      name: "Import",
+      subfolders: [
+        "AWB Import Entry",
+        "Import Booking Report",
+        "Import Shipment Status Report",
+        "Import POD Entry",
+      ],
+    },
+  ];
 
   const permissionKeyMap = {
     "Account Ledger": ["Acc-Account Ledger", "Bill-Account Ledger"],
@@ -413,6 +414,7 @@ function Sidebar() {
         </ul>
       )}
 
+      <UpdateNotification />
       <div className="px-8 pb-4 text-[10px] flex flex-col gap-0.5 font-bold text-green-1">
         {latestVersion && (
           <div
