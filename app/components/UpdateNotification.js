@@ -288,6 +288,22 @@ export default function UpdateNotification({ inTopBar = false }) {
     checkUpdate();
   };
 
+  // ── Blur the app root when modal is open (Tauri-compatible) ──────────
+  useEffect(() => {
+    const root =
+      document.getElementById("__next") ||
+      document.getElementById("root") ||
+      document.querySelector("main") ||
+      document.body.firstElementChild;
+    if (!root) return;
+    if (showModal) {
+      root.classList.add("m5c-modal-blur");
+    } else {
+      root.classList.remove("m5c-modal-blur");
+    }
+    return () => root.classList.remove("m5c-modal-blur");
+  }, [showModal]);
+
   if (!updateInfo || dismissed) return null;
 
   return (
@@ -416,7 +432,7 @@ export default function UpdateNotification({ inTopBar = false }) {
         </div>
       )}
 
-      {/* ── Modal with proper backdrop blur ──────────────────────────────────────── */}
+      {/* ── Modal ──────────────────────────────────────────────────────── */}
       {showModal && (
         <div
           style={{
@@ -427,34 +443,27 @@ export default function UpdateNotification({ inTopBar = false }) {
             alignItems: "center",
             justifyContent: "center",
             padding: "16px",
+            background: "rgba(0,0,0,.65)",
           }}
         >
-          {/* Backdrop overlay with blur effect */}
+          {/* Click-to-close scrim */}
           <div
             onClick={() => !installing && setShowModal(false)}
-            style={{
-              position: "absolute",
-              inset: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              transition: "all 0.2s ease",
-            }}
+            style={{ position: "absolute", inset: 0 }}
           />
-          
-          {/* Modal Card */}
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              position: "relative",
-              zIndex: 1,
               background: "#ffffff",
-              borderRadius: "24px",
+              borderRadius: "18px",
               padding: "36px 36px 28px",
               maxWidth: "440px",
               width: "100%",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
-              animation: "modal-in 0.2s ease-out",
+              boxShadow: "0 24px 64px rgba(0,0,0,.5)",
+              position: "relative",
+              zIndex: 1,
+              animation: "modal-in .2s ease-out",
+              opacity: 1,
             }}
           >
             {!installing && (
@@ -462,27 +471,20 @@ export default function UpdateNotification({ inTopBar = false }) {
                 onClick={() => setShowModal(false)}
                 style={{
                   position: "absolute",
-                  top: "16px",
+                  top: "14px",
                   right: "16px",
                   background: "#f3f4f6",
                   border: "none",
-                  width: "32px",
-                  height: "32px",
+                  width: "28px",
+                  height: "28px",
                   borderRadius: "50%",
-                  fontSize: "18px",
+                  fontSize: "16px",
                   cursor: "pointer",
                   color: "#6b7280",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   lineHeight: 1,
-                  transition: "background 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#e5e7eb";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#f3f4f6";
                 }}
               >
                 ×
@@ -596,7 +598,7 @@ export default function UpdateNotification({ inTopBar = false }) {
                 style={{
                   background: "#fef2f2",
                   border: "1px solid #fecaca",
-                  borderRadius: "12px",
+                  borderRadius: "10px",
                   padding: "12px 14px",
                   marginBottom: "16px",
                   fontSize: "13px",
@@ -610,7 +612,7 @@ export default function UpdateNotification({ inTopBar = false }) {
                     gap: "8px",
                   }}
                 >
-                  <span style={{ fontSize: "14px" }}>⚠️</span>
+                  <span>⚠️</span>
                   <div style={{ flex: 1 }}>
                     {installError}
                     {installError.includes("not found") && (
@@ -645,7 +647,6 @@ export default function UpdateNotification({ inTopBar = false }) {
                     alignItems: "center",
                     gap: "10px",
                     marginBottom: "20px",
-                    flexWrap: "wrap",
                   }}
                 >
                   <span
@@ -755,12 +756,12 @@ export default function UpdateNotification({ inTopBar = false }) {
                     </div>
                   )}
 
-                <div style={{ display: "flex", gap: "12px" }}>
+                <div style={{ display: "flex", gap: "10px" }}>
                   <button
                     onClick={handleInstall}
                     style={{
                       flex: 1,
-                      padding: "12px 16px",
+                      padding: "12px",
                       borderRadius: "12px",
                       border: "none",
                       background: "linear-gradient(135deg,#EA1B40,#c41535)",
@@ -768,24 +769,33 @@ export default function UpdateNotification({ inTopBar = false }) {
                       fontWeight: "700",
                       fontSize: "14px",
                       cursor: "pointer",
-                      boxShadow: "0 4px 14px rgba(234,27,64,.35)",
-                      transition: "transform 0.1s, box-shadow 0.1s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-1px)";
-                      e.currentTarget.style.boxShadow = "0 6px 20px rgba(234,27,64,.45)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = "0 4px 14px rgba(234,27,64,.35)";
+                      boxShadow: "0 4px 14px rgba(234,27,64,.45)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
                     }}
                   >
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
                     Install Now
                   </button>
                   <button
                     onClick={handleDismiss}
                     style={{
-                      padding: "12px 20px",
+                      padding: "12px 18px",
                       borderRadius: "12px",
                       border: "1px solid #e5e7eb",
                       background: "white",
@@ -793,15 +803,6 @@ export default function UpdateNotification({ inTopBar = false }) {
                       fontWeight: "600",
                       fontSize: "14px",
                       cursor: "pointer",
-                      transition: "background 0.15s, border-color 0.15s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#f9fafb";
-                      e.currentTarget.style.borderColor = "#d1d5db";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "white";
-                      e.currentTarget.style.borderColor = "#e5e7eb";
                     }}
                   >
                     Later
@@ -814,6 +815,15 @@ export default function UpdateNotification({ inTopBar = false }) {
       )}
 
       <style>{`
+        /* Blur the app content behind the modal — works in Tauri WebView */
+        .m5c-modal-blur {
+          filter: blur(6px) brightness(0.6);
+          -webkit-filter: blur(6px) brightness(0.6);
+          transition: filter 0.2s ease, -webkit-filter 0.2s ease;
+          pointer-events: none;
+          user-select: none;
+        }
+
         @keyframes pulse-banner {
           0%,100% { box-shadow:0 2px 10px rgba(234,27,64,.4); }
           50%      { box-shadow:0 2px 18px rgba(234,27,64,.7); }
@@ -823,14 +833,8 @@ export default function UpdateNotification({ inTopBar = false }) {
           50%      { opacity: 0.5; transform: scale(0.75); }
         }
         @keyframes modal-in {
-          from { 
-            opacity: 0; 
-            transform: scale(0.96) translateY(8px); 
-          }
-          to { 
-            opacity: 1; 
-            transform: scale(1) translateY(0); 
-          }
+          from { opacity:0; transform:scale(.95) translateY(8px); }
+          to   { opacity:1; transform:scale(1) translateY(0); }
         }
         @keyframes spin {
           from { transform:rotate(0deg); }
