@@ -300,33 +300,34 @@ export default function UpdateNotification({ inTopBar = false }) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "5px",
+            gap: "4px",
             background: "transparent",
-            border: "1px solid rgba(234,27,64,.45)",
+            border: "1px solid rgba(234,27,64,.4)",
             borderRadius: "20px",
-            padding: "3px 8px 3px 6px",
+            padding: "2px 7px 2px 5px",
             cursor: "pointer",
             color: "#EA1B40",
-            fontSize: "11px",
+            fontSize: "10px",
             fontWeight: "600",
             whiteSpace: "nowrap",
             userSelect: "none",
+            lineHeight: 1,
             transition: "background 0.15s, border-color 0.15s",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(234,27,64,.08)";
-            e.currentTarget.style.borderColor = "rgba(234,27,64,.7)";
+            e.currentTarget.style.background = "rgba(234,27,64,.07)";
+            e.currentTarget.style.borderColor = "rgba(234,27,64,.65)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.borderColor = "rgba(234,27,64,.45)";
+            e.currentTarget.style.borderColor = "rgba(234,27,64,.4)";
           }}
         >
           {/* Pulsing dot */}
           <span
             style={{
-              width: "6px",
-              height: "6px",
+              width: "5px",
+              height: "5px",
               borderRadius: "50%",
               background: "#EA1B40",
               display: "inline-block",
@@ -334,7 +335,7 @@ export default function UpdateNotification({ inTopBar = false }) {
               animation: "dot-pulse 2.5s ease-in-out infinite",
             }}
           />
-          Update available
+          Update
         </button>
       ) : (
         /* ── Sidebar Banner ──────────────────────────────────────────────── */
@@ -418,7 +419,6 @@ export default function UpdateNotification({ inTopBar = false }) {
       {/* ── Modal ──────────────────────────────────────────────────────── */}
       {showModal && (
         <div
-          onClick={() => !installing && setShowModal(false)}
           style={{
             position: "fixed",
             inset: 0,
@@ -426,13 +426,20 @@ export default function UpdateNotification({ inTopBar = false }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            /* Always blurred backdrop */
-            background: "rgba(0,0,0,.5)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
             padding: "16px",
           }}
         >
+          {/* Blur layer — sits behind the card, captures clicks to close */}
+          <div
+            onClick={() => !installing && setShowModal(false)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,.45)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+            }}
+          />
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -441,8 +448,9 @@ export default function UpdateNotification({ inTopBar = false }) {
               padding: "36px 36px 28px",
               maxWidth: "440px",
               width: "100%",
-              boxShadow: "0 24px 64px rgba(0,0,0,.22)",
+              boxShadow: "0 24px 64px rgba(0,0,0,.28)",
               position: "relative",
+              zIndex: 1,
               animation: "modal-in .2s ease-out",
             }}
           >
