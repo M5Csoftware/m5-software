@@ -1,11 +1,11 @@
 {
-  "version": "0.1.57",
-  "notes": "Updates",
-  "pub_date": "2026-04-21T09:17:07Z",
+  "version": "0.1.58",
+  "notes": "Merge pull request #174 from M5Csoftware/Harman-M5C",
+  "pub_date": "2026-04-21T09:27:34Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYzk4ZGxheEFlTWQ2SWNZNk9DMWJPNHhrckl3UmFjR0d4NXZGZENHU1NDQlBGTVZJTktiSXhNLzhGRmZLbFdla1hGR3RWR3pGS1R2WWZyYnBLT084U1EwPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2NzYzMDI3CWZpbGU6TTVDIExvZ3NfMC4xLjU3X3g2NF9lbi1VUy5tc2kuemlwCnB3clRQbnEvWnpQZzRpd0QzckF4clhBQ2pGd0ZST1VocG9tY3VEenI5UTAzVkQxWDBSbkpJVlFHRmcvVzNSdTZhczdJazN4VXVxSXVoejJmWGMxMEJnPT0K",
-      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.57/M5C.Logs_0.1.57_x64_en-US.msi.zip"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYzlKTWVlTllDMElVSlNpSFh2Y0c0NW5UaENWUWZjbWR4S09saTc0Q1JQdEZDQnRlWW5kaTcwL2o2dGpNZThjSTd0OHpuTlhJNU1UNEx3UVJKZ2lST3dBPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc2NzYzNjU0CWZpbGU6TTVDIExvZ3NfMC4xLjU4X3g2NF9lbi1VUy5tc2kuemlwClljd0JVVnZlT1BKYlFDdkN1bktqNis5bmZESVRBQ3ZxbDZoNEZhd1hCYVVUVEFlYjhsR1UxSkFiRldJc2ZIUjU2VldmMnZLUGhhNXpVdThtRStHS0NnPT0K",
+      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.58/M5C.Logs_0.1.58_x64_en-US.msi.zip"
     }
   }
 }
