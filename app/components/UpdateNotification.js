@@ -1,5 +1,14 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
+
+// Renders children directly on document.body to escape any parent stacking context
+function ModalPortal({ children }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
+  return createPortal(children, document.body);
+}
 
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const STORAGE_KEY = "m5c_dismissed_version";
@@ -434,11 +443,12 @@ export default function UpdateNotification({ inTopBar = false }) {
 
       {/* ── Modal ──────────────────────────────────────────────────────── */}
       {showModal && (
+        <ModalPortal>
         <div
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 9999,
+            zIndex: 2147483647,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -812,6 +822,7 @@ export default function UpdateNotification({ inTopBar = false }) {
             )}
           </div>
         </div>
+        </ModalPortal>
       )}
 
       <style>{`
