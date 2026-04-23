@@ -1,5 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
+import { RxUpdate } from "react-icons/rx";
+import { MdBrowserUpdated } from "react-icons/md";
+import { RefreshCcw } from "lucide-react";
 
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 const STORAGE_KEY = "m5c_dismissed_version";
@@ -17,7 +21,7 @@ function formatDate(isoString) {
   }
 }
 
-export default function UpdateNotification() {
+export default function UpdateNotification({ variant = "sidebar" }) {
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -27,8 +31,15 @@ export default function UpdateNotification() {
   const [progress, setProgress] = useState(0);
   const [installError, setInstallError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
   const invokeRef = useRef(null);
   const updaterRef = useRef(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const displayUpdateInfo = updateInfo;
 
   // ── Load Tauri APIs ───────────────────────────────────────────────────
   useEffect(() => {
@@ -236,140 +247,85 @@ export default function UpdateNotification() {
   };
 
   const handleManualDownload = () => {
-    if (updateInfo?.remote_version) {
-      const downloadUrl = `https://github.com/M5Csoftware/m5-software/releases/download/v${updateInfo.remote_version}/M5C.Logs_${updateInfo.remote_version}_x64_en-US.msi`;
+    if (displayUpdateInfo?.remote_version) {
+      const downloadUrl = `https://github.com/M5Csoftware/m5-software/releases/download/v${displayUpdateInfo.remote_version}/M5C.Logs_${displayUpdateInfo.remote_version}_x64_en-US.msi`;
       window.open(downloadUrl, "_blank");
     }
   };
 
-  if (!updateInfo || dismissed) return null;
+  if (!displayUpdateInfo || dismissed) return null;
+
+  const isTopbar = variant === "topbar";
 
   return (
     <>
-      {/* ── Sidebar Banner ─────────────────────────────────────────────── */}
+      {/* ── Banner/Button ─────────────────────────────────────────────── */}
       <div
         onClick={() => setShowModal(true)}
-        style={{
-          background: "linear-gradient(135deg,#EA1B40,#c41535)",
-          borderRadius: "10px",
-          padding: "10px 12px",
-          margin: "0 8px 6px 8px",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-          boxShadow: "0 2px 10px rgba(234,27,64,.4)",
-          userSelect: "none",
-          animation: "pulse-banner 2.5s ease-in-out infinite",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "translateY(-1px)";
-          e.currentTarget.style.boxShadow = "0 4px 16px rgba(234,27,64,.55)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 2px 10px rgba(234,27,64,.4)";
-        }}
+        className={`
+          bg-gradient-to-br from-[#EA1B40] to-[#c41535]
+          ${isTopbar ? "rounded-lg py-1 px-2 mr-[10px] gap-[5px]" : "rounded-[10px] py-[10px] px-3 mx-2 mb-[6px] gap-[10px]"}
+          cursor-pointer flex items-center select-none transition-all duration-200
+          hover:-translate-y-[1px]
+          ${isTopbar ? "hover:shadow-[0_4px_12px_rgba(234,27,64,0.45)]" : "hover:shadow-[0_4px_16px_rgba(234,27,64,0.55)]"}
+        `}
       >
         <svg
-          width="17"
-          height="17"
+          xmlns="http://www.w3.org/2000/svg"
+          width="15"
+          height="15"
           viewBox="0 0 24 24"
           fill="none"
           stroke="white"
-          strokeWidth="2.2"
+          strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={{ flexShrink: 0 }}
+          className="lucide lucide-cloud-download-icon lucide-cloud-download"
         >
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          <path d="M12 13v8l-4-4" />
+          <path d="m12 21 4-4" />
+          <path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284" />
         </svg>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "white", fontSize: "11px", fontWeight: "700" }}>
+
+        {isTopbar ? (
+          <span className="text-white text-[11px] tracking-wide font-bold whitespace-nowrap">
             Update Available
-          </div>
-          <div
-            style={{
-              color: "rgba(255,255,255,.88)",
-              fontSize: "10px",
-              marginTop: "1px",
-            }}
-          >
-            v{updateInfo.current_version} → v{updateInfo.remote_version}
-          </div>
-        </div>
-        <button
-          onClick={handleDismiss}
-          style={{
-            background: "rgba(0,0,0,.18)",
-            border: "none",
-            color: "white",
-            cursor: "pointer",
-            width: "20px",
-            height: "20px",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "13px",
-            flexShrink: 0,
-            padding: 0,
-          }}
-        >
-          ×
-        </button>
+          </span>
+        ) : (
+          <>
+            <div className="flex-1 min-w-0">
+              <div className="text-white text-[11px] font-bold">
+                Update Available
+              </div>
+              <div className="text-white/90 text-[10px] mt-[1px]">
+                v{displayUpdateInfo.current_version} → v
+                {displayUpdateInfo.remote_version}
+              </div>
+            </div>
+            <button
+              onClick={handleDismiss}
+              className="bg-black/20 border-none text-white cursor-pointer w-5 h-5 rounded-full flex items-center justify-center text-[13px] shrink-0 p-0"
+            >
+              ×
+            </button>
+          </>
+        )}
       </div>
 
       {/* ── Modal ──────────────────────────────────────────────────────── */}
-      {showModal && (
+      {mounted && showModal && createPortal(
         <div
           onClick={() => !installing && setShowModal(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(0,0,0,.5)",
-            backdropFilter: "blur(5px)",
-            padding: "16px",
-          }}
+          className="fixed inset-0 z-[1000000] flex items-center justify-center bg-black/50 backdrop-blur-[5px] p-4"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "#fff",
-              borderRadius: "18px",
-              padding: "36px 36px 28px",
-              maxWidth: "440px",
-              width: "100%",
-              boxShadow: "0 24px 64px rgba(0,0,0,.22)",
-              position: "relative",
-              animation: "modal-in .2s ease-out",
-            }}
+            className="bg-white rounded-[18px] px-9 pt-9 pb-7 max-w-[440px] w-full shadow-[0_24px_64px_rgba(0,0,0,0.22)] relative animate-[modal-in_0.2s_ease-out]"
           >
             {!installing && (
               <button
                 onClick={() => setShowModal(false)}
-                style={{
-                  position: "absolute",
-                  top: "14px",
-                  right: "16px",
-                  background: "#f3f4f6",
-                  border: "none",
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  fontSize: "16px",
-                  cursor: "pointer",
-                  color: "#6b7280",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  lineHeight: 1,
-                }}
+                className="absolute top-3.5 right-4 bg-[#f3f4f6] border-none w-7 h-7 rounded-full text-[16px] cursor-pointer text-[#6b7280] flex items-center justify-center leading-none"
               >
                 ×
               </button>
@@ -377,18 +333,14 @@ export default function UpdateNotification() {
 
             {/* Icon */}
             <div
-              style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "16px",
-                background: installing
-                  ? "linear-gradient(135deg,#dcfce7,#bbf7d0)"
-                  : "linear-gradient(135deg,#fee2e2,#fecaca)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: "20px",
-              }}
+              className={`
+                w-14 h-14 rounded-2xl flex items-center justify-center mb-5
+                ${
+                  installing
+                    ? "bg-gradient-to-br from-[#dcfce7] to-[#bbf7d0]"
+                    : "bg-gradient-to-br from-[#fee2e2] to-[#fecaca]"
+                }
+              `}
             >
               {installing ? (
                 <svg
@@ -399,7 +351,7 @@ export default function UpdateNotification() {
                   stroke="#16a34a"
                   strokeWidth="2"
                   strokeLinecap="round"
-                  style={{ animation: "spin 1s linear infinite" }}
+                  className="animate-spin"
                 >
                   <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                 </svg>
@@ -421,19 +373,10 @@ export default function UpdateNotification() {
               )}
             </div>
 
-            <h2
-              style={{
-                margin: "0 0 4px",
-                fontSize: "22px",
-                fontWeight: "800",
-                color: "#111827",
-              }}
-            >
+            <h2 className="m-0 mb-1 text-[22px] font-extrabold text-[#111827]">
               {installing ? "Installing Update..." : "Update Available"}
             </h2>
-            <p
-              style={{ margin: "0 0 16px", color: "#6b7280", fontSize: "13px" }}
-            >
+            <p className="m-0 mb-4 text-[#6b7280] text-[13px]">
               {installing
                 ? installStatus || "Please wait..."
                 : "A new version of M5C Logs is ready to install."}
@@ -441,35 +384,14 @@ export default function UpdateNotification() {
 
             {/* ── Progress bar (shown while installing) ── */}
             {installing && (
-              <div style={{ marginBottom: "24px" }}>
-                <div
-                  style={{
-                    width: "100%",
-                    height: "8px",
-                    background: "#e5e7eb",
-                    borderRadius: "999px",
-                    overflow: "hidden",
-                  }}
-                >
+              <div className="mb-6">
+                <div className="w-full h-2 bg-[#e5e7eb] rounded-full overflow-hidden">
                   <div
-                    style={{
-                      height: "100%",
-                      width: `${progress}%`,
-                      background: "linear-gradient(90deg,#22c55e,#16a34a)",
-                      borderRadius: "999px",
-                      transition: "width 0.4s ease",
-                    }}
+                    className="h-full bg-gradient-to-r from-green-500 to-[#16a34a] rounded-full transition-[width] duration-400 ease-out"
+                    style={{ width: `${progress}%` }}
                   />
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginTop: "6px",
-                    fontSize: "11px",
-                    color: "#9ca3af",
-                  }}
-                >
+                <div className="flex justify-between mt-1.5 text-[11px] text-[#9ca3af]">
                   <span>{installStatus}</span>
                   <span>{progress}%</span>
                 </div>
@@ -478,41 +400,15 @@ export default function UpdateNotification() {
 
             {/* ── Error message ── */}
             {installError && (
-              <div
-                style={{
-                  background: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  borderRadius: "10px",
-                  padding: "12px 14px",
-                  marginBottom: "16px",
-                  fontSize: "13px",
-                  color: "#dc2626",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "8px",
-                  }}
-                >
+              <div className="bg-[#fef2f2] border border-[#fecaca] rounded-[10px] p-[12px_14px] mb-4 text-[13px] text-[#dc2626]">
+                <div className="flex items-start gap-2">
                   <span>⚠️</span>
-                  <div style={{ flex: 1 }}>
+                  <div className="flex-1">
                     {installError}
                     {installError.includes("not found") && (
                       <button
                         onClick={handleManualDownload}
-                        style={{
-                          marginTop: "8px",
-                          background: "#dc2626",
-                          color: "white",
-                          border: "none",
-                          padding: "4px 12px",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          cursor: "pointer",
-                          fontWeight: "500",
-                        }}
+                        className="mt-2 bg-[#dc2626] text-white border-none py-1 px-3 rounded-md text-[12px] cursor-pointer font-medium"
                       >
                         Download Manually
                       </button>
@@ -525,25 +421,9 @@ export default function UpdateNotification() {
             {/* ── Version info + notes (shown when not installing) ── */}
             {!installing && (
               <>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    marginBottom: "20px",
-                  }}
-                >
-                  <span
-                    style={{
-                      padding: "5px 12px",
-                      borderRadius: "20px",
-                      background: "#f3f4f6",
-                      color: "#374151",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                    }}
-                  >
-                    v{updateInfo.current_version}
+                <div className="flex items-center gap-[10px] mb-5">
+                  <span className="py-[5px] px-3 rounded-[20px] bg-[#f3f4f6] text-[#374151] text-[12px] font-semibold">
+                    v{displayUpdateInfo.current_version}
                   </span>
                   <svg
                     width="16"
@@ -558,50 +438,20 @@ export default function UpdateNotification() {
                     <line x1="5" y1="12" x2="19" y2="12" />
                     <polyline points="12 5 19 12 12 19" />
                   </svg>
-                  <span
-                    style={{
-                      padding: "5px 12px",
-                      borderRadius: "20px",
-                      background: "#d1fae5",
-                      color: "#065f46",
-                      fontSize: "12px",
-                      fontWeight: "700",
-                    }}
-                  >
-                    v{updateInfo.remote_version}
+                  <span className="py-[5px] px-3 rounded-[20px] bg-[#d1fae5] text-[#065f46] text-[12px] font-bold">
+                    v{displayUpdateInfo.remote_version}
                   </span>
-                  {updateInfo.pub_date && (
-                    <span
-                      style={{
-                        color: "#9ca3af",
-                        fontSize: "11px",
-                        marginLeft: "auto",
-                      }}
-                    >
-                      {formatDate(updateInfo.pub_date)}
+                  {displayUpdateInfo.pub_date && (
+                    <span className="text-[#9ca3af] text-[11px] ml-auto">
+                      {formatDate(displayUpdateInfo.pub_date)}
                     </span>
                   )}
                 </div>
 
-                {updateInfo.notes &&
-                  updateInfo.notes !== "Merge pull request" && (
-                    <div
-                      style={{
-                        background: "#f9fafb",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "12px",
-                        padding: "14px 16px",
-                        marginBottom: "24px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          marginBottom: "8px",
-                        }}
-                      >
+                {displayUpdateInfo.notes &&
+                  displayUpdateInfo.notes !== "Merge pull request" && (
+                    <div className="bg-[#f9fafb] border border-[#e5e7eb] rounded-xl p-[14px_16px] mb-6">
+                      <div className="flex items-center gap-1.5 mb-2">
                         <svg
                           width="13"
                           height="13"
@@ -615,50 +465,20 @@ export default function UpdateNotification() {
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                           <polyline points="14 2 14 8 20 8" />
                         </svg>
-                        <span
-                          style={{
-                            fontWeight: "700",
-                            fontSize: "12px",
-                            color: "#374151",
-                          }}
-                        >
+                        <span className="font-bold text-[12px] text-[#374151]">
                           What&apos;s new
                         </span>
                       </div>
-                      <div
-                        style={{
-                          fontSize: "13px",
-                          color: "#4b5563",
-                          lineHeight: "1.65",
-                          maxHeight: "100px",
-                          overflowY: "auto",
-                          whiteSpace: "pre-wrap",
-                        }}
-                      >
-                        {updateInfo.notes}
+                      <div className="text-[13px] text-[#4b5563] leading-[1.65] max-h-[100px] overflow-y-auto whitespace-pre-wrap">
+                        {displayUpdateInfo.notes}
                       </div>
                     </div>
                   )}
 
-                <div style={{ display: "flex", gap: "10px" }}>
+                <div className="flex gap-[10px]">
                   <button
                     onClick={handleInstall}
-                    style={{
-                      flex: 1,
-                      padding: "12px",
-                      borderRadius: "12px",
-                      border: "none",
-                      background: "linear-gradient(135deg,#EA1B40,#c41535)",
-                      color: "white",
-                      fontWeight: "700",
-                      fontSize: "14px",
-                      cursor: "pointer",
-                      boxShadow: "0 4px 14px rgba(234,27,64,.45)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "8px",
-                    }}
+                    className="flex-1 p-3 rounded-xl border-none bg-gradient-to-br from-[#EA1B40] to-[#c41535] text-white font-bold text-[14px] cursor-pointer shadow-[0_4px_14px_rgba(234,27,64,0.45)] flex items-center justify-center gap-2"
                   >
                     <svg
                       width="15"
@@ -678,16 +498,7 @@ export default function UpdateNotification() {
                   </button>
                   <button
                     onClick={handleDismiss}
-                    style={{
-                      padding: "12px 18px",
-                      borderRadius: "12px",
-                      border: "1px solid #e5e7eb",
-                      background: "white",
-                      color: "#374151",
-                      fontWeight: "600",
-                      fontSize: "14px",
-                      cursor: "pointer",
-                    }}
+                    className="p-[12px_18px] rounded-xl border border-[#e5e7eb] bg-white text-[#374151] font-semibold text-[14px] cursor-pointer"
                   >
                     Later
                   </button>
@@ -695,14 +506,11 @@ export default function UpdateNotification() {
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <style>{`
-        @keyframes pulse-banner {
-          0%,100% { box-shadow:0 2px 10px rgba(234,27,64,.4); }
-          50%      { box-shadow:0 2px 18px rgba(234,27,64,.7); }
-        }
         @keyframes modal-in {
           from { opacity:0; transform:scale(.95) translateY(8px); }
           to   { opacity:1; transform:scale(1) translateY(0); }

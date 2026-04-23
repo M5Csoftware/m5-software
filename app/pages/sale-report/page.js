@@ -598,8 +598,8 @@ const SalesReport = () => {
           onSubmit={handleSubmit(() => handleSearch(1))}
           noValidate
         >
-          <div className=" flex  flex-col gap-3">
-            <div className="flex gap-3">
+          <div className="flex flex-col gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <InputBox
                 placeholder="Run Number"
                 register={register}
@@ -637,9 +637,6 @@ const SalesReport = () => {
                 setValue={setValue}
                 value="sector"
               />
-            </div>
-
-            <div className="flex gap-3">
               <InputBox
                 placeholder="Destination"
                 register={register}
@@ -679,8 +676,6 @@ const SalesReport = () => {
                 value="saleRefPerson"
                 title="Sale Ref. Person"
               />
-            </div>
-            <div className="flex gap-3">
               <LabeledDropdown
                 options={companies}
                 register={register}
@@ -688,13 +683,15 @@ const SalesReport = () => {
                 value="company"
                 title="Company"
               />
-
               <InputBox
                 placeholder="State"
                 register={register}
                 setValue={setValue}
                 value="state"
               />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-center">
               <DateInputBox
                 register={register}
                 setValue={setValue}
@@ -709,57 +706,58 @@ const SalesReport = () => {
                 placeholder="To"
                 required={false}
               />
-            </div>
 
-            <div className="flex justify-between items-center">
-              <div className="flex gap-20">
-                <RedCheckbox
-                  isChecked={bookingDate}
-                  setChecked={setBookingDate}
-                  id="bookingDate"
-                  register={register}
-                  setValue={setValue}
-                  label={"Booking Date"}
-                />
-                <RedCheckbox
-                  isChecked={unBilledShipment}
-                  setChecked={setUnBilledShipment}
-                  id="unBilledShipment"
-                  register={register}
-                  setValue={setValue}
-                  label={"UnBilled Shipment"}
-                />
-                <RedCheckbox
-                  isChecked={skipDHL}
-                  setChecked={setSkipDHL}
-                  id="skipDHL"
-                  register={register}
-                  setValue={setValue}
-                  label={"skip DHL"}
-                />
-                <RedCheckbox
-                  isChecked={speacialReport}
-                  setChecked={setSpeacialReport}
-                  id="speacialReport"
-                  register={register}
-                  setValue={setValue}
-                  label={"Speacial Report Branch Wise"}
-                />
-                <RedCheckbox
-                  isChecked={consignorDetail}
-                  setChecked={setConsignorDetail}
-                  id="consignorDetail"
-                  register={register}
-                  setValue={setValue}
-                  label={"Consignor Detail Wise"}
-                />
-              </div>{" "}
-              <div className="w-[200px]">
-                <SimpleButton
-                  name={loading ? "Searching..." : "Search"}
-                  type="submit"
-                  disabled={loading}
-                />
+              <div className="col-span-1 lg:col-span-3 flex flex-wrap items-center gap-4">
+                <div className="flex-none">
+                  <SimpleButton
+                    name={loading ? "Searching..." : "Search"}
+                    type="submit"
+                    disabled={loading}
+                  />
+                </div>
+                
+                <div className="flex-1 flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg">
+                  <RedCheckbox
+                    isChecked={bookingDate}
+                    setChecked={setBookingDate}
+                    id="bookingDate"
+                    register={register}
+                    setValue={setValue}
+                    label={"Booking Date"}
+                  />
+                  <RedCheckbox
+                    isChecked={unBilledShipment}
+                    setChecked={setUnBilledShipment}
+                    id="unBilledShipment"
+                    register={register}
+                    setValue={setValue}
+                    label={"UnBilled Shipment"}
+                  />
+                  <RedCheckbox
+                    isChecked={skipDHL}
+                    setChecked={setSkipDHL}
+                    id="skipDHL"
+                    register={register}
+                    setValue={setValue}
+                    label={"skip DHL"}
+                  />
+                  <RedCheckbox
+                    isChecked={speacialReport}
+                    setChecked={setSpeacialReport}
+                    id="speacialReport"
+                    register={register}
+                    setValue={setValue}
+                    label={"Speacial Report Branch Wise"}
+                  />
+                  <RedCheckbox
+                    isChecked={consignorDetail}
+                    setChecked={setConsignorDetail}
+                    id="consignorDetail"
+                    register={register}
+                    setValue={setValue}
+                    label={"Consignor Detail Wise"}
+                  />
+                </div>
               </div>
             </div>
           </div>

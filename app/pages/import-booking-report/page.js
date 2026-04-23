@@ -62,7 +62,7 @@ const NewImportBookingReport = () => {
     { key: "destination", label: "DestinationName" },
     { key: "accountCode", label: "CustomerCode" },
     { key: "name", label: "Customer Name" },
-    
+
     { key: "receiverFullName", label: "ConsigneeName" },
     { key: "receiverAddressLine1", label: "ConsigneeAddressLine1" },
     { key: "receiverCity", label: "ConsigneeCity" },
@@ -87,10 +87,10 @@ const NewImportBookingReport = () => {
     { key: "holdReason", label: "Hold Reason" },
     { key: "otherHoldReason", label: "Hold Reason 2" },
     { key: "unholdDate", label: "Unhold Date" },
-    
+
     { key: "userBranch", label: "User Branch" },
     { key: "insertUser", label: "Insert User" },
-    
+
     { key: "entryType", label: "Entry Type" },
   ];
 
@@ -179,7 +179,10 @@ const NewImportBookingReport = () => {
         limit: pageLimit.toString(),
       });
 
-      console.log("Fetching import reports with pagination:", { page, limit: pageLimit });
+      console.log("Fetching import reports with pagination:", {
+        page,
+        limit: pageLimit,
+      });
 
       const response = await axios.get(
         `${server}/reports/import-booking-report?${params.toString()}`,
@@ -200,7 +203,11 @@ const NewImportBookingReport = () => {
       const filteredData = responseData.map((item) => {
         let filtered = {};
         allowedKeys.forEach((key) => {
-          if (item[key] !== undefined && item[key] !== null && item[key] !== "") {
+          if (
+            item[key] !== undefined &&
+            item[key] !== null &&
+            item[key] !== ""
+          ) {
             if (typeof item[key] === "boolean") {
               filtered[key] = item[key] ? "Yes" : "No";
             } else filtered[key] = item[key];
@@ -226,7 +233,9 @@ const NewImportBookingReport = () => {
       return filteredData;
     } catch (error) {
       console.error("Error downloading report:", error);
-      const errorMessage = error.response?.data?.error || "Error downloading import booking report";
+      const errorMessage =
+        error.response?.data?.error ||
+        "Error downloading import booking report";
       setReports([]);
       showNotification("error", errorMessage);
       throw error;
@@ -237,9 +246,27 @@ const NewImportBookingReport = () => {
 
   const onSubmit = async (data) => {
     try {
-      const { from, to, runNumber, origin, sector, branch, code, salePerson, destination, service } = data;
+      const {
+        from,
+        to,
+        runNumber,
+        origin,
+        sector,
+        branch,
+        code,
+        salePerson,
+        destination,
+        service,
+      } = data;
 
-      const mandatoryPresence = !!(branch || sector || code || salePerson || destination || service);
+      const mandatoryPresence = !!(
+        branch ||
+        sector ||
+        code ||
+        salePerson ||
+        destination ||
+        service
+      );
       const optionalPresence = !!(runNumber || origin);
 
       if (optionalPresence) {
@@ -264,8 +291,16 @@ const NewImportBookingReport = () => {
         fromDateObj = parseDateDDMMYYYY(from);
         toDateObj = parseDateDDMMYYYY(to);
 
-        if (!fromDateObj || !toDateObj || isNaN(fromDateObj.getTime()) || isNaN(toDateObj.getTime())) {
-          showNotification("error", "Invalid date format. Please select valid dates.");
+        if (
+          !fromDateObj ||
+          !toDateObj ||
+          isNaN(fromDateObj.getTime()) ||
+          isNaN(toDateObj.getTime())
+        ) {
+          showNotification(
+            "error",
+            "Invalid date format. Please select valid dates.",
+          );
           return;
         }
 
@@ -293,14 +328,19 @@ const NewImportBookingReport = () => {
       };
 
       console.log("Submitting filters:", filters);
-      
+
       setCurrentFilters(filters);
       setCurrentPage(1);
       await fetchReports(filters, 1);
 
       if (data.code && reports.length > 0) {
         const first = reports[0];
-        const clientName = first.name || first.customer || first.customerName || first.client || "";
+        const clientName =
+          first.name ||
+          first.customer ||
+          first.customerName ||
+          first.client ||
+          "";
         setValue("client", clientName);
       } else if (!data.code) {
         setValue("client", "");
@@ -312,7 +352,7 @@ const NewImportBookingReport = () => {
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
     fetchReports(currentFilters, newPage);
   };
 
@@ -375,7 +415,7 @@ const NewImportBookingReport = () => {
             Showing <span className="font-medium">{reports.length}</span> of{" "}
             <span className="font-medium">{totalRecords}</span> records
           </div>
-          
+
           <div className="flex items-center gap-2">
             <label htmlFor="limit" className="text-sm text-gray-600">
               Rows per page:
@@ -410,21 +450,25 @@ const NewImportBookingReport = () => {
           >
             Previous
           </button>
-          
+
           <span className="px-3 py-1 text-sm">
             Page {currentPage} of {totalPages}
           </span>
-          
+
           <button
             onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            disabled={
+              currentPage === totalPages || isLoading || !currentFilters
+            }
             className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
             Next
           </button>
           <button
             onClick={() => handlePageChange(totalPages)}
-            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            disabled={
+              currentPage === totalPages || isLoading || !currentFilters
+            }
             className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
             Last
@@ -449,9 +493,9 @@ const NewImportBookingReport = () => {
         onRefresh={handleRefresh}
         bulkUploadBtn="hidden"
       />
-      
-      <div className="flex flex-col gap-4">
-        <div className="flex gap-3 items-center">
+
+      <div className="flex flex-col gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <InputBox
             placeholder={"Code"}
             register={register}
@@ -459,14 +503,16 @@ const NewImportBookingReport = () => {
             value={"code"}
             resetFactor={added}
           />
-          <DummyInputBoxWithLabelDarkGray
-            label="Client"
-            register={register}
-            setValue={setValue}
-            value="client"
-            resetFactor={added}
-            inputValue={watch("client") || ""}
-          />
+          <div className="md:col-span-1 lg:col-span-2">
+            <DummyInputBoxWithLabelDarkGray
+              label="Client"
+              register={register}
+              setValue={setValue}
+              value="client"
+              resetFactor={added}
+              inputValue={watch("client") || ""}
+            />
+          </div>
           <InputBox
             placeholder={"Run Number"}
             register={register}
@@ -483,7 +529,7 @@ const NewImportBookingReport = () => {
           />
         </div>
 
-        <div className="flex gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <InputBox
             placeholder={"Origin"}
             register={register}
@@ -521,42 +567,38 @@ const NewImportBookingReport = () => {
           />
         </div>
 
-        <div className="flex gap-3">
-          <div className="w-[19.4%]">
-            <DateInputBox
-              register={register}
-              setValue={setValue}
-              value="from"
-              placeholder="From"
-              trigger={trigger}
-              error={errors.from}
-              maxToday
-              resetFactor={added}
-            />
-          </div>
-          <div className="w-[19.4%]">
-            <DateInputBox
-              register={register}
-              setValue={setValue}
-              value="to"
-              placeholder="To"
-              maxToday
-              trigger={trigger}
-              error={errors.to}
-              resetFactor={added}
-            />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-center">
+          <DateInputBox
+            register={register}
+            setValue={setValue}
+            value="from"
+            placeholder="From"
+            trigger={trigger}
+            error={errors.from}
+            maxToday
+            resetFactor={added}
+          />
+          <DateInputBox
+            register={register}
+            setValue={setValue}
+            value="to"
+            placeholder="To"
+            maxToday
+            trigger={trigger}
+            error={errors.to}
+            resetFactor={added}
+          />
 
-          <div>
-            <OutlinedButtonRed
-              type="submit"
-              label={isLoading ? "Loading..." : "View"}
-              disabled={isLoading}
-            />
-          </div>
+          <div className="col-span-1 lg:col-span-3 flex flex-wrap items-center gap-4">
+            <div className="flex-none">
+              <OutlinedButtonRed
+                type="submit"
+                label={isLoading ? "Loading..." : "View"}
+                disabled={isLoading}
+              />
+            </div>
 
-          <div className="flex justify-between items-center gap-3">
-            <div className="w-[120px] ml-2">
+            <div className="flex-1 flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg">
               <RedCheckbox
                 isChecked={holdShipments}
                 setChecked={setHoldShipments}
@@ -565,9 +607,6 @@ const NewImportBookingReport = () => {
                 setValue={setValue}
                 label="Hold Shipments"
               />
-            </div>
-
-            <div className="w-[98px]">
               <RedCheckbox
                 isChecked={skipMum}
                 setChecked={setSkipMum}
@@ -576,9 +615,6 @@ const NewImportBookingReport = () => {
                 setValue={setValue}
                 label="Skip MUM"
               />
-            </div>
-
-            <div className="w-[90px]">
               <RedCheckbox
                 isChecked={skipAmd}
                 setChecked={setSkipAmd}
@@ -587,9 +623,6 @@ const NewImportBookingReport = () => {
                 setValue={setValue}
                 label="Skip AMD"
               />
-            </div>
-            
-            <div className="w-[90px]">
               <RedCheckbox
                 isChecked={csbV}
                 setChecked={setcsbV}
@@ -598,9 +631,6 @@ const NewImportBookingReport = () => {
                 setValue={setValue}
                 label="CSB V"
               />
-            </div>
-
-            <div className="w-[150px]">
               <RedCheckbox
                 isChecked={balanceShipment}
                 setChecked={setBalanceShipmet}
@@ -609,9 +639,6 @@ const NewImportBookingReport = () => {
                 setValue={setValue}
                 label="Balance Shipment"
               />
-            </div>
-            
-            <div className="w-[150px]">
               <RedCheckbox
                 isChecked={includeChild}
                 setChecked={setIncludeChild}
@@ -624,6 +651,7 @@ const NewImportBookingReport = () => {
           </div>
         </div>
 
+
         <TableWithSorting
           register={register}
           setValue={setValue}
@@ -632,9 +660,9 @@ const NewImportBookingReport = () => {
           rowData={reports}
           className={`h-72`}
         />
-        
+
         <PaginationControls />
-        
+
         <div className="flex justify-between items-center">
           <div className="text-sm text-gray-600">
             {totalRecords > 0 && <span>Total Records: {totalRecords}</span>}

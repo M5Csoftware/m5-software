@@ -3,7 +3,7 @@ import { OutlinedButtonRed, SimpleButton } from "@/app/components/Buttons";
 import { Dropdown } from "@/app/components/Dropdown";
 import Heading from "@/app/components/Heading";
 import { DummyInputBoxWithLabelDarkGray } from "@/app/components/DummyInputBox";
-import InputBox, { DateInputBox} from "@/app/components/InputBox";
+import InputBox, { DateInputBox } from "@/app/components/InputBox";
 import NotificationFlag from "@/app/components/Notificationflag";
 import { TableWithSorting } from "@/app/components/Table";
 import { GlobalContext } from "@/app/lib/GlobalContext";
@@ -76,7 +76,7 @@ const ShipmentStatusReportImport = () => {
     if (isNaN(d.getTime())) return date;
 
     return `${String(d.getDate()).padStart(2, "0")}/${String(
-      d.getMonth() + 1
+      d.getMonth() + 1,
     ).padStart(2, "0")}/${d.getFullYear()}`;
   };
 
@@ -109,7 +109,7 @@ const ShipmentStatusReportImport = () => {
 
     try {
       const response = await axios.get(
-        `${server}/customer-account?accountCode=${accountCode.trim()}`
+        `${server}/customer-account?accountCode=${accountCode.trim()}`,
       );
 
       if (response.data) {
@@ -146,7 +146,7 @@ const ShipmentStatusReportImport = () => {
   // Function to fetch shipments with pagination
   const fetchShipmentsWithPagination = async (filters, page = 1) => {
     setIsLoading(true);
-    
+
     // Check if dates are mandatory based on specific filters
     const mandatoryPresence = !!(
       filters.code ||
@@ -164,7 +164,8 @@ const ShipmentStatusReportImport = () => {
       if (!filters.from || !filters.to) {
         setNotification({
           visible: true,
-          message: "From and To dates are required for specific filter searches.",
+          message:
+            "From and To dates are required for specific filter searches.",
           type: "error",
         });
         setShipments([]);
@@ -219,35 +220,40 @@ const ShipmentStatusReportImport = () => {
     const params = new URLSearchParams();
     if (fromParsed) {
       fromParsed.setHours(0, 0, 0, 0);
-      params.append('from', fromParsed.toISOString());
+      params.append("from", fromParsed.toISOString());
     }
     if (toParsed) {
       toParsed.setHours(23, 59, 59, 999);
-      params.append('to', toParsed.toISOString());
+      params.append("to", toParsed.toISOString());
     }
-    
+
     // Add other filters if they exist
-    if (filters.code) params.append('code', filters.code.toUpperCase());
-    if (filters.client) params.append('client', filters.client);
-    if (filters.runNumber) params.append('runNumber', filters.runNumber.toUpperCase());
-    if (filters.branch) params.append('branch', filters.branch.toUpperCase());
-    if (filters.origin) params.append('origin', filters.origin);
-    if (filters.sector) params.append('sector', filters.sector);
-    if (filters.status && filters.status !== "All") params.append('status', filters.status);
-    if (filters.destination) params.append('destination', filters.destination);
-    if (filters.network) params.append('network', filters.network);
-    if (filters.service) params.append('service', filters.service);
-    if (filters.counterPart) params.append('counterPart', filters.counterPart);
-    
+    if (filters.code) params.append("code", filters.code.toUpperCase());
+    if (filters.client) params.append("client", filters.client);
+    if (filters.runNumber)
+      params.append("runNumber", filters.runNumber.toUpperCase());
+    if (filters.branch) params.append("branch", filters.branch.toUpperCase());
+    if (filters.origin) params.append("origin", filters.origin);
+    if (filters.sector) params.append("sector", filters.sector);
+    if (filters.status && filters.status !== "All")
+      params.append("status", filters.status);
+    if (filters.destination) params.append("destination", filters.destination);
+    if (filters.network) params.append("network", filters.network);
+    if (filters.service) params.append("service", filters.service);
+    if (filters.counterPart) params.append("counterPart", filters.counterPart);
+
     // Add pagination parameters
-    params.append('page', page.toString());
-    params.append('limit', pageLimit.toString());
+    params.append("page", page.toString());
+    params.append("limit", pageLimit.toString());
 
     try {
-      const res = await fetch(`${server}/shipment-status?${params.toString()}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
+      const res = await fetch(
+        `${server}/shipment-status?${params.toString()}`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
 
       if (!res.ok) throw new Error(`Server responded with ${res.status}`);
 
@@ -300,10 +306,10 @@ const ShipmentStatusReportImport = () => {
   // Handle page change
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
-    
+
     // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
     // Fetch new page
     fetchShipmentsWithPagination(currentFilters, newPage);
   };
@@ -312,7 +318,7 @@ const ShipmentStatusReportImport = () => {
   const handleLimitChange = (e) => {
     const newLimit = parseInt(e.target.value, 10);
     setPageLimit(newLimit);
-    
+
     // If we have current filters, refetch with new limit (reset to page 1)
     if (currentFilters) {
       setCurrentPage(1);
@@ -344,7 +350,7 @@ const ShipmentStatusReportImport = () => {
     const csv = [
       headers.join(","),
       ...shipments.map((row) =>
-        columns.map((col) => `"${row[col.key] ?? ""}"`).join(",")
+        columns.map((col) => `"${row[col.key] ?? ""}"`).join(","),
       ),
     ].join("\n");
 
@@ -403,10 +409,10 @@ const ShipmentStatusReportImport = () => {
       <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">{shipments.length}</span> of{" "}
-            <span className="font-medium">{totalRecords}</span> records
+            Showing <span className="font-medium">{shipments.length}</span>{" "}
+            records
           </div>
-          
+
           <div className="flex items-center gap-2">
             <label htmlFor="limit" className="text-sm text-gray-600">
               Rows per page:
@@ -441,21 +447,25 @@ const ShipmentStatusReportImport = () => {
           >
             Previous
           </button>
-          
+
           <span className="px-3 py-1 text-sm">
             Page {currentPage} of {totalPages}
           </span>
-          
+
           <button
             onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            disabled={
+              currentPage === totalPages || isLoading || !currentFilters
+            }
             className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
             Next
           </button>
           <button
             onClick={() => handlePageChange(totalPages)}
-            disabled={currentPage === totalPages || isLoading || !currentFilters}
+            disabled={
+              currentPage === totalPages || isLoading || !currentFilters
+            }
             className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
             Last
@@ -483,27 +493,23 @@ const ShipmentStatusReportImport = () => {
           onClickFullscreenBtn={() => setIsFullscreen(true)}
         />
 
-        <div className="flex flex-col gap-3">
-          {/* Filters */}
-          <div className="flex gap-3 items-center">
-            <div className="w-[495px]">
-              <InputBox
-                placeholder="Code"
-                register={register}
-                setValue={setValue}
-                resetFactor={ShipmentReportReset}
-                value="code"
-              />
-            </div>
+        <div className="flex flex-col gap-6">
+          {/* Filters Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <InputBox
+              placeholder="Code"
+              register={register}
+              setValue={setValue}
+              resetFactor={ShipmentReportReset}
+              value="code"
+            />
             <DummyInputBoxWithLabelDarkGray
               register={register}
               label="Customer Name"
               setValue={setValue}
               value="client"
+              inputValue={watch("client") || ""}
             />
-          </div>
-
-          <div className="flex gap-3">
             <InputBox
               placeholder="Run Number"
               register={register}
@@ -525,6 +531,7 @@ const ShipmentStatusReportImport = () => {
               resetFactor={ShipmentReportReset}
               value="origin"
             />
+
             <InputBox
               placeholder="Sector"
               register={register}
@@ -540,9 +547,6 @@ const ShipmentStatusReportImport = () => {
               setValue={setValue}
               resetFactor={ShipmentReportReset}
             />
-          </div>
-
-          <div className="flex gap-3">
             <InputBox
               placeholder="Destination"
               register={register}
@@ -564,6 +568,7 @@ const ShipmentStatusReportImport = () => {
               resetFactor={ShipmentReportReset}
               value="service"
             />
+
             <InputBox
               placeholder="Counter Part"
               register={register}
@@ -571,9 +576,6 @@ const ShipmentStatusReportImport = () => {
               resetFactor={ShipmentReportReset}
               value="counterPart"
             />
-          </div>
-
-          <div className="flex gap-3">
             <DateInputBox
               placeholder="From"
               register={register}
@@ -588,9 +590,9 @@ const ShipmentStatusReportImport = () => {
               resetFactor={ShipmentReportReset}
               value="to"
             />
-            <div className="flex gap-2">
-              <OutlinedButtonRed 
-                label={isLoading ? "Loading..." : "Show"} 
+            <div className="lg:col-span-2 flex gap-4 items-end">
+              <OutlinedButtonRed
+                label={isLoading ? "Loading..." : "Show"}
                 onClick={fetchShipments}
                 disabled={isLoading}
               />
@@ -643,15 +645,6 @@ const ShipmentStatusReportImport = () => {
               </div>
             </div>
           )}
-
-          {/* Actions */}
-          <div className="flex justify-between">
-            <div className="text-sm text-gray-600">
-              {totalRecords > 0 && (
-                <span>Total Records: {totalRecords}</span>
-              )}
-            </div>
-          </div>
         </div>
       </form>
     </>

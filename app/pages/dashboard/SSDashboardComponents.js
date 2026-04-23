@@ -411,6 +411,7 @@ export function HoldReport() {
         size: 10,
         name: "Calibri",
       };
+
       categoryRow.eachCell((cell) => {
         cell.fill = {
           type: "pattern",
