@@ -2,26 +2,31 @@ import React, { useCallback, useEffect, useState, useMemo, memo } from "react";
 import Image from "next/image";
 import formatDate from "../lib/formatDate";
 
+const EMPTY_ARRAY = [];
+const EMPTY_OBJECT = {};
+
 export default function Table({
   register,
   setValue,
   name,
-  columns = [],
-  rowData = [],
+  columns = EMPTY_ARRAY,
+  rowData = EMPTY_ARRAY,
   // New props for edit/delete functionality
   selectable = false,
-  selectedRows = [],
+  selectedRows = EMPTY_ARRAY,
   onSelectionChange,
   editable = false,
   onEditComplete,
   height = "",
 }) {
-  const [editedData, setEditedData] = useState({});
+  const [editedData, setEditedData] = useState(EMPTY_OBJECT);
   const [localSelectedRows, setLocalSelectedRows] = useState(selectedRows);
 
   useEffect(() => {
-    setValue(`${name}Table`, rowData);
-  }, [rowData]);
+    if (name && setValue) {
+      setValue(`${name}Table`, rowData);
+    }
+  }, [rowData, name, setValue]);
 
   useEffect(() => {
     setLocalSelectedRows(selectedRows);
@@ -285,8 +290,8 @@ export function TableWithSorting({
   setValue,
   name,
   disabled = false,
-  columns = [],
-  rowData = [],
+  columns = EMPTY_ARRAY,
+  rowData = EMPTY_ARRAY,
   className,
   isTicketDashboard = false,
 }) {
@@ -294,8 +299,10 @@ export function TableWithSorting({
   const [sortOrder, setSortOrder] = useState("asc");
 
   useEffect(() => {
-    setValue(`${name}Table`, rowData);
-  }, [rowData]);
+    if (name && setValue) {
+      setValue(`${name}Table`, rowData);
+    }
+  }, [rowData, name, setValue]);
 
   const handleSort = useCallback((key) => {
     if (sortKey === key) {
@@ -440,14 +447,16 @@ export function TableWithCTA({
   register,
   setValue,
   name,
-  columns = [],
-  rowData = [],
+  columns = EMPTY_ARRAY,
+  rowData = EMPTY_ARRAY,
   handleDelete,
   handleEdit,
 }) {
   useEffect(() => {
-    setValue(`${name}Table`, rowData);
-  }, [rowData]);
+    if (name && setValue) {
+      setValue(`${name}Table`, rowData);
+    }
+  }, [rowData, name, setValue]);
 
   return (
     <div className="h-64 w-full overflow-auto rounded-lg border border-[#EDEDED] text-xs bg-white">
@@ -523,8 +532,8 @@ export function TableWithCheckboxEditDelete({
   name,
   totalColumn = "",
   totalLabel = "",
-  columns = [],
-  rowData = [],
+  columns = EMPTY_ARRAY,
+  rowData = EMPTY_ARRAY,
   handleDelete,
   handleEdit,
   originalIndex = 0,
@@ -820,21 +829,23 @@ export function TableWithSortingAndCopy({
   register,
   setValue,
   name,
-  columns = [],
-  rowData = [],
+  columns = EMPTY_ARRAY,
+  rowData = EMPTY_ARRAY,
   className,
 }) {
   const [sortKey, setSortKey] = useState("awbNo");
   const [sortOrder, setSortOrder] = useState("asc");
-
+ 
   // Selection state
   const [isSelecting, setIsSelecting] = useState(false);
   const [startCell, setStartCell] = useState(null);
   const [endCell, setEndCell] = useState(null);
-
+ 
   useEffect(() => {
-    setValue(`${name}Table`, rowData);
-  }, [rowData]);
+    if (name && setValue) {
+      setValue(`${name}Table`, rowData);
+    }
+  }, [rowData, name, setValue]);
 
   const handleSort = useCallback((key) => {
     if (sortKey === key) {
@@ -994,10 +1005,10 @@ export function TableWithCheckbox({
   setValue,
   name,
   divClassName,
-  columns = [],
-  rowData = [],
+  columns = EMPTY_ARRAY,
+  rowData = EMPTY_ARRAY,
   originalIndex = 0,
-  selectedItems = [],
+  selectedItems = EMPTY_ARRAY,
   setSelectedItems = () => {},
   className,
 }) {
@@ -1205,13 +1216,15 @@ export function TableWithTotal({
   register,
   setValue,
   name,
-  columns = [],
-  rowData = [],
-  totalRow = {},
+  columns = EMPTY_ARRAY,
+  rowData = EMPTY_ARRAY,
+  totalRow = EMPTY_OBJECT,
   className = "",
 }) {
   useEffect(() => {
-    setValue(`${name}Table`, rowData);
+    if (name && setValue) {
+      setValue(`${name}Table`, rowData);
+    }
   }, [rowData, setValue, name]);
 
   return (
@@ -1288,14 +1301,16 @@ export function TableWithCTD({
   register,
   setValue,
   name,
-  columns = [],
-  rowData = [],
+  columns = EMPTY_ARRAY,
+  rowData = EMPTY_ARRAY,
   handleDelete,
   handleEdit,
 }) {
   useEffect(() => {
-    setValue(`${name}Table`, rowData);
-  }, [rowData]);
+    if (name && setValue) {
+      setValue(`${name}Table`, rowData);
+    }
+  }, [rowData, name, setValue]);
 
   return (
     <div className="h-64 w-full overflow-auto rounded-lg border border-[#EDEDED] text-xs bg-white table-scrollbar">
