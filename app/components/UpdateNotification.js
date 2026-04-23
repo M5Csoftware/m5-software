@@ -39,19 +39,7 @@ export default function UpdateNotification({ variant = "sidebar" }) {
     setMounted(true);
   }, []);
 
-  // Force show for editing in development
-  const isDev = process.env.NODE_ENV === "development";
-  const displayUpdateInfo =
-    updateInfo ||
-    (isDev
-      ? {
-          current_version: "1.0.0",
-          remote_version: "1.0.1",
-          notes: "This is a dummy update for UI editing purposes.",
-          pub_date: new Date().toISOString(),
-          has_update: true,
-        }
-      : null);
+  const displayUpdateInfo = updateInfo;
 
   // ── Load Tauri APIs ───────────────────────────────────────────────────
   useEffect(() => {
@@ -265,7 +253,7 @@ export default function UpdateNotification({ variant = "sidebar" }) {
     }
   };
 
-  if (!displayUpdateInfo || (dismissed && !isDev)) return null;
+  if (!displayUpdateInfo || dismissed) return null;
 
   const isTopbar = variant === "topbar";
 
