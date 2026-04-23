@@ -657,76 +657,78 @@ function BookingReportWithAmount() {
           setFullScreen(true);
         }}
       />
-      <div className="flex flex-col gap-3 mt-3">
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-3">
-            <LabeledDropdown
-              value="Branch"
-              title="Branch"
-              options={branchList}
-              register={register}
-              setValue={setValue}
-            />
-
+      <div className="flex flex-col gap-5 mt-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <LabeledDropdown
+            value="Branch"
+            title="Branch"
+            options={branchList}
+            register={register}
+            setValue={setValue}
+          />
+          <InputBox
+            placeholder="Origin"
+            register={register}
+            setValue={setValue}
+            value="Origin"
+          />
+          <InputBox
+            placeholder="Run Number"
+            register={register}
+            setValue={setValue}
+            value="RunNo"
+          />
+          <InputBox
+            placeholder="Sector"
+            register={register}
+            setValue={setValue}
+            value="Sector"
+          />
+          <InputBox
+            placeholder="Destination"
+            register={register}
+            setValue={setValue}
+            value="Destination"
+          />
+          <div className="w-full relative">
             <InputBox
-              placeholder="Origin"
+              placeholder={`Customer Code`}
               register={register}
               setValue={setValue}
-              value="Origin"
+              value={`Customer`}
             />
-            <InputBox
-              placeholder="Run Number"
-              register={register}
-              setValue={setValue}
-              value="RunNo"
-            />
-            <InputBox
-              placeholder="Sector"
-              register={register}
-              setValue={setValue}
-              value="Sector"
-            />
-            <InputBox
-              placeholder="Destination"
-              register={register}
-              setValue={setValue}
-              value="Destination"
-            />
+            {fetchingAccount && (
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+              </div>
+            )}
           </div>
-          <div className="flex gap-3">
-            <div className="w-full relative">
-              <InputBox
-                placeholder={`Customer Code`}
-                register={register}
-                setValue={setValue}
-                value={`Customer`}
-              />
-              {fetchingAccount && (
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
-                </div>
-              )}
-            </div>
-
+          <div className="md:col-span-1 lg:col-span-2">
             <DummyInputBoxWithLabelDarkGray
               placeholder={"Customer Name"}
               register={register}
               setValue={setValue}
               value={"State"}
             />
-            <DateInputBox
-              register={register}
-              setValue={setValue}
-              value={`from`}
-              placeholder="From"
-            />
-            <DateInputBox
-              register={register}
-              setValue={setValue}
-              value={`to`}
-              placeholder="To"
-            />
-            <div className="flex items-end">
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-center">
+          <DateInputBox
+            register={register}
+            setValue={setValue}
+            value={`from`}
+            placeholder="From"
+          />
+          <DateInputBox
+            register={register}
+            setValue={setValue}
+            value={`to`}
+            placeholder="To"
+          />
+
+          <div className="col-span-1 lg:col-span-3 flex flex-wrap items-center gap-4">
+            <div className="flex-none">
               <OutlinedButtonRed
                 label={loading ? "Loading..." : "Show"}
                 onClick={handleShow}
@@ -734,34 +736,34 @@ function BookingReportWithAmount() {
                 type="button"
               />
             </div>
-            <div className="flex gap-2">
-              <DownloadCsvExcel
-                handleDownloadCSV={handleDownloadCSV}
-                handleDownloadExcel={handleDownloadExcel}
-                buttonClassname="px-10 py-1"
+            
+            <div className="flex-1 flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg">
+              <RedCheckbox
+                register={register}
+                setValue={setValue}
+                label={`Balance Shipment`}
+                id={`balanceShipment`}
+                isChecked={withBalance}
+                setChecked={handleBalanceShipmentChange}
               />
+              <div className="ml-auto">
+                <DownloadCsvExcel
+                  handleDownloadCSV={handleDownloadCSV}
+                  handleDownloadExcel={handleDownloadExcel}
+                  buttonClassname="px-6 py-1"
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex justify-between">
-        <div className="flex gap-6">
-          <RedCheckbox
-            register={register}
-            setValue={setValue}
-            label={`Balance Shipment`}
-            id={`balanceShipment`}
-            isChecked={withBalance}
-            setChecked={handleBalanceShipmentChange}
-          />
-        </div>
+
         <div>
           <span className="text-red text-sm">
             *Enter Date Range to Show Data (Optional for Origin)
           </span>
         </div>
-      </div>
 
       <div>
         <TableWithSorting
