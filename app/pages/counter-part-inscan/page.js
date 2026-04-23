@@ -6,21 +6,31 @@ import {
   DummyInputBoxLightGray,
   DummyInputBoxWithLabelLightGray,
 } from "@/app/components/DummyInputBox";
-import Heading, { RedLabelHeading } from "@/app/components/Heading";
+import { RedLabelHeading } from "@/app/components/Heading";
 import InputBox from "@/app/components/InputBox";
+import { GlobalContext } from "@/app/lib/GlobalContext";
+import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
-import React from "react";
+import React, { useContext } from "react";
 import { useForm } from "react-hook-form";
 
 const CounterPartInscan = () => {
   const { register, setValue } = useForm();
+  const { setCurrentTab } = useContext(GlobalContext);
   return (
     <div className="flex flex-col gap-3">
-      <Heading
-        title={`Counter Part Inscan`}
-        bulkUploadBtn="hidden"
-        codeListBtn="hidden"
-      />
+      {/* Heading row with back button */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setCurrentTab("CounterPartDashboard")}
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-misty-rose text-red hover:bg-red hover:text-white transition-colors duration-150"
+          title="Back to CounterPart Dashboard"
+        >
+          <ArrowLeft size={16} />
+        </button>
+        <h1 className="text-eerie-black font-bold text-2xl">Counter Part Inscan</h1>
+      </div>
 
       <div className="flex">
         <div className="flex flex-col gap-2 mt-1">
