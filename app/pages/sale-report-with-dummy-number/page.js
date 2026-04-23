@@ -101,6 +101,7 @@ const PaginationControls = ({
 function SaleReportWithDummyNumber() {
   const { server } = useContext(GlobalContext);
   const { register, setValue, watch } = useForm();
+  const formData = watch();
   const [allRowData, setAllRowData] = useState([]);
   const [notification, setNotification] = useState({
     type: "",
@@ -839,97 +840,93 @@ function SaleReportWithDummyNumber() {
         fullscreenBtn={false}
       />
       
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-3">
-          <div className="flex gap-3">
-            <InputBox
-              placeholder={`Run Number`}
-              register={register}
-              setValue={setValue}
-              value={`runNumber`}
-            />
-            <LabeledDropdown
-              options={paymentOptions}
-              title="Payment"
-              register={register}
-              setValue={setValue}
-              value="payment"
-            />
-            <InputBox
-              placeholder={`Branch`}
-              register={register}
-              setValue={setValue}
-              value={`branch`}
-            />
-            <InputBox
-              placeholder={`Origin`}
-              register={register}
-              setValue={setValue}
-              value={`origin`}
-            />
-            <InputBox
-              placeholder={`Sector`}
-              register={register}
-              setValue={setValue}
-              value={`sector`}
-            />
-          </div>
-          <div className="flex gap-3">
-            <InputBox
-              placeholder={`Destination`}
-              register={register}
-              setValue={setValue}
-              value={`destination`}
-            />
-            <InputBox
-              placeholder={`Network`}
-              register={register}
-              setValue={setValue}
-              value={`network`}
-            />
-            <LabeledDropdown
-              options={counterPartOptions}
-              title="Counter Part"
-              register={register}
-              setValue={setValue}
-              value="counterPart"
-            />
-            <LabeledDropdown
-              options={salePersonOptions}
-              title="Sale Person"
-              register={register}
-              setValue={setValue}
-              value="salePerson"
-            />
-            <LabeledDropdown
-              options={salePersonOptions}
-              title="Sale Ref. Person"
-              register={register}
-              setValue={setValue}
-              value="saleRefPerson"
-            />
-          </div>
-          <div className="flex gap-3">
-            <LabeledDropdown
-              options={companyOptions}
-              title="Company"
-              register={register}
-              setValue={setValue}
-              value="company"
-            />
-            <LabeledDropdown
-              options={accountManagerOptions}
-              title="Account Manager"
-              register={register}
-              setValue={setValue}
-              value="accountManager"
-            />
-            <InputBox
-              placeholder={`Customer Code`}
-              register={register}
-              setValue={setValue}
-              value={`customerCode`}
-            />
+      <div className="flex flex-col gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <InputBox
+            placeholder={`Run Number`}
+            register={register}
+            setValue={setValue}
+            value={`runNumber`}
+          />
+          <LabeledDropdown
+            options={paymentOptions}
+            title="Payment"
+            register={register}
+            setValue={setValue}
+            value="payment"
+          />
+          <InputBox
+            placeholder={`Branch`}
+            register={register}
+            setValue={setValue}
+            value={`branch`}
+          />
+          <InputBox
+            placeholder={`Origin`}
+            register={register}
+            setValue={setValue}
+            value={`origin`}
+          />
+          <InputBox
+            placeholder={`Sector`}
+            register={register}
+            setValue={setValue}
+            value={`sector`}
+          />
+          <InputBox
+            placeholder={`Destination`}
+            register={register}
+            setValue={setValue}
+            value={`destination`}
+          />
+          <InputBox
+            placeholder={`Network`}
+            register={register}
+            setValue={setValue}
+            value={`network`}
+          />
+          <LabeledDropdown
+            options={counterPartOptions}
+            title="Counter Part"
+            register={register}
+            setValue={setValue}
+            value="counterPart"
+          />
+          <LabeledDropdown
+            options={salePersonOptions}
+            title="Sale Person"
+            register={register}
+            setValue={setValue}
+            value="salePerson"
+          />
+          <LabeledDropdown
+            options={salePersonOptions}
+            title="Sale Ref. Person"
+            register={register}
+            setValue={setValue}
+            value="saleRefPerson"
+          />
+          <LabeledDropdown
+            options={companyOptions}
+            title="Company"
+            register={register}
+            setValue={setValue}
+            value="company"
+          />
+          <LabeledDropdown
+            options={accountManagerOptions}
+            title="Account Manager"
+            register={register}
+            setValue={setValue}
+            value="accountManager"
+          />
+          <InputBox
+            placeholder={`Customer Code`}
+            register={register}
+            setValue={setValue}
+            value={`customerCode`}
+          />
+          <div className="md:col-span-1 lg:col-span-2">
             <DummyInputBoxWithLabelDarkGray
               placeholder={"Customer Name"}
               register={register}
@@ -937,20 +934,24 @@ function SaleReportWithDummyNumber() {
               value={"name"}
             />
           </div>
-          <div className="flex gap-3">
-            <DateInputBox
-              register={register}
-              setValue={setValue}
-              value={`from`}
-              placeholder="From"
-            />
-            <DateInputBox
-              register={register}
-              setValue={setValue}
-              value={`to`}
-              placeholder="To"
-            />
-            <div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-center">
+          <DateInputBox
+            register={register}
+            setValue={setValue}
+            value={`from`}
+            placeholder="From"
+          />
+          <DateInputBox
+            register={register}
+            setValue={setValue}
+            value={`to`}
+            placeholder="To"
+          />
+
+          <div className="col-span-1 lg:col-span-3 flex flex-wrap items-center gap-4">
+            <div className="flex-none">
               <OutlinedButtonRed 
                 type="button" 
                 label={loading ? "Loading..." : "Show"} 
@@ -961,53 +962,53 @@ function SaleReportWithDummyNumber() {
                 disabled={loading}
               />
             </div>
+
+            <div className="flex-1 flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-lg">
+              <RedCheckbox
+                register={register}
+                setValue={setValue}
+                label="Booking Date"
+                id="bookingDate"
+                isChecked={withBookingDate}
+                setChecked={setBookingDate}
+              />
+              <RedCheckbox
+                register={register}
+                setValue={setValue}
+                label="Unbilled Shipment"
+                id="unbilledShipment"
+                isChecked={withUnbilled}
+                setChecked={setUnbilled}
+              />
+              <RedCheckbox
+                register={register}
+                setValue={setValue}
+                label="Skip DHL"
+                id="skipDHL"
+                isChecked={withDHL}
+                setChecked={setDHL}
+              />
+              <RedCheckbox
+                register={register}
+                setValue={setValue}
+                label="YYYYMMDD"
+                id="date"
+                isChecked={withDate}
+                setChecked={setDate}
+              />
+              <RedCheckbox
+                register={register}
+                setValue={setValue}
+                label="Special Report Branch Wise"
+                id="branchWise"
+                isChecked={withBranchWise}
+                setChecked={setBranchWise}
+              />
+            </div>
           </div>
         </div>
       </div>
       
-      <div className="flex justify-between items-center w-full">
-        <RedCheckbox
-          register={register}
-          setValue={setValue}
-          label="Booking Date"
-          id="bookingDate"
-          isChecked={withBookingDate}
-          setChecked={setBookingDate}
-        />
-        <RedCheckbox
-          register={register}
-          setValue={setValue}
-          label="Unbilled Shipment"
-          id="unbilledShipment"
-          isChecked={withUnbilled}
-          setChecked={setUnbilled}
-        />
-        <RedCheckbox
-          register={register}
-          setValue={setValue}
-          label="Skip DHL"
-          id="skipDHL"
-          isChecked={withDHL}
-          setChecked={setDHL}
-        />
-        <RedCheckbox
-          register={register}
-          setValue={setValue}
-          label="YYYYMMDD"
-          id="date"
-          isChecked={withDate}
-          setChecked={setDate}
-        />
-        <RedCheckbox
-          register={register}
-          setValue={setValue}
-          label="Special Report Branch Wise"
-          id="branchWise"
-          isChecked={withBranchWise}
-          setChecked={setBranchWise}
-        />
-      </div>
-
       <div>
         <TableWithSorting
           register={register}

@@ -576,45 +576,40 @@ const NewSaleReport = () => {
             />
           ))}
         </div>
-        <div className="flex gap-2">
-          {demoRadio === "Comparison" && (
-            <div className="w-1/4">
-              <DropdownOptionOnly
-                key={dropdownKey} // forces remount on refresh
-                options={comparisonOptions}
-                defaultValue={comparisonMode} // use parent state as default
-                onChange={(val) => setComparisonMode(val)} // update parent state
-              />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-center">
+          {demoRadio === "Comparison" ? (
+            <DropdownOptionOnly
+              key={dropdownKey} // forces remount on refresh
+              options={comparisonOptions}
+              defaultValue={comparisonMode} // use parent state as default
+              onChange={(val) => setComparisonMode(val)} // update parent state
+            />
+          ) : (
+            <div className="hidden lg:block"></div>
           )}
-          <div className="w-1/2">
-            <DateInputBox
-              placeholder={`From`}
-              value="from"
-              setValue={setValue}
-              register={register}
-              maxToday
-              resetFactor={resetFactor}
-            />
-          </div>
-          <div className="w-1/2">
-            <DateInputBox
-              placeholder={`To`}
-              value="to"
-              setValue={setValue}
-              register={register}
-              maxToday
-              resetFactor={resetFactor}
-            />
-          </div>
+          <DateInputBox
+            placeholder={`From`}
+            value="from"
+            setValue={setValue}
+            register={register}
+            maxToday
+            resetFactor={resetFactor}
+          />
+          <DateInputBox
+            placeholder={`To`}
+            value="to"
+            setValue={setValue}
+            register={register}
+            maxToday
+            resetFactor={resetFactor}
+          />
 
-          <div className="w-[200px]">
+          <div className="flex-none">
             <OutlinedButtonRed
               label={isLoading ? "Loading..." : "Show"}
               onClick={handleShow}
               disabled={isLoading}
             />
-
           </div>
           <div>
             {demoRadio === "Comparison" && comparisonMode === "Sec & Hub" ? (
