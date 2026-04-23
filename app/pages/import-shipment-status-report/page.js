@@ -403,8 +403,7 @@ const ShipmentStatusReportImport = () => {
       <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-50 border rounded-lg">
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">{shipments.length}</span> of{" "}
-            <span className="font-medium">{totalRecords}</span> records
+            Showing <span className="font-medium">{shipments.length}</span> records
           </div>
           
           <div className="flex items-center gap-2">
@@ -483,27 +482,23 @@ const ShipmentStatusReportImport = () => {
           onClickFullscreenBtn={() => setIsFullscreen(true)}
         />
 
-        <div className="flex flex-col gap-3">
-          {/* Filters */}
-          <div className="flex gap-3 items-center">
-            <div className="w-[495px]">
-              <InputBox
-                placeholder="Code"
-                register={register}
-                setValue={setValue}
-                resetFactor={ShipmentReportReset}
-                value="code"
-              />
-            </div>
+        <div className="flex flex-col gap-6">
+          {/* Filters Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <InputBox
+              placeholder="Code"
+              register={register}
+              setValue={setValue}
+              resetFactor={ShipmentReportReset}
+              value="code"
+            />
             <DummyInputBoxWithLabelDarkGray
               register={register}
               label="Customer Name"
               setValue={setValue}
               value="client"
+              inputValue={watch("client") || ""}
             />
-          </div>
-
-          <div className="flex gap-3">
             <InputBox
               placeholder="Run Number"
               register={register}
@@ -525,6 +520,7 @@ const ShipmentStatusReportImport = () => {
               resetFactor={ShipmentReportReset}
               value="origin"
             />
+
             <InputBox
               placeholder="Sector"
               register={register}
@@ -540,9 +536,6 @@ const ShipmentStatusReportImport = () => {
               setValue={setValue}
               resetFactor={ShipmentReportReset}
             />
-          </div>
-
-          <div className="flex gap-3">
             <InputBox
               placeholder="Destination"
               register={register}
@@ -564,6 +557,7 @@ const ShipmentStatusReportImport = () => {
               resetFactor={ShipmentReportReset}
               value="service"
             />
+
             <InputBox
               placeholder="Counter Part"
               register={register}
@@ -571,9 +565,6 @@ const ShipmentStatusReportImport = () => {
               resetFactor={ShipmentReportReset}
               value="counterPart"
             />
-          </div>
-
-          <div className="flex gap-3">
             <DateInputBox
               placeholder="From"
               register={register}
@@ -588,7 +579,7 @@ const ShipmentStatusReportImport = () => {
               resetFactor={ShipmentReportReset}
               value="to"
             />
-            <div className="flex gap-2">
+            <div className="lg:col-span-2 flex gap-2 items-end">
               <OutlinedButtonRed 
                 label={isLoading ? "Loading..." : "Show"} 
                 onClick={fetchShipments}
@@ -644,14 +635,7 @@ const ShipmentStatusReportImport = () => {
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex justify-between">
-            <div className="text-sm text-gray-600">
-              {totalRecords > 0 && (
-                <span>Total Records: {totalRecords}</span>
-              )}
-            </div>
-          </div>
+
         </div>
       </form>
     </>
