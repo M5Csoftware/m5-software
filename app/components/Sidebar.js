@@ -178,17 +178,17 @@ function Sidebar() {
   ];
 
   // Import folders — add your import components/subfolders here when ready
- const importFolders = [
-  {
-    name: "Import",
-    subfolders: [
-      "AWB Import Entry",
-      "Import Booking Report",
-      "Import Shipment Status Report",
-      "Import POD Entry",
-    ],
-  },
-];
+  const importFolders = [
+    {
+      name: "Import",
+      subfolders: [
+        "AWB Import Entry",
+        "Import Booking Report",
+        "Import Shipment Status Report",
+        "Import POD Entry",
+      ],
+    },
+  ];
 
   const permissionKeyMap = {
     "Account Ledger": ["Acc-Account Ledger", "Bill-Account Ledger"],
