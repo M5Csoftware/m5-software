@@ -4,6 +4,7 @@ import { GlobalContext } from "../lib/GlobalContext";
 import Image from "next/image";
 import { SimpleButton } from "./Buttons";
 import { useAuth } from "../Context/AuthContext";
+import UpdateNotification from "./UpdateNotification";
 
 function Tabs() {
   const { activeTabs, setActiveTabs, currentTab, setCurrentTab } =
@@ -181,7 +182,8 @@ function Tabs() {
           </ul>
         </div>
 
-        <div className="flex items-center justify-center px-4 bg-gray-50 border-r min-w-fit">
+        <div className="flex items-center gap-1 justify-center px-4 bg-gray-50 border-r min-w-fit">
+          <UpdateNotification variant="topbar" />
           <button
             onClick={handleLogoutClick}
             className="flex items-center justify-center hover:opacity-80 transition-opacity"
