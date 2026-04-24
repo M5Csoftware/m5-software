@@ -55,19 +55,21 @@ const MessageSheet = () => {
       { key: "forwardingNo", label: "Forwarding No" },
       { key: "service", label: "Service" },
     ],
-    []
+    [],
   );
 
   // API Functions
   const fetchRunData = async (runNo) => {
-    const response = await axios.get(`${server}/run-entry?runNo=${runNo.toUpperCase()}`);
+    const response = await axios.get(
+      `${server}/run-entry?runNo=${runNo.toUpperCase()}`,
+    );
     return response.data;
   };
 
   const fetchShipmentDataByRunNo = async (runNo) => {
     try {
       const response = await axios.get(
-        `${server}/portal/create-shipment?runNo=${runNo.toUpperCase()}`
+        `${server}/portal/create-shipment?runNo=${runNo.toUpperCase()}`,
       );
       // console.log("API Response:", response.data);
       return Array.isArray(response.data) ? response.data : [response.data];
@@ -80,7 +82,9 @@ const MessageSheet = () => {
 
   const fetchBaggingDataByRunNo = async (runNo) => {
     try {
-      const response = await axios.get(`${server}/bagging?runNo=${runNo.toUpperCase()}`);
+      const response = await axios.get(
+        `${server}/bagging?runNo=${runNo.toUpperCase()}`,
+      );
       // console.log("Bagging API Response:", response.data);
       return Array.isArray(response.data) ? response.data : [response.data];
     } catch (error) {
@@ -107,7 +111,7 @@ const MessageSheet = () => {
 
       // Find corresponding bagging data for this shipment
       const baggingInfo = baggingData.find(
-        (bag) => bag.awbNo === shipment.awbNo || bag.runNo === shipment.runNo
+        (bag) => bag.awbNo === shipment.awbNo || bag.runNo === shipment.runNo,
       );
 
       // Extract consignee address - handle different field structures
@@ -169,7 +173,7 @@ const MessageSheet = () => {
     // Filter: Without Clubbing - show only items without club number
     if (enableWithoutClub) {
       filteredData = filteredData.filter(
-        (item) => !item.clubNo || item.clubNo === ""
+        (item) => !item.clubNo || item.clubNo === "",
       );
     }
 
@@ -372,7 +376,7 @@ const MessageSheet = () => {
         visible={notification.visible}
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
-      
+
       <Heading
         title="Message Sheet"
         bulkUploadBtn="hidden"
@@ -435,7 +439,7 @@ const MessageSheet = () => {
                 value="almawb"
               />
             </div>
-            
+
             <div className="flex gap-3 w-[24%]">
               <OutlinedButtonRed
                 label={loading ? "Loading..." : "Show"}
@@ -487,6 +491,7 @@ const MessageSheet = () => {
           register={register}
           setValue={setValue}
           name="messageSheet"
+          className={`h-[50vh]`}
         />
       </div>
     </div>

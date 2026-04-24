@@ -353,7 +353,7 @@ function AccountLedger() {
           name={`accountLedger`}
           columns={columns}
           rowData={formattedRowData}
-          className={`rounded-b-none h-[35vh] border-b-0`}
+          className={`rounded-b-none h-[50vh] border-b-0`}
         />
         <div className=" flex items-center justify-end px-10 text-sm font-medium rounded rounded-t-none h-8 bg-gray-200 border-[1px] border-battleship-gray border-t-0">
           <span className="font-semibold text-sm">

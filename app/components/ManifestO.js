@@ -1,4 +1,11 @@
-import React, { useState, useContext, useMemo, useEffect, forwardRef, useImperativeHandle } from "react";
+import React, {
+  useState,
+  useContext,
+  useMemo,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { DummyInputBoxWithLabelDarkGray } from "./DummyInputBox";
 import { useForm } from "react-hook-form";
 import InputBox from "./InputBox";
@@ -46,12 +53,12 @@ const ManifestO = forwardRef((props, ref) => {
   // Function to format date from ISO string (2025-11-06T00:00:00.000Z) to DD/MM/YYYY
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    
+
     try {
       // Handle ISO date string
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return dateString; // Return original if invalid
-      
+
       return dayjs(date).format("DD/MM/YYYY");
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -93,10 +100,10 @@ const ManifestO = forwardRef((props, ref) => {
       setLoading(true);
 
       const response = await axios.get(`${server}/branch-manifest/manifestO`, {
-        params: { 
+        params: {
           runNo: runNo.trim(),
           page: page,
-          limit: pageLimit
+          limit: pageLimit,
         },
       });
 
@@ -113,7 +120,7 @@ const ManifestO = forwardRef((props, ref) => {
 
         // Set table data
         setRowData(tableData);
-        
+
         // Set pagination info
         if (pagination) {
           setCurrentPage(pagination.currentPage);
@@ -152,7 +159,7 @@ const ManifestO = forwardRef((props, ref) => {
     if (newPage < 1 || newPage > totalPages || !currentRunNumber) return;
 
     // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     // Fetch new page
     fetchManifestDataWithPagination(currentRunNumber, newPage);
@@ -175,13 +182,13 @@ const ManifestO = forwardRef((props, ref) => {
       showNotification("error", "Please enter a run number");
       return;
     }
-    
+
     // Store run number for pagination
     setCurrentRunNumber(runNumber.trim());
-    
+
     // Reset to page 1 for new search
     setCurrentPage(1);
-    
+
     // Fetch first page
     fetchManifestDataWithPagination(runNumber.trim(), 1);
   };
@@ -289,7 +296,7 @@ const ManifestO = forwardRef((props, ref) => {
     }
   };
 
- const handleDownloadPDF = async () => {
+  const handleDownloadPDF = async () => {
     if (rowData.length === 0) {
       showNotification("error", "No data to download");
       return;
@@ -299,47 +306,52 @@ const ManifestO = forwardRef((props, ref) => {
       // Dynamically import jsPDF
       const { default: jsPDF } = await import("jspdf");
       const autoTable = (await import("jspdf-autotable")).default;
-      
+
       // Initialize jsPDF in landscape mode with A3 size for more width
       const doc = new jsPDF({
         orientation: "landscape",
         unit: "mm",
-        format: "a3" // A3 gives more space than A4
+        format: "a3", // A3 gives more space than A4
       });
-      
+
       // Calculate current date for footer
       const currentDate = new Date();
-      const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}/${(currentDate.getMonth() + 1).toString().padStart(2, '0')}/${currentDate.getFullYear()}`;
-      
+      const formattedDate = `${currentDate.getDate().toString().padStart(2, "0")}/${(currentDate.getMonth() + 1).toString().padStart(2, "0")}/${currentDate.getFullYear()}`;
+
       // Add main title
       doc.setFontSize(18);
       doc.setFont("helvetica", "bold");
-      doc.text("BRANCH MANIFEST (O) REPORT", doc.internal.pageSize.width / 2, 15, { align: "center" });
-      
+      doc.text(
+        "BRANCH MANIFEST (O) REPORT",
+        doc.internal.pageSize.width / 2,
+        15,
+        { align: "center" },
+      );
+
       // Add subtitle with run details in a box
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
-      
+
       // Draw a box for run details
       doc.setDrawColor(66, 66, 66);
       doc.setLineWidth(0.3);
       doc.rect(10, 20, doc.internal.pageSize.width - 20, 18);
-      
+
       // Left column - Run details
       doc.text(`Run Number: ${runNumber || "N/A"}`, 15, 25);
       doc.text(`Date: ${watch("date") || "N/A"}`, 15, 30);
       doc.text(`Sector: ${watch("sector") || "N/A"}`, 15, 35);
-      
+
       // Middle column
       doc.text(`A/L MAWB: ${watch("a/lMawb") || "N/A"}`, 120, 25);
       doc.text(`Flight: ${watch("flight") || "N/A"}`, 120, 30);
       doc.text(`OBC: ${watch("obc") || "N/A"}`, 120, 35);
-      
+
       // Right column
       doc.text(`Counter Part: ${watch("counterPart") || "N/A"}`, 220, 25);
       doc.text(`Total Records: ${totalRecords}`, 220, 30);
       doc.text(`Generated: ${formattedDate}`, 220, 35);
-      
+
       // Prepare data for table
       const tableData = rowData.map((row) => {
         return [
@@ -358,124 +370,126 @@ const ManifestO = forwardRef((props, ref) => {
           row.sector || "",
           row.whethe || "",
           row.wheth || "",
-          row.totalIg || ""
+          row.totalIg || "",
         ];
       });
-      
+
       // Prepare headers
-      const headers = columns.map(col => col.label);
-      
+      const headers = columns.map((col) => col.label);
+
       // Optimized column styles for A3 landscape (420mm width)
       const columnStyles = {
-        0: { cellWidth: 12, halign: 'center' },   // Sr.No.
-        1: { cellWidth: 28, halign: 'left' },     // AWB NO.
-        2: { cellWidth: 32, halign: 'left' },     // CONSIGNOR'S NAME
-        3: { cellWidth: 40, halign: 'left' },     // CONSIGNOR'S ADDRESS
-        4: { cellWidth: 32, halign: 'left' },     // CONSIGNEE NAME
-        5: { cellWidth: 40, halign: 'left' },     // CONSIGNEE ADDRESS
-        6: { cellWidth: 15, halign: 'center' },   // PCS
-        7: { cellWidth: 22, halign: 'right' },    // Total Actual Weight
-        8: { cellWidth: 30, halign: 'left' },     // Content
-        9: { cellWidth: 22, halign: 'right' },    // Value (INR)
-        10: { cellWidth: 18, halign: 'right' },   // GST
-        11: { cellWidth: 20, halign: 'left' },    // GST In
-        12: { cellWidth: 25, halign: 'left' },    // Port of Ship
-        13: { cellWidth: 18, halign: 'center' },  // Whether
-        14: { cellWidth: 18, halign: 'center' },  // Wheth
-        15: { cellWidth: 20, halign: 'right' }    // Total IG
+        0: { cellWidth: 12, halign: "center" }, // Sr.No.
+        1: { cellWidth: 28, halign: "left" }, // AWB NO.
+        2: { cellWidth: 32, halign: "left" }, // CONSIGNOR'S NAME
+        3: { cellWidth: 40, halign: "left" }, // CONSIGNOR'S ADDRESS
+        4: { cellWidth: 32, halign: "left" }, // CONSIGNEE NAME
+        5: { cellWidth: 40, halign: "left" }, // CONSIGNEE ADDRESS
+        6: { cellWidth: 15, halign: "center" }, // PCS
+        7: { cellWidth: 22, halign: "right" }, // Total Actual Weight
+        8: { cellWidth: 30, halign: "left" }, // Content
+        9: { cellWidth: 22, halign: "right" }, // Value (INR)
+        10: { cellWidth: 18, halign: "right" }, // GST
+        11: { cellWidth: 20, halign: "left" }, // GST In
+        12: { cellWidth: 25, halign: "left" }, // Port of Ship
+        13: { cellWidth: 18, halign: "center" }, // Whether
+        14: { cellWidth: 18, halign: "center" }, // Wheth
+        15: { cellWidth: 20, halign: "right" }, // Total IG
       };
-      
+
       // Generate table using autoTable
       autoTable(doc, {
         startY: 42,
         head: [headers],
         body: tableData,
         columnStyles: columnStyles,
-        theme: 'grid',
+        theme: "grid",
         headStyles: {
           fillColor: [220, 38, 38], // Red header
           textColor: [255, 255, 255], // White text
-          fontStyle: 'bold',
+          fontStyle: "bold",
           fontSize: 8,
           cellPadding: 2,
-          halign: 'center',
-          valign: 'middle',
+          halign: "center",
+          valign: "middle",
           lineWidth: 0.1,
-          lineColor: [200, 200, 200]
+          lineColor: [200, 200, 200],
         },
         bodyStyles: {
           fontSize: 7,
           cellPadding: 2,
-          overflow: 'linebreak',
-          valign: 'middle',
+          overflow: "linebreak",
+          valign: "middle",
           lineWidth: 0.1,
           lineColor: [200, 200, 200],
-          textColor: [50, 50, 50]
+          textColor: [50, 50, 50],
         },
         alternateRowStyles: {
-          fillColor: [248, 249, 250]
+          fillColor: [248, 249, 250],
         },
         margin: { left: 10, right: 10, top: 42, bottom: 20 },
-        tableWidth: 'auto',
+        tableWidth: "auto",
         styles: {
           cellPadding: 2,
           fontSize: 7,
-          valign: 'middle',
+          valign: "middle",
           minCellHeight: 8,
           lineColor: [200, 200, 200],
-          lineWidth: 0.1
+          lineWidth: 0.1,
         },
-        didDrawPage: function(data) {
+        didDrawPage: function (data) {
           // Footer
           const pageCount = doc.internal.getNumberOfPages();
           const pageHeight = doc.internal.pageSize.height;
           const pageWidth = doc.internal.pageSize.width;
-          
+
           // Footer line
           doc.setDrawColor(66, 66, 66);
           doc.setLineWidth(0.3);
           doc.line(10, pageHeight - 15, pageWidth - 10, pageHeight - 15);
-          
+
           // Footer text
           doc.setFontSize(8);
           doc.setFont("helvetica", "normal");
           doc.setTextColor(100, 100, 100);
-          
+
           // Left footer - Company/Report name
           doc.text("Branch Manifest (O) Report", 10, pageHeight - 10);
-          
+
           // Center footer - Page number
           doc.text(
-            `Page ${data.pageNumber} of ${pageCount}`, 
-            pageWidth / 2, 
-            pageHeight - 10, 
-            { align: "center" }
+            `Page ${data.pageNumber} of ${pageCount}`,
+            pageWidth / 2,
+            pageHeight - 10,
+            { align: "center" },
           );
-          
+
           // Right footer - Date & Time
           const now = new Date();
-          const timeString = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+          const timeString = now.toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
           doc.text(
-            `${formattedDate} ${timeString}`, 
-            pageWidth - 10, 
-            pageHeight - 10, 
-            { align: "right" }
+            `${formattedDate} ${timeString}`,
+            pageWidth - 10,
+            pageHeight - 10,
+            { align: "right" },
           );
         },
-        didParseCell: function(data) {
+        didParseCell: function (data) {
           // Add subtle borders
-          if (data.section === 'head') {
+          if (data.section === "head") {
             data.cell.styles.lineWidth = 0.2;
             data.cell.styles.lineColor = [150, 150, 150];
           }
-        }
+        },
       });
-      
+
       // Save PDF
       doc.save(`manifest_${runNumber}_${new Date().getTime()}.pdf`);
-      
+
       showNotification("success", "PDF file downloaded successfully");
-      
     } catch (error) {
       console.error("Error downloading PDF:", error);
       showNotification("error", "Failed to download PDF file");
@@ -539,14 +553,18 @@ const ManifestO = forwardRef((props, ref) => {
 
           <button
             onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages || loading || !currentRunNumber}
+            disabled={
+              currentPage === totalPages || loading || !currentRunNumber
+            }
             className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
             Next
           </button>
           <button
             onClick={() => handlePageChange(totalPages)}
-            disabled={currentPage === totalPages || loading || !currentRunNumber}
+            disabled={
+              currentPage === totalPages || loading || !currentRunNumber
+            }
             className="px-3 py-1 rounded border bg-white text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
           >
             Last
@@ -560,7 +578,7 @@ const ManifestO = forwardRef((props, ref) => {
   useImperativeHandle(ref, () => ({
     handleRefresh: () => {
       handleRefresh();
-    }
+    },
   }));
 
   return (
@@ -574,7 +592,7 @@ const ManifestO = forwardRef((props, ref) => {
         }
       />
 
-      <div className="flex flex-col gap-5 mt-6">
+      <div className="flex flex-col gap-3 mt-2">
         <div className="flex flex-col gap-3">
           <div className="">
             <h2 className="text-[16px] text-red font-semibold">Run Details</h2>
@@ -659,16 +677,14 @@ const ManifestO = forwardRef((props, ref) => {
             rowData={rowData}
             className="h-96"
           />
-          
+
           {/* Pagination Controls */}
           <PaginationControls />
 
           {/* Total Records Display */}
           <div className="flex justify-between mt-2">
             <div className="text-sm text-gray-600">
-              {totalRecords > 0 && (
-                <span>Total Records: {totalRecords}</span>
-              )}
+              {totalRecords > 0 && <span>Total Records: {totalRecords}</span>}
             </div>
           </div>
         </div>

@@ -133,7 +133,7 @@ export default function BagReport() {
             }
             return stringValue;
           })
-          .join(",")
+          .join(","),
       )
       .join("\n");
 
@@ -156,24 +156,30 @@ export default function BagReport() {
   };
 
   const fetchRunData = async (runNo) => {
-    const response = await axios.get(`${server}/run-entry?runNo=${runNo.toUpperCase()}`);
+    const response = await axios.get(
+      `${server}/run-entry?runNo=${runNo.toUpperCase()}`,
+    );
     return response.data;
   };
 
   const fetchShipmentData = async (runNo, page = 1) => {
     const response = await axios.get(
-      `${server}/portal/create-shipment?runNo=${runNo.toUpperCase()}&page=${page}&limit=${pageLimit}`
+      `${server}/portal/create-shipment?runNo=${runNo.toUpperCase()}&page=${page}&limit=${pageLimit}`,
     );
     return response.data;
   };
 
   const fetchBaggingData = async (runNo) => {
-    const response = await axios.get(`${server}/bagging?runNo=${runNo.toUpperCase()}`);
+    const response = await axios.get(
+      `${server}/bagging?runNo=${runNo.toUpperCase()}`,
+    );
     return response.data;
   };
 
   const fetchBranchBaggingData = async (runNo) => {
-    const response = await axios.get(`${server}/branch-bagging?runNo=${runNo.toUpperCase()}`);
+    const response = await axios.get(
+      `${server}/branch-bagging?runNo=${runNo.toUpperCase()}`,
+    );
     return response.data;
   };
 
@@ -182,13 +188,18 @@ export default function BagReport() {
     if (baggingData && baggingData.rowData) {
       baggingData.rowData.forEach((item) => {
         const awb = item.awbNo || item.childShipment;
-        if (awb) lookup[awb] = { bagNo: item.bagNo, mhbsNo: baggingData.mhbsNo };
+        if (awb)
+          lookup[awb] = { bagNo: item.bagNo, mhbsNo: baggingData.mhbsNo };
       });
     }
     if (branchBaggingData && branchBaggingData.rowData) {
       branchBaggingData.rowData.forEach((item) => {
         const awb = item.awbNo || item.childShipment;
-        if (awb) lookup[awb] = { bagNo: item.bagNo, mhbsNo: branchBaggingData.mawb || "" };
+        if (awb)
+          lookup[awb] = {
+            bagNo: item.bagNo,
+            mhbsNo: branchBaggingData.mawb || "",
+          };
       });
     }
     return lookup;
@@ -248,7 +259,11 @@ export default function BagReport() {
       baggingData.rowData.forEach((item) => {
         if (item.bagNo) {
           if (!bagSummary[item.bagNo])
-            bagSummary[item.bagNo] = { bagNo: item.bagNo, countAwbNo: 0, bagWeight: 0 };
+            bagSummary[item.bagNo] = {
+              bagNo: item.bagNo,
+              countAwbNo: 0,
+              bagWeight: 0,
+            };
           bagSummary[item.bagNo].countAwbNo += 1;
           bagSummary[item.bagNo].bagWeight += parseFloat(item.bagWeight) || 0;
         }
@@ -258,7 +273,11 @@ export default function BagReport() {
       branchBaggingData.rowData.forEach((item) => {
         if (item.bagNo) {
           if (!bagSummary[item.bagNo])
-            bagSummary[item.bagNo] = { bagNo: item.bagNo, countAwbNo: 0, bagWeight: 0 };
+            bagSummary[item.bagNo] = {
+              bagNo: item.bagNo,
+              countAwbNo: 0,
+              bagWeight: 0,
+            };
           bagSummary[item.bagNo].countAwbNo += 1;
           bagSummary[item.bagNo].bagWeight += parseFloat(item.bagWeight) || 0;
         }
@@ -305,11 +324,13 @@ export default function BagReport() {
         pagination.totalPages = Math.ceil(newTableData.length / pageLimit);
         pagination.currentPage = page;
       } else {
-        const [shipmentRes, baggingData, branchBaggingData] = await Promise.all([
-          fetchShipmentData(queryRunNo, page),
-          fetchBaggingData(queryRunNo).catch(() => null),
-          fetchBranchBaggingData(queryRunNo).catch(() => null),
-        ]);
+        const [shipmentRes, baggingData, branchBaggingData] = await Promise.all(
+          [
+            fetchShipmentData(queryRunNo, page),
+            fetchBaggingData(queryRunNo).catch(() => null),
+            fetchBranchBaggingData(queryRunNo).catch(() => null),
+          ],
+        );
 
         const shipmentData =
           shipmentRes.data || (Array.isArray(shipmentRes) ? shipmentRes : []);
@@ -319,7 +340,10 @@ export default function BagReport() {
           totalRecords: shipmentData.length,
         };
 
-        const baggingLookup = createBaggingLookup(baggingData, branchBaggingData);
+        const baggingLookup = createBaggingLookup(
+          baggingData,
+          branchBaggingData,
+        );
 
         newTableData =
           reportType === "Shipper"
@@ -336,7 +360,7 @@ export default function BagReport() {
 
       showNotification(
         "success",
-        `Found ${pagination.totalRecords} records (Page ${pagination.currentPage} of ${pagination.totalPages})`
+        `Found ${pagination.totalRecords} records (Page ${pagination.currentPage} of ${pagination.totalPages})`,
       );
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -372,7 +396,7 @@ export default function BagReport() {
           console.error("Error fetching run data:", error);
           setRunData(null);
           ["sector", "date", "counterpart", "flight", "obc", "almawb"].forEach(
-            (field) => setValue(field, "")
+            (field) => setValue(field, ""),
           );
           setTableData([]);
           setTotalRecords(0);
@@ -381,7 +405,7 @@ export default function BagReport() {
       } else {
         setRunData(null);
         ["sector", "date", "counterpart", "flight", "obc", "almawb"].forEach(
-          (field) => setValue(field, "")
+          (field) => setValue(field, ""),
         );
         setTableData([]);
         setTotalRecords(0);
@@ -487,7 +511,7 @@ export default function BagReport() {
           setCurrentFilters(null);
           setValue("runNo", "");
           ["sector", "date", "counterpart", "flight", "obc", "almawb"].forEach(
-            (field) => setValue(field, "")
+            (field) => setValue(field, ""),
           );
         }}
       />
@@ -597,13 +621,16 @@ export default function BagReport() {
                 register={register}
                 setValue={setValue}
                 name="begReportTable"
+                height={"h-[45vh]"}
               />
 
               <PaginationControls />
 
               <div className="flex justify-between mt-2">
                 <div className="text-sm text-gray-600">
-                  {totalRecords > 0 && <span>Total Records: {totalRecords}</span>}
+                  {totalRecords > 0 && (
+                    <span>Total Records: {totalRecords}</span>
+                  )}
                 </div>
               </div>
             </div>

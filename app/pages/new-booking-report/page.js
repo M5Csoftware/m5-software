@@ -682,7 +682,7 @@ const NewBookingReport = () => {
           name="newBookingReportTable"
           columns={columns}
           rowData={reports}
-          className={`h-72`}
+          className={`h-[50vh]`}
         />
 
         {/* Pagination Controls */}
