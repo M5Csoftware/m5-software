@@ -31,6 +31,8 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
   const [statusKey, setStatusKey] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // ── NEW: counter part inscan state ─────────────────────────────────────────
+  const [counterPartInscanData, setCounterPartInscanData] = useState(null);
 
   const [notification, setNotification] = useState({
     type: "success",
@@ -48,25 +50,19 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
   // Helper function to normalize time
   const normalizeTime = (time) => {
     if (!time) return "";
-
     const d = new Date(time);
     if (!isNaN(d.getTime())) {
       const hours = String(d.getUTCHours()).padStart(2, "0");
       const minutes = String(d.getUTCMinutes()).padStart(2, "0");
       return `${hours}:${minutes}`;
     }
-
     return time;
   };
 
   // Helper function to normalize date
   const normalizeDate = (date) => {
     if (!date) return "";
-
-    if (/^\d{8}$/.test(date)) {
-      return date.toString();
-    }
-
+    if (/^\d{8}$/.test(date)) return date.toString();
     const d = new Date(date);
     if (!isNaN(d.getTime())) {
       const year = d.getFullYear();
@@ -74,7 +70,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
       const day = String(d.getDate()).padStart(2, "0");
       return `${year}${month}${day}`;
     }
-
     return date;
   };
 
@@ -83,20 +78,26 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
     if (!dateString) return "";
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return "";
-    return d.toLocaleDateString("en-GB"); // DD/MM/YYYY format
+    return d.toLocaleDateString("en-GB");
+  };
+
+  // ── helper: build counter part inscan status string ──────────────────────
+  const getCounterPartInscanStatus = () => {
+    if (!counterPartInscanData) return "";
+    const { counterPartInscan, location } = counterPartInscanData;
+    if (!counterPartInscan) return "";
+    return location
+      ? `Shipment arrived at Destination Country - ${location}`
+      : "Shipment arrived at Destination Country";
   };
 
   const fetchAwb = async () => {
     setSearchLoading(true);
     try {
-      // console.log(awbNo);
-
-
       const response = await axios.get(
         `${server}/shipment-query?awbNo=${awbNo.toUpperCase()}`,
       );
       const run = response.data.response;
-      // console.log(run);
 
       if (!run) {
         showNotification("error", "No shipment found for this AWB");
@@ -108,42 +109,90 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
         setConsignorDetail({});
         setComplaintRowData([]);
         setChildShipmentsData([]);
+        setCounterPartInscanData(null);
         return;
       }
       setshipmentQuery(run);
       showNotification("success", "Shipment details loaded");
 
-      // ✅ NEW: fetch status + web history from custom route
+      // ── fetch counter part inscan status from counter-part-inscan endpoint ──────────────────
+      try {
+        const counterPartRes = await axios.get(
+          `${server}/counter-part-inscan?awbNo=${awbNo.toUpperCase()}`,
+        );
+        if (counterPartRes.data?.success && counterPartRes.data?.data) {
+          const counterPartData = counterPartRes.data.data;
+          setCounterPartInscanData({
+            counterPartInscan: true,
+            location: counterPartData.location || "",
+            statusDate: counterPartData.statusDate,
+            time: counterPartData.time,
+            arrivalRemark: counterPartData.arrivalRemark,
+          });
+
+          // Update the latestEventData with counter part status
+          const counterPartStatus = counterPartData.location
+            ? `Shipment arrived at Destination Country - ${counterPartData.location}`
+            : "Shipment arrived at Destination Country";
+
+          setLatestEventData((prev) => ({
+            ...prev,
+            status: counterPartStatus,
+            statusDate:
+              counterPartData.statusDate ||
+              new Date().toISOString().split("T")[0],
+            time:
+              counterPartData.time ||
+              new Date().toLocaleTimeString("en-IN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+          }));
+
+          setValue("status", counterPartStatus);
+          setValue("statusDate", counterPartData.statusDate || "");
+          setValue("time", counterPartData.time || "");
+        } else {
+          setCounterPartInscanData(null);
+        }
+      } catch (error) {
+        console.error("Error fetching counter part inscan:", error);
+        setCounterPartInscanData(null);
+      }
+
+      // fetch status + web history
       const statusRes = await axios.get(
         `${server}/shipment-query/shipment-status?awbNo=${awbNo.toUpperCase()}`,
       );
-
       if (statusRes.data?.data) {
         const { latestStatus, history } = statusRes.data.data;
 
-        setLatestEventData(latestStatus);
+        // Only update if we don't have counter part status or if counter part status is not set
+        if (!counterPartInscanData?.counterPartInscan) {
+          setLatestEventData(latestStatus);
+          setValue("status", latestStatus.status || "");
+          setValue("statusDate", latestStatus.statusDate || "");
+          setValue("time", latestStatus.time || "");
+        }
+
         setEventActivityData(history);
         setStatusKey((k) => k + 1);
       } else {
-        setLatestEventData({});
+        if (!counterPartInscanData?.counterPartInscan) {
+          setLatestEventData({});
+        }
         setEventActivityData([]);
       }
 
-      // Set child shipments data with bagging details
+      // Set child shipments data
       if (run.childShipments && run.childShipments.length > 0) {
-        // console.log("Child shipments with bagging data:", run.childShipments);
         setChildShipmentsData(run.childShipments);
       } else {
         setChildShipmentsData([]);
       }
 
-      // Set consignee and consignor details from the response
-      if (run.consigneeDetail) {
-        setConsigneeDetail(run.consigneeDetail);
-      }
-      if (run.consignorDetail) {
-        setConsignorDetail(run.consignorDetail);
-      }
+      if (run.consigneeDetail) setConsigneeDetail(run.consigneeDetail);
+      if (run.consignorDetail) setConsignorDetail(run.consignorDetail);
 
       setRunDetails([
         { label: "Mawb No.", value: run.mawb },
@@ -157,16 +206,10 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
         { label: "Sector", value: run.sector },
         { label: "Origin", value: run.origin },
         { label: "Destination", value: run.destination },
-        {
-          label: "Date",
-          value: new Date(run.date).toLocaleDateString(),
-        },
+        { label: "Date", value: new Date(run.date).toLocaleDateString() },
       ]);
 
-      // Fetch forwarding data from portal/get-shipments
       await fetchForwardingData(awbNo);
-
-      // Fetch complaint data
       await fetchComplaintData(awbNo);
     } catch (error) {
       console.error("Error fetching AWB:", error?.message || error);
@@ -178,24 +221,19 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
 
   const fetchForwardingData = async (awbNumber) => {
     try {
-      // Get data from portal/get-shipments endpoint
       const shipmentResponse = await axios.get(
         `${server}/portal/get-shipments?awbNo=${awbNumber.toUpperCase()}`,
       );
-
-      // Get child shipments data from shipment-query
       const childResponse = await axios.get(
         `${server}/shipment-query?awbNo=${awbNumber}`,
       );
 
       const forwarding = [];
-      const addedForwardingNumbers = new Set(); // Track added forwarding numbers
-
+      const addedForwardingNumbers = new Set();
       let mainForwarderCode = "";
       let mainColoaderName = "";
       let mainCoLoaderNumber = "";
 
-      // Add main shipment forwarding data if exists
       if (shipmentResponse?.data?.shipment) {
         const shipment = shipmentResponse.data.shipment;
         mainForwarderCode = shipment.forwarder || "";
@@ -215,7 +253,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
           });
           addedForwardingNumbers.add(shipment.forwardingNo);
         } else if (!shipment.forwardingNo && mainForwarderCode) {
-          // If no forwarding number but has forwarder code, still add it
           forwarding.push({
             srNo: 1,
             forwardingNumber: "",
@@ -226,12 +263,8 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
         }
       }
 
-      // Add child shipments forwarding data with same forwarder code as main AWB
       if (childResponse?.data?.response?.childShipments) {
-        const childShipments = childResponse.data.response.childShipments;
-
-        childShipments.forEach((child) => {
-          // Only add if forwarding number exists and hasn't been added yet
+        childResponse.data.response.childShipments.forEach((child) => {
           if (
             child.forwardingNo &&
             !addedForwardingNumbers.has(child.forwardingNo)
@@ -239,7 +272,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
             forwarding.push({
               srNo: forwarding.length + 1,
               forwardingNumber: child.forwardingNo,
-              forwarderCode: mainForwarderCode, // Use main AWB's forwarder code
+              forwarderCode: mainForwarderCode,
               coloaderName: mainColoaderName,
               coLoaderNumber: mainCoLoaderNumber,
             });
@@ -248,7 +281,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
         });
       }
 
-      // console.log("Forwarding data (deduplicated):", forwarding);
       setForwardingData(forwarding);
     } catch (error) {
       console.error("Error fetching forwarding data:", error);
@@ -261,25 +293,17 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
       const eventResponse = await axios.get(
         `${server}/event-activity?awbNo=${awbNumber}`,
       );
-
       if (eventResponse?.data) {
         const e = eventResponse.data;
-
-        // Determine the number of events
         const totalEvents = e.eventCode?.length || 0;
-
-        // Build an array of events with formatted dates
         const allEvents = Array.from({ length: totalEvents }, (_, i) => {
           const eventDate = e.eventDate?.[i];
           let formattedDate = "";
-
           if (eventDate) {
             const d = new Date(eventDate);
-            if (!isNaN(d.getTime())) {
-              formattedDate = d.toLocaleDateString("en-GB"); // DD/MM/YYYY format
-            }
+            if (!isNaN(d.getTime()))
+              formattedDate = d.toLocaleDateString("en-GB");
           }
-
           return {
             awbNo: e.awbNo,
             eventCode: e.eventCode?.[i] || "",
@@ -291,11 +315,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
             eventLogTime: normalizeTime(e.eventLogTime?.[i]) || "",
           };
         });
-
-        // console.log("Formatted event data for table:", allEvents);
         setEventActivityData(allEvents);
-
-        // Get the latest event (last entry in the arrays)
         if (totalEvents > 0) {
           const latestIndex = totalEvents - 1;
           const latest = {
@@ -307,16 +327,11 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
             receiverName: e.receiverName || "",
             remark: e.remark || "",
           };
-          setLatestEventData(latest);
-
-          // Set values in form
           setValue("statusDate", latest.statusDate);
           setValue("time", latest.time);
           setValue("status", latest.status);
           setValue("receiverName", latest.receiverName);
           setValue("remark", latest.remark);
-
-          // optional state (for tables / display)
           setLatestEventData(latest);
         }
       } else {
@@ -336,43 +351,31 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
         setComplaintRowData([]);
         return;
       }
-
       const response = await axios.get(
         `${server}/register-complaint?awbNo=${awbNumber}`,
       );
-
       if (response?.data) {
         const complaints = Array.isArray(response.data)
           ? response.data
           : response.data.complaints || [];
-
-        // Filter complaints that match the entered AWB number
         const filteredComplaints = complaints.filter(
-          (complaint) => complaint.awbNo === awbNumber,
+          (c) => c.awbNo === awbNumber,
         );
-
-        // Map complaint data to table format
-        const formattedComplaints = filteredComplaints.map(
-          (complaint, index) => {
-            // Get the last entry from history array
-            const lastHistory =
-              complaint.history && complaint.history.length > 0
-                ? complaint.history[complaint.history.length - 1]
-                : {};
-
-            return {
-              awbNo: complaint.awbNo || "",
-              date: formatDateToDDMMYYYY(complaint.date) || "",
-              caseType: complaint.caseType || "",
-              action: lastHistory.action || "",
-              lastDate: formatDateToDDMMYYYY(lastHistory.date) || "",
-              actionUser: lastHistory.actionUser || "",
-              statusHistory: lastHistory.statusHistory || "",
-            };
-          },
-        );
-
-        // console.log("Formatted complaint data:", formattedComplaints);
+        const formattedComplaints = filteredComplaints.map((complaint) => {
+          const lastHistory =
+            complaint.history && complaint.history.length > 0
+              ? complaint.history[complaint.history.length - 1]
+              : {};
+          return {
+            awbNo: complaint.awbNo || "",
+            date: formatDateToDDMMYYYY(complaint.date) || "",
+            caseType: complaint.caseType || "",
+            action: lastHistory.action || "",
+            lastDate: formatDateToDDMMYYYY(lastHistory.date) || "",
+            actionUser: lastHistory.actionUser || "",
+            statusHistory: lastHistory.statusHistory || "",
+          };
+        });
         setComplaintRowData(formattedComplaints);
       } else {
         setComplaintRowData([]);
@@ -383,7 +386,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
     }
   };
 
-  // Column definitions
   const columns = [
     { key: "eventDate", label: "Event Date" },
     { key: "eventTime", label: "Event Time" },
@@ -393,7 +395,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
     { key: "eventUser", label: "Event User" },
     { key: "eventLogTime", label: "Event Log Time" },
   ];
-
   const columnsData = [
     { key: "srNo", label: "Sr No." },
     { key: "forwardingNumber", label: "Forwarding Number" },
@@ -401,7 +402,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
     { key: "coloaderName", label: "Coloader Name" },
     { key: "coLoaderNumber", label: "Coloader Number" },
   ];
-
   const complaintData = [
     { key: "awbNo", label: "AWB No." },
     { key: "date", label: "Date" },
@@ -411,7 +411,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
     { key: "actionUser", label: "Action User" },
     { key: "statusHistory", label: "Status History" },
   ];
-
   const childShipmentsColumns = [
     { key: "srNo", label: "Sr No." },
     { key: "childAwbNo", label: "Child AWB No." },
@@ -424,17 +423,35 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
     { key: "flightNo", label: "Flight No." },
     { key: "obc", label: "OBC" },
   ];
-  // Add this function after your existing helper functions
+
   const handleFormKeyDown = (e) => {
     if (e.key === "Enter") {
-      e.preventDefault(); // Prevent form submission
+      e.preventDefault();
       const currentAwb = watch("awbNo");
-      if (currentAwb && currentAwb.trim() !== "") {
-        fetchAwb();
-      }
+      if (currentAwb && currentAwb.trim() !== "") fetchAwb();
     }
   };
+  // Add this useEffect to watch for counterPartInscanData changes
+  useEffect(() => {
+    if (counterPartInscanData?.counterPartInscan === true) {
+      const statusText = counterPartInscanData.location
+        ? `Shipment arrived at Destination Country - ${counterPartInscanData.location}`
+        : "Shipment arrived at Destination Country";
 
+      setLatestEventData((prev) => ({
+        ...prev,
+        status: statusText,
+        statusDate: counterPartInscanData.statusDate || prev.statusDate,
+        time: counterPartInscanData.time || prev.time,
+      }));
+
+      setValue("status", statusText);
+      if (counterPartInscanData.statusDate)
+        setValue("statusDate", counterPartInscanData.statusDate);
+      if (counterPartInscanData.time)
+        setValue("time", counterPartInscanData.time);
+    }
+  }, [counterPartInscanData, setValue]);
   const handleRefresh = () => {
     setRefreshKey((k) => k + 1);
     setLatestEventData({});
@@ -443,17 +460,20 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
     setChildShipmentsData([]);
     setEventActivityData([]);
     setConsigneeDetail({});
-
     setNotification({ type: "", message: "", visible: false });
     setRunDetails([]);
     setChildShipmentsData([]);
     setConsignorDetail({});
     setConsigneeDetail({});
+    setCounterPartInscanData(null);
     setValue("awbNo", "");
     setshipmentQuery({});
     setValue("statusDate", "");
     setValue("statusTime", "");
   };
+
+  // ── derived counter part inscan status string ───────────────────────────────
+  const counterPartInscanStatus = getCounterPartInscanStatus();
 
   return (
     <form className="flex flex-col gap-[34px]" onKeyDown={handleFormKeyDown}>
@@ -463,7 +483,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
         visible={notification.visible}
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
-
 
       <Heading
         title="Shipment Query"
@@ -815,6 +834,19 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
                     inputValue={shipmentQuery.holdReason || ""}
                   />
                 </div>
+
+                {/* ── Counter Part Inscan Status ── */}
+                <div
+                  className={`rounded-md ${counterPartInscanStatus ? "bg-[#C0FFC0]" : ""}`}
+                >
+                  <DummyInputBoxWithLabelTransparent
+                    label="Counter Part Inscan Status"
+                    register={register}
+                    setValue={setValue}
+                    value="counterPartInscanStatus"
+                    inputValue={counterPartInscanStatus}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -875,7 +907,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
                 disabled
                 resetFactor={refreshKey}
               />
-
               <DateInputBox
                 key={`time-${statusKey}`}
                 placeholder="Time"
@@ -908,7 +939,6 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
                   initialValue={latestEventData.receiverName || ""}
                   disabled
                 />
-
                 <InputBox
                   key={`remark-${statusKey}`}
                   placeholder="Remark"
@@ -1022,11 +1052,7 @@ const ShipmentQuery = ({ setRegisterComplaint }) => {
           />
         </div>
       </div>
-      <div className="flex justify-end">
-        {/* <div>
-          <OutlinedButtonRed label={`Close`} />
-        </div> */}
-      </div>
+      <div className="flex justify-end"></div>
     </form>
   );
 };
