@@ -1,11 +1,11 @@
 {
-  "version": "0.1.68",
-  "notes": "Fixed Awb Entry",
-  "pub_date": "2026-04-24T12:17:09Z",
+  "version": "0.1.69",
+  "notes": "Fixed Counter part inscan",
+  "pub_date": "2026-04-24T13:02:17Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IY3lhM2VIMVlzWVN4L3g3bXU0Z2hKTlRybGtkam5xYmxuSWdpcld4cWxFSXJLNWVPL3lGbnU2V1dFNTNzeCtSTi9uWmw0WEtvZFliZzdnM2dRMXpJZUE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc3MDMzMDI4CWZpbGU6TTVDIExvZ3NfMC4xLjY4X3g2NF9lbi1VUy5tc2kuemlwClBnc1FwMXVmSW1jbnJOZ3VZcGFjOEtXdHozM1VIR3NVSEF4bmlEVlR2cVpxL2FZdGhreWpCcXhwK0gzRld0R1hVS0xVME50bmg3MTRJdDh0Mm5jaERBPT0K",
-      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.68/M5C.Logs_0.1.68_x64_en-US.msi.zip"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYzRiZWRTMm5nOXI3Sk0yS3N2bHRIRThnNHZLbjBsUHRlcU8xK1FzRXdOdFBEUmRDM2hOYjRVSXd1Q1RGMk1PUWx6QTN4T0YyVDVxYiswTHBqNmhzS1FvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc3MDM1NzM3CWZpbGU6TTVDIExvZ3NfMC4xLjY5X3g2NF9lbi1VUy5tc2kuemlwClZ1eDIwU1p4cm1SdjFkbThpaUdMa2JUVll2YTJaNWl4S1d6eFhuL203RTdtTmV2TE50VUpmOGVvRFJJMW9rcy9ZT0NLazRBSHBNdThpcXJGekIxZkF3PT0K",
+      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.69/M5C.Logs_0.1.69_x64_en-US.msi.zip"
     }
   }
 }
