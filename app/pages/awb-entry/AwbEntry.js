@@ -693,7 +693,7 @@ function AwbEntry() {
           insertUser,
         });
 
-        if (response.data?.status == 201) {
+        if (response?.status === 201 || response?.status === 200 || response.data?.status === 201) {
           const createdAwbNo = response.data?.awbNo || payload?.awbNo;
 
           await logAwbAction("Shipment created on post");
@@ -707,7 +707,7 @@ function AwbEntry() {
             );
           }
 
-          showNotification("success", "Data Saved Successfully");
+          showNotification("success", `Data Saved Successfully ${createdAwbNo ? `- AWB No: ${createdAwbNo}` : ''}`);
           handleRefresh();
         }
       } catch (error) {
