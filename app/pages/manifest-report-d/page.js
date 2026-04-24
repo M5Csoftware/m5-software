@@ -52,7 +52,7 @@ export default function ManifestReport() {
       { key: "value", label: "value" },
       { key: "dest", label: "dest" },
     ],
-    []
+    [],
   );
 
   const contentRef = useRef();
@@ -74,7 +74,7 @@ export default function ManifestReport() {
 
   const getFilteredData = (dataset) => {
     if (!Array.isArray(dataset)) return [];
-    
+
     const from = fromDate ? new Date(fromDate) : null;
     const to = toDate ? new Date(toDate) : null;
 
@@ -125,7 +125,7 @@ export default function ManifestReport() {
 
   const handleDownloadExcel = async () => {
     const filtered = getFilteredData(data);
-    
+
     if (!filtered || filtered.length === 0) {
       alert("No data to export");
       return;
@@ -161,7 +161,9 @@ export default function ManifestReport() {
         item.consignor || "",
         "NA",
         "NA",
-        enableCanada ? `${(parseFloat(item.value || 0) / (cadRate || 60)).toFixed(2)} CAD` : (item.value || ""),
+        enableCanada
+          ? `${(parseFloat(item.value || 0) / (cadRate || 60)).toFixed(2)} CAD`
+          : item.value || "",
         "CANADA",
         item.consignee || "",
         "NA",
@@ -230,53 +232,55 @@ export default function ManifestReport() {
     XLSX.utils.book_append_sheet(wb, ws, "Manifest");
     XLSX.writeFile(
       wb,
-      `Manifest_${new Date().toISOString().slice(0, 10)}.xlsx`
+      `Manifest_${new Date().toISOString().slice(0, 10)}.xlsx`,
     );
   };
 
   const handleDownloadCSV = async () => {
     const filtered = getFilteredData(data);
-    
+
     if (!filtered || filtered.length === 0) {
       alert("No data to export");
       return;
     }
-    
+
     const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet(filtered);
     const csv = XLSX.utils.sheet_to_csv(ws);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     saveAs(
       blob,
-      `Manifest_Report_${new Date().toISOString().slice(0, 10)}.csv`
+      `Manifest_Report_${new Date().toISOString().slice(0, 10)}.csv`,
     );
   };
 
   // Fetch run entry data and populate fields
   const fetchRunEntryData = async (runNumber) => {
     if (!runNumber) return;
-    
+
     try {
-      const response = await axios.get(`${server}/run-entry?runNo=${runNumber}`);
+      const response = await axios.get(
+        `${server}/run-entry?runNo=${runNumber}`,
+      );
       const runEntry = response.data;
-      
+
       if (runEntry) {
         setRunData(runEntry);
-        
+
         // Populate the form fields
         setValue("sector", runEntry.sector || "");
         setValue("a/lMawb", runEntry.almawb || "");
         setValue("obc", runEntry.obc || "");
         setValue("counterPart", runEntry.counterpart || "");
         setValue("flight", runEntry.flight || "");
-        
+
         // Format and set date
         if (runEntry.date) {
           const date = new Date(runEntry.date);
-          const formattedDate = date.toLocaleDateString('en-GB'); // DD/MM/YYYY format
+          const formattedDate = date.toLocaleDateString("en-GB"); // DD/MM/YYYY format
           setValue("date", formattedDate);
         }
-        
+
         // console.log("Run entry data loaded:", runEntry);
       }
     } catch (err) {
@@ -294,11 +298,17 @@ export default function ManifestReport() {
 
   // Fetch manifest shipment data
   const fetchManifestData = async (runNumber, page = 1) => {
-    if (!runNumber) return { shipments: [], pagination: { currentPage: 1, totalPages: 1, totalRecords: 0 } };
-    
+    if (!runNumber)
+      return {
+        shipments: [],
+        pagination: { currentPage: 1, totalPages: 1, totalRecords: 0 },
+      };
+
     setLoading(true);
     try {
-      const response = await axios.get(`${server}/portal/get-shipments?runNo=${runNumber}&page=${page}&limit=${pageLimit}`);
+      const response = await axios.get(
+        `${server}/portal/get-shipments?runNo=${runNumber}&page=${page}&limit=${pageLimit}`,
+      );
       const responseData = response.data.shipments || [];
       const pagination = response.data.pagination || {
         currentPage: 1,
@@ -343,7 +353,10 @@ export default function ManifestReport() {
       console.error("Failed fetching manifest data:", err);
       setData([]);
       setRowData([]);
-      return { transformed: [], pagination: { currentPage: 1, totalPages: 1, totalRecords: 0 } };
+      return {
+        transformed: [],
+        pagination: { currentPage: 1, totalPages: 1, totalRecords: 0 },
+      };
     } finally {
       setLoading(false);
     }
@@ -351,10 +364,10 @@ export default function ManifestReport() {
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
-    
+
     // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
     fetchManifestData(currentFilters, newPage);
   };
 
@@ -491,7 +504,7 @@ export default function ManifestReport() {
     setSingleAddress(false);
     setEnableBagNumber(false);
     setDemoRadio("Manifest (O)");
-    
+
     // Reset pagination
     setCurrentPage(1);
     setTotalPages(1);
@@ -512,11 +525,11 @@ export default function ManifestReport() {
       enableCanada: false,
       singleAddress: false,
       enableBagNumber: false,
-      accountType: "Manifest (O)"
+      accountType: "Manifest (O)",
     });
 
     // Increment refreshKey to force the entire form to re-render (clears all internal component states)
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleView = async () => {
@@ -532,7 +545,7 @@ export default function ManifestReport() {
     // Fetch both run entry and manifest data
     await fetchRunEntryData(query);
     const result = await fetchManifestData(query, 1);
-    
+
     if (result.transformed.length === 0) {
       alert("No shipments found for this run number");
     }
@@ -581,7 +594,11 @@ export default function ManifestReport() {
 
             {enableCanada && (
               <span className="text-xs text-gray-500 ml-1">
-                {cadRateLoading ? "(Fetching rate...)" : cadRate ? `(1 CAD = ${cadRate.toFixed(2)} INR)` : ""}
+                {cadRateLoading
+                  ? "(Fetching rate...)"
+                  : cadRate
+                    ? `(1 CAD = ${cadRate.toFixed(2)} INR)`
+                    : ""}
               </span>
             )}
 
@@ -624,7 +641,7 @@ export default function ManifestReport() {
         </div>
 
         <RedLabelHeading label="Run Details" />
-        
+
         <div className="flex flex-col gap-3">
           {/* First Row */}
           <div className="flex gap-3 w-full">
@@ -663,7 +680,11 @@ export default function ManifestReport() {
               <DummyInputBoxWithLabelDarkGray
                 label="Date"
                 value="date"
-                inputValue={rundata?.date ? new Date(rundata.date).toLocaleDateString('en-GB') : ""}
+                inputValue={
+                  rundata?.date
+                    ? new Date(rundata.date).toLocaleDateString("en-GB")
+                    : ""
+                }
                 register={register}
                 setValue={setValue}
               />
@@ -682,7 +703,7 @@ export default function ManifestReport() {
                 setValue={setValue}
               />
             </div>
-            
+
             <div className="flex gap-3 w-[24%]">
               <OutlinedButtonRed label="View" onClick={handleView} />
               <DownloadDropdown
@@ -700,6 +721,7 @@ export default function ManifestReport() {
           register={register}
           setValue={setValue}
           name="manifestreportd"
+          height="h-[45vh]"
         />
         <PaginationControls />
       </div>
@@ -762,7 +784,13 @@ export default function ManifestReport() {
                 <td className="px-2 pt-3">{item.wt}</td>
                 <td className="px-2 pt-3">{item.dest}</td>
                 <td className="px-2 pt-3">{item.description}</td>
-                <td className="px-2 pt-3">{enableCanada ? `${(parseFloat(item.value || 0) / (cadRate || 60)).toFixed(2)} CAD` : (typeof item.value === 'number' ? item.value.toFixed(2) : item.value)}</td>
+                <td className="px-2 pt-3">
+                  {enableCanada
+                    ? `${(parseFloat(item.value || 0) / (cadRate || 60)).toFixed(2)} CAD`
+                    : typeof item.value === "number"
+                      ? item.value.toFixed(2)
+                      : item.value}
+                </td>
               </tr>
             ))}
           </tbody>

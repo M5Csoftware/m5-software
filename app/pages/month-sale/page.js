@@ -100,7 +100,7 @@ function MonthSale() {
   const [fullscreen, setFullScreen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -134,7 +134,7 @@ function MonthSale() {
       { key: "month12", label: "Dec", type: "number" },
       { key: "yearTotal", label: "Year Total", type: "number" },
     ],
-    []
+    [],
   );
 
   const formatDataForExport = () => {
@@ -145,7 +145,8 @@ function MonthSale() {
         if (column.type === "number" && typeof value === "number") {
           formattedRow[column.label] = value.toFixed(2);
         } else {
-          formattedRow[column.label] = value !== null && value !== undefined ? value : "";
+          formattedRow[column.label] =
+            value !== null && value !== undefined ? value : "";
         }
       });
       return formattedRow;
@@ -177,7 +178,7 @@ function MonthSale() {
               }
               return value;
             })
-            .join(",")
+            .join(","),
         ),
       ].join("\n");
 
@@ -187,7 +188,7 @@ function MonthSale() {
       link.setAttribute("href", url);
       link.setAttribute(
         "download",
-        `month-sale-${getValues("year") || "data"}.csv`
+        `month-sale-${getValues("year") || "data"}.csv`,
       );
       link.style.visibility = "hidden";
       document.body.appendChild(link);
@@ -214,7 +215,7 @@ function MonthSale() {
       const colWidths = columns.map((col) => {
         const maxLength = Math.max(
           col.label.length,
-          ...formattedData.map((row) => String(row[col.label] || "").length)
+          ...formattedData.map((row) => String(row[col.label] || "").length),
         );
         return { wch: Math.min(Math.max(maxLength + 2, 10), 50) };
       });
@@ -277,7 +278,7 @@ function MonthSale() {
       }
 
       const response = await axios.get(
-        `${server}/month-sale?${queryParams.toString()}`
+        `${server}/month-sale?${queryParams.toString()}`,
       );
 
       if (response.data.success) {
@@ -399,7 +400,6 @@ function MonthSale() {
     );
   };
 
-
   const handleReset = () => {
     setValue("salePerson", "");
     setValue("company", "");
@@ -490,7 +490,7 @@ function MonthSale() {
           columns={columns}
           rowData={rowData}
           loading={loading}
-          className={`h-[55vh] border-b-0 rounded-b-none`}
+          className={`h-[55vh]`}
         />
         <PaginationControls {...paginationProps} />
         {fullscreen && (

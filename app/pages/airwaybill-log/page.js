@@ -103,7 +103,7 @@ const AirwaybillLog = () => {
     try {
       if (reportType === "Action") {
         const resp = await axios.get(
-          `${server}/awb-log/action?awbNo=${encodeURIComponent(queryAwbNo)}&page=${page}&limit=${pageLimit}`
+          `${server}/awb-log/action?awbNo=${encodeURIComponent(queryAwbNo)}&page=${page}&limit=${pageLimit}`,
         );
         const doc = resp.data;
         const data = doc.logs || doc.data || [];
@@ -135,7 +135,12 @@ const AirwaybillLog = () => {
             actionUser: log.actionUser || "",
             actionSystemIP: `${systemName} - ${ip}`,
             accountCode: doc.accountCode || log.accountCode || "",
-            customerName: doc.customer || doc.customerName || log.customer || log.customerName || "",
+            customerName:
+              doc.customer ||
+              doc.customerName ||
+              log.customer ||
+              log.customerName ||
+              "",
           };
         });
 
@@ -148,17 +153,22 @@ const AirwaybillLog = () => {
           setNoRecords(true);
           showNotification("error", "No Action Logs found");
         } else {
-          showNotification("success", `Loaded ${mapped.length} Action Logs (Page ${pagination.currentPage} of ${pagination.totalPages})`);
+          showNotification(
+            "success",
+            `Loaded ${mapped.length} Action Logs (Page ${pagination.currentPage} of ${pagination.totalPages})`,
+          );
         }
       } else {
         const resp = await axios.get(
           `${server}/awb-log/log-details?awbNo=${encodeURIComponent(
-            queryAwbNo
-          )}&page=${page}&limit=${pageLimit}`
+            queryAwbNo,
+          )}&page=${page}&limit=${pageLimit}`,
         );
 
         const responseData = resp.data;
-        const detailsArray = responseData.data || (Array.isArray(responseData) ? responseData : [responseData]);
+        const detailsArray =
+          responseData.data ||
+          (Array.isArray(responseData) ? responseData : [responseData]);
         const pagination = responseData.pagination || {
           currentPage: 1,
           totalPages: 1,
@@ -171,8 +181,8 @@ const AirwaybillLog = () => {
             shipmentDate: d.shipmentDate
               ? new Date(d.shipmentDate).toLocaleDateString()
               : d.createdAt
-              ? new Date(d.createdAt).toLocaleDateString()
-              : "",
+                ? new Date(d.createdAt).toLocaleDateString()
+                : "",
             originCode: d.originCode || d.from || "",
             sector: d.sector || "",
             destination: d.destination || d.to || "",
@@ -191,8 +201,8 @@ const AirwaybillLog = () => {
             logDate: d.logDate
               ? new Date(d.logDate).toLocaleString()
               : d.updatedAt
-              ? new Date(d.updatedAt).toLocaleString()
-              : "",
+                ? new Date(d.updatedAt).toLocaleString()
+                : "",
             lastUser: d.lastUser || "",
             inscanUser: d.inscanUser || "",
           };
@@ -207,7 +217,10 @@ const AirwaybillLog = () => {
           setNoRecords(true);
           showNotification("error", "No Log Details found");
         } else {
-          showNotification("success", `Found ${mappedDetails.length} AWB Logs (Page ${pagination.currentPage} of ${pagination.totalPages})`);
+          showNotification(
+            "success",
+            `Found ${mappedDetails.length} AWB Logs (Page ${pagination.currentPage} of ${pagination.totalPages})`,
+          );
         }
       }
     } catch (err) {
@@ -408,7 +421,12 @@ const AirwaybillLog = () => {
             />
 
             <div>
-              <SimpleButton name={loading ? "Loading..." : "Show"} onClick={handleShow} type="button" className={`${loading ? "opacity-75 cursor-pointer" : ""}`}/>
+              <SimpleButton
+                name={loading ? "Loading..." : "Show"}
+                onClick={handleShow}
+                type="button"
+                className={`${loading ? "opacity-75 cursor-pointer" : ""}`}
+              />
             </div>
           </div>
 
@@ -419,7 +437,9 @@ const AirwaybillLog = () => {
               name="airwaybilltable"
               columns={currentColumns}
               rowData={rowData}
-              className={loading ? "opacity-75 pointer-events-none" : ""}
+              className={
+                loading ? "opacity-75 pointer-events-none h-[50vh]" : "h-[50vh]"
+              }
             />
             <PaginationControls />
           </div>

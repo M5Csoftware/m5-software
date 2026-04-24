@@ -18,6 +18,7 @@ export default function Table({
   editable = false,
   onEditComplete,
   height = "",
+  className = "",
 }) {
   const [editedData, setEditedData] = useState(EMPTY_OBJECT);
   const [localSelectedRows, setLocalSelectedRows] = useState(selectedRows);
@@ -304,14 +305,17 @@ export function TableWithSorting({
     }
   }, [rowData, name, setValue]);
 
-  const handleSort = useCallback((key) => {
-    if (sortKey === key) {
-      setSortOrder((prevOrder) => (prevOrder === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortOrder("asc");
-    }
-  }, [sortKey]);
+  const handleSort = useCallback(
+    (key) => {
+      if (sortKey === key) {
+        setSortOrder((prevOrder) => (prevOrder === "asc" ? "desc" : "asc"));
+      } else {
+        setSortKey(key);
+        setSortOrder("asc");
+      }
+    },
+    [sortKey],
+  );
 
   const sortedData = useMemo(() => {
     return [...rowData].sort((a, b) => {
@@ -406,7 +410,11 @@ function TableHeaderWithSorting({
   );
 }
 
-const TableRowWithSorting = memo(function TableRowWithSorting({ rowData, columns, isTicketDashboard }) {
+const TableRowWithSorting = memo(function TableRowWithSorting({
+  rowData,
+  columns,
+  isTicketDashboard,
+}) {
   return (
     <tr className="border-b h-11">
       {columns.map((column, index) => (
@@ -419,7 +427,8 @@ const TableRowWithSorting = memo(function TableRowWithSorting({ rowData, columns
           <span>
             {column.key === "date"
               ? formatDate(rowData[column.key])
-              : column.type === "number" && typeof rowData[column.key] === "number"
+              : column.type === "number" &&
+                  typeof rowData[column.key] === "number"
                 ? rowData[column.key].toFixed(2)
                 : isTicketDashboard && column.key === "ticketNo"
                   ? rowData[column.key].ticketNo
@@ -835,26 +844,29 @@ export function TableWithSortingAndCopy({
 }) {
   const [sortKey, setSortKey] = useState("awbNo");
   const [sortOrder, setSortOrder] = useState("asc");
- 
+
   // Selection state
   const [isSelecting, setIsSelecting] = useState(false);
   const [startCell, setStartCell] = useState(null);
   const [endCell, setEndCell] = useState(null);
- 
+
   useEffect(() => {
     if (name && setValue) {
       setValue(`${name}Table`, rowData);
     }
   }, [rowData, name, setValue]);
 
-  const handleSort = useCallback((key) => {
-    if (sortKey === key) {
-      setSortOrder((prevOrder) => (prevOrder === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortOrder("asc");
-    }
-  }, [sortKey]);
+  const handleSort = useCallback(
+    (key) => {
+      if (sortKey === key) {
+        setSortOrder((prevOrder) => (prevOrder === "asc" ? "desc" : "asc"));
+      } else {
+        setSortKey(key);
+        setSortOrder("asc");
+      }
+    },
+    [sortKey],
+  );
 
   const sortedData = useMemo(() => {
     return [...rowData].sort((a, b) => {
@@ -1278,7 +1290,10 @@ function TableHeaderWithTotal({ columns }) {
   );
 }
 
-const TableRowWithTotal = memo(function TableRowWithTotal({ rowData, columns }) {
+const TableRowWithTotal = memo(function TableRowWithTotal({
+  rowData,
+  columns,
+}) {
   return (
     <tr className="border-b h-11 ">
       {columns.map((column, index) => (
@@ -1334,7 +1349,12 @@ export function TableWithCTD({
   );
 }
 
-const TableRowWithCTD = memo(function TableRowWithCTD({ rowData, columns, handleDelete, index }) {
+const TableRowWithCTD = memo(function TableRowWithCTD({
+  rowData,
+  columns,
+  handleDelete,
+  index,
+}) {
   return (
     <tr className="border-b border-alice-blue h-11">
       {columns.map((column, colIndex) => (

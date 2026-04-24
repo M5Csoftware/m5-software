@@ -13,7 +13,7 @@ export default function BranchManifestReport() {
   const { register, setValue, reset } = useForm();
   const [accountType, setAccountType] = useState("manifestO");
   const [refreshKey, setRefreshKey] = useState(0);
-  
+
   // Refs to access child component methods
   const manifestORef = useRef(null);
   const manifestRRef = useRef(null);
@@ -36,7 +36,7 @@ export default function BranchManifestReport() {
   const handleTabChange = (index, value) => {
     setActiveTab(index);
     setAccountType(value);
-    
+
     // Call refresh when switching tabs
     handleRefresh();
   };
@@ -45,22 +45,22 @@ export default function BranchManifestReport() {
   const handleRefresh = () => {
     // Reset the parent form
     reset();
-    
+
     // Trigger refresh in the active component
     if (activeTab === 0 && manifestORef.current?.handleRefresh) {
       manifestORef.current.handleRefresh();
     } else if (activeTab === 1 && manifestRRef.current?.handleRefresh) {
       manifestRRef.current.handleRefresh();
     }
-    
+
     // Force re-render by updating refresh key
-    setRefreshKey(prev => prev + 1);
-    
+    setRefreshKey((prev) => prev + 1);
+
     // console.log("Page refreshed");
   };
 
   return (
-    <div className="w-full flex flex-col gap-[34px]" key={refreshKey}>
+    <div className="w-full flex flex-col gap-3" key={refreshKey}>
       <Heading
         title={`Branch Manifest Report`}
         bulkUploadBtn="hidden"
@@ -78,7 +78,7 @@ export default function BranchManifestReport() {
         accountType={accountType}
         setAccountType={setAccountType}
       />
-      
+
       <div className="flex w-full">
         <div
           className={`${

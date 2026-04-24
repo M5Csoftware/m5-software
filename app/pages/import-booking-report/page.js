@@ -651,14 +651,13 @@ const NewImportBookingReport = () => {
           </div>
         </div>
 
-
         <TableWithSorting
           register={register}
           setValue={setValue}
           name="newImportBookingReportTable"
           columns={columns}
           rowData={reports}
-          className={`h-72`}
+          className={`h-[50vh]`}
         />
 
         <PaginationControls />
