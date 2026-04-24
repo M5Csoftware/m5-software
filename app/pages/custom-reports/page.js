@@ -461,7 +461,7 @@ const CustomReports = () => {
                 register={register}
                 columns={dynamicColumns}
                 rowData={reportData}
-                className={`h-[38vh] border-battleship-gray mt-4`}
+                className={`h-[40vh] border-battleship-gray mt-4`}
               />
             </div>
           </div>
