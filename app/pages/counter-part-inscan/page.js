@@ -42,8 +42,13 @@ const CounterPartInscan = () => {
   const [loadingAwb, setLoadingAwb] = useState(false);
   const [saving, setSaving] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [awbKey, setAwbKey] = useState(0);
+  const [runKey, setRunKey] = useState(0);
+  const [alreadyInscanned, setAlreadyInscanned] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
   const awbInputRef = useRef(null);
+  const runNoInputRef = useRef(null);
 
   // live clock
   useEffect(() => {
@@ -59,17 +64,26 @@ const CounterPartInscan = () => {
     return () => clearInterval(t);
   }, []);
 
+  // Set default value for arrivalRemark on component mount
+  useEffect(() => {
+    setValue("arrivalRemark", "Shipment arrived at Destination Country");
+  }, [setValue]);
+
   // ── refresh function ───────────────────────────────────────────────────────
   const handleRefresh = () => {
     setRefreshKey((k) => k + 1);
+    setAwbKey((k) => k + 1);
+    setRunKey((k) => k + 1);
     setRunNos([]);
     setRunReceived([]);
     setShipmentDetails(null);
     setScannedAwbs([]);
+    setAlreadyInscanned(false);
+    setIsChecking(false);
     setValue("runNoInput", "");
     setValue("awbInput", "");
     setValue("location", "");
-    setValue("arrivalRemark", "");
+    setValue("arrivalRemark", "Shipment arrived at Destination Country");
     setCurrentTime(now());
     toast.success("Form refreshed");
   };
@@ -77,7 +91,10 @@ const CounterPartInscan = () => {
   // ── add a run number ───────────────────────────────────────────────────────
   const handleAddRunNo = async () => {
     const rn = runNoInput.trim().toUpperCase();
-    if (!rn) return;
+    if (!rn) {
+      toast.error("Please enter a Run No.");
+      return;
+    }
     if (runNos.find((r) => r.runNo === rn)) {
       toast.error("Run No. already added");
       return;
@@ -89,6 +106,10 @@ const CounterPartInscan = () => {
         setRunNos((prev) => [...prev, newEntry]);
         setRunReceived((prev) => [...prev, ...newEntry.awbNos]);
         setValue("runNoInput", "");
+        setRunKey((k) => k + 1); // force remount to clear input
+        if (runNoInputRef.current) {
+          runNoInputRef.current.focus();
+        }
         toast.success(`Run ${rn} added (${newEntry.awbNos.length} AWBs)`);
       }
     } catch {
@@ -104,66 +125,141 @@ const CounterPartInscan = () => {
     }
   };
 
-  // ── fetch AWB details ──────────────────────────────────────────────────────
-  const handleFetchAwb = async () => {
-    const awb = awbInput.trim().toUpperCase();
-    if (!awb) return;
-    if (scannedAwbs.find((s) => s.awbNo === awb)) {
-      toast.error("AWB already scanned");
-      return;
-    }
-    setLoadingAwb(true);
+  // ── check if AWB is already counter part inscanned ─────────────────────────
+  const checkIfAlreadyInscanned = async (awb) => {
     try {
-      const res = await axios.get(`${server}/counter-part-inscan?awbNo=${awb}`);
-      if (res.data.success) {
-        setShipmentDetails(res.data.data);
-      } else {
-        toast.error(res.data.message || "AWB not found");
-        setShipmentDetails(null);
+      const res = await axios.get(
+        `${server}/counter-part-inscan?checkAwb=${awb}`,
+      );
+      if (res.data.success && res.data.alreadyScanned === true) {
+        return true;
       }
-    } catch {
-      toast.error("Failed to fetch shipment details");
-      setShipmentDetails(null);
-    } finally {
-      setLoadingAwb(false);
+      return false;
+    } catch (error) {
+      console.error("Error checking counter part inscan status:", error);
+      return false;
     }
   };
+
+  // ── fetch AWB details automatically when AWB is entered ─────────────────────
+  useEffect(() => {
+    const fetchAwbAutomatically = async () => {
+      const awb = awbInput.trim().toUpperCase();
+      if (!awb) {
+        setShipmentDetails(null);
+        setAlreadyInscanned(false);
+        return;
+      }
+
+      if (scannedAwbs.find((s) => s.awbNo === awb)) {
+        toast.error(`AWB ${awb} already scanned in this session`);
+        setShipmentDetails(null);
+        setAlreadyInscanned(false);
+        return;
+      }
+
+      setIsChecking(true);
+      const isAlreadyInscanned = await checkIfAlreadyInscanned(awb);
+      setIsChecking(false);
+
+      if (isAlreadyInscanned) {
+        toast.error(
+          `AWB ${awb} has already been counter part inscanned. Cannot scan again.`,
+        );
+        setAlreadyInscanned(true);
+        setShipmentDetails(null);
+        return;
+      }
+
+      setAlreadyInscanned(false);
+      setLoadingAwb(true);
+
+      try {
+        const res = await axios.get(
+          `${server}/counter-part-inscan?awbNo=${awb}`,
+        );
+        if (res.data.success) {
+          setShipmentDetails(res.data.data);
+        } else {
+          setShipmentDetails(null);
+          toast.error(res.data.message || "AWB not found");
+        }
+      } catch {
+        setShipmentDetails(null);
+        toast.error("Failed to fetch shipment details");
+      } finally {
+        setLoadingAwb(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(() => {
+      if (awbInput.trim()) {
+        fetchAwbAutomatically();
+      }
+    }, 500);
+
+    return () => clearTimeout(debounceTimer);
+  }, [awbInput, server, scannedAwbs]);
 
   // ── scan AWB ───────────────────────────────────────────────────────────────
   const handleScan = () => {
     if (!shipmentDetails) {
-      toast.error("Fetch a shipment first");
+      toast.error("Please enter a valid AWB number first");
       return;
     }
+
+    if (alreadyInscanned) {
+      toast.error("This AWB has already been counter part inscanned");
+      return;
+    }
+
+    if (scannedAwbs.find((s) => s.awbNo === shipmentDetails.awbNo)) {
+      toast.error("AWB already scanned in this session");
+      return;
+    }
+
     setScannedAwbs((prev) => [
       ...prev,
       { ...shipmentDetails, counterPartInscan: true, scannedAt: new Date() },
     ]);
     setValue("awbInput", "");
+    setAwbKey((k) => k + 1); // force remount to clear input
     setShipmentDetails(null);
-    awbInputRef.current?.focus();
-    toast.success(`${shipmentDetails.awbNo} scanned`);
+    setAlreadyInscanned(false);
+    if (awbInputRef.current) {
+      awbInputRef.current.focus();
+    }
+    toast.success(`${shipmentDetails.awbNo} scanned successfully`);
   };
 
   // ── save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
+    if (!location || location.trim() === "") {
+      toast.error("Location is mandatory. Please enter a location.");
+      return;
+    }
+
     if (scannedAwbs.length === 0) {
       toast.error("No AWBs scanned yet");
       return;
     }
+
     setSaving(true);
     try {
       await axios.post(`${server}/counter-part-inscan`, {
         statusDate: currentTime,
         location,
-        arrivalRemark,
+        arrivalRemark: "Shipment arrived at Destination Country",
         runNos,
         scannedAwbs,
       });
-      toast.success("Counter Part Inscan saved!");
+      toast.success("Counter Part Inscan saved successfully!");
       handleRefresh();
-    } catch {
-      toast.error("Failed to save. Please try again.");
+    } catch (error) {
+      console.error("Save error:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to save. Please try again.",
+      );
     } finally {
       setSaving(false);
     }
@@ -172,7 +268,7 @@ const CounterPartInscan = () => {
   // ─── render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-4">
-      {/* ── Header with Back Button and Heading ── */}
+      {/* ── Header ── */}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -259,22 +355,23 @@ const CounterPartInscan = () => {
               </div>
               {/* Location + Arrival Remark */}
               <div className="flex gap-3">
-                <div>
+                <div className="flex-1">
                   <InputBox
                     key={`location-${refreshKey}`}
                     setValue={setValue}
                     register={register}
                     value="location"
-                    placeholder="Location"
+                    placeholder="Location *"
+                    required
                   />
                 </div>
                 <div className="flex-1">
-                  <InputBox
-                    key={`arrivalRemark-${refreshKey}`}
+                  <DummyInputBoxWithLabelLightGray
                     setValue={setValue}
                     register={register}
                     value="arrivalRemark"
-                    placeholder="Shipment arrived at Destination Country"
+                    label="Arrival Remark"
+                    inputValue="Shipment arrived at Destination Country"
                   />
                 </div>
               </div>
@@ -283,11 +380,12 @@ const CounterPartInscan = () => {
                 <div className="flex gap-2 items-center">
                   <div className="w-40">
                     <InputBox
-                      key={`runNoInput-${refreshKey}`}
+                      key={`runNoInput-${refreshKey}-${runKey}`}
                       setValue={setValue}
                       register={register}
                       value="runNoInput"
                       placeholder="Enter Run No."
+                      inputRef={runNoInputRef}
                       onKeyDown={(e) => e.key === "Enter" && handleAddRunNo()}
                       onChange={(e) =>
                         setValue("runNoInput", e.target.value.toUpperCase())
@@ -322,34 +420,48 @@ const CounterPartInscan = () => {
               </div>
               {/* AWB scan input */}
               <div className="flex gap-3 items-end">
-                <div className="flex-1" ref={awbInputRef}>
+                <div className="flex-1">
                   <InputBox
-                    key={`awbInput-${refreshKey}`}
+                    key={`awbInput-${refreshKey}-${awbKey}`}
                     setValue={setValue}
                     register={register}
                     value="awbInput"
                     placeholder="Enter / Scan AWB No."
-                    onKeyDown={(e) => e.key === "Enter" && handleFetchAwb()}
+                    inputRef={awbInputRef}
+                    onKeyDown={(e) => e.key === "Enter" && handleScan()}
                     onChange={(e) =>
                       setValue("awbInput", e.target.value.toUpperCase())
                     }
                   />
                 </div>
                 <div className="w-fit">
-                  <OutlinedButtonRed
-                    label={loadingAwb ? "Loading..." : "Show"}
-                    disabled={loadingAwb}
-                    onClick={handleFetchAwb}
-                  />
-                </div>
-                <div className="w-fit">
                   <SimpleButton
                     name="Scan"
                     onClick={handleScan}
-                    disabled={!shipmentDetails}
+                    disabled={
+                      !shipmentDetails ||
+                      loadingAwb ||
+                      alreadyInscanned ||
+                      isChecking
+                    }
                   />
                 </div>
               </div>
+              {loadingAwb && (
+                <p className="text-xs text-gray-500">
+                  Fetching shipment details...
+                </p>
+              )}
+              {isChecking && (
+                <p className="text-xs text-gray-500">
+                  Checking if AWB is already scanned...
+                </p>
+              )}
+              {alreadyInscanned && (
+                <p className="text-xs text-red-500">
+                  This AWB has already been counter part inscanned
+                </p>
+              )}
             </div>
           </div>
 
@@ -480,7 +592,7 @@ const CounterPartInscan = () => {
             ].map(({ heading, lines }) => (
               <div key={heading} className="w-1/2">
                 <RedLabelHeading label={heading} />
-                <div className="border h-[140px] rounded-md mt-1 p-3 bg-gray-50 text-sm">
+                <div className="border h-[180px] rounded-md mt-1 p-3 bg-gray-50 text-sm">
                   {lines.length === 0 ? (
                     <p className="text-gray-400 text-xs">No data</p>
                   ) : (
