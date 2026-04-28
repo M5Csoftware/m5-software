@@ -1329,6 +1329,7 @@ function AutoAWB() {
             setValue={setValue}
             columns={columns}
             rowData={rowData}
+            className={`h-[50vh]`}
           />
         </div>
       </form>
@@ -1395,7 +1396,8 @@ function AutoAWB() {
               <div className="bg-white rounded p-3 mb-3 border border-amber-300">
                 <p className="text-sm mb-2" style={{ color: "#F59E0B" }}>
                   The following sector-destination-service combinations{" "}
-                  <strong>do not exist or currently not active</strong> in zone matrix.
+                  <strong>do not exist or currently not active</strong> in zone
+                  matrix.
                 </p>
               </div>
               <div className="space-y-2">
@@ -1434,9 +1436,7 @@ function AutoAWB() {
                     Verify sector-destination-service combinations in your Excel
                     file
                   </li>
-                  <li>
-                  Update the Excel data to match zone
-                  </li>
+                  <li>Update the Excel data to match zone</li>
                 </ul>
               </div>
             </div>
