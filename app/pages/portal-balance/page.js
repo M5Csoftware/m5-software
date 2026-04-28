@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import axios from "axios";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import NotificationFlag from "@/app/components/Notificationflag";
+import { Wallet, Search, RotateCcw, Trash2, IndianRupee } from "lucide-react";
 
 const PortalBalance = () => {
   const { register, setValue, reset, getValues, watch } = useForm();
@@ -248,65 +249,75 @@ const PortalBalance = () => {
         title="Portal Balance"
         bulkUploadBtn="hidden"
         onRefresh={handleRefresh}
-        onClickCodeListBtn={() => setToggleCodeList(true)}
+        onClickCodeList={() => setToggleCodeList(true)}
       />
 
-      <div className="flex flex-col gap-6">
-        {/* Code + Name + Show */}
-        <div className="flex gap-3">
-          <div>
-            <InputBox
-              placeholder="Code"
-              register={register}
-              setValue={setValue}
-              value="code"
-              initialValue={code}
-            />
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Section: Inputs & Actions */}
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <InputBox
+                    placeholder="Customer Code"
+                    register={register}
+                    setValue={setValue}
+                    value="code"
+                    initialValue={code}
+                  />
+                </div>
+                <div className="w-32">
+                  <OutlinedButtonRed
+                    type="button"
+                    label={loading ? "Loading..." : "Search"}
+                    onClick={handleShowBalance}
+                    disabled={loading}
+                    className="h-8 !px-4"
+                  />
+                </div>
+              </div>
+
+              <div className="w-full">
+                <InputBox
+                  placeholder={fetchingName ? "Fetching Name..." : "Customer Name"}
+                  register={register}
+                  setValue={setValue}
+                  value="client"
+                  disabled={true}
+                  initialValue={client}
+                  className="bg-gray-50"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={handleClear}
+                className="flex items-center gap-2 text-gray-500 hover:text-red transition-colors text-sm font-medium"
+              >
+                <Trash2 size={16} />
+                Clear Form
+              </button>
+            </div>
           </div>
 
-          <InputBox
-            placeholder={fetchingName ? "Fetching..." : "Customer Name"}
-            register={register}
-            setValue={setValue}
-            value="client"
-            disabled={true}
-            initialValue={client}
-          />
-
-          <div>
-            <OutlinedButtonRed
-              type="button"
-              label={loading ? "Loading..." : "Show"}
-              onClick={handleShowBalance}
-              disabled={loading}
-            />
-          </div>
-        </div>
-
-        {/* Portal Balance + Clear */}
-        <div className="flex gap-3">
-          <div className="relative w-full">
-            <input
-              id="portalBalance"
-              value={portalBalance || ""}
-              readOnly
-              autoComplete="off"
-              className="border outline-none rounded-md h-8 px-4 py-2 w-full bg-green-100 border-green-400"
-            />
-            <label
-              htmlFor="portalBalance"
-              className={`absolute transition-all px-2 left-4 text-gray-400 ${
-                portalBalance
-                  ? "-top-2 text-xs z-10 font-semibold bg-white h-4"
-                  : "top-1/2 -translate-y-1/2 text-sm"
-              }`}
-            >
-              Portal Balance
-            </label>
-          </div>
-
-          <div>
-            <SimpleButton type="button" name="Clear" onClick={handleClear} />
+          {/* Right Section: Balance Display */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-5 flex flex-col justify-center gap-2 min-h-[120px] shadow-md text-white">
+            <div className="absolute top-0 right-0 p-3 opacity-10">
+              <Wallet size={80} />
+            </div>
+            
+            <div className="flex flex-col">
+              <span className="text-emerald-50 text-xs font-medium tracking-wide uppercase opacity-80">Current Portal Balance</span>
+              <div className="flex items-center gap-1.5 mt-1">
+                <IndianRupee size={20} className="text-emerald-100" />
+                <span className="text-3xl font-bold tracking-tight">
+                  {portalBalance ? parseFloat(portalBalance).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
