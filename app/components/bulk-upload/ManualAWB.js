@@ -486,7 +486,16 @@ function ManualAWB() {
     }
 
     const shipment = {
-      awbNo: (excelRow.AwbNo || excelRow.AWBNo || excelRow["AWB No"] || excelRow.awbNo || excelRow["AWB Number"] || "")?.toString().trim(),
+      awbNo: (
+        excelRow.AwbNo ||
+        excelRow.AWBNo ||
+        excelRow["AWB No"] ||
+        excelRow.awbNo ||
+        excelRow["AWB Number"] ||
+        ""
+      )
+        ?.toString()
+        .trim(),
       accountCode: excelRow.AccountCode?.toString().trim() || "DEFAULT",
       status: "Shipment Created!",
       date: new Date(),
@@ -781,18 +790,18 @@ function ManualAWB() {
       showNotification(
         "error",
         `🚫 CANNOT PROCEED - INVALID ZIP CODES DETECTED!\n\n` +
-        `❌ Total errors: ${validationErrors.length}\n` +
-        (indianZipCount > 0
-          ? `   • Indian pincodes: ${indianZipCount}\n`
-          : "") +
-        (otherErrorCount > 0
-          ? `   • Other invalid formats: ${otherErrorCount}\n`
-          : "") +
-        `\n⚠️ ACTION REQUIRED:\n` +
-        `1. Fix the invalid zip codes in your Excel file\n` +
-        `2. Remove all Indian pincodes from ConsigneeZipcode column\n` +
-        `3. Re-upload the corrected file\n\n` +
-        `✓ We only accept international zip codes (UK, USA, Canada, Australia, Europe)`,
+          `❌ Total errors: ${validationErrors.length}\n` +
+          (indianZipCount > 0
+            ? `   • Indian pincodes: ${indianZipCount}\n`
+            : "") +
+          (otherErrorCount > 0
+            ? `   • Other invalid formats: ${otherErrorCount}\n`
+            : "") +
+          `\n⚠️ ACTION REQUIRED:\n` +
+          `1. Fix the invalid zip codes in your Excel file\n` +
+          `2. Remove all Indian pincodes from ConsigneeZipcode column\n` +
+          `3. Re-upload the corrected file\n\n` +
+          `✓ We only accept international zip codes (UK, USA, Canada, Australia, Europe)`,
       );
       return;
     }
@@ -893,11 +902,11 @@ function ManualAWB() {
         showNotification(
           "success",
           `✅ Data loaded successfully!\n📦 Valid international shipments: ${validShipments.length}\n` +
-          (allValidationErrors.length > 0
-            ? `⚠️ Filtered out: ${allValidationErrors.length} invalid shipments\n`
-            : "") +
-          `🌍 All receiver zip codes are valid international codes\n` +
-          `✓ All sector-destination-service combinations verified`,
+            (allValidationErrors.length > 0
+              ? `⚠️ Filtered out: ${allValidationErrors.length} invalid shipments\n`
+              : "") +
+            `🌍 All receiver zip codes are valid international codes\n` +
+            `✓ All sector-destination-service combinations verified`,
         );
       }
     } catch (error) {
@@ -905,7 +914,7 @@ function ManualAWB() {
       showNotification(
         "error",
         error.response?.data?.message ||
-        "Error processing data. Please try again.",
+          "Error processing data. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -965,16 +974,16 @@ function ManualAWB() {
       showNotification(
         "error",
         `❌ UPLOAD BLOCKED - INVALID ZIP CODES!\n\n` +
-        `${errorSummary}\n\n` +
-        `🚫 CRITICAL: These appear to be INDIAN PINCODES or invalid formats.\n\n` +
-        `⚠️ UPLOAD COMPLETELY BLOCKED!\n` +
-        `You CANNOT upload until these are fixed:\n` +
-        `1. Go back to your Excel file\n` +
-        `2. Fix the ConsigneeZipcode column for the rows listed above\n` +
-        `3. Replace Indian pincodes with valid international zip codes\n` +
-        `4. Re-upload the corrected file\n\n` +
-        `✓ Accepted: UK, USA, Canada, Australia, Europe\n` +
-        `✗ NOT Accepted: Indian pincodes (6-digit codes like 110001, 400001, etc.)`,
+          `${errorSummary}\n\n` +
+          `🚫 CRITICAL: These appear to be INDIAN PINCODES or invalid formats.\n\n` +
+          `⚠️ UPLOAD COMPLETELY BLOCKED!\n` +
+          `You CANNOT upload until these are fixed:\n` +
+          `1. Go back to your Excel file\n` +
+          `2. Fix the ConsigneeZipcode column for the rows listed above\n` +
+          `3. Replace Indian pincodes with valid international zip codes\n` +
+          `4. Re-upload the corrected file\n\n` +
+          `✓ Accepted: UK, USA, Canada, Australia, Europe\n` +
+          `✗ NOT Accepted: Indian pincodes (6-digit codes like 110001, 400001, etc.)`,
       );
       return;
     }
@@ -996,9 +1005,9 @@ function ManualAWB() {
         showNotification(
           "success",
           `🎉 Upload successful!\n` +
-          `✓ Uploaded: ${rowData.length} shipments\n` +
-          `🌍 All shipments have valid international receiver zip codes.\n` +
-          `✓ All sector-destination-service combinations verified`,
+            `✓ Uploaded: ${rowData.length} shipments\n` +
+            `🌍 All shipments have valid international receiver zip codes.\n` +
+            `✓ All sector-destination-service combinations verified`,
         );
 
         setRowData([]);
@@ -1020,7 +1029,7 @@ function ManualAWB() {
       showNotification(
         "error",
         error.response?.data?.message ||
-        "Error uploading data. Please try again.",
+          "Error uploading data. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -1132,6 +1141,7 @@ function ManualAWB() {
             setValue={setValue}
             columns={columns}
             rowData={rowData}
+            className={`h-[50vh]`}
           />
         </div>
       </form>
@@ -1166,9 +1176,14 @@ function ManualAWB() {
                 ⚠️ Action Required: Fix these {validationErrors.length}{" "}
                 shipments in your Excel file:
               </span>
-              <div className="mt-2 text-xs font-mono max-h-32 overflow-y-auto" style={{ color: "#991B1B" }}>
+              <div
+                className="mt-2 text-xs font-mono max-h-32 overflow-y-auto"
+                style={{ color: "#991B1B" }}
+              >
                 {validationErrors.map((err, idx) => (
-                  <div key={idx}>• Row {err.row}: "{err.zipcode}" - {err.message}</div>
+                  <div key={idx}>
+                    • Row {err.row}: "{err.zipcode}" - {err.message}
+                  </div>
                 ))}
               </div>
               <span className="text-xs mt-2 block" style={{ color: "#DC2626" }}>
@@ -1201,7 +1216,8 @@ function ManualAWB() {
               <div className="bg-white rounded p-3 mb-3 border border-amber-300">
                 <p className="text-sm mb-2" style={{ color: "#F59E0B" }}>
                   The following sector-destination-service combinations{" "}
-                  <strong>do not exist or currently not active</strong> in zone matrix.
+                  <strong>do not exist or currently not active</strong> in zone
+                  matrix.
                 </p>
               </div>
               <div className="space-y-2">
@@ -1240,9 +1256,7 @@ function ManualAWB() {
                     Verify sector-destination-service combinations in your Excel
                     file
                   </li>
-                  <li>
-                    Update the Excel data to match zone
-                  </li>
+                  <li>Update the Excel data to match zone</li>
                 </ul>
               </div>
             </div>

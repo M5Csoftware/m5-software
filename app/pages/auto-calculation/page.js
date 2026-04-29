@@ -514,68 +514,62 @@ const AutoCalculation = () => {
 //         failedAWBs: failedCalculations.map((f) => f.awbNo),
 //       });
 
-      // If all failed, show error
+      // If all failed, show error modal
       if (successfulCalculations.length === 0) {
-        const errorMessage =
-          failedCalculations[0]?.error || "All calculations failed";
-        showNotification("error", `Calculation failed: ${errorMessage}`);
+        showWarningModal({
+          title: "Calculation Failed",
+          message: `Calculation failed for all ${failedCalculations.length} shipment(s).`,
+          failedItems: failedCalculations.map((f) => ({ awbNo: f.awbNo, error: f.error })),
+          meta: [`${failedCalculations.length} failed`],
+        });
         setIsLoading(false);
         return;
       }
 
-      // Show warning if some failed
-      if (failedCalculations.length > 0) {
-        showWarningModal({
-          title: "Partial Calculation Result",
-          message: `${successfulCalculations.length} of ${calculatedResults.length} shipments calculated successfully.`,
-          failedItems: failedCalculations.map((f) => ({ awbNo: f.awbNo, error: f.error })),
-          okItems: successfulCalculations.map((s) => ({
-            awbNo: s.awbNo,
-            service: s.newService,
-            grandTotal: s.grandTotal,
-          })),
-          meta: [`${failedCalculations.length} failed`, `${successfulCalculations.length} OK`],
-        });
-      }
 
-      // STEP 2: Update successful shipments in database
+
+      // STEP 2: Update successful shipments in database - OPTIMIZED (BULK)
       let updatedCount = 0;
       let errorCount = 0;
       let totalNewBasic = 0;
       let totalNewGrandTotal = 0;
 
-      for (const calculated of successfulCalculations) {
-        try {
-          // Find the original shipment
-          const shipment = displayedShipments.find(
-            (s) => s.awbNo === calculated.awbNo,
-          );
-          if (!shipment) {
-            console.error(
-              `Shipment ${calculated.awbNo} not found in displayed shipments`,
-            );
-            continue;
-          }
+      const bulkUpdates = successfulCalculations.map((calculated) => {
+        const shipment = displayedShipments.find((s) => s.awbNo === calculated.awbNo);
+        if (!shipment) return null;
 
-          // Update shipment in database
-          await updateShipmentInDB(shipment, calculated);
-          // console.log(`✓ Successfully updated shipment ${calculated.awbNo}`);
-          updatedCount++;
+        totalNewBasic += calculated.basicAmount;
+        totalNewGrandTotal += calculated.grandTotal;
 
-          // Track totals
-          totalNewBasic += calculated.basicAmount;
-          totalNewGrandTotal += calculated.grandTotal;
-        } catch (updateError) {
-          console.error(
-            `✗ Failed to update shipment ${calculated.awbNo}:`,
-            updateError.message,
-          );
-          console.error("Error response:", updateError.response?.data);
-          errorCount++;
+        return {
+          awbNo: calculated.awbNo,
+          accountCode: shipment.accountCode,
+          service: calculated.newService,
+          basicAmount: calculated.basicAmount,
+          cgst: calculated.cgst,
+          sgst: calculated.sgst,
+          igst: calculated.igst,
+          grandTotal: calculated.grandTotal,
+          date: formatDateForBackend(shipment.date),
+          updateUser: "Auto Calculation (Bulk)",
+        };
+      }).filter(u => u !== null);
 
-          // Optionally: stop on first error or continue
-          // break; // Uncomment to stop on first error
+      try {
+        const bulkResponse = await axios.post(
+          `${server}/portal/create-shipment/auto-calculation/bulk`,
+          { updates: bulkUpdates },
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+        if (bulkResponse.data.success) {
+          updatedCount = bulkUpdates.length;
+          console.log(`✓ Successfully updated ${updatedCount} shipments in bulk`);
         }
+      } catch (bulkError) {
+        console.error(`✗ Failed to update shipments in bulk:`, bulkError.message);
+        showNotification("error", `Bulk update failed: ${bulkError.message}`);
+        errorCount = bulkUpdates.length;
       }
 
       // console.log("=== Auto Calculation Results ===");
@@ -610,11 +604,32 @@ const AutoCalculation = () => {
             meta: [`${updatedCount} Updated`, `Total: ₹${totalNewGrandTotal.toFixed(2)}`],
           });
         } else {
+          // Both successes and failures happened
+          showWarningModal({
+            title: "Partial Calculation Result",
+            message: `${updatedCount} shipments updated, but ${failedCalculations.length} shipments failed calculation.`,
+            failedItems: failedCalculations.map((f) => ({ awbNo: f.awbNo, error: f.error })),
+            okItems: successfulCalculations.map((s) => ({
+              awbNo: s.awbNo,
+              service: s.newService,
+              grandTotal: s.grandTotal,
+            })),
+            meta: [`${failedCalculations.length} failed`, `${updatedCount} OK`],
+          });
+          
           showNotification(
-            "success",
-            `Successfully updated ${updatedCount} shipments using bulk upload route. New total: ₹${totalNewGrandTotal.toFixed(2)}`,
+            "warning",
+            `Updated ${updatedCount} shipments, but ${failedCalculations.length} failed. See modal for details.`,
           );
         }
+      } else if (failedCalculations.length > 0) {
+        // Only failures happened
+        showWarningModal({
+          title: "Calculation Failed",
+          message: `All ${failedCalculations.length} shipments failed calculation.`,
+          failedItems: failedCalculations.map((f) => ({ awbNo: f.awbNo, error: f.error })),
+          meta: [`${failedCalculations.length} failed`],
+        });
       } else {
         showNotification(
           "warning",
