@@ -11,6 +11,7 @@ function Sidebar() {
   const [operationreportOpen, setOperationreportOpen] = useState(false);
   const [branchreportOpen, setBranchreportOpen] = useState(false);
   const [billingReportOpen, setBillingReportOpen] = useState(false);
+  const [adminreportOpen, setAdminreportOpen] = useState(false);
   const [activeMode, setActiveMode] = useState("Export"); // "Export" | "Import"
 
   const [accountReportOpen, setAccountReportOpen] = useState(false);
@@ -38,6 +39,9 @@ function Sidebar() {
     } else if (folder === "Booking" && subfolder === "Report") {
       setBranchreportOpen(!branchreportOpen);
       return;
+    } else if (folder === "Admin" && subfolder === "Report") {
+      setAdminreportOpen(!adminreportOpen);
+      return;
     }
     setActiveTabs((prev) =>
       prev.some(
@@ -64,7 +68,6 @@ function Sidebar() {
         "Shipper Tariff Bulk",
         "Assign Customer & Target",
         "Assign Sector",
-        "Custom Reports",
         "KYC Verification",
         "API Management",
         "Service Master",
@@ -172,6 +175,9 @@ function Sidebar() {
         "Booking With Sale",
         "New Booking Report",
         "Custom Reports",
+        "Monitoring Report",
+        "Hold Report",
+        "HSSB Report",
       ],
     },
   ];
@@ -337,6 +343,8 @@ function Sidebar() {
                   setAccountSummaryOpen={setAccountSummaryOpen}
                   billingReportOpen={billingReportOpen}
                   setBillingReportOpen={setBillingReportOpen}
+                  adminreportOpen={adminreportOpen}
+                  setAdminreportOpen={setAdminreportOpen}
                   hasPerm={hasPerm}
                 />
               );
@@ -406,6 +414,8 @@ function Sidebar() {
                 setAccountSummaryOpen={setAccountSummaryOpen}
                 billingReportOpen={billingReportOpen}
                 setBillingReportOpen={setBillingReportOpen}
+                adminreportOpen={adminreportOpen}
+                setAdminreportOpen={setAdminreportOpen}
                 hasPerm={hasPerm}
               />
             );
@@ -445,6 +455,8 @@ const Folder = ({
   setAccountSummaryOpen,
   billingReportOpen,
   setBillingReportOpen = false,
+  adminreportOpen = false,
+  setAdminreportOpen,
   hasPerm,
 }) => {
   const isFolderActive = activeTabs.some((tab) => tab.folder === name);
@@ -491,6 +503,60 @@ const Folder = ({
             {subfolder}
           </li>
         ))}
+        {name === "Admin" &&
+          [
+            "Custom Reports",
+            "Monitoring Report",
+            "New Booking Report",
+            "HSSB Report",
+            "Hold Report",
+          ].some((item) => hasPerm(item)) && (
+            <li
+              onClick={() => handleSubfolderClick(name, "Report")}
+              className={`p-1 cursor-pointer hover:bg-foggy-white rounded-md font-semibold flex gap-2 ${
+                adminreportOpen ? "bg-foggy-white" : ""
+              }`}
+            >
+              <span>Report</span>
+              <Image
+                src={
+                  adminreportOpen
+                    ? "/arrow-sidebar-active.svg"
+                    : "/arrow-sidebar.svg"
+                }
+                alt=""
+                width={16}
+                height={16}
+              />
+            </li>
+          )}
+
+        {name === "Admin" &&
+          [
+            "Custom Reports",
+            "Monitoring Report",
+            "New Booking Report",
+            "HSSB Report",
+            "Hold Report",
+          ]
+            .filter((item) => hasPerm(item))
+            .map((item, index) => (
+              <li
+                key={index}
+                onClick={() => handleSubfolderClick(name, item)}
+                className={`ml-3 cursor-pointer hover:bg-foggy-white rounded-md overflow-hidden transition-all ${
+                  adminreportOpen ? "max-h-20 p-1 mt-0.5" : "max-h-0"
+                } ${
+                  activeTabs.some(
+                    (tab) => tab.folder === name && tab.subfolder === item,
+                  )
+                    ? "bg-foggy-white"
+                    : ""
+                }`}
+              >
+                {item}
+              </li>
+            ))}
 
         {name === "Operations" &&
           [
