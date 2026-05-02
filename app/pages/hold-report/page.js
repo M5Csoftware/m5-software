@@ -87,6 +87,16 @@ const HoldReport = () => {
     return new Date(year, month, day);
   };
 
+  const formatDate = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return date;
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   const handleDownloadExcel = async (data) => {
     if (!data.from || !data.to) {
       showNotification("error", "From and To dates are strictly required.");
@@ -108,7 +118,6 @@ const HoldReport = () => {
         isHold: true,
       };
 
-      // Changed endpoint to booking-report as hold-report was 404
       const response = await axios.post(
         `${server}/reports/booking-report`,
         filters,
@@ -141,28 +150,31 @@ const HoldReport = () => {
         const reason = (item.holdReason || "").toUpperCase();
         const accCode = (item.accountCode || "").toUpperCase();
 
-        // Enforce GST value from map if not present in item
-        const itemWithGst = {
+        const itemWithGstAndDate = {
           ...item,
           gst: item.gst || customerGstMap[accCode] || "",
+          createdAt: formatDate(item.createdAt),
+          rejectedDate: formatDate(item.rejectedDate),
+          rcvingDate: formatDate(item.rcvingDate),
+          unholdDate: formatDate(item.unholdDate),
         };
 
         if (!reason || reason.trim() === "") {
-          groups["IN TRANSIT"].push(itemWithGst);
+          groups["IN TRANSIT"].push(itemWithGstAndDate);
         } else if (sector === "CANADA") {
-          groups["CANADA"].push(itemWithGst);
+          groups["CANADA"].push(itemWithGstAndDate);
         } else if (sector === "BRANDED") {
-          groups["BRANDED"].push(itemWithGst);
+          groups["BRANDED"].push(itemWithGstAndDate);
         } else if (sector === "UK" || sector === "LHR") {
-          groups["LHR-DPD-COU"].push(itemWithGst);
+          groups["LHR-DPD-COU"].push(itemWithGstAndDate);
         } else if (sector === "AUSTRALIA" || sector === "AUS") {
           if (reason.includes("SORT")) {
-            groups["AUS-SORTING"].push(itemWithGst);
+            groups["AUS-SORTING"].push(itemWithGstAndDate);
           } else {
-            groups["AUS-COURIER"].push(itemWithGst);
+            groups["AUS-COURIER"].push(itemWithGstAndDate);
           }
         } else {
-          groups["OTHERS"].push(itemWithGst);
+          groups["OTHERS"].push(itemWithGstAndDate);
         }
       });
 
@@ -266,7 +278,7 @@ const HoldReport = () => {
           onSubmit={handleSubmit(handleDownloadExcel)}
           className="flex flex-col gap-5"
         >
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-end">
             <DateInputBox
               register={register}
               setValue={setValue}
@@ -301,7 +313,7 @@ const HoldReport = () => {
               setValue={setValue}
               value="branch"
             />
-            <div className="flex gap-3 justify-end items-center">
+            <div className="pb-1">
               <SimpleButton
                 name={isLoading ? "Processing..." : "Download Excel"}
                 type="submit"
