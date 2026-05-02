@@ -55,7 +55,13 @@ const fmt = (v) => (typeof v === "number" ? Math.round(v * 100) / 100 : 0);
 // ── Component ─────────────────────────────────────────────────────────────────
 const MonitoringReport = () => {
   const { server } = useContext(GlobalContext);
-  const { register, setValue, watch } = useForm();
+  const methods = useForm();
+  const {
+    register,
+    setValue,
+    watch,
+    formState: { errors },
+  } = methods;
 
   // Filters
   const [selectedMainSheets, setSelectedMainSheets] = useState([]);
@@ -511,7 +517,6 @@ const MonitoringReport = () => {
           setValue={setValue}
           value="month"
           placeholder="Select Month"
-          trigger={trigger}
           resetFactor={isLoading}
         />
         <div className="flex items-center">
