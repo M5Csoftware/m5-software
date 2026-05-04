@@ -203,21 +203,32 @@ const dynamicPages = {
   }),
   122: dynamic(() => import("./pages/api-management/page"), { ssr: false }),
   123: dynamic(() => import("./pages/run-process/page"), { ssr: false }),
-  124: dynamic(() => import("./pages/labels/courier-please/page"), { ssr: false }),
+  124: dynamic(() => import("./pages/labels/courier-please/page"), {
+    ssr: false,
+  }),
   125: dynamic(() => import("./pages/labels/yyz-ups/page"), { ssr: false }),
   126: dynamic(() => import("./pages/labels/yvr-ups/page"), { ssr: false }),
   127: dynamic(() => import("./pages/labels/uk-dpd/page"), { ssr: false }),
   128: dynamic(() => import("./pages/labels/ams-dpd/page"), { ssr: false }),
   129: dynamic(() => import("./pages/labels/lhr-fedex/page"), { ssr: false }),
-  130: dynamic(() => import("./pages/entity-manager/ServiceMaster"), { ssr: false }),
+  130: dynamic(() => import("./pages/entity-manager/ServiceMaster"), {
+    ssr: false,
+  }),
   131: dynamic(() => import("./pages/rate-calculator/page"), { ssr: false }),
   132: dynamic(() => import("./pages/customer-discount/page"), { ssr: false }),
   133: dynamic(() => import("./pages/new-booking-report/page"), { ssr: false }),
   134: dynamic(() => import("./pages/delete-shipment/page"), { ssr: false }),
   135: dynamic(() => import("./pages/awb-import-entry/page"), { ssr: false }),
-  136: dynamic(() => import("./pages/import-booking-report/page"), { ssr: false }),
-  137: dynamic(() => import("./pages/import-shipment-status-report/page"), { ssr: false }),
+  136: dynamic(() => import("./pages/import-booking-report/page"), {
+    ssr: false,
+  }),
+  137: dynamic(() => import("./pages/import-shipment-status-report/page"), {
+    ssr: false,
+  }),
   138: dynamic(() => import("./pages/import-pod-entry/page"), { ssr: false }),
+  139: dynamic(() => import("./pages/monitoring-report/page"), { ssr: false }),
+  140: dynamic(() => import("./pages/hssb-report/page"), { ssr: false }),
+  141: dynamic(() => import("./pages/hold-report/page"), { ssr: false }),
 };
 
 const App = () => {
@@ -241,7 +252,6 @@ const App = () => {
     setMountedTabs,
     codeListConfig,
   } = useContext(GlobalContext);
-
 
   // Disable right-click with proper cleanup
   useEffect(() => {
@@ -390,6 +400,9 @@ const App = () => {
     "Import Booking Report": 136,
     "Import Shipment Status Report": 137,
     "Import POD Entry": 138,
+    "Monitoring Report": 139,
+    "HSSB Report": 140,
+    "Hold Report": 141,
   };
 
   // State for LRU tracking
@@ -407,7 +420,7 @@ const App = () => {
     setTabHistory((prev) => {
       const filtered = prev.filter((id) => id !== newView);
       const newHistory = [newView, ...filtered];
-      
+
       // If we exceed the limit, unmount the oldest tab that isn't active or dashboard
       if (mountedTabs.size > MAX_MOUNTED_TABS) {
         // Find a tab to unmount: oldest in history, not current, not dashboard
@@ -416,7 +429,9 @@ const App = () => {
           .find((id) => id !== newView && id !== 0 && mountedTabs.has(id));
 
         if (tabToUnmount !== undefined) {
-          console.log(`=== Smart Memory: Unmounting Tab ${tabToUnmount} (LRU) ===`);
+          console.log(
+            `=== Smart Memory: Unmounting Tab ${tabToUnmount} (LRU) ===`,
+          );
           setMountedTabs((prevSet) => {
             const nextSet = new Set(prevSet);
             nextSet.delete(tabToUnmount);
@@ -435,7 +450,7 @@ const App = () => {
   // Sync mountedTabs with activeTabs (handling tab closures)
   useEffect(() => {
     const activeViews = new Set(
-      activeTabs.map((tab) => tabMapping[tab.subfolder] || 0)
+      activeTabs.map((tab) => tabMapping[tab.subfolder] || 0),
     );
     activeViews.add(0); // Always keep dashboard mounted
 
@@ -463,21 +478,27 @@ const App = () => {
     const fetchEntity = async (entityType, setter) => {
       try {
         const cacheKey = `entity_cache_${entityType.replace(/\s+/g, "_")}`;
-        
+
         // 1. Try Loading from LocalStorage first
         const cachedData = localStorage.getItem(cacheKey);
         if (cachedData) {
           try {
             const { data, timestamp } = JSON.parse(cachedData);
             const isFresh = Date.now() - timestamp < CACHE_TTL;
-            
+
             if (isFresh && Array.isArray(data)) {
-              console.log(`=== Loading ${entityType} from Persistent Cache ===`);
+              console.log(
+                `=== Loading ${entityType} from Persistent Cache ===`,
+              );
               if (entityType === "Event") {
                 setter((prev) => {
                   const merged = [...defaultEventCodes];
-                  data.forEach(s => {
-                    if (!merged.find(m => m.code.toLowerCase() === s.code.toLowerCase())) {
+                  data.forEach((s) => {
+                    if (
+                      !merged.find(
+                        (m) => m.code.toLowerCase() === s.code.toLowerCase(),
+                      )
+                    ) {
                       merged.push(s);
                     }
                   });
@@ -489,7 +510,10 @@ const App = () => {
               return; // Skip network call
             }
           } catch (e) {
-            console.warn(`Cache parse error for ${entityType}, fetching fresh.`, e);
+            console.warn(
+              `Cache parse error for ${entityType}, fetching fresh.`,
+              e,
+            );
           }
         }
 
@@ -500,14 +524,21 @@ const App = () => {
           signal: controller.signal,
         });
 
-        const mapped = data.map((item) => ({ code: item.code, name: item.name }));
+        const mapped = data.map((item) => ({
+          code: item.code,
+          name: item.name,
+        }));
 
         // 3. Update State
         if (entityType === "Event") {
           setter((prev) => {
             const merged = [...defaultEventCodes];
-            mapped.forEach(s => {
-              if (!merged.find(m => m.code.toLowerCase() === s.code.toLowerCase())) {
+            mapped.forEach((s) => {
+              if (
+                !merged.find(
+                  (m) => m.code.toLowerCase() === s.code.toLowerCase(),
+                )
+              ) {
                 merged.push(s);
               }
             });
@@ -518,11 +549,13 @@ const App = () => {
         }
 
         // 4. Update LocalStorage
-        localStorage.setItem(cacheKey, JSON.stringify({
-          data: mapped,
-          timestamp: Date.now()
-        }));
-
+        localStorage.setItem(
+          cacheKey,
+          JSON.stringify({
+            data: mapped,
+            timestamp: Date.now(),
+          }),
+        );
       } catch (err) {
         if (err.name !== "CanceledError") {
           console.error(`Error fetching ${entityType}:`, err);
@@ -581,7 +614,9 @@ const App = () => {
   }, [refetch, server]);
 
   // Merge the active view with mounted tabs to ensure it's always rendered immediately
-  const tabsToRender = Array.from(new Set([...Array.from(mountedTabs), activeViewId]));
+  const tabsToRender = Array.from(
+    new Set([...Array.from(mountedTabs), activeViewId]),
+  );
 
   return (
     <main className="flex">
