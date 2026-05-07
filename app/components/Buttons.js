@@ -125,8 +125,8 @@ export function OutlinedButtonRed({
       const u = sessionData
         ? JSON.parse(sessionData)
         : localData
-        ? JSON.parse(localData)
-        : null;
+          ? JSON.parse(localData)
+          : null;
       setUser(u);
     } catch {
       setUser(null);
@@ -185,8 +185,8 @@ export function SimpleButton({
       const u = sessionData
         ? JSON.parse(sessionData)
         : localData
-        ? JSON.parse(localData)
-        : null;
+          ? JSON.parse(localData)
+          : null;
       setUser(u);
     } catch {
       setUser(null);
