@@ -60,9 +60,7 @@ const Modal = ({ open, onClose, title, children }) => {
       />
       <div className="relative bg-white rounded-2xl shadow-2xl w-[520px] max-h-[90vh] overflow-y-auto z-10 animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between px-6 py-4 border-b border-misty-rose bg-misty-rose/30">
-          <h2 className="text-lg font-semibold text-eerie-black">
-            {title}
-          </h2>
+          <h2 className="text-lg font-semibold text-eerie-black">{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -360,7 +358,7 @@ const LogACallForm = ({ onClose, onSave, server }) => {
         </div>
       </div>
       <div className="flex justify-end gap-3 pt-3 border-t border-misty-rose">
-        <OutlinedButtonRed name="Cancel" onClick={onClose} />
+        <OutlinedButtonRed label={`Cancel`} onClick={onClose} />
         <SimpleButton
           name={saving ? "Savingâ€¦" : "Save Call"}
           type="submit"
@@ -835,15 +833,9 @@ const CallLog = () => {
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           {call.callType === "Inbound" ? (
-                            <PhoneIncoming
-                              size={14}
-                              className="text-green-1"
-                            />
+                            <PhoneIncoming size={14} className="text-green-1" />
                           ) : (
-                            <PhoneOutgoing
-                              size={14}
-                              className="text-Denim"
-                            />
+                            <PhoneOutgoing size={14} className="text-Denim" />
                           )}
                           <button className="text-eerie-black font-medium hover:text-red hover:underline transition-colors">
                             {call.subject}
@@ -896,7 +888,9 @@ const CallLog = () => {
           <div className="flex justify-between items-center px-4 py-3 bg-seasalt border-t border-french-gray text-xs text-dim-gray">
             <span>
               Showing{" "}
-              <span className="font-medium text-eerie-black">{calls.length}</span>{" "}
+              <span className="font-medium text-eerie-black">
+                {calls.length}
+              </span>{" "}
               records
             </span>
             <div className="flex gap-2">
@@ -944,6 +938,3 @@ const CallLog = () => {
 };
 
 export default CallLog;
-
-
-
