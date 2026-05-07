@@ -169,7 +169,10 @@ function Sidebar() {
     },
     {
       name: "Sales & CRM",
-      subfolders: ["Call Log", "Schedule Meeting"],
+      subfolders: [
+        "Call Log",
+        // "Schedule Meeting"
+      ],
     },
     {
       name: "Reports",
