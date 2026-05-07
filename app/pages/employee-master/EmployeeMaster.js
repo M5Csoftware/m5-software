@@ -83,6 +83,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-Monitoring Report": false,
     "permission-Custom Reports": false,
     "permission-HSSB Report": false,
+    "permission-Vendor Management": false,
 
     "title-Booking": false,
     "permission-Booking Deletion": false,
@@ -199,6 +200,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-Day Wise Sale": false,
     "permission-Invoice PTP Summary": false,
     "permission-Month Files": false,
+    "permission-Vendor Management": false,
 
     "title-Customer Care": false,
     "permission-CC Deletion": false,
@@ -272,6 +274,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-Custom Reports",
       "permission-HSSB Report",
       "permission-Hold Report",
+      "permission-Vendor Management",
     ],
 
     "title-Booking": [
@@ -389,6 +392,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-Day Wise Sale",
       "permission-Invoice PTP Summary",
       "permission-Month Files",
+      "permission-Vendor Management",
     ],
 
     "title-Customer Care": [

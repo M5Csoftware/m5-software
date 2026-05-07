@@ -72,6 +72,7 @@ function Sidebar() {
         "API Management",
         "Service Master",
         "Delete Shipment",
+        "Vendor Management",
       ],
     },
     {
@@ -147,6 +148,7 @@ function Sidebar() {
         "Rate Hike",
         "Data Lock",
         "Auto Calculation",
+        "Vendor Management",
       ],
     },
     {
