@@ -167,6 +167,7 @@ function Sidebar() {
         "Upload Shipping Bill",
         "Run Process",
         "Offload Shipment",
+        "Timeline",
       ],
     },
     {
@@ -174,6 +175,7 @@ function Sidebar() {
       subfolders: [
         "Call Log",
         // "Schedule Meeting"
+        "Timeline",
       ],
     },
     {
