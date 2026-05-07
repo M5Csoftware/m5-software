@@ -168,6 +168,10 @@ function Sidebar() {
       ],
     },
     {
+      name: "Sales & CRM",
+      subfolders: ["Call Log", "Schedule Meeting"],
+    },
+    {
       name: "Reports",
       subfolders: [
         "Booking Report",

@@ -233,6 +233,10 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-Custom Reports": false,
     "permission-Hold Report": false,
 
+    "title-Sales & CRM": false,
+    "permission-Call Log": false,
+    "permission-Schedule Meeting": false,
+
     "title-Import": false,
     "permission-AWB Import Entry": false,
     "permission-Import Booking Report": false,
@@ -423,6 +427,8 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-Hold Report",
     ],
 
+    "title-Sales & CRM": ["permission-Call Log", "permission-Schedule Meeting"],
+
     "title-Import": [
       "permission-AWB Import Entry",
       "permission-Import Booking Report",
@@ -436,6 +442,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "title-Operations",
       "title-Reports",
       "title-Customer Care",
+      "title-Sales & CRM",
       "title-Booking",
       "title-Accounts",
       "title-Import",
@@ -444,6 +451,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "title-Operations",
       "title-Booking",
       "title-Reports",
+      "title-Sales & CRM",
       "title-Import",
     ],
     "Customer Support": [
@@ -451,6 +459,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "title-Operations",
       "title-Customer Care",
       "title-Reports",
+      "title-Sales & CRM",
       "title-Import",
     ],
     Account: [
@@ -460,6 +469,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "title-Reports",
       "title-Accounts",
       "title-Billing",
+      "title-Sales & CRM",
       "title-Import",
     ],
     Billing: [
@@ -470,12 +480,14 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "title-Billing",
       "title-Customer Care",
       "title-Reports",
+      "title-Sales & CRM",
       "title-Import",
     ],
     "Sale Support": [
       "title-Booking",
       "title-Operations",
       "title-Accounts",
+      "title-Sales & CRM",
       "title-Import",
     ],
     Management: [
@@ -486,6 +498,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "title-Billing",
       "title-Customer Care",
       "title-Reports",
+      "title-Sales & CRM",
       "title-Import",
     ],
   };
