@@ -442,11 +442,9 @@ const VendorForm = ({ onClose, onSave, server, editingVendor, isOpen }) => {
             {...register("paymentTerms")}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-100"
           >
-            <option value="immediate">Immediate</option>
-            <option value="net15">Net 15 Days</option>
-            <option value="net30">Net 30 Days</option>
-            <option value="net45">Net 45 Days</option>
-            <option value="net60">Net 60 Days</option>
+            <option value="immediate">Paid</option>
+            <option value="net15">Unpaid</option>
+           
           </select>
         </div>
         <div className="mt-3">
