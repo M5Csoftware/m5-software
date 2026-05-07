@@ -234,6 +234,7 @@ const dynamicPages = {
   }),
   143: dynamic(() => import("./pages/call-log/page"), { ssr: false }),
   144: dynamic(() => import("./pages/schedule-meeting/page"), { ssr: false }),
+  145: dynamic(() => import("./pages/vendor-management/page"), { ssr: false }),
 };
 
 const App = () => {
@@ -412,6 +413,7 @@ const App = () => {
     "Sales Dashboard": 142,
     "Call Log": 143,
     "Schedule Meeting": 144,
+    "Vendor Management": 145,
   };
 
   // State for LRU tracking
