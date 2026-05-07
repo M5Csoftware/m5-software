@@ -89,6 +89,14 @@ const Permissions = ({
             register={register}
             setValue={setValue}
           />
+          <PermissionSection
+            title="title-Sales & CRM"
+            permissions={permissionGroups["title-Sales & CRM"]}
+            checkboxStates={checkboxStates}
+            toggleCheckboxState={toggleCheckboxState}
+            register={register}
+            setValue={setValue}
+          />
         </div>
 
         {/* Column 3 */}

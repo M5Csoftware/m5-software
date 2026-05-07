@@ -229,6 +229,11 @@ const dynamicPages = {
   139: dynamic(() => import("./pages/monitoring-report/page"), { ssr: false }),
   140: dynamic(() => import("./pages/hssb-report/page"), { ssr: false }),
   141: dynamic(() => import("./pages/hold-report/page"), { ssr: false }),
+  142: dynamic(() => import("./pages/dashboard/SalesDashboard"), {
+    ssr: false,
+  }),
+  143: dynamic(() => import("./pages/call-log/page"), { ssr: false }),
+  144: dynamic(() => import("./pages/schedule-meeting/page"), { ssr: false }),
 };
 
 const App = () => {
@@ -312,6 +317,7 @@ const App = () => {
     "Bag Report": 48,
     "EDI Report": 49,
     "Assign Customer & Target": 50,
+    "Sales Target": 50,
     "Expense Entry": 51,
     "Custom Invoice": 52,
     "Run Transfer": 53,
@@ -403,6 +409,9 @@ const App = () => {
     "Monitoring Report": 139,
     "HSSB Report": 140,
     "Hold Report": 141,
+    "Sales Dashboard": 142,
+    "Call Log": 143,
+    "Schedule Meeting": 144,
   };
 
   // State for LRU tracking
