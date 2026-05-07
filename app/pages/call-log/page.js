@@ -681,6 +681,7 @@ const CallLog = () => {
                 title="Call Log"
                 bulkUploadBtn="hidden"
                 codeListBtn="hidden"
+                refreshBtn="hidden"
               />
               <p className="text-xs text-gray-400 mt-0.5">
                 Track and manage all your call activities
