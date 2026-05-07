@@ -1,11 +1,11 @@
 {
-  "version": "0.1.75",
-  "notes": "Merge pull request #210 from M5Csoftware/Altaf",
-  "pub_date": "2026-05-07T12:10:28Z",
+  "version": "0.1.76",
+  "notes": "Vendor Management Added",
+  "pub_date": "2026-05-07T13:09:46Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYzRna0xjWUtUbUdpRXNUUVR1ZDNDbmc4amlmNUQvNjY2d0lJLzlQTzIrUjdOUmRQZTZsRWdYaDhjUWlYaTRnWGMwMG9IdGgreUVwYmU3NmRST1UvU1FnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4MTU1ODI4CWZpbGU6TTVDIExvZ3NfMC4xLjc1X3g2NF9lbi1VUy5tc2kuemlwCnVjMm92L2dLbjUxMUxrbVBMMXM1bHlJV1QvZERsckpDUUI0NE5iSTRJcVlGNGp3UmIyTUc3OFhtYkVlQjBJa3BNVGUreE5iMGg3WG8vNVhYbXFYVUF3PT0K",
-      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.75/M5C.Logs_0.1.75_x64_en-US.msi.zip"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYy9ueFRnQ1RiTUQxZ21ZcWx0dW1nZ2Q2VUtpeDI3eklMYTNKd1cvUDM3dEl3d3h2Ly9BU2hKWi92TEc5dGt5TXlFK0d5MHVmUGhHak4zUDFXdmdnRmc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4MTU5Mzg2CWZpbGU6TTVDIExvZ3NfMC4xLjc2X3g2NF9lbi1VUy5tc2kuemlwCmRKa2tDZUYrcTVqL2ZaVmdQUVFUekMxWTRZRGlGcTgyOGw1RW1nZUZWL0hkTllrcGxXYzcvWS9KNU4rVU5KWWkxTjd3SGJQSC9GM2pIZlU0K1FLL0RRPT0K",
+      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.76/M5C.Logs_0.1.76_x64_en-US.msi.zip"
     }
   }
 }
