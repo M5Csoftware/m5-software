@@ -225,6 +225,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "permission-Forwarding Number Report": false,
     "permission-CC-Run Summary": false,
     "permission-CC-Run Process": false,
+    "permission-Timeline": false,
 
     "title-Reports": false,
     "permission-Rep-Booking Report": false,
@@ -238,6 +239,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
     "title-Sales & CRM": false,
     "permission-Call Log": false,
     "permission-Schedule Meeting": false,
+    "permission-Timeline": false,
 
     "title-Import": false,
     "permission-AWB Import Entry": false,
@@ -418,6 +420,7 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-Forwarding Number Report",
       "permission-CC-Run Summary",
       "permission-CC-Run Process",
+      "permission-Timeline",
     ],
 
     "title-Reports": [
@@ -431,7 +434,11 @@ function EmployeeMaster({ setShowEmployeeForm, editEmployeeData }) {
       "permission-Hold Report",
     ],
 
-    "title-Sales & CRM": ["permission-Call Log", "permission-Schedule Meeting"],
+    "title-Sales & CRM": [
+      "permission-Call Log",
+      "permission-Schedule Meeting",
+      "permission-Timeline",
+    ],
 
     "title-Import": [
       "permission-AWB Import Entry",
