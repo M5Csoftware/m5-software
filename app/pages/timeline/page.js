@@ -13,7 +13,9 @@ import {
   Sparkles,
   Filter,
   List,
+  Download,
 } from "lucide-react";
+import { saveAs } from "file-saver";
 import { RadioButtonLarge } from "@/app/components/RadioButton";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
@@ -112,12 +114,87 @@ const TimelinePage = () => {
     );
   }, [events, selectedDate, filterByDate]);
 
+  const handleDownloadExcel = async () => {
+    try {
+      const ExcelJS = (await import("exceljs")).default;
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Timeline Report");
+
+      // Define columns
+      worksheet.columns = [
+        { header: "Date", key: "date", width: 15 },
+        { header: "Category", key: "category", width: 15 },
+        { header: "Title", key: "title", width: 35 },
+        { header: "Description", key: "description", width: 50 },
+        { header: "Effective Until", key: "endDate", width: 15 },
+      ];
+
+      // Style header
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11 };
+      headerRow.height = 25;
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFEA1B40" },
+        };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+
+      // Add data
+      filteredEvents.forEach((event) => {
+        const row = worksheet.addRow({
+          date: format(parseISO(event.date), "yyyy-MM-dd"),
+          category: event.category,
+          title: event.title,
+          description: event.description,
+          endDate: event.endDate
+            ? format(parseISO(event.endDate), "yyyy-MM-dd")
+            : "-",
+        });
+        row.alignment = { vertical: "middle", wrapText: true };
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: "thin", color: { argb: "FFEEEEEE" } },
+            left: { style: "thin", color: { argb: "FFEEEEEE" } },
+            bottom: { style: "thin", color: { argb: "FFEEEEEE" } },
+            right: { style: "thin", color: { argb: "FFEEEEEE" } },
+          };
+        });
+      });
+
+      // Generate and save
+      const buffer = await workbook.xlsx.writeBuffer();
+      const filename = filterByDate
+        ? `Timeline_Report_${format(selectedDate, "yyyy_MM_dd")}.xlsx`
+        : "Timeline_Full_Report.xlsx";
+
+      saveAs(
+        new Blob([buffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+        filename,
+      );
+      toast.success("Excel report downloaded!");
+    } catch (error) {
+      console.error("Excel download error:", error);
+      toast.error("Failed to download Excel report");
+    }
+  };
+
   return (
     <div className="w-full">
       {/* <Toaster position="top-right" /> */}
 
       {/* Header Section */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-4 rounded-2xl shadow-sm border border-french-gray/20">
+      <div className="mb-6 flex border-[1px] flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-4 rounded-2xl shadow-sm border-french-gray/40">
         {/* Left: Title */}
         <div className="md:w-1/4">
           <div className="flex items-center gap-2">
@@ -131,7 +208,7 @@ const TimelinePage = () => {
         </div>
 
         {/* Center: Tabs Navigation */}
-        <div className="flex bg-white-smoke p-1 rounded-xl border border-french-gray/20 shadow-inner">
+        <div className="flex bg-white-smoke p-1 rounded-xl border gap-2 border-french-gray/20 shadow-inner">
           <div className="flex-1 min-w-[250px]">
             <RadioButtonLarge
               id="add"
@@ -170,49 +247,50 @@ const TimelinePage = () => {
       {/* Main Content Area */}
       <div className="w-full mx-auto">
         {activeTab === "add" && (
-          <div className="bg-white p-6 rounded-3xl shadow-xl border border-french-gray/20 animate-slide-in-right relative overflow-hidden mx-auto">
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-french-gray/40 animate-slide-in-right relative overflow-hidden mx-auto">
             <div className="absolute top-0 right-0 w-24 h-24 bg-misty-rose rounded-bl-full -mr-8 -mt-8 opacity-50"></div>
 
             <div className="relative z-10">
               {/* Sub-Tabs for Add Mode */}
-              <div className="flex gap-2 mb-8 bg-white-smoke p-1 rounded-xl border border-french-gray/10 w-fit">
-                <button
-                  type="button"
-                  onClick={() => setValue("entryType", "general")}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                    (watch("entryType") || "general") === "general"
-                      ? "bg-white text-red shadow-sm"
-                      : "text-dim-gray hover:text-eerie-black"
-                  }`}
-                >
-                  General Event
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setValue("entryType", "update")}
-                  className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
-                    watch("entryType") === "update"
-                      ? "bg-white text-red shadow-sm"
-                      : "text-dim-gray hover:text-eerie-black"
-                  }`}
-                >
-                  Standard Update
-                </button>
-                <input type="hidden" {...register("entryType")} />
-              </div>
-
-              <h2 className="text-lg font-semibold mb-6 flex items-center gap-2 text-eerie-black">
-                <div className="w-8 h-8 bg-red/10 rounded-lg flex items-center justify-center">
-                  {(watch("entryType") || "general") === "general" ? (
-                    <Plus className="text-red" size={20} />
-                  ) : (
-                    <Sparkles className="text-red" size={20} />
-                  )}
+              <div className="flex justify-between">
+                <div className="flex gap-2 mb-8 bg-white-smoke p-1 rounded-xl border border-french-gray/10 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setValue("entryType", "general")}
+                    className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                      (watch("entryType") || "general") === "general"
+                        ? "bg-white text-red shadow-sm"
+                        : "text-dim-gray hover:text-eerie-black"
+                    }`}
+                  >
+                    General Event
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setValue("entryType", "update")}
+                    className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                      watch("entryType") === "update"
+                        ? "bg-white text-red shadow-sm"
+                        : "text-dim-gray hover:text-eerie-black"
+                    }`}
+                  >
+                    Rate/Service Update
+                  </button>
+                  <input type="hidden" {...register("entryType")} />
                 </div>
-                {(watch("entryType") || "general") === "general"
-                  ? "Log New Event"
-                  : "Post Standard Update"}
-              </h2>
+                <h2 className="text-lg font-semibold mb-6 flex items-center gap-2 text-eerie-black mr-4">
+                  <div className="w-8 h-8 bg-red/10 rounded-lg flex items-center justify-center">
+                    {(watch("entryType") || "general") === "general" ? (
+                      <Plus className="text-red" size={20} />
+                    ) : (
+                      <Sparkles className="text-red" size={20} />
+                    )}
+                  </div>
+                  {(watch("entryType") || "general") === "general"
+                    ? "Log New Event"
+                    : "Post Standard Update"}
+                </h2>{" "}
+              </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                 {/* Conditional Fields Based on Entry Type */}
@@ -298,7 +376,7 @@ const TimelinePage = () => {
                   <label className="text-[10px] font-semibold text-eerie-black ml-1 uppercase tracking-wider">
                     Category
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex w-full gap-2">
                     {[
                       "General",
                       "Milestone",
@@ -310,7 +388,7 @@ const TimelinePage = () => {
                         key={cat}
                         type="button"
                         onClick={() => setValue("category", cat)}
-                        className={`py-1.5 px-3 rounded-lg font-semibold text-[10px] transition-all duration-300 border-2 ${
+                        className={`py-1.5 px-6 tracking-wide font-light text-xs rounded-lg transition-all duration-300 border-2 ${
                           (categoryValue || "General") === cat
                             ? "bg-red text-white border-red shadow-sm"
                             : "bg-white text-dim-gray border-french-gray/30 hover:border-red/50"
@@ -351,7 +429,7 @@ const TimelinePage = () => {
           <div className="flex flex-col lg:flex-row gap-6 animate-slide-in-right">
             {/* Left Sidebar: Calendar & Filters */}
             <div className="lg:w-[300px] space-y-4">
-              <div className="bg-white p-5 rounded-3xl shadow-lg border border-french-gray/20 sticky top-8">
+              <div className="bg-white p-5 rounded-3xl shadow-lg border border-french-gray/40 sticky top-8">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-sm font-bold text-eerie-black uppercase tracking-widest flex items-center gap-2">
                     <LucideCalendar className="text-red" size={16} />
@@ -382,6 +460,17 @@ const TimelinePage = () => {
                   }}
                 />
 
+                <button
+                  onClick={handleDownloadExcel}
+                  className="mt-6 w-full bg-red text-white py-3 rounded-2xl font-bold hover:bg-dark-red hover:shadow-lg hover:shadow-red/30 transition-all duration-300 flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest group active:scale-[0.98]"
+                >
+                  <Download
+                    size={16}
+                    className="group-hover:bounce transition-transform"
+                  />
+                  Download Excel Report
+                </button>
+
                 <div className="mt-4 pt-4 border-t border-french-gray/20 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-semibold text-dim-gray uppercase tracking-wider">
@@ -401,7 +490,7 @@ const TimelinePage = () => {
             </div>
 
             {/* Main Content: Timeline Feed */}
-            <div className="flex-1">
+            <div className="flex-1 bg-white-smoke p-6 rounded-[2.5rem] border border-french-gray/10 shadow-inner min-h-[600px] max-h-[600px] overflow-y-auto custom-scrollbar">
               {/* Filter Display Header */}
               <div className="mb-4 flex items-center justify-between bg-white px-6 py-4 rounded-2xl shadow-sm border border-french-gray/10">
                 <div className="flex items-center gap-3">
@@ -473,12 +562,12 @@ const TimelinePage = () => {
                   {/* Vertical Line */}
                   <div className="absolute left-3 md:left-[35px] top-4 bottom-4 w-1 bg-gradient-to-b from-red/60 via-red/20 to-transparent rounded-full"></div>
 
-                  <div className="space-y-6 relative">
+                  <div className="space-y-2.5 relative">
                     {filteredEvents.map((event, index) => (
                       <div key={event._id} className="flex gap-6 group">
                         {/* Timeline Marker */}
                         <div className="relative flex flex-col items-center">
-                          <div className="w-[70px] hidden md:flex flex-col items-center justify-center bg-white border border-french-gray/20 rounded-xl py-2 shadow-sm group-hover:border-red/30 transition-colors">
+                          <div className="w-[60px] hidden md:flex flex-col items-center justify-center bg-white border border-french-gray/20 rounded-xl py-1.5 shadow-sm group-hover:border-red/30 transition-colors">
                             <span className="text-[9px] font-semibold text-dim-gray uppercase">
                               {format(parseISO(event.date), "MMM")}
                             </span>
@@ -492,51 +581,42 @@ const TimelinePage = () => {
                         </div>
 
                         {/* Content Card */}
-                        <div className="flex-1 pb-2">
-                          <div className="bg-white p-5 rounded-2xl shadow-sm border border-french-gray/10 hover:shadow-xl transition-all duration-500 group-hover:translate-x-1 relative overflow-hidden">
+                        <div className="flex-1 pb-1">
+                          <div className="bg-white px-4 py-2.5 rounded-xl shadow-sm border border-french-gray/10 hover:shadow-md transition-all duration-300 group-hover:translate-x-1 relative overflow-hidden">
                             {/* Accent Decoration */}
                             <div className="absolute top-0 right-0 w-16 h-16 bg-misty-rose/20 rounded-bl-full pointer-events-none"></div>
 
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-[8px] font-semibold text-red uppercase tracking-[0.2em] px-2 py-0.5 bg-misty-rose rounded-full">
+                            <div className="flex justify-between items-start gap-4">
+                              <h3 className="text-sm font-bold text-eerie-black group-hover:text-red transition-colors tracking-tight leading-tight">
+                                {event.title}
+                              </h3>
+                              <span className="text-[10px] font-bold text-red uppercase tracking-widest px-2 py-0.5 bg-misty-rose rounded-lg whitespace-nowrap shrink-0">
                                 {event.category}
                               </span>
-                              <div className="flex items-center gap-1 text-dim-gray font-semibold text-[9px] bg-white-smoke px-2 py-0.5 rounded-full border border-french-gray/10">
-                                <Clock size={10} className="text-red/60" />
-                                {format(parseISO(event.date), "MMM dd, yyyy")}
+                            </div>
+
+                            <p className="text-dim-gray font-normal text-[11px] leading-relaxed mt-0.5 line-clamp-2">
+                              {event.description}
+                            </p>
+
+                            <div className="mt-1.5 flex items-center justify-between text-[8px] font-semibold text-french-gray uppercase tracking-tighter">
+                              <div className="flex items-center gap-2 text-black/70 text-[10px]">
+                                <div className="flex items-center gap-1">
+                                  <Clock size={8} className="text-red/90" />
+                                  {format(parseISO(event.date), "MMM dd, yyyy")}
+                                </div>
                                 {event.endDate && (
-                                  <>
-                                    <span className="mx-1 text-red/40">→</span>
-                                    <span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-red/80">→</span>
+                                    <span className="">
                                       {format(
                                         parseISO(event.endDate),
                                         "MMM dd, yyyy",
                                       )}
                                     </span>
-                                  </>
+                                  </div>
                                 )}
                               </div>
-                            </div>
-
-                            <h3 className="text-lg font-bold text-eerie-black mb-1.5 group-hover:text-red transition-colors tracking-tight">
-                              {event.title}
-                            </h3>
-                            <p className="text-dim-gray font-normal text-xs leading-relaxed">
-                              {event.description}
-                            </p>
-
-                            <div className="mt-4 pt-3 border-t border-french-gray/5 flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="w-5 h-5 rounded-full bg-white-smoke flex items-center justify-center">
-                                  <Sparkles size={10} className="text-red/40" />
-                                </div>
-                                <span className="text-[8px] font-semibold text-french-gray uppercase tracking-widest">
-                                  Milestone
-                                </span>
-                              </div>
-                              <button className="text-red opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-misty-rose rounded-lg">
-                                <Plus size={14} />
-                              </button>
                             </div>
                           </div>
                         </div>
@@ -624,6 +704,32 @@ const TimelinePage = () => {
               .animate-slide-in-right {
                 animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1)
                   forwards;
+              }
+              @keyframes bounce {
+                0%,
+                100% {
+                  transform: translateY(0);
+                }
+                50% {
+                  transform: translateY(-3px);
+                }
+              }
+              .group:hover .group-hover\:bounce {
+                animation: bounce 0.6s ease-in-out infinite;
+              }
+              .custom-scrollbar::-webkit-scrollbar {
+                width: 5px;
+              }
+              .custom-scrollbar::-webkit-scrollbar-track {
+                background: transparent;
+                margin: 20px;
+              }
+              .custom-scrollbar::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 10px;
+              }
+              .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: #ea1b40;
               }
             `}</style>
           </div>
