@@ -14,6 +14,9 @@ import {
   Filter,
   List,
   Download,
+  Settings,
+  Trash2,
+  Edit3,
 } from "lucide-react";
 import { saveAs } from "file-saver";
 import { RadioButtonLarge } from "@/app/components/RadioButton";
@@ -23,11 +26,12 @@ import { toast, Toaster } from "react-hot-toast";
 import { format, isSameDay, parseISO, startOfDay } from "date-fns";
 
 const TimelinePage = () => {
-  const [activeTab, setActiveTab] = useState("add");
+  const [activeTab, setActiveTab] = useState("view");
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [filterByDate, setFilterByDate] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
 
   const API_URL =
     (process.env.NEXT_PUBLIC_SERVER || "http://localhost:3001/api") +
@@ -81,30 +85,79 @@ const TimelinePage = () => {
 
   const onSubmit = async (data) => {
     try {
-      if (data.entryType === "update") {
+      if (editingEvent) {
         const payload = {
-          topic: data.topic,
-          effectiveFrom: data.date,
-          effectiveUntil: data.endDate,
-          description: data.description,
+          id: editingEvent._id,
+          ...data,
         };
-        await axios.post(EFFECTIVE_API_URL, payload);
+
+        if (data.entryType === "update") {
+          payload.topic = data.topic || data.title;
+          payload.effectiveFrom = data.date;
+          payload.effectiveUntil = data.endDate;
+          await axios.put(EFFECTIVE_API_URL, payload);
+        } else {
+          await axios.put(API_URL, payload);
+        }
+        toast.success("Event updated successfully!");
+        setEditingEvent(null);
       } else {
-        await axios.post(API_URL, data);
+        if (data.entryType === "update") {
+          const payload = {
+            topic: data.topic,
+            effectiveFrom: data.date,
+            effectiveUntil: data.endDate,
+            description: data.description,
+          };
+          await axios.post(EFFECTIVE_API_URL, payload);
+        } else {
+          await axios.post(API_URL, data);
+        }
+        toast.success("Event recorded successfully!");
       }
 
-      toast.success("Event recorded successfully!");
       reset({
         category: "General",
         date: format(new Date(), "yyyy-MM-dd"),
-        entryType: data.entryType,
+        entryType: data.entryType || "general",
       });
       fetchEvents();
       setActiveTab("view");
     } catch (error) {
-      console.error("Error recording event:", error);
-      toast.error("Failed to record event");
+      console.error("Error processing event:", error);
+      toast.error("Failed to process event");
     }
+  };
+
+  const handleDelete = async (event) => {
+    if (!window.confirm("Are you sure you want to delete this event?")) return;
+
+    try {
+      const url = event.topic ? EFFECTIVE_API_URL : API_URL;
+      await axios.delete(`${url}?id=${event._id}`);
+      toast.success("Event deleted successfully");
+      fetchEvents();
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast.error("Failed to delete event");
+    }
+  };
+
+  const startEdit = (event) => {
+    setEditingEvent(event);
+    const isUpdate = !!event.topic;
+    reset({
+      entryType: isUpdate ? "update" : "general",
+      title: event.title || event.topic,
+      topic: event.topic || "",
+      date: format(parseISO(event.date), "yyyy-MM-dd"),
+      endDate: event.endDate
+        ? format(parseISO(event.endDate), "yyyy-MM-dd")
+        : "",
+      category: event.category || "Internal",
+      description: event.description || "",
+    });
+    setActiveTab("add");
   };
 
   const filteredEvents = useMemo(() => {
@@ -208,27 +261,49 @@ const TimelinePage = () => {
         </div>
 
         {/* Center: Tabs Navigation */}
-        <div className="flex bg-white-smoke p-1 rounded-xl border gap-2 border-french-gray/20 shadow-inner">
-          <div className="flex-1 min-w-[250px]">
-            <RadioButtonLarge
-              id="add"
-              name="tab_nav"
-              register={register}
-              setValue={(name, val) => setActiveTab(val)}
-              selectedValue={activeTab}
-              setSelectedValue={setActiveTab}
-              label="Enter Event"
-            />
-          </div>
-          <div className="flex-1 min-w-[250px]">
+        <div className="flex bg-white-smoke p-1 rounded-xl border gap-2 border-french-gray/20 shadow-inner overflow-x-auto no-scrollbar">
+          <div>
             <RadioButtonLarge
               id="view"
               name="tab_nav"
               register={register}
-              setValue={(name, val) => setActiveTab(val)}
+              setValue={(name, val) => {
+                setEditingEvent(null);
+                setActiveTab(val);
+              }}
               selectedValue={activeTab}
               setSelectedValue={setActiveTab}
               label="View Timeline"
+            />
+          </div>
+
+          <div>
+            <RadioButtonLarge
+              id="add"
+              name="tab_nav"
+              register={register}
+              setValue={(name, val) => {
+                if (val !== "add") setEditingEvent(null);
+                setActiveTab(val);
+              }}
+              selectedValue={activeTab}
+              setSelectedValue={setActiveTab}
+              label={editingEvent ? "Edit Event" : "Enter Event"}
+            />
+          </div>
+
+          <div>
+            <RadioButtonLarge
+              id="manage"
+              name="tab_nav"
+              register={register}
+              setValue={(name, val) => {
+                setEditingEvent(null);
+                setActiveTab(val);
+              }}
+              selectedValue={activeTab}
+              setSelectedValue={setActiveTab}
+              label="Edit/Delete Event"
             />
           </div>
         </div>
@@ -626,114 +701,216 @@ const TimelinePage = () => {
                 </div>
               )}
             </div>
-
-            <style jsx global>{`
-              .custom-calendar-mini {
-                width: 100% !important;
-                border: none !important;
-                font-family: inherit !important;
-                background: transparent !important;
-              }
-              .react-calendar__navigation {
-                margin-bottom: 10px !important;
-                height: 40px !important;
-              }
-              .react-calendar__navigation button {
-                font-weight: 700 !important;
-                text-transform: uppercase !important;
-                color: #18181b !important;
-                border-radius: 12px !important;
-                font-size: 0.75rem !important;
-              }
-              .react-calendar__navigation button:hover {
-                background-color: #f6f8f9 !important;
-              }
-              .react-calendar__month-view__weekdays {
-                font-weight: 700 !important;
-                text-transform: uppercase !important;
-                font-size: 0.6rem !important;
-                color: #979797 !important;
-                margin-bottom: 5px !important;
-              }
-              .react-calendar__month-view__weekdays__weekday abbr {
-                text-decoration: none !important;
-              }
-              .react-calendar__month-view__days__day {
-                font-weight: 600 !important;
-                color: #18181b !important;
-                border-radius: 12px !important;
-                padding: 10px 0 !important;
-                font-size: 0.8rem !important;
-              }
-              .react-calendar__tile--active {
-                background: #ea1b40 !important;
-                color: white !important;
-                box-shadow: 0 8px 12px -3px rgba(234, 27, 64, 0.3) !important;
-              }
-              .react-calendar__tile--now {
-                background: #ffe5e9 !important;
-                color: #ea1b40 !important;
-              }
-              .has-event-marker {
-                position: relative;
-              }
-              .has-event-marker::after {
-                content: "";
-                position: absolute;
-                bottom: 4px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 4px;
-                height: 4px;
-                background: #ea1b40;
-                border-radius: 50%;
-              }
-              .react-calendar__tile--active.has-event-marker::after {
-                background: white;
-              }
-              @keyframes slide-in-right {
-                from {
-                  transform: translateX(20px);
-                  opacity: 0;
-                }
-                to {
-                  transform: translateX(0);
-                  opacity: 1;
-                }
-              }
-              .animate-slide-in-right {
-                animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1)
-                  forwards;
-              }
-              @keyframes bounce {
-                0%,
-                100% {
-                  transform: translateY(0);
-                }
-                50% {
-                  transform: translateY(-3px);
-                }
-              }
-              .group:hover .group-hover\:bounce {
-                animation: bounce 0.6s ease-in-out infinite;
-              }
-              .custom-scrollbar::-webkit-scrollbar {
-                width: 5px;
-              }
-              .custom-scrollbar::-webkit-scrollbar-track {
-                background: transparent;
-                margin: 20px;
-              }
-              .custom-scrollbar::-webkit-scrollbar-thumb {
-                background: #cbd5e1;
-                border-radius: 10px;
-              }
-              .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                background: #ea1b40;
-              }
-            `}</style>
           </div>
         )}
+
+        {activeTab === "manage" && (
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-french-gray/40 animate-slide-in-right relative overflow-hidden">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-eerie-black flex items-center gap-2">
+                <Settings className="text-red" size={20} />
+                Manage Records
+              </h2>
+              <div className="text-[10px] font-bold text-dim-gray bg-white-smoke px-3 py-1 rounded-full uppercase tracking-widest border border-french-gray/10">
+                {events.length} total events
+              </div>
+            </div>
+
+            <div className="overflow-x-auto no-scrollbar">
+              <table className="w-full text-left border-separate border-spacing-y-2">
+                <thead>
+                  <tr className="text-[10px] font-bold text-dim-gray uppercase tracking-widest">
+                    <th className="px-4 py-2">Date</th>
+                    <th className="px-4 py-2">Category</th>
+                    <th className="px-4 py-2">Event Title</th>
+                    <th className="px-4 py-2">Type</th>
+                    <th className="px-4 py-2 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.map((event) => (
+                    <tr
+                      key={event._id}
+                      className="group bg-white-smoke hover:bg-misty-rose/30 transition-colors rounded-xl overflow-hidden"
+                    >
+                      <td className="px-4 py-3 first:rounded-l-xl">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-red/40 group-hover:bg-red group-hover:scale-125 transition-all"></div>
+                          <span className="text-xs font-semibold text-eerie-black">
+                            {format(parseISO(event.date), "MMM dd, yyyy")}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-[9px] font-bold text-red bg-white px-2 py-0.5 rounded-full uppercase border border-red/10">
+                          {event.category || "General"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="max-w-[300px]">
+                          <p className="text-xs font-bold text-eerie-black truncate">
+                            {event.title || event.topic}
+                          </p>
+                          <p className="text-[10px] text-dim-gray truncate opacity-60">
+                            {event.description || "No description provided"}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-[9px] font-bold text-dim-gray uppercase">
+                          {event.topic ? "Update" : "Event"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 last:rounded-r-xl text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => startEdit(event)}
+                            className="p-2 hover:bg-white text-dim-gray hover:text-red rounded-lg transition-all border border-transparent hover:border-red/10 shadow-sm hover:shadow-red/5"
+                            title="Edit Event"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(event)}
+                            className="p-2 hover:bg-red text-dim-gray hover:text-white rounded-lg transition-all border border-transparent hover:border-red/10 shadow-sm hover:shadow-lg"
+                            title="Delete Event"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {events.length === 0 && (
+              <div className="text-center py-20">
+                <History
+                  className="mx-auto text-french-gray/20 mb-4"
+                  size={48}
+                />
+                <p className="text-sm font-semibold text-dim-gray uppercase tracking-widest">
+                  No records to manage
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        <style jsx global>{`
+          .no-scrollbar::-webkit-scrollbar {
+            display: none;
+          }
+          .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .custom-calendar-mini {
+            width: 100% !important;
+            border: none !important;
+            font-family: inherit !important;
+            background: transparent !important;
+          }
+          .react-calendar__navigation {
+            margin-bottom: 10px !important;
+            height: 40px !important;
+          }
+          .react-calendar__navigation button {
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            color: #18181b !important;
+            border-radius: 12px !important;
+            font-size: 0.75rem !important;
+          }
+          .react-calendar__navigation button:hover {
+            background-color: #f6f8f9 !important;
+          }
+          .react-calendar__month-view__weekdays {
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            font-size: 0.6rem !important;
+            color: #979797 !important;
+            margin-bottom: 5px !important;
+          }
+          .react-calendar__month-view__weekdays__weekday abbr {
+            text-decoration: none !important;
+          }
+          .react-calendar__month-view__days__day {
+            font-weight: 600 !important;
+            color: #18181b !important;
+            border-radius: 12px !important;
+            padding: 10px 0 !important;
+            font-size: 0.8rem !important;
+          }
+          .react-calendar__tile--active {
+            background: #ea1b40 !important;
+            color: white !important;
+            box-shadow: 0 8px 12px -3px rgba(234, 27, 64, 0.3) !important;
+          }
+          .react-calendar__tile--now {
+            background: #ffe5e9 !important;
+            color: #ea1b40 !important;
+          }
+          .has-event-marker {
+            position: relative;
+          }
+          .has-event-marker::after {
+            content: "";
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: #ea1b40;
+            border-radius: 50%;
+          }
+          .react-calendar__tile--active.has-event-marker::after {
+            background: white;
+          }
+          @keyframes slide-in-right {
+            from {
+              transform: translateX(20px);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          .animate-slide-in-right {
+            animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1)
+              forwards;
+          }
+          @keyframes bounce {
+            0%,
+            100% {
+              transform: translateY(0);
+            }
+            50% {
+              transform: translateY(-3px);
+            }
+          }
+          .group:hover .group-hover\:bounce {
+            animation: bounce 0.6s ease-in-out infinite;
+          }
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+            margin: 20px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+          }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #ea1b40;
+          }
+        `}</style>
       </div>
     </div>
   );
