@@ -10,103 +10,74 @@ function Tabs() {
   const { activeTabs, setActiveTabs, currentTab, setCurrentTab } =
     useContext(GlobalContext);
 
-  // State for logout popup
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
 
   const { logout } = useAuth();
 
-  // Handle close tab action
+  // ── NEW: Open Task & Chat Organiser as a page tab ──
+  const handleOpenTaskChat = () => {
+    const TAB_NAME = "Task & Chat Organiser";
+    const already = activeTabs.find((t) => t.subfolder === TAB_NAME);
+    if (!already) {
+      setActiveTabs((prev) => [
+        ...prev,
+        { folder: "Organiser", subfolder: TAB_NAME },
+      ]);
+    }
+    setCurrentTab(TAB_NAME);
+  };
+  // ── END ──
+
   const handleClose = (folder, subfolder) => {
     const newActiveTabs = activeTabs.filter(
       (item) => !(item.folder === folder && item.subfolder === subfolder),
     );
 
-    // If the current tab is the last tab and is removed, set the previous tab as current tab
     if (newActiveTabs.length === 0) {
-      setCurrentTab(null); // If no tabs remain, set current tab to null
+      setCurrentTab(null);
     } else if (currentTab === subfolder) {
       const currentIndex = activeTabs.findIndex(
         (item) => item.subfolder === currentTab,
       );
-      const previousTab = newActiveTabs[currentIndex - 1] || newActiveTabs[0]; // Get the previous tab or first tab
+      const previousTab = newActiveTabs[currentIndex - 1] || newActiveTabs[0];
       setCurrentTab(previousTab.subfolder);
     }
 
-    // Update activeTabs after removing the tab
     setActiveTabs(newActiveTabs);
   };
 
-  // Handle logout button click
   const handleLogoutClick = () => {
     setShowLogoutPopup(true);
   };
 
-  // Handle logout confirmation
-  const handleLogoutConfirm = () => {
-    // Add your logout logic here
-    // console.log("User logged out");
-
-    // Example logout actions:
-    // - Clear user session
-    // - Clear local storage
-    // - Redirect to login page
-    // - Reset global state
-
-    // Close popup
-    setShowLogoutPopup(false);
-
-    // You can add your logout logic here, for example:
-    // localStorage.clear();
-    // router.push('/login');
-  };
-
-  // Handle logout cancellation
   const handleLogoutCancel = () => {
     setShowLogoutPopup(false);
   };
 
-  // Handle Ctrl + Tab, Ctrl + Shift + Tab, and Ctrl + F4 keypress to switch tabs or close tab
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Detect Ctrl + Tab (Next tab)
       if (e.ctrlKey && e.key === "Tab" && !e.shiftKey) {
-        e.preventDefault(); // Prevent default behavior of Ctrl + Tab (browser switching tabs)
-
-        // Find the current tab index
+        e.preventDefault();
         const currentIndex = activeTabs.findIndex(
           (item) => item.subfolder === currentTab,
         );
-
-        // Determine the next tab index (wrap around to the first tab if current tab is the last one)
         const nextIndex =
           currentIndex === activeTabs.length - 1 ? 0 : currentIndex + 1;
-
-        // Set the current tab to the next tab
         setCurrentTab(activeTabs[nextIndex].subfolder);
       }
 
-      // Detect Ctrl + Shift + Tab (Previous tab)
       if (e.ctrlKey && e.shiftKey && e.key === "Tab") {
-        e.preventDefault(); // Prevent default behavior of Ctrl + Shift + Tab (browser switching tabs)
-
-        // Find the current tab index
+        e.preventDefault();
         const currentIndex = activeTabs.findIndex(
           (item) => item.subfolder === currentTab,
         );
-
-        // Determine the previous tab index (wrap around to the last tab if current tab is the first one)
         const prevIndex =
           currentIndex === 0 ? activeTabs.length - 1 : currentIndex - 1;
-
-        // Set the current tab to the previous tab
         setCurrentTab(activeTabs[prevIndex].subfolder);
       }
 
-      // Detect Ctrl + F4 (Close current tab)
       if (e.ctrlKey && e.key === "F4") {
-        e.preventDefault(); // Prevent default behavior of Ctrl + F4 (browser tab closing)
-
-        // Find and remove the current tab from the activeTabs list
+        e.preventDefault();
         const tabToClose = activeTabs.find(
           (item) => item.subfolder === currentTab,
         );
@@ -115,16 +86,12 @@ function Tabs() {
         }
       }
 
-      // Close popup on Escape key
       if (e.key === "Escape" && showLogoutPopup) {
         setShowLogoutPopup(false);
       }
     };
 
-    // Attach the keydown event listener to the document
     document.addEventListener("keydown", handleKeyDown);
-
-    // Cleanup the event listener on component unmount
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
@@ -151,22 +118,22 @@ function Tabs() {
                   className={`flex items-center justify-between relative h-full w-full flex-nowrap`}
                 >
                   <div
-                    className={`absolute bottom-0 rounded-md left-0 right-0  ${
+                    className={`absolute bottom-0 rounded-md left-0 right-0 ${
                       currentTab === item.subfolder
                         ? "border-t-2 border-red"
                         : ""
-                    } `}
+                    }`}
                   ></div>
                   <span
-                    className={`text-black h-2 flex justify-center items-center flex-nowrap `}
+                    className={`text-black h-2 flex justify-center items-center flex-nowrap`}
                   >
                     {item.subfolder}
                   </span>
                   <button
                     className="flex justify-center items-center"
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent click event from triggering the tab selection
-                      handleClose(item.folder, item.subfolder); // Handle the close action
+                      e.stopPropagation();
+                      handleClose(item.folder, item.subfolder);
                     }}
                   >
                     <Image
@@ -184,6 +151,29 @@ function Tabs() {
 
         <div className="flex items-center gap-1 justify-center px-4 bg-gray-50 border-r min-w-fit">
           <UpdateNotification variant="topbar" />
+
+          {/* ── TASK & CHAT ORGANISER BUTTON ── */}
+          <button
+            onClick={handleOpenTaskChat}
+            title="Task & Chat Organiser"
+            className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+            </svg>
+            <span>Tasks</span>
+          </button>
+          {/* ── END ── */}
+
           <button
             onClick={handleLogoutClick}
             className="flex items-center justify-center hover:opacity-80 transition-opacity"
@@ -216,9 +206,8 @@ function Tabs() {
                   className="text-red-600"
                 />
               </button>
-
               <div className="flex justify-center text-center items-center">
-                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center ">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
                   <Image
                     src="/logout.svg"
                     alt="Logout"
@@ -232,8 +221,6 @@ function Tabs() {
                 </h3>
               </div>
             </div>
-
-            {/* Buttons */}
             <div className="flex">
               <SimpleButton name={"Logout"} onClick={logout} />
             </div>
