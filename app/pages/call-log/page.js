@@ -7,7 +7,6 @@ import InputBox from "@/app/components/InputBox";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import axios from "axios";
 import {
-  ArrowLeft,
   ChevronDown,
   Phone,
   PhoneIncoming,
@@ -18,23 +17,14 @@ import {
   Clock,
   PhoneCall,
   Users,
-  User,
-  Briefcase,
-  FileText,
   CheckCircle,
   AlertCircle,
-  Mic,
-  Bell,
-  Target,
-  List,
-  MessageSquare,
-  PhoneCallIcon,
 } from "lucide-react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
 
-// â”€â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── helpers ──────────────────────────────────────────────────────────────────
 const now = () => new Date();
 const fmtDate = (d) =>
   d.toLocaleDateString("en-US", {
@@ -49,7 +39,7 @@ const fmtTime = (d) =>
     hour12: true,
   });
 
-// â”€â”€â”€ Modal wrapper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Modal wrapper ────────────────────────────────────────────────────────────
 const Modal = ({ open, onClose, title, children }) => {
   if (!open) return null;
   return (
@@ -75,7 +65,7 @@ const Modal = ({ open, onClose, title, children }) => {
   );
 };
 
-// â”€â”€â”€ LogACallForm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── LogACallForm ─────────────────────────────────────────────────────────────
 const LogACallForm = ({ onClose, onSave, server }) => {
   const { register, setValue, watch, handleSubmit } = useForm({
     defaultValues: {
@@ -87,7 +77,7 @@ const LogACallForm = ({ onClose, onSave, server }) => {
       callStartTime: fmtTime(now()),
       callDurationMin: "00",
       callDurationSec: "00",
-      subject: "Outgoing call to Unknown",
+      subject: "",
       voiceRecording: "",
       reminder: "None",
       callPurpose: "-None-",
@@ -103,14 +93,12 @@ const LogACallForm = ({ onClose, onSave, server }) => {
   const onSubmit = async (data) => {
     setSaving(true);
     try {
-      if (server) {
-        await axios.post(`${server}/call-log`, { ...data, type: "log" });
-      }
+      await axios.post(`${server}/call-log`, { ...data, type: "log" });
       toast.success("Call logged successfully!");
       onSave?.();
       onClose();
-    } catch {
-      toast.error("Failed to log call");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to log call");
     } finally {
       setSaving(false);
     }
@@ -358,9 +346,9 @@ const LogACallForm = ({ onClose, onSave, server }) => {
         </div>
       </div>
       <div className="flex justify-end gap-3 pt-3 border-t border-misty-rose">
-        <OutlinedButtonRed label={`Cancel`} onClick={onClose} />
+        <OutlinedButtonRed label="Cancel" onClick={onClose} />
         <SimpleButton
-          name={saving ? "Savingâ€¦" : "Save Call"}
+          name={saving ? "Saving..." : "Save Call"}
           type="submit"
           disabled={saving}
         />
@@ -369,7 +357,7 @@ const LogACallForm = ({ onClose, onSave, server }) => {
   );
 };
 
-// â”€â”€â”€ ScheduleACallForm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ScheduleACallForm ────────────────────────────────────────────────────────
 const ScheduleACallForm = ({ onClose, onSave, server }) => {
   const { register, setValue, handleSubmit } = useForm({
     defaultValues: {
@@ -393,14 +381,12 @@ const ScheduleACallForm = ({ onClose, onSave, server }) => {
   const onSubmit = async (data) => {
     setSaving(true);
     try {
-      if (server) {
-        await axios.post(`${server}/call-log`, { ...data, type: "schedule" });
-      }
+      await axios.post(`${server}/call-log`, { ...data, type: "schedule" });
       toast.success("Call scheduled successfully!");
       onSave?.();
       onClose();
-    } catch {
-      toast.error("Failed to schedule call");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to schedule call");
     } finally {
       setSaving(false);
     }
@@ -586,7 +572,7 @@ const ScheduleACallForm = ({ onClose, onSave, server }) => {
       <div className="flex justify-end gap-3 pt-3 border-t border-misty-rose">
         <OutlinedButtonRed name="Cancel" onClick={onClose} />
         <SimpleButton
-          name={saving ? "Savingâ€¦" : "Schedule Call"}
+          name={saving ? "Saving..." : "Schedule Call"}
           type="submit"
           disabled={saving}
         />
@@ -595,7 +581,7 @@ const ScheduleACallForm = ({ onClose, onSave, server }) => {
   );
 };
 
-// â”€â”€â”€ Stats Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Stats Card ────────────────────────────────────────────────────────────────
 const StatsCard = ({ title, value, icon: Icon, color }) => (
   <div className="bg-white rounded-xl border border-french-gray p-4 shadow-sm hover:shadow-md transition-shadow">
     <div className="flex items-center justify-between">
@@ -612,35 +598,46 @@ const StatsCard = ({ title, value, icon: Icon, color }) => (
   </div>
 );
 
-// â”€â”€â”€ Main CallLog component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main CallLog component ───────────────────────────────────────────────────
 const CallLog = () => {
-  const { setCurrentTab, server } = useContext(GlobalContext);
-  const [calls, setCalls] = useState([
-    {
-      id: 1,
-      subject: "Call Customer on Potential",
-      callType: "Inbound",
-      callStartTime: "07/05/2026 11:50 AM",
-      callDuration: "00:15",
-      relatedTo: "King",
-      contactName: "Sage Wieser (Sample)",
-      callOwner: "Harmanjeet Singh",
-    },
-    {
-      id: 2,
-      subject: "Follow up with Lead",
-      callType: "Outbound",
-      callStartTime: "07/05/2026 03:50 PM",
-      callDuration: "00:00",
-      relatedTo: "Chau Kitzman (Sample)",
-      contactName: "",
-      callOwner: "Harmanjeet Singh",
-    },
-  ]);
+  const { server } = useContext(GlobalContext);
+  const [calls, setCalls] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalCalls: 0,
+    totalLogs: 0,
+    totalSchedules: 0,
+    inboundCalls: 0,
+    outboundCalls: 0,
+    pendingCalls: 0,
+    completedCalls: 0,
+    avgDuration: "0m 0s",
+  });
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [modal, setModal] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Fetch calls from API
+  const fetchCalls = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${server}/call-log`);
+      if (response.data.success) {
+        setCalls(response.data.data);
+        setStats(response.data.stats);
+      }
+    } catch (error) {
+      console.error("Error fetching calls:", error);
+      toast.error("Failed to fetch calls");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCalls();
+  }, [server]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -653,23 +650,67 @@ const CallLog = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    toast.success("Calls refreshed");
+    await fetchCalls();
     setRefreshing(false);
+    toast.success("Calls refreshed");
   };
 
-  const handleSaved = () => {};
+  const handleSaved = () => {
+    fetchCalls();
+  };
 
-  const stats = {
-    total: calls.length,
-    inbound: calls.filter((c) => c.callType === "Inbound").length,
-    outbound: calls.filter((c) => c.callType === "Outbound").length,
-    avgDuration: "7m 30s",
+  const handleUpdateStatus = async (callId, action) => {
+    try {
+      await axios.patch(`${server}/call-log?id=${callId}&action=${action}`);
+      toast.success(`Call ${action}ed successfully`);
+      fetchCalls();
+    } catch (error) {
+      toast.error(`Failed to ${action} call`);
+    }
+  };
+
+  const handleDelete = async (callId, isSchedule = false) => {
+    const message = isSchedule
+      ? "Are you sure you want to cancel this scheduled call?"
+      : "Are you sure you want to delete this call log?";
+
+    if (confirm(message)) {
+      try {
+        await axios.delete(`${server}/call-log?id=${callId}`);
+        toast.success(
+          isSchedule
+            ? "Call cancelled successfully"
+            : "Call deleted successfully",
+        );
+        fetchCalls();
+      } catch (error) {
+        toast.error("Failed to delete call");
+      }
+    }
+  };
+
+  // Format duration display
+  const formatDuration = (call) => {
+    if (call.callDurationMin && call.callDurationSec) {
+      const mins = parseInt(call.callDurationMin);
+      const secs = parseInt(call.callDurationSec);
+      if (mins > 0 || secs > 0) {
+        return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+      }
+    }
+    return "--:--";
+  };
+
+  // Format date/time display
+  const formatDateTime = (call) => {
+    if (call.callStartDate && call.callStartTime) {
+      return `${call.callStartDate} ${call.callStartTime}`;
+    }
+    return "Date not set";
   };
 
   return (
-    <div className=" bg-gray-50/40 p-2">
+    <div className="bg-gray-50/40 p-6">
       <div className="mx-auto">
         {/* Header Section */}
         <div className="flex items-center justify-between mb-6">
@@ -712,8 +753,7 @@ const CallLog = () => {
                 <button
                   type="button"
                   onClick={() => setDropdownOpen((v) => !v)}
-                  className="flex items-center justify-center h-[30px] px-2.5 bg-gradient-to-r from-red to-rose-700 text-white rounded-r-lg border-l hover:from-red hover:to-rose-500
-                   transition-all"
+                  className="flex items-center justify-center h-[30px] px-2.5 bg-gradient-to-r from-red to-rose-700 text-white rounded-r-lg border-l hover:from-red hover:to-rose-500 transition-all"
                 >
                   <ChevronDown size={16} />
                 </button>
@@ -727,8 +767,7 @@ const CallLog = () => {
                     }}
                     className="flex items-center gap-3 w-full px-4 py-2.5 text-xs text-dim-gray hover:bg-misty-rose/30 hover:text-red transition-colors"
                   >
-                    <Calendar size={12} className="text-dim-gray" /> Schedule a
-                    call
+                    <Calendar size={12} /> Schedule a call
                   </button>
                   <button
                     onClick={() => {
@@ -737,8 +776,7 @@ const CallLog = () => {
                     }}
                     className="flex items-center gap-3 w-full px-4 py-2.5 text-xs text-dim-gray hover:bg-misty-rose/30 hover:text-red transition-colors border-t border-french-gray"
                   >
-                    <PhoneOutgoing size={12} className="text-dim-gray" /> Log a
-                    call
+                    <PhoneOutgoing size={12} /> Log a call
                   </button>
                 </div>
               )}
@@ -750,27 +788,27 @@ const CallLog = () => {
         <div className="grid grid-cols-4 gap-4 mb-6">
           <StatsCard
             title="Total Calls"
-            value={stats.total}
+            value={stats.totalCalls}
             icon={PhoneCall}
             color="bg-red"
           />
           <StatsCard
             title="Inbound"
-            value={stats.inbound}
+            value={stats.inboundCalls}
             icon={PhoneIncoming}
-            color="bg-green-1"
+            color="bg-green-500"
           />
           <StatsCard
             title="Outbound"
-            value={stats.outbound}
+            value={stats.outboundCalls}
             icon={PhoneOutgoing}
-            color="bg-dark-red"
+            color="bg-orange-500"
           />
           <StatsCard
             title="Avg Duration"
             value={stats.avgDuration}
             icon={Clock}
-            color="bg-Denim"
+            color="bg-blue-500"
           />
         </div>
 
@@ -802,15 +840,24 @@ const CallLog = () => {
                     Related To
                   </th>
                   <th className="p-4 text-left font-semibold text-eerie-black text-xs uppercase tracking-wider">
-                    Contact
+                    Status
                   </th>
-                  <th className="p-4 text-left font-semibold text-eerie-black text-xs uppercase tracking-wider">
-                    Owner
+                  <th className="p-4 text-center font-semibold text-eerie-black text-xs uppercase tracking-wider">
+                    Actions
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {calls.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="p-12 text-center text-battleship-gray text-sm"
+                    >
+                      Loading calls...
+                    </td>
+                  </tr>
+                ) : calls.length === 0 ? (
                   <tr>
                     <td
                       colSpan={8}
@@ -822,7 +869,7 @@ const CallLog = () => {
                 ) : (
                   calls.map((call) => (
                     <tr
-                      key={call.id}
+                      key={call._id}
                       className="border-b border-anti-flash-white last:border-0 hover:bg-seasalt transition-colors group"
                     >
                       <td className="p-4">
@@ -834,49 +881,105 @@ const CallLog = () => {
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           {call.callType === "Inbound" ? (
-                            <PhoneIncoming size={14} className="text-green-1" />
+                            <PhoneIncoming
+                              size={14}
+                              className="text-green-500"
+                            />
                           ) : (
-                            <PhoneOutgoing size={14} className="text-Denim" />
+                            <PhoneOutgoing
+                              size={14}
+                              className="text-blue-500"
+                            />
                           )}
-                          <button className="text-eerie-black font-medium hover:text-red hover:underline transition-colors">
-                            {call.subject}
-                          </button>
+                          <span className="text-eerie-black font-medium">
+                            {call.subject || "No subject"}
+                          </span>
                         </div>
                       </td>
                       <td className="p-4">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${call.callType === "Inbound" ? "bg-misty-rose/50 text-green-2" : "bg-misty-rose text-red"}`}
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            call.callType === "Inbound"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-blue-100 text-blue-700"
+                          }`}
                         >
                           {call.callType}
                         </span>
                       </td>
                       <td className="p-4 text-dim-gray text-xs">
-                        {call.callStartTime}
+                        {formatDateTime(call)}
                       </td>
                       <td className="p-4 text-dim-gray text-xs">
-                        {call.callDuration}
+                        {formatDuration(call)}
                       </td>
                       <td className="p-4">
-                        {call.relatedTo ? (
-                          <button className="text-red hover:underline text-xs">
-                            {call.relatedTo}
-                          </button>
-                        ) : (
-                          <span className="text-battleship-gray">â€”</span>
-                        )}
+                        {call.relatedToSearch || call.relatedTo || "—"}
                       </td>
                       <td className="p-4">
-                        {call.contactName ? (
-                          <button className="text-red hover:underline text-xs">
-                            {call.contactName}
-                          </button>
-                        ) : (
-                          <span className="text-battleship-gray">â€”</span>
-                        )}
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            call.status === "completed"
+                              ? "bg-green-100 text-green-700"
+                              : call.status === "pending"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : call.status === "missed"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {call.status === "completed" && (
+                            <CheckCircle size={10} />
+                          )}
+                          {call.status === "pending" && <Clock size={10} />}
+                          {call.status === "missed" && (
+                            <AlertCircle size={10} />
+                          )}
+                          {call.status}
+                        </span>
                       </td>
-                      <td className="p-4 text-dim-gray text-xs flex items-center gap-1">
-                        <Users size={10} className="text-dim-gray" />
-                        {call.callOwner}
+                      <td className="p-4">
+                        <div className="flex items-center justify-center gap-2">
+                          {call.entryType === "schedule" &&
+                            call.status === "pending" && (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    handleUpdateStatus(call._id, "complete")
+                                  }
+                                  className="p-1 text-green-600 hover:text-green-700 transition-colors"
+                                  title="Mark as completed"
+                                >
+                                  <CheckCircle size={14} />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleUpdateStatus(call._id, "miss")
+                                  }
+                                  className="p-1 text-red-600 hover:text-red-700 transition-colors"
+                                  title="Mark as missed"
+                                >
+                                  <AlertCircle size={14} />
+                                </button>
+                              </>
+                            )}
+                          <button
+                            onClick={() =>
+                              handleDelete(
+                                call._id,
+                                call.entryType === "schedule",
+                              )
+                            }
+                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                            title={
+                              call.entryType === "schedule"
+                                ? "Cancel call"
+                                : "Delete call"
+                            }
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -895,18 +998,10 @@ const CallLog = () => {
               records
             </span>
             <div className="flex gap-2">
-              <button
-                className="px-3 py-1 rounded-lg hover:bg-misty-rose hover:text-red transition-colors disabled:opacity-50"
-                disabled
-              >
-                Previous
-              </button>
-              <button
-                className="px-3 py-1 rounded-lg hover:bg-misty-rose hover:text-red transition-colors disabled:opacity-50"
-                disabled
-              >
-                Next
-              </button>
+              <span className="text-battleship-gray">
+                Total: {stats.totalCalls} | Logs: {stats.totalLogs} | Schedules:{" "}
+                {stats.totalSchedules}
+              </span>
             </div>
           </div>
         </div>
