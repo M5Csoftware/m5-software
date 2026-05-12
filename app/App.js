@@ -14,6 +14,7 @@ import { defaultEventCodes } from "./lib/eventCodes";
 import axios from "axios";
 import Sidebar from "./components/Sidebar";
 import Tabs from "./components/Tabs";
+import ChatSlider from "./components/ChatSlider";
 
 const PageLoader = () => (
   <div className="flex justify-center items-center h-full">
@@ -620,6 +621,7 @@ const App = () => {
           })}
         </div>
       </div>
+      <ChatSlider />
     </main>
   );
 };
