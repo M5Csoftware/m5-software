@@ -1,11 +1,11 @@
 {
-  "version": "0.1.79",
-  "notes": "Merge pull request #222 from M5Csoftware/Altaf",
-  "pub_date": "2026-05-12T09:51:05Z",
+  "version": "0.1.80",
+  "notes": "Task Organizer Done",
+  "pub_date": "2026-05-13T10:40:02Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYyttRDFvdkdFeldwL20wME55LzNJWXh3ZlcweEx0UWhnczBHTTd2R01yb1Q4UnMxS1hndE5STkZLVWtsa2JiRGlsTThFL2hQb3Q0aGNhUTVsUUNrSUFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NTc5NDY1CWZpbGU6TTVDIExvZ3NfMC4xLjc5X3g2NF9lbi1VUy5tc2kuemlwClMyVnFMNk11d2hVRDN4Z1M2MEFwYnYzKzd5aEtHZm01MHdBMS9TeVU1Vm9UN3lKUC9hUzhkT0VKek9ramtzem5sTFhLM1Ayd29DKzJLZVJQMWFydUJ3PT0K",
-      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.79/M5C.Logs_0.1.79_x64_en-US.msi.zip"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYzFhMjdhQW5JWW5Sb0RGOXVTNkpIVGNicDAva2haYzBSbWRJL3dGajBwbFA0Zm1wQzVMaDRmb3dFOFRyQy95MDBLNjdZd1kwVkxaSzhtNlpTWFRCNEE4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NjY4ODAxCWZpbGU6TTVDIExvZ3NfMC4xLjgwX3g2NF9lbi1VUy5tc2kuemlwCklwTHFPb3lGRzRjWGpHR29VbE9XdWVTWEoxQlIzZXhNejFON1YyTnRsZnpVSElFdTkwZHlYb2FvZVpVK2dHaDdNRGlDazAyWXVONDcvVGlxdUhtOUFBPT0K",
+      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.80/M5C.Logs_0.1.80_x64_en-US.msi.zip"
     }
   }
 }
