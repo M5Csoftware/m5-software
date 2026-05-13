@@ -7,14 +7,35 @@ import { useAuth } from "../Context/AuthContext";
 import UpdateNotification from "./UpdateNotification";
 
 function Tabs() {
-  const { activeTabs, setActiveTabs, currentTab, setCurrentTab } =
+  const { activeTabs, setActiveTabs, currentTab, setCurrentTab, server } =
     useContext(GlobalContext);
 
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
+  const [unreadTaskCount, setUnreadTaskCount] = useState(0);
+  const { logout, user } = useAuth();
 
-  const { logout } = useAuth();
+  // Fetch unread task count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!user?.userId || !server) return;
+      try {
+        const response = await fetch(
+          `${server}/tasks?userId=${user.userId}&type=received`,
+        );
+        const data = await response.json();
+        if (data.success) {
+          setUnreadTaskCount(data.stats?.unread || 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch unread tasks:", error);
+      }
+    };
 
-  // ── NEW: Open Task & Chat Organiser as a page tab ──
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [user?.userId, server]);
+
   const handleOpenTaskChat = () => {
     const TAB_NAME = "Task & Chat Organiser";
     const already = activeTabs.find((t) => t.subfolder === TAB_NAME);
@@ -25,8 +46,9 @@ function Tabs() {
       ]);
     }
     setCurrentTab(TAB_NAME);
+    // Clear badge when user opens the tab
+    setUnreadTaskCount(0);
   };
-  // ── END ──
 
   const handleClose = (folder, subfolder) => {
     const newActiveTabs = activeTabs.filter(
@@ -114,9 +136,7 @@ function Tabs() {
                 }`}
                 key={index}
               >
-                <div
-                  className={`flex items-center justify-between relative h-full w-full flex-nowrap`}
-                >
+                <div className="flex items-center justify-between relative h-full w-full flex-nowrap">
                   <div
                     className={`absolute bottom-0 rounded-md left-0 right-0 ${
                       currentTab === item.subfolder
@@ -124,9 +144,7 @@ function Tabs() {
                         : ""
                     }`}
                   ></div>
-                  <span
-                    className={`text-black h-2 flex justify-center items-center flex-nowrap`}
-                  >
+                  <span className="text-black h-2 flex justify-center items-center flex-nowrap">
                     {item.subfolder}
                   </span>
                   <button
@@ -137,7 +155,7 @@ function Tabs() {
                     }}
                   >
                     <Image
-                      src={`/close.svg`}
+                      src="/close.svg"
                       alt="close"
                       width={16}
                       height={16}
@@ -156,20 +174,29 @@ function Tabs() {
           <button
             onClick={handleOpenTaskChat}
             title="Task & Chat Organiser"
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+            className="relative flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-gray-600 hover:bg-gray-100 transition-colors"
           >
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-            </svg>
+            <div className="relative w-[17px] h-[17px]">
+              <img
+                src="/hourglass.png"
+                alt="Tasks"
+                className="w-full h-full object-contain"
+              />
+              {unreadTaskCount > 0 && (
+                <span
+                  className="absolute -top-1.5 -right-1.5 flex items-center justify-center text-white rounded-full font-bold"
+                  style={{
+                    backgroundColor: "#dc2626",
+                    fontSize: "8px",
+                    minWidth: "14px",
+                    height: "14px",
+                    padding: "0 3px",
+                  }}
+                >
+                  {unreadTaskCount > 99 ? "99+" : unreadTaskCount}
+                </span>
+              )}
+            </div>
             <span>Tasks</span>
           </button>
           {/* ── END ── */}
