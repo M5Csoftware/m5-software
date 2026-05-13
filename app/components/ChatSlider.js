@@ -10,6 +10,8 @@ import {
   Users,
   Shield,
   Megaphone,
+  Minus,
+  Bell,
 } from "lucide-react";
 import { GlobalContext } from "../lib/GlobalContext";
 import { useAuth } from "../Context/AuthContext";
@@ -30,7 +32,19 @@ const ChatSlider = () => {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
+  const [unreadCounts, setUnreadCounts] = useState({});
+  const [viewTab, setViewTab] = useState("chats");
+  const [recentUserIds, setRecentUserIds] = useState([]);
+  const [notification, setNotification] = useState(null);
   const messagesEndRef = useRef(null);
+  const isChatOpenRef = useRef(isChatOpen);
+  const selectedMemberRef = useRef(selectedMember);
+
+  // Update refs
+  useEffect(() => {
+    isChatOpenRef.current = isChatOpen;
+    selectedMemberRef.current = selectedMember;
+  }, [isChatOpen, selectedMember]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -50,11 +64,38 @@ const ChatSlider = () => {
     }
 
     newSocket.on("receive_message", (msg) => {
-      // Only add message if it belongs to current conversation or is a broadcast
       setMessages((prev) => {
-        // Prevent duplicates
         if (prev.find((m) => m._id === msg._id)) return prev;
         return [...prev, msg];
+      });
+
+      const isBroadcast = msg.type === "broadcast";
+      const senderKey = isBroadcast ? "broadcast" : msg.senderId;
+
+      setUnreadCounts((prev) => {
+        const currentSelected = selectedMemberRef.current;
+        const currentIsChatOpen = isChatOpenRef.current;
+        
+        const isMessageFromActiveChat = isBroadcast ? !currentSelected : (currentSelected?.userId === msg.senderId);
+        
+        if (!currentIsChatOpen || !isMessageFromActiveChat) {
+          if (msg.senderId !== user.userId) {
+            setNotification({
+              senderName: msg.senderName,
+              text: msg.text,
+              senderId: msg.senderId
+            });
+            setTimeout(() => setNotification(null), 4000);
+            
+            // Add to recent if not exists
+            setRecentUserIds(prev => prev.includes(msg.senderId) ? prev : [msg.senderId, ...prev]);
+          }
+           return {
+             ...prev,
+             [senderKey]: (prev[senderKey] || 0) + 1
+           };
+        }
+        return prev;
       });
     });
 
@@ -110,6 +151,55 @@ const ChatSlider = () => {
     }
   }, [isChatOpen, selectedMember, user?.userId]);
 
+  // Fetch Recent Conversations & Unread Counts on mount/login
+  useEffect(() => {
+    if (user?.userId) {
+      const fetchData = async () => {
+        try {
+          // Fetch Recent Users
+          const recentRes = await axios.get(`${NODE_SERVER}/chat/recent-users`, {
+            params: { userId: user.userId },
+          });
+          if (recentRes.data.success) {
+            setRecentUserIds(recentRes.data.data);
+          }
+
+          // Fetch Unread Counts
+          const unreadRes = await axios.get(
+            `${NODE_SERVER}/chat/unread-counts`,
+            {
+              params: { userId: user.userId },
+            },
+          );
+          if (unreadRes.data.success) {
+            setUnreadCounts(unreadRes.data.data);
+          }
+        } catch (e) {
+          console.error("Failed to fetch chat data", e);
+        }
+      };
+      fetchData();
+    }
+  }, [user?.userId]);
+
+  // Clear unread counts when opening a chat
+  useEffect(() => {
+    if (isChatOpen && selectedMember) {
+      setUnreadCounts((prev) => {
+        if (!prev[selectedMember.userId]) return prev;
+        const next = { ...prev };
+        delete next[selectedMember.userId];
+        return next;
+      });
+
+      // Mark as read on backend
+      axios.post(`${NODE_SERVER}/chat/mark-read`, {
+        userId: user.userId,
+        senderId: selectedMember.userId
+      }).catch(e => console.error("Failed to mark messages as read", e));
+    }
+  }, [isChatOpen, selectedMember, user?.userId]);
+
   const handleSendMessage = (e, type = "private") => {
     if (e) e.preventDefault();
     if (!message.trim() || !socket) return;
@@ -124,14 +214,85 @@ const ChatSlider = () => {
     };
 
     socket.emit("send_message", messageData);
+    if (type === "private") {
+      setRecentUserIds((prev) =>
+        prev.includes(selectedMember.userId)
+          ? prev
+          : [selectedMember.userId, ...prev],
+      );
+    } else if (type === "broadcast") {
+      setUnreadCounts((prev) => {
+        if (!prev["broadcast"]) return prev;
+        const next = { ...prev };
+        delete next["broadcast"];
+        return next;
+      });
+    }
     setMessage("");
   };
 
-  const filteredEmployees = employees.filter(
-    (emp) =>
-      emp.name.toLowerCase().includes(search.toLowerCase()) &&
-      emp.userId !== user?.userId,
-  );
+  const filteredEmployees = employees
+    .filter((emp) => {
+      const name = (emp.name || "").toLowerCase();
+      const role = (emp.role || "").toLowerCase();
+      const searchTerm = search.toLowerCase();
+      return (
+        (name.includes(searchTerm) || role.includes(searchTerm)) &&
+        emp.userId !== user?.userId
+      );
+    })
+    .sort((a, b) => {
+      const isAAdmin = (a.role || "").toLowerCase() === "admin" || a.userId === "11111111";
+      const isBAdmin = (b.role || "").toLowerCase() === "admin" || b.userId === "11111111";
+      if (isAAdmin && !isBAdmin) return -1;
+      if (!isAAdmin && isBAdmin) return 1;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+
+  const renderEmployeeItem = (emp, idx, arr) => {
+    const isFirstAdmin =
+      emp.role === "Admin" && (idx === 0 || arr[idx - 1].role !== "Admin");
+    const isFirstRegular =
+      emp.role !== "Admin" && idx > 0 && arr[idx - 1].role === "Admin";
+    return (
+      <React.Fragment key={emp.userId}>
+        {isFirstAdmin && (
+          <p className="px-6 py-3 text-[10px] font-black text-red bg-red/5 uppercase tracking-[0.1em] border-y border-red/10 flex items-center gap-2">
+            <Shield size={12} />
+            Support & Administration
+          </p>
+        )}
+        {isFirstRegular && (
+          <p className="px-6 py-3 text-[10px] font-black text-battleship-gray uppercase tracking-[0.1em] bg-white/50 border-y border-platinum/30">
+            Team Members
+          </p>
+        )}
+        <div
+          onClick={() => setSelectedMember(emp)}
+          className="flex items-center gap-4 p-4 hover:bg-seasalt cursor-pointer transition-all border-b border-platinum/50 group last:border-b-0"
+        >
+          <div className="relative">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-misty-rose to-white border border-red/10 flex items-center justify-center text-red font-black text-lg group-hover:from-red group-hover:to-dark-red group-hover:text-white transition-all duration-300 shadow-sm">
+              {(emp.name || "U").charAt(0)}
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm text-gunmetal truncate">{emp.name}</p>
+          </div>
+          <div className="flex flex-col items-end gap-1 min-w-[80px]">
+            <span className="text-[8px] font-black text-battleship-gray bg-seasalt border border-platinum/50 px-2 py-0.5 rounded-lg uppercase tracking-widest text-right">
+              {emp.department || emp.role || "Team"}
+            </span>
+            {unreadCounts[emp.userId] > 0 && (
+              <span className="bg-red text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">
+                {unreadCounts[emp.userId]}
+              </span>
+            )}
+          </div>
+        </div>
+      </React.Fragment>
+    );
+  };
 
   return (
     <>
@@ -147,7 +308,17 @@ const ChatSlider = () => {
         >
           {isHovered && (
             <div className="flex flex-col items-center gap-1 text-white animate-in fade-in zoom-in duration-300">
-              <MessageSquare size={20} fill="white" />
+              <div className="relative">
+                <MessageSquare size={20} fill="white" />
+                {Object.values(unreadCounts).some((v) => v > 0) && (
+                  <span className="absolute -top-2 -right-2 bg-white text-red text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-lg border border-red/20">
+                    {Object.values(unreadCounts).reduce(
+                      (a, b) => a + (Number(b) || 0),
+                      0,
+                    )}
+                  </span>
+                )}
+              </div>
               <span className="text-[9px] font-medium uppercase tracking-wider">
                 Chat
               </span>
@@ -160,6 +331,47 @@ const ChatSlider = () => {
       <div
         className={`fixed bg-white top-2 bottom-2 z-[110] border border-platinum shadow-[-20px_0_50px_rgba(0,0,0,0.1)] rounded-2xl w-[450px] flex flex-col overflow-hidden transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${isChatOpen ? "right-2" : "-right-[480px]"}`}
       >
+        {/* Global Notification Toast */}
+        {notification && (
+          <div
+            onClick={() => {
+              const sender = employees.find(
+                (e) => e.userId === notification.senderId,
+              );
+              if (sender) {
+                setSelectedMember(sender);
+                setViewTab("chats");
+              }
+              setNotification(null);
+            }}
+            className="absolute top-20 left-4 right-4 z-[120] bg-white border border-platinum shadow-2xl rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-top-full duration-500 cursor-pointer hover:border-red/30 transition-all"
+          >
+            <div className="w-10 h-10 rounded-full bg-red/10 flex items-center justify-center text-red font-bold">
+              {(notification.senderName || "U").charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-black text-red uppercase tracking-widest">
+                New Message
+              </p>
+              <p className="text-xs font-bold text-gunmetal truncate">
+                {notification.senderName}
+              </p>
+              <p className="text-[11px] text-dim-gray truncate">
+                {notification.text}
+              </p>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setNotification(null);
+              }}
+              className="text-platinum hover:text-red p-1"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="p-6 bg-seasalt text-red border-b border-platinum relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-red/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
@@ -181,27 +393,52 @@ const ChatSlider = () => {
                 <h3 className="text-lg font-bold tracking-tight">
                   {selectedMember ? selectedMember.name : "Team Connect"}
                 </h3>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                  <p className="text-[10px] text-dim-gray font-medium uppercase tracking-wider">
-                    {selectedMember
-                      ? selectedMember.department || "Active Now"
-                      : "Live Network"}
-                  </p>
-                </div>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setIsChatOpen(false);
-                setSelectedMember(null);
-              }}
-              className="p-2 hover:bg-red/5 rounded-xl transition-all hover:rotate-90 duration-300 text-red"
-            >
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsChatOpen(false)}
+                className="p-2 hover:bg-red/5 rounded-xl transition-all hover:scale-110 text-dim-gray hover:text-red"
+                title="Minimize"
+              >
+                <Minus size={20} />
+              </button>
+              <button
+                onClick={() => {
+                  setIsChatOpen(false);
+                  setSelectedMember(null);
+                }}
+                className="p-2 hover:bg-red/5 rounded-xl transition-all hover:rotate-90 duration-300 text-red"
+                title="Close Chat"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Tab Switcher */}
+        {!selectedMember && (
+          <div className="flex bg-white border-b border-platinum px-6 py-2 gap-4">
+            <button
+              onClick={() => setViewTab("chats")}
+              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider transition-all border-b-2 ${viewTab === "chats" ? "text-red border-red" : "text-battleship-gray border-transparent hover:text-red/60"}`}
+            >
+              Chats
+              {Object.keys(unreadCounts).length > 0 && (
+                <span className="ml-2 bg-red text-white px-1.5 py-0.5 rounded-full text-[8px]">
+                  {Object.keys(unreadCounts).length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setViewTab("contacts")}
+              className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider transition-all border-b-2 ${viewTab === "contacts" ? "text-red border-red" : "text-battleship-gray border-transparent hover:text-red/60"}`}
+            >
+              Contacts
+            </button>
+          </div>
+        )}
 
         {selectedMember ? (
           /* Active Chat View */
@@ -224,19 +461,19 @@ const ChatSlider = () => {
                   return (
                     <div
                       key={msg._id || idx}
-                      className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                      className={`flex ${isMe ? "justify-end" : "justify-start"} animate-in slide-in-from-bottom-2 duration-300`}
                     >
-                      <div
-                        className={`max-w-[80%] p-3 rounded-2xl text-sm ${
-                          isMe
-                            ? "bg-blue-100 text-gray-600 rounded-br-none"
-                            : "bg-white text-gunmetal border border-platinum rounded-bl-none shadow-sm"
-                        }`}
-                      >
-                        <p className="font-medium">{msg.text}</p>
-                        <p
-                          className={`text-[9px] mt-1 opacity-60 font-bold uppercase ${isMe ? "text-white" : "text-dim-gray"}`}
+                      <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[85%]`}>
+                        <div
+                          className={`px-4 py-3 rounded-2xl text-sm backdrop-blur-sm border ${
+                            isMe
+                              ? "bg-red/10 border-red/20 text-red rounded-tr-none"
+                              : "bg-black/5 border-platinum/50 text-gunmetal rounded-tl-none"
+                          }`}
                         >
+                          <p className="font-medium leading-relaxed">{msg.text}</p>
+                        </div>
+                        <p className="text-[9px] mt-1.5 font-bold text-dim-gray/60 uppercase tracking-wider px-1">
                           {new Date(msg.timestamp).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -303,40 +540,38 @@ const ChatSlider = () => {
                 </div>
               ) : filteredEmployees.length > 0 ? (
                 <div className="divide-y divide-platinum/30">
-                  <p className="px-6 py-3 text-[10px] font-black text-battleship-gray uppercase tracking-[0.1em] bg-white/50">
-                    All Contacts
-                  </p>
-                  {filteredEmployees.map((emp) => (
-                    <div
-                      key={emp.userId}
-                      onClick={() => setSelectedMember(emp)}
-                      className="flex items-center gap-4 p-4 hover:bg-seasalt cursor-pointer transition-all border-b border-platinum/50 group last:border-b-0"
-                    >
-                      <div className="relative">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-misty-rose to-white border border-red/10 flex items-center justify-center text-red font-black text-lg group-hover:from-red group-hover:to-dark-red group-hover:text-white transition-all duration-300 shadow-sm">
-                          {emp.name.charAt(0)}
+                  {viewTab === "chats" ? (
+                    /* Active Conversations View */
+                    <>
+                      <p className="px-6 py-3 text-[10px] font-black text-battleship-gray uppercase tracking-[0.1em] bg-white/50">
+                        Your Conversations
+                      </p>
+                      {filteredEmployees.filter(
+                        (emp) =>
+                          unreadCounts[emp.userId] > 0 ||
+                          recentUserIds.includes(emp.userId),
+                      ).length === 0 ? (
+                        <div className="p-8 text-center text-xs text-dim-gray">
+                          No chats yet. Go to Contacts to start a conversation.
                         </div>
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow-sm">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm text-gunmetal group-hover:text-red transition-colors truncate">
-                          {emp.name}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-dim-gray bg-white px-2 py-0.5 rounded-md border border-platinum/50 font-bold uppercase">
-                            {emp.department || "Staff"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all">
-                        <div className="p-2 bg-red/5 rounded-lg">
-                          <Send size={16} className="text-red" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                      ) : (
+                        filteredEmployees
+                          .filter(
+                            (emp) =>
+                              unreadCounts[emp.userId] > 0 ||
+                              recentUserIds.includes(emp.userId),
+                          )
+                          .map((emp, idx, arr) =>
+                            renderEmployeeItem(emp, idx, arr),
+                          )
+                      )}
+                    </>
+                  ) : (
+                    /* Full Directory View */
+                    filteredEmployees.map((emp, idx, arr) =>
+                      renderEmployeeItem(emp, idx, arr),
+                    )
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-4">
@@ -364,9 +599,16 @@ const ChatSlider = () => {
             className="w-full flex items-center justify-center gap-3 py-3 bg-white border border-platinum rounded-2xl text-dim-gray hover:text-red hover:border-red/30 hover:shadow-sm transition-all group"
           >
             <Megaphone size={16} className="group-hover:animate-bounce" />
-            <span className="text-[11px] font-black uppercase tracking-wider">
-              Broadcast to Team
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-black uppercase tracking-wider">
+                Broadcast to Team
+              </span>
+              {unreadCounts["broadcast"] > 0 && (
+                <span className="bg-red text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {unreadCounts["broadcast"]}
+                </span>
+              )}
+            </div>
           </button>
         </div>
       </div>
