@@ -31,24 +31,9 @@ import axios from "axios";
 import toast from "react-hot-toast";
 
 const priorityColors = {
-  high: {
-    bg: "#fee2e2",
-    text: "#dc2626",
-    border: "#fecaca",
-    dot: "#dc2626",
-  },
-  medium: {
-    bg: "#ffedd5",
-    text: "#ea580c",
-    border: "#fed7aa",
-    dot: "#f97316",
-  },
-  low: {
-    bg: "#dcfce7",
-    text: "#16a34a",
-    border: "#bbf7d0",
-    dot: "#22c55e",
-  },
+  high: { bg: "#fee2e2", text: "#dc2626", border: "#fecaca", dot: "#dc2626" },
+  medium: { bg: "#ffedd5", text: "#ea580c", border: "#fed7aa", dot: "#f97316" },
+  low: { bg: "#dcfce7", text: "#16a34a", border: "#bbf7d0", dot: "#22c55e" },
 };
 
 const statusConfig = {
@@ -115,9 +100,8 @@ export default function TaskOrganiser() {
         const deptKeys = Object.keys(groupedMap);
         setDepartmentList(deptKeys);
         setEmployeesByDept(groupedMap);
-        if (deptKeys.length > 0 && !selectedDepartment) {
+        if (deptKeys.length > 0 && !selectedDepartment)
           setSelectedDepartment(deptKeys[0]);
-        }
         return true;
       }
       return false;
@@ -127,6 +111,7 @@ export default function TaskOrganiser() {
       return false;
     }
   };
+
   const sanitizeAttachments = (attachments) => {
     if (!Array.isArray(attachments)) return [];
     return attachments.map((file) => ({
@@ -136,6 +121,7 @@ export default function TaskOrganiser() {
       size: typeof file.size === "number" ? file.size : 0,
     }));
   };
+
   const fetchMyTasks = async () => {
     if (!currentUserId) return;
     try {
@@ -169,9 +155,8 @@ export default function TaskOrganiser() {
     const loadData = async () => {
       setLoading(true);
       await fetchEmployees();
-      if (currentUserId) {
+      if (currentUserId)
         await Promise.all([fetchMyTasks(), fetchAssignedTasks()]);
-      }
       setLoading(false);
     };
     loadData();
@@ -185,13 +170,11 @@ export default function TaskOrganiser() {
   const uploadFile = async (file) => {
     const formData = new FormData();
     formData.append("file", file);
-
     try {
       const response = await axios.post(`${server}/tasks/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       if (response.data.success) {
-        // Explicitly return only the 4 fields we need
         const { name, url, type, size } = response.data.data;
         return { name, url, type, size };
       }
@@ -201,19 +184,17 @@ export default function TaskOrganiser() {
       throw error;
     }
   };
+
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-
     setUploading(true);
     const uploadedFiles = [];
-
     for (const file of files) {
       if (file.size > 10 * 1024 * 1024) {
         toast.error(`${file.name} exceeds 10MB limit`);
         continue;
       }
-
       try {
         const uploaded = await uploadFile(file);
         uploadedFiles.push(uploaded);
@@ -222,15 +203,13 @@ export default function TaskOrganiser() {
         toast.error(`Failed to upload ${file.name}`);
       }
     }
-
     setAttachments((prev) => [...prev, ...uploadedFiles]);
     setUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const removeAttachment = (index) => {
+  const removeAttachment = (index) =>
     setAttachments((prev) => prev.filter((_, i) => i !== index));
-  };
 
   const deleteTask = async (taskId, type) => {
     if (confirm("Are you sure you want to delete this task?")) {
@@ -251,19 +230,15 @@ export default function TaskOrganiser() {
       toast.error("Please fill in all required fields");
       return;
     }
-
     const sanitizedAttachments = sanitizeAttachments(attachments);
-
     if (assignToTeam) {
       const teamMembers = getDepartmentUsers();
       if (teamMembers.length === 0) {
         toast.error("No team members found in this department");
         return;
       }
-
-      let successCount = 0;
-      let failCount = 0;
-
+      let successCount = 0,
+        failCount = 0;
       for (const member of teamMembers) {
         try {
           await axios.post(`${server}/tasks`, {
@@ -282,10 +257,8 @@ export default function TaskOrganiser() {
           successCount++;
         } catch (error) {
           failCount++;
-          console.error(`Failed to assign task to ${member.name}:`, error);
         }
       }
-
       if (successCount > 0) {
         toast.success(
           `Task assigned to ${successCount} team member(s)${failCount > 0 ? `, ${failCount} failed` : ""}`,
@@ -301,21 +274,17 @@ export default function TaskOrganiser() {
       }
       return;
     }
-
     if (!selectedAssignee) {
       toast.error("Please select an employee or assign to team");
       return;
     }
-
     const assigneeUser = getDepartmentUsers().find(
       (u) => u.name === selectedAssignee,
     );
-
     if (!assigneeUser) {
       toast.error("Selected user not found");
       return;
     }
-
     try {
       await axios.post(`${server}/tasks`, {
         title: newTask.trim(),
@@ -330,7 +299,6 @@ export default function TaskOrganiser() {
         assignedByDepartment: currentDepartment,
         attachments: sanitizedAttachments,
       });
-
       toast.success("Task assigned successfully!");
       setNewTask("");
       setTaskDescription("");
@@ -358,37 +326,17 @@ export default function TaskOrganiser() {
   const handleRefresh = async () => {
     setLoading(true);
     await fetchEmployees();
-    if (currentUserId) {
+    if (currentUserId)
       await Promise.all([fetchMyTasks(), fetchAssignedTasks()]);
-    }
     setLoading(false);
     toast.success("Refreshed successfully");
   };
- const handleDownload = async (attachment) => {
-  try {
-    toast.loading("Downloading...", { id: "download" });
 
-    // Always fetch as blob so browser saves to disk instead of opening in a tab
-    const response = await fetch(attachment.url, { mode: "cors" });
-
-    if (!response.ok) throw new Error("Fetch failed, trying proxy...");
-
-    const blob = await response.blob();
-    const blobUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = attachment.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(blobUrl);
-    toast.success("Downloaded successfully", { id: "download" });
-  } catch {
-    // CORS blocked — fall back to your proxy which sets Content-Disposition: attachment
+  const handleDownload = async (attachment) => {
     try {
-      const proxyUrl = `/api/tasks/download?url=${encodeURIComponent(attachment.url)}&name=${encodeURIComponent(attachment.name)}`;
-      const response = await fetch(proxyUrl);
-      if (!response.ok) throw new Error("Proxy download failed");
+      toast.loading("Downloading...", { id: "download" });
+      const response = await fetch(attachment.url, { mode: "cors" });
+      if (!response.ok) throw new Error("Fetch failed, trying proxy...");
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -399,12 +347,27 @@ export default function TaskOrganiser() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
       toast.success("Downloaded successfully", { id: "download" });
-    } catch (err) {
-      console.error("Download failed:", err);
-      toast.error("Failed to download file", { id: "download" });
+    } catch {
+      try {
+        const proxyUrl = `/api/tasks/download?url=${encodeURIComponent(attachment.url)}&name=${encodeURIComponent(attachment.name)}`;
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error("Proxy download failed");
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = attachment.name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+        toast.success("Downloaded successfully", { id: "download" });
+      } catch (err) {
+        console.error("Download failed:", err);
+        toast.error("Failed to download file", { id: "download" });
+      }
     }
-  }
-};
+  };
 
   const filteredAssignedTasks = tasks.assignedTasks.filter((task) => {
     if (filterStatus !== "all" && task.status !== filterStatus) return false;
@@ -435,9 +398,7 @@ export default function TaskOrganiser() {
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
 
-  const isTaskAssignee = (task) => {
-    return task.assignedTo?.userId === currentUserId;
-  };
+  const isTaskAssignee = (task) => task.assignedTo?.userId === currentUserId;
 
   if (loading) {
     return (
@@ -454,7 +415,7 @@ export default function TaskOrganiser() {
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Left Sidebar */}
       <div className="w-96 bg-white shadow-2xl flex flex-col flex-shrink-0 border-r border-gray-200 h-full overflow-hidden">
-        {/* Header with inline red gradient */}
+        {/* Header */}
         <div
           className="px-6 py-5 text-white flex-shrink-0"
           style={{
@@ -492,8 +453,6 @@ export default function TaskOrganiser() {
               <RefreshCw size={16} />
             </button>
           </div>
-
-          {/* Stats Cards */}
           <div className="grid grid-cols-3 gap-2">
             <div
               className="rounded-xl p-2 text-center"
@@ -547,7 +506,6 @@ export default function TaskOrganiser() {
               setSelectedAssignee("");
             }}
             className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none bg-white font-medium"
-            style={{ focusBorderColor: "#dc2626" }}
           >
             <option value="">— Choose a department —</option>
             {departmentList.map((dept) => {
@@ -572,11 +530,7 @@ export default function TaskOrganiser() {
                 setFilterStatus("all");
                 setSearchQuery("");
               }}
-              className={`flex-1 py-3 text-sm font-semibold transition-all relative ${
-                activeTab === tab
-                  ? "text-red-600"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
+              className={`flex-1 py-3 text-sm font-semibold transition-all relative ${activeTab === tab ? "text-red-600" : "text-gray-500 hover:text-gray-700"}`}
             >
               {tab}
               {tab === "My Tasks" && pendingTasks > 0 && (
@@ -650,11 +604,7 @@ export default function TaskOrganiser() {
                 <div
                   key={task._id}
                   onClick={() => setSelectedTaskForDetail(task)}
-                  className={`group p-4 rounded-xl transition-all duration-200 cursor-pointer border ${
-                    !task.isRead && task.status !== "completed"
-                      ? "shadow-sm"
-                      : "bg-white border-gray-200 hover:shadow-md"
-                  }`}
+                  className={`group p-4 rounded-xl transition-all duration-200 cursor-pointer border ${!task.isRead && task.status !== "completed" ? "shadow-sm" : "bg-white border-gray-200 hover:shadow-md"}`}
                   style={
                     !task.isRead && task.status !== "completed"
                       ? { backgroundColor: "#fef2f2", borderColor: "#fecaca" }
@@ -698,11 +648,7 @@ export default function TaskOrganiser() {
                         </span>
                       </div>
                       <p
-                        className={`text-sm font-semibold ${
-                          task.status === "completed"
-                            ? "line-through text-gray-400"
-                            : "text-gray-800"
-                        }`}
+                        className={`text-sm font-semibold ${task.status === "completed" ? "line-through text-gray-400" : "text-gray-800"}`}
                       >
                         {task.title}
                       </p>
@@ -732,7 +678,6 @@ export default function TaskOrganiser() {
               ))}
             </div>
           )}
-
           {activeTab === "Assigned Tasks" && (
             <div className="p-4 space-y-3">
               {filteredAssignedTasks.length === 0 && (
@@ -812,11 +757,11 @@ export default function TaskOrganiser() {
         </div>
       </div>
 
-      {/* Right Panel */}
+      {/* ─────────────────────────── Right Panel ─────────────────────────── */}
       <div className="flex-1 flex flex-col bg-white h-full overflow-hidden">
         {selectedTaskForDetail ? (
+          /* ── Task Detail View (unchanged) ── */
           <div className="h-full flex flex-col overflow-hidden">
-            {/* Task Detail Header */}
             <div className="px-8 py-5 border-b border-gray-200 bg-white flex-shrink-0">
               <div className="flex items-center justify-between">
                 <button
@@ -844,8 +789,6 @@ export default function TaskOrganiser() {
                 </div>
               </div>
             </div>
-
-            {/* Task Detail Content */}
             <div className="flex-1 overflow-y-auto">
               <div className="max-w-3xl mx-auto px-8 py-8">
                 <div className="mb-8">
@@ -863,7 +806,6 @@ export default function TaskOrganiser() {
                     </span>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4 mb-8">
                   <div
                     className="p-4 rounded-xl border"
@@ -910,7 +852,6 @@ export default function TaskOrganiser() {
                     </span>
                   </div>
                 </div>
-
                 <div className="mb-8 p-5 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
                     <Users size={16} />
@@ -937,7 +878,6 @@ export default function TaskOrganiser() {
                     </div>
                   </div>
                 </div>
-
                 {selectedTaskForDetail.description && (
                   <div className="mb-8">
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">
@@ -950,7 +890,6 @@ export default function TaskOrganiser() {
                     </div>
                   </div>
                 )}
-
                 {selectedTaskForDetail.attachments &&
                   selectedTaskForDetail.attachments.length > 0 && (
                     <div className="mb-8">
@@ -1006,7 +945,6 @@ export default function TaskOrganiser() {
                       </div>
                     </div>
                   )}
-
                 {isTaskAssignee(selectedTaskForDetail) &&
                   selectedTaskForDetail.status !== "completed" && (
                     <div className="pt-6 border-t border-gray-200">
@@ -1087,7 +1025,6 @@ export default function TaskOrganiser() {
                       </div>
                     </div>
                   )}
-
                 {selectedTaskForDetail.status === "completed" && (
                   <div className="pt-6 border-t border-gray-200">
                     <div
@@ -1119,62 +1056,74 @@ export default function TaskOrganiser() {
             </div>
           </div>
         ) : (
-          // Empty State
-          <div className="flex-1 flex items-start justify-center pt-20 overflow-y-auto">
-            <div className="text-center max-w-lg p-8">
-              <div
-                className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-5"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #fecaca 0%, #fee2e2 100%)",
-                }}
-              >
-                {activeTab === "My Tasks" ? (
-                  <Sparkles size={40} style={{ color: "#dc2626" }} />
-                ) : (
-                  <BriefcaseIcon size={40} style={{ color: "#dc2626" }} />
-                )}
+          /* ── Empty / Assignment State — REDESIGNED ── */
+          <div className="h-full flex flex-col overflow-y-auto">
+            {/* ── Top-left heading bar ── */}
+            <div className="px-8 py-6 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #fecaca 0%, #fee2e2 100%)",
+                  }}
+                >
+                  {activeTab === "My Tasks" ? (
+                    <Sparkles size={24} style={{ color: "#dc2626" }} />
+                  ) : (
+                    <BriefcaseIcon size={24} style={{ color: "#dc2626" }} />
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800 leading-tight">
+                    {activeTab === "My Tasks"
+                      ? "Your Task Dashboard"
+                      : "Task Assignment"}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {activeTab === "My Tasks"
+                      ? "Select any task from the left panel to view details and update progress"
+                      : activeTab === "Assigned Tasks"
+                        ? selectedDepartment
+                          ? `Assign a new task to ${selectedDepartment}`
+                          : "Select a department from the left panel to start assigning tasks"
+                        : ""}
+                  </p>
+                </div>
               </div>
-              <h2 className="text-xl font-bold text-gray-800 mb-2">
-                {activeTab === "My Tasks"
-                  ? "Your Task Dashboard"
-                  : "Task Assignment"}
-              </h2>
-              <p className="text-gray-500 text-sm mb-6">
-                {activeTab === "My Tasks"
-                  ? "Select any task from the left panel to view details and update progress"
-                  : activeTab === "Assigned Tasks"
-                    ? selectedDepartment
-                      ? "Fill out the form below to assign a new task to your team member"
-                      : "Please select a department from the left panel to start assigning tasks"
-                    : ""}
-              </p>
+            </div>
 
-              {activeTab === "Assigned Tasks" && selectedDepartment && (
-                <div className="mt-2 p-6 bg-white border border-gray-200 rounded-2xl shadow-lg text-left max-h-[55vh] overflow-y-auto">
-                  <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+            {/* ── Full-width Assignment Form ── */}
+            {activeTab === "Assigned Tasks" && selectedDepartment && (
+              <div className="flex-1 p-8 overflow-y-auto">
+                <div className="w-full bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
+                  {/* Form Header */}
+                  <div className="flex items-center gap-3 mb-8 pb-5 border-b border-gray-100">
                     <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ backgroundColor: "#fee2e2" }}
                     >
-                      <Plus size={14} style={{ color: "#dc2626" }} />
+                      <Plus size={16} style={{ color: "#dc2626" }} />
                     </div>
-                    Assign to {selectedDepartment}
-                  </h3>
+                    <h3 className="text-lg font-bold text-gray-800">
+                      Assign to {selectedDepartment}
+                    </h3>
+                  </div>
 
-                  <div className="space-y-3">
-                    {/* Team Assignment Toggle */}
+                  {/* ── Row 1: Team toggle + Assignee selector ── */}
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    {/* Team toggle */}
                     <div
-                      className="flex items-center justify-between p-3 rounded-xl"
+                      className="flex items-center justify-between p-4 rounded-xl border border-gray-200"
                       style={{ backgroundColor: "#f8fafc" }}
                     >
                       <div>
-                        <p className="text-sm font-medium text-gray-700">
+                        <p className="text-sm font-semibold text-gray-700">
                           Assign to entire team
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 mt-0.5">
                           Task will be assigned to all{" "}
-                          {getDepartmentUsers().length} members
+                          <strong>{getDepartmentUsers().length}</strong> members
                         </p>
                       </div>
                       <button
@@ -1182,61 +1131,62 @@ export default function TaskOrganiser() {
                           setAssignToTeam(!assignToTeam);
                           if (!assignToTeam) setSelectedAssignee("");
                         }}
-                        className="relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 shadow-sm"
+                        className="relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-200 shadow-sm flex-shrink-0 ml-4"
                         style={{
                           backgroundColor: assignToTeam ? "#dc2626" : "#9ca3af",
                         }}
                       >
                         <span
-                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ${
-                            assignToTeam ? "translate-x-6" : "translate-x-0"
-                          }`}
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ${assignToTeam ? "translate-x-6" : "translate-x-0"}`}
                         />
                       </button>
                     </div>
 
-                    {/* Individual Assignment */}
-                    {!assignToTeam && (
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1 block">
-                          Assign To
-                        </label>
-                        <select
-                          value={selectedAssignee}
-                          onChange={(e) => setSelectedAssignee(e.target.value)}
-                          className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2 outline-none bg-white focus:ring-2 focus:ring-red-100"
-                          style={{ focusBorderColor: "#dc2626" }}
-                        >
-                          <option value="">— Select team member —</option>
-                          {getDepartmentUsers().map((user) => (
-                            <option key={user.userId} value={user.name}>
-                              {user.name} {user.role ? `(${user.role})` : ""}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Team assignment info */}
-                    {assignToTeam && (
-                      <div
-                        className="p-3 rounded-xl border"
-                        style={{
-                          backgroundColor: "#dcfce7",
-                          borderColor: "#bbf7d0",
-                        }}
-                      >
-                        <p className="text-sm" style={{ color: "#166534" }}>
-                          📋 Task will be assigned to all{" "}
-                          <strong>{getDepartmentUsers().length}</strong> team
-                          member(s) in {selectedDepartment}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Task Title */}
+                    {/* Assignee / team info */}
                     <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">
+                      {!assignToTeam ? (
+                        <>
+                          <label className="text-xs font-semibold text-gray-600 mb-1.5 block uppercase tracking-wide">
+                            Assign To
+                          </label>
+                          <select
+                            value={selectedAssignee}
+                            onChange={(e) =>
+                              setSelectedAssignee(e.target.value)
+                            }
+                            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 outline-none bg-white focus:ring-2 focus:ring-red-100 focus:border-red-400 h-[50px]"
+                          >
+                            <option value="">— Select team member —</option>
+                            {getDepartmentUsers().map((user) => (
+                              <option key={user.userId} value={user.name}>
+                                {user.name}
+                                {user.role ? ` (${user.role})` : ""}
+                              </option>
+                            ))}
+                          </select>
+                        </>
+                      ) : (
+                        <div
+                          className="h-full flex items-center p-4 rounded-xl border"
+                          style={{
+                            backgroundColor: "#dcfce7",
+                            borderColor: "#bbf7d0",
+                          }}
+                        >
+                          <p className="text-sm" style={{ color: "#166534" }}>
+                            📋 Task will be sent to all{" "}
+                            <strong>{getDepartmentUsers().length}</strong>{" "}
+                            member(s) in {selectedDepartment}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Row 2: Task Title + Due Date + Priority ── */}
+                  <div className="grid grid-cols-3 gap-6 mb-6">
+                    <div className="col-span-1">
+                      <label className="text-xs font-semibold text-gray-600 mb-1.5 block uppercase tracking-wide">
                         Task Title
                       </label>
                       <input
@@ -1244,94 +1194,88 @@ export default function TaskOrganiser() {
                         value={newTask}
                         onChange={(e) => setNewTask(e.target.value)}
                         placeholder="Enter task title..."
-                        className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-red-100"
-                        style={{ focusBorderColor: "#dc2626" }}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-red-100 focus:border-red-400"
                       />
                     </div>
-
-                    {/* Description */}
                     <div>
-                      <label className="text-xs font-semibold text-gray-600 mb-1 block">
-                        Description (Optional)
+                      <label className="text-xs font-semibold text-gray-600 mb-1.5 block uppercase tracking-wide">
+                        Due Date
                       </label>
-                      <textarea
-                        value={taskDescription}
-                        onChange={(e) => setTaskDescription(e.target.value)}
-                        placeholder="Enter task description..."
-                        rows="2"
-                        className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2 outline-none resize-none focus:ring-2 focus:ring-red-100"
-                        style={{ focusBorderColor: "#dc2626" }}
+                      <input
+                        type="date"
+                        value={taskDueDate}
+                        onChange={(e) => setTaskDueDate(e.target.value)}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-red-100 focus:border-red-400"
                       />
                     </div>
-
-                    {/* Due Date and Priority */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1 block">
-                          Due Date
-                        </label>
-                        <input
-                          type="date"
-                          value={taskDueDate}
-                          onChange={(e) => setTaskDueDate(e.target.value)}
-                          className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-red-100"
-                          style={{ focusBorderColor: "#dc2626" }}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1 block">
-                          Priority
-                        </label>
-                        <div className="flex gap-1.5">
-                          {["high", "medium", "low"].map((p) => (
-                            <button
-                              key={p}
-                              onClick={() => setNewPriority(p)}
-                              className="flex-1 text-xs py-1.5 rounded-lg capitalize font-medium transition-all"
-                              style={
-                                newPriority === p
-                                  ? {
-                                      backgroundColor: priorityColors[p].bg,
-                                      color: priorityColors[p].text,
-                                      border: `1px solid ${priorityColors[p].border}`,
-                                    }
-                                  : {
-                                      backgroundColor: "#f8fafc",
-                                      color: "#475569",
-                                      border: "1px solid #e2e8f0",
-                                    }
-                              }
-                              onMouseEnter={(e) => {
-                                if (newPriority !== p) {
-                                  e.currentTarget.style.backgroundColor =
-                                    "#f1f5f9";
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (newPriority !== p) {
-                                  e.currentTarget.style.backgroundColor =
-                                    "#f8fafc";
-                                }
-                              }}
-                            >
-                              {p}
-                            </button>
-                          ))}
-                        </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-600 mb-1.5 block uppercase tracking-wide">
+                        Priority
+                      </label>
+                      <div className="flex gap-2 h-[46px]">
+                        {["high", "medium", "low"].map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setNewPriority(p)}
+                            className="flex-1 text-xs rounded-xl capitalize font-semibold transition-all"
+                            style={
+                              newPriority === p
+                                ? {
+                                    backgroundColor: priorityColors[p].bg,
+                                    color: priorityColors[p].text,
+                                    border: `1.5px solid ${priorityColors[p].border}`,
+                                  }
+                                : {
+                                    backgroundColor: "#f8fafc",
+                                    color: "#475569",
+                                    border: "1.5px solid #e2e8f0",
+                                  }
+                            }
+                            onMouseEnter={(e) => {
+                              if (newPriority !== p)
+                                e.currentTarget.style.backgroundColor =
+                                  "#f1f5f9";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (newPriority !== p)
+                                e.currentTarget.style.backgroundColor =
+                                  "#f8fafc";
+                            }}
+                          >
+                            {p}
+                          </button>
+                        ))}
                       </div>
                     </div>
+                  </div>
 
-                    {/* Attachments */}
-                    <div>
-                      <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2">
+                  {/* ── Row 3: Description (full width) ── */}
+                  <div className="mb-6">
+                    <label className="text-xs font-semibold text-gray-600 mb-1.5 block uppercase tracking-wide">
+                      Description (Optional)
+                    </label>
+                    <textarea
+                      value={taskDescription}
+                      onChange={(e) => setTaskDescription(e.target.value)}
+                      placeholder="Enter task description..."
+                      rows="3"
+                      className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 outline-none resize-none focus:ring-2 focus:ring-red-100 focus:border-red-400"
+                    />
+                  </div>
+
+                  {/* ── Row 4: Attachments + Submit ── */}
+                  <div className="flex items-start gap-6">
+                    {/* Attachments section */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
                         <Paperclip size={12} />
                         <span>Attachments</span>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 mb-3">
                         <button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={uploading}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-colors disabled:opacity-50"
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-colors disabled:opacity-50 border border-gray-200"
                           style={{
                             backgroundColor: "#f1f5f9",
                             color: "#334155",
@@ -1364,31 +1308,28 @@ export default function TaskOrganiser() {
                           Max 10MB per file
                         </span>
                       </div>
-
                       {attachments.length > 0 && (
-                        <div className="mt-2 space-y-1.5 max-h-24 overflow-y-auto">
+                        <div className="flex flex-wrap gap-2">
                           {attachments.map((file, idx) => (
                             <div
                               key={idx}
-                              className="flex items-center justify-between p-1.5 rounded-lg"
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200"
                               style={{ backgroundColor: "#f8fafc" }}
                             >
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                {file.type?.startsWith("image/") ? (
-                                  <Image
-                                    size={12}
-                                    className="text-blue-500 flex-shrink-0"
-                                  />
-                                ) : (
-                                  <FileText
-                                    size={12}
-                                    className="text-gray-500 flex-shrink-0"
-                                  />
-                                )}
-                                <span className="text-xs text-gray-600 truncate">
-                                  {file.name}
-                                </span>
-                              </div>
+                              {file.type?.startsWith("image/") ? (
+                                <Image
+                                  size={12}
+                                  className="text-blue-500 flex-shrink-0"
+                                />
+                              ) : (
+                                <FileText
+                                  size={12}
+                                  className="text-gray-500 flex-shrink-0"
+                                />
+                              )}
+                              <span className="text-xs text-gray-600 max-w-[120px] truncate">
+                                {file.name}
+                              </span>
                               <button
                                 onClick={() => removeAttachment(idx)}
                                 className="text-gray-400 hover:text-red-500 flex-shrink-0"
@@ -1401,71 +1342,85 @@ export default function TaskOrganiser() {
                       )}
                     </div>
 
-                    {/* Submit Button - With inline red gradient */}
+                    {/* Submit button */}
                     <button
                       onClick={addTask}
                       disabled={uploading}
-                      className="w-full text-white py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-shrink-0 text-white px-10 py-3 rounded-xl text-sm font-semibold transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed self-end"
                       style={{
                         background:
                           "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
                       }}
                       onMouseEnter={(e) => {
-                        if (!uploading) {
+                        if (!uploading)
                           e.currentTarget.style.background =
                             "linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)";
-                        }
                       }}
                       onMouseLeave={(e) => {
-                        if (!uploading) {
+                        if (!uploading)
                           e.currentTarget.style.background =
                             "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)";
-                        }
                       }}
                     >
                       {uploading ? (
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center gap-2">
                           <Loader2 size={16} className="animate-spin" />
                           <span>Creating...</span>
                         </div>
                       ) : assignToTeam ? (
-                        `Assign to Team (${getDepartmentUsers().length} members)`
+                        `Assign to Team (${getDepartmentUsers().length})`
                       ) : (
                         "Assign Task"
                       )}
                     </button>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {activeTab === "Assigned Tasks" && !selectedDepartment && (
+            {/* ── No department selected notice ── */}
+            {activeTab === "Assigned Tasks" && !selectedDepartment && (
+              <div className="flex-1 flex items-center justify-center p-8">
                 <div
-                  className="mt-4 p-4 rounded-xl border"
+                  className="max-w-sm w-full p-6 rounded-2xl border text-center"
                   style={{ backgroundColor: "#fef3c7", borderColor: "#fde68a" }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: "#fde68a" }}
-                    >
-                      <Building2 size={16} style={{ color: "#92400e" }} />
-                    </div>
-                    <div className="text-left">
-                      <p
-                        className="text-sm font-medium"
-                        style={{ color: "#92400e" }}
-                      >
-                        No Department Selected
-                      </p>
-                      <p className="text-xs" style={{ color: "#b45309" }}>
-                        Please select a department from the left panel to assign
-                        tasks
-                      </p>
-                    </div>
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                    style={{ backgroundColor: "#fde68a" }}
+                  >
+                    <Building2 size={20} style={{ color: "#92400e" }} />
                   </div>
+                  <p
+                    className="text-sm font-semibold"
+                    style={{ color: "#92400e" }}
+                  >
+                    No Department Selected
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: "#b45309" }}>
+                    Please select a department from the left panel to assign
+                    tasks
+                  </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* ── My Tasks empty state ── */}
+            {activeTab === "My Tasks" && (
+              <div className="flex-1 flex items-center justify-center p-8">
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle size={32} className="text-gray-300" />
+                  </div>
+                  <p className="text-base font-semibold text-gray-600">
+                    Select a task to view details
+                  </p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Click any task in the left panel
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
