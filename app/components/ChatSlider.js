@@ -56,7 +56,10 @@ const ChatSlider = () => {
 
   // Initialize Socket
   useEffect(() => {
-    const newSocket = io(NODE_SERVER);
+    const newSocket = io(NODE_SERVER, {
+      transports: ["websocket"],
+      upgrade: false,
+    });
     setSocket(newSocket);
 
     if (user?.userId) {
