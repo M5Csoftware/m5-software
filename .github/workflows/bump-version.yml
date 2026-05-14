@@ -146,7 +146,8 @@ jobs:
           git add version.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
           git diff --staged --quiet && echo "Nothing to commit" && exit 0
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip ci]"
-          git push
+          git pull --rebase origin main
+          git push origin main
 
       # ── 8. Create GitHub Release ──────────────────────────────────────
       - name: Create GitHub Release
