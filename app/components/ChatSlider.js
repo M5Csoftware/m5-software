@@ -18,9 +18,11 @@ import { useAuth } from "../Context/AuthContext";
 import axios from "axios";
 import io from "socket.io-client";
 
-const NODE_SERVER = process.env.NEXT_PUBLIC_CHAT_SERVER || "http://localhost:5000";
+const NODE_SERVER =
+  process.env.NEXT_PUBLIC_CHAT_SERVER || "http://localhost:5000";
 
 const ChatSlider = () => {
+  // --- STATE MANAGEMENT ---
   const [isHovered, setIsHovered] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
@@ -37,10 +39,12 @@ const ChatSlider = () => {
   const [recentUserIds, setRecentUserIds] = useState([]);
   const [notification, setNotification] = useState(null);
   const messagesEndRef = useRef(null);
+
+  // Refs for real-time state access inside socket listeners
   const isChatOpenRef = useRef(isChatOpen);
   const selectedMemberRef = useRef(selectedMember);
 
-  // Update refs
+  // Sync refs with state
   useEffect(() => {
     isChatOpenRef.current = isChatOpen;
     selectedMemberRef.current = selectedMember;
@@ -54,18 +58,21 @@ const ChatSlider = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Initialize Socket
+  // --- SOCKET.IO INITIALIZATION & EVENT LISTENERS ---
   useEffect(() => {
+    // Force WebSocket transport for better reliability on hosted servers (Render)
     const newSocket = io(NODE_SERVER, {
       transports: ["websocket"],
       upgrade: false,
     });
     setSocket(newSocket);
 
+    // Join personal room for private messaging
     if (user?.userId) {
       newSocket.emit("join_chat", user.userId);
     }
 
+    // Listen for incoming messages (Private or Broadcast)
     newSocket.on("receive_message", (msg) => {
       setMessages((prev) => {
         if (prev.find((m) => m._id === msg._id)) return prev;
@@ -77,14 +84,27 @@ const ChatSlider = () => {
 
       const currentSelected = selectedMemberRef.current;
       const currentIsChatOpen = isChatOpenRef.current;
-      
-      const isMessageFromActiveChat = isBroadcast ? !currentSelected : (currentSelected?.userId === msg.senderId);
-      
+
+      const isMessageFromActiveChat = isBroadcast
+        ? !currentSelected
+        : currentSelected?.userId === msg.senderId;
+
       // Move to top of recent list (WhatsApp style) and update preview
-      const chatPartnerId = isBroadcast ? "broadcast" : (msg.senderId === user.userId ? msg.receiverId : msg.senderId);
-      setRecentUserIds(prev => {
-        const filtered = prev.filter(c => (c._id || c) !== chatPartnerId);
-        return [{ _id: chatPartnerId, lastMessage: msg.text, lastTimestamp: msg.timestamp }, ...filtered];
+      const chatPartnerId = isBroadcast
+        ? "broadcast"
+        : msg.senderId === user.userId
+          ? msg.receiverId
+          : msg.senderId;
+      setRecentUserIds((prev) => {
+        const filtered = prev.filter((c) => (c._id || c) !== chatPartnerId);
+        return [
+          {
+            _id: chatPartnerId,
+            lastMessage: msg.text,
+            lastTimestamp: msg.timestamp,
+          },
+          ...filtered,
+        ];
       });
 
       setUnreadCounts((prev) => {
@@ -93,13 +113,13 @@ const ChatSlider = () => {
             setNotification({
               senderName: msg.senderName,
               text: msg.text,
-              senderId: msg.senderId
+              senderId: msg.senderId,
             });
             setTimeout(() => setNotification(null), 4000);
-            
+
             return {
               ...prev,
-              [senderKey]: (prev[senderKey] || 0) + 1
+              [senderKey]: (prev[senderKey] || 0) + 1,
             };
           }
         }
@@ -159,20 +179,25 @@ const ChatSlider = () => {
     }
   }, [isChatOpen, selectedMember, user?.userId]);
 
+  // --- API DATA FETCHING ---
+
   // Fetch Recent Conversations & Unread Counts on mount/login
   useEffect(() => {
     if (user?.userId) {
       const fetchData = async () => {
         try {
-          // Fetch Recent Users
-          const recentRes = await axios.get(`${NODE_SERVER}/chat/recent-users`, {
-            params: { userId: user.userId },
-          });
+          // Fetch Recent Users (WhatsApp style list)
+          const recentRes = await axios.get(
+            `${NODE_SERVER}/chat/recent-users`,
+            {
+              params: { userId: user.userId },
+            },
+          );
           if (recentRes.data.success) {
             setRecentUserIds(recentRes.data.data);
           }
 
-          // Fetch Unread Counts
+          // Fetch Unread Counts from DB
           const unreadRes = await axios.get(
             `${NODE_SERVER}/chat/unread-counts`,
             {
@@ -190,7 +215,7 @@ const ChatSlider = () => {
     }
   }, [user?.userId]);
 
-  // Clear unread counts when opening a chat
+  // Sync: Mark messages as read when a chat window is opened
   useEffect(() => {
     if (isChatOpen && selectedMember) {
       setUnreadCounts((prev) => {
@@ -200,11 +225,13 @@ const ChatSlider = () => {
         return next;
       });
 
-      // Mark as read on backend
-      axios.post(`${NODE_SERVER}/chat/mark-read`, {
-        userId: user.userId,
-        senderId: selectedMember.userId
-      }).catch(e => console.error("Failed to mark messages as read", e));
+      // Update read status on backend
+      axios
+        .post(`${NODE_SERVER}/chat/mark-read`, {
+          userId: user.userId,
+          senderId: selectedMember.userId,
+        })
+        .catch((e) => console.error("Failed to mark messages as read", e));
     }
   }, [isChatOpen, selectedMember, user?.userId]);
 
@@ -250,8 +277,10 @@ const ChatSlider = () => {
       );
     })
     .sort((a, b) => {
-      const isAAdmin = (a.role || "").toLowerCase() === "admin" || a.userId === "11111111";
-      const isBAdmin = (b.role || "").toLowerCase() === "admin" || b.userId === "11111111";
+      const isAAdmin =
+        (a.role || "").toLowerCase() === "admin" || a.userId === "11111111";
+      const isBAdmin =
+        (b.role || "").toLowerCase() === "admin" || b.userId === "11111111";
       if (isAAdmin && !isBAdmin) return -1;
       if (!isAAdmin && isBAdmin) return 1;
       return (a.name || "").localeCompare(b.name || "");
@@ -277,7 +306,7 @@ const ChatSlider = () => {
         )}
         <div
           onClick={() => setSelectedMember(emp)}
-          className="flex items-center gap-4 p-4 hover:bg-seasalt cursor-pointer transition-all border-b border-platinum/50 group last:border-b-0"
+          className="flex items-center gap-4 px-4 py-3 mx-2 my-1.5 bg-white hover:bg-misty-rose/20 cursor-pointer transition-all border border-platinum rounded-2xl shadow-sm hover:border-red/30 hover:shadow-md group"
         >
           <div className="relative">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-misty-rose to-white border border-red/10 flex items-center justify-center text-red font-black text-lg group-hover:from-red group-hover:to-dark-red group-hover:text-white transition-all duration-300 shadow-sm">
@@ -285,21 +314,26 @@ const ChatSlider = () => {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-sm text-gunmetal truncate">{emp.name}</p>
+            <p className="font-bold text-sm text-gunmetal truncate">
+              {emp.name}
+            </p>
             {viewTab === "chats" && (
               <p className="text-[11px] text-battleship-gray truncate mt-0.5 font-medium">
-                {recentUserIds.find(c => String(c._id || c) === String(emp.userId))?.lastMessage || "No messages yet"}
+                {recentUserIds.find(
+                  (c) => String(c._id || c) === String(emp.userId),
+                )?.lastMessage || "No messages yet"}
               </p>
             )}
           </div>
           <div className="flex flex-col items-end gap-1 min-w-[80px]">
-            <span className="text-[8px] font-black text-battleship-gray bg-seasalt border border-platinum/50 px-2 py-0.5 rounded-lg uppercase tracking-widest text-right">
+            <span className="text-[8px] font-black text-battleship-gray bg-seasalt border border-platinum/90 px-2 py-0.5 rounded-lg uppercase tracking-widest text-right">
               {emp.department || emp.role || "Team"}
             </span>
             {viewTab === "chats" && (
               <span className="text-[10px] font-semibold text-red uppercase mr-2">
-                {recentUserIds.find((c) => String(c._id || c) === String(emp.userId))
-                  ?.lastTimestamp
+                {recentUserIds.find(
+                  (c) => String(c._id || c) === String(emp.userId),
+                )?.lastTimestamp
                   ? new Date(
                       recentUserIds.find(
                         (c) => String(c._id || c) === String(emp.userId),
@@ -491,7 +525,9 @@ const ChatSlider = () => {
                       key={msg._id || idx}
                       className={`flex ${isMe ? "justify-end" : "justify-start"} animate-in slide-in-from-bottom-2 duration-300`}
                     >
-                      <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[85%]`}>
+                      <div
+                        className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[85%]`}
+                      >
                         <div
                           className={`px-4 py-3 rounded-2xl text-sm backdrop-blur-sm border ${
                             isMe
@@ -499,7 +535,9 @@ const ChatSlider = () => {
                               : "bg-black/5 border-platinum/50 text-gunmetal rounded-tl-none"
                           }`}
                         >
-                          <p className="font-medium leading-relaxed">{msg.text}</p>
+                          <p className="font-medium leading-relaxed">
+                            {msg.text}
+                          </p>
                         </div>
                         <p className="text-[9px] mt-1.5 font-bold text-dim-gray/60 uppercase tracking-wider px-1">
                           {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -567,11 +605,11 @@ const ChatSlider = () => {
                   </p>
                 </div>
               ) : filteredEmployees.length > 0 ? (
-                <div className="divide-y divide-platinum/30">
+                <div className="py-1.5">
                   {viewTab === "chats" ? (
                     /* Active Conversations View (Sorted by Activity) */
                     <>
-                      <p className="px-6 py-3 text-[10px] font-black text-battleship-gray uppercase tracking-[0.1em] bg-white/50">
+                      <p className="px-6 pt-3 pb-1 text-[10px] font-black text-battleship-gray uppercase tracking-[0.1em]">
                         Your Conversations
                       </p>
                       {recentUserIds.length === 0 ? (
@@ -580,7 +618,12 @@ const ChatSlider = () => {
                         </div>
                       ) : (
                         recentUserIds
-                          .map((chat) => employees.find((e) => String(e.userId) === String(chat._id || chat)))
+                          .map((chat) =>
+                            employees.find(
+                              (e) =>
+                                String(e.userId) === String(chat._id || chat),
+                            ),
+                          )
                           .filter(Boolean) // Remove if employee not found
                           .filter((emp) => {
                             const name = (emp.name || "").toLowerCase();
