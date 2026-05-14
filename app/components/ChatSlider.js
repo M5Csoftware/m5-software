@@ -287,7 +287,7 @@ const ChatSlider = () => {
           <div className="flex-1 min-w-0">
             <p className="font-bold text-sm text-gunmetal truncate">{emp.name}</p>
             {viewTab === "chats" && (
-              <p className="text-[11px] text-dim-gray truncate opacity-80 mt-0.5 italic">
+              <p className="text-[11px] text-battleship-gray truncate mt-0.5 font-medium">
                 {recentUserIds.find(c => String(c._id || c) === String(emp.userId))?.lastMessage || "No messages yet"}
               </p>
             )}
