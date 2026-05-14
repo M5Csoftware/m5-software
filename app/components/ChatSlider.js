@@ -18,7 +18,7 @@ import { useAuth } from "../Context/AuthContext";
 import axios from "axios";
 import io from "socket.io-client";
 
-const NODE_SERVER = "http://localhost:5000";
+const NODE_SERVER = process.env.NEXT_PUBLIC_CHAT_SERVER || "http://localhost:5000";
 
 const ChatSlider = () => {
   const [isHovered, setIsHovered] = useState(false);
