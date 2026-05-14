@@ -296,6 +296,21 @@ const ChatSlider = () => {
             <span className="text-[8px] font-black text-battleship-gray bg-seasalt border border-platinum/50 px-2 py-0.5 rounded-lg uppercase tracking-widest text-right">
               {emp.department || emp.role || "Team"}
             </span>
+            {viewTab === "chats" && (
+              <span className="text-[10px] font-semibold text-red uppercase mr-2">
+                {recentUserIds.find((c) => String(c._id || c) === String(emp.userId))
+                  ?.lastTimestamp
+                  ? new Date(
+                      recentUserIds.find(
+                        (c) => String(c._id || c) === String(emp.userId),
+                      ).lastTimestamp,
+                    ).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : ""}
+              </span>
+            )}
             {unreadCounts[emp.userId] > 0 && (
               <span className="bg-red text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">
                 {unreadCounts[emp.userId]}
