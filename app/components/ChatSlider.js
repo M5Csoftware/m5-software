@@ -75,12 +75,19 @@ const ChatSlider = () => {
       const isBroadcast = msg.type === "broadcast";
       const senderKey = isBroadcast ? "broadcast" : msg.senderId;
 
+      const currentSelected = selectedMemberRef.current;
+      const currentIsChatOpen = isChatOpenRef.current;
+      
+      const isMessageFromActiveChat = isBroadcast ? !currentSelected : (currentSelected?.userId === msg.senderId);
+      
+      // Move to top of recent list (WhatsApp style) and update preview
+      const chatPartnerId = isBroadcast ? "broadcast" : (msg.senderId === user.userId ? msg.receiverId : msg.senderId);
+      setRecentUserIds(prev => {
+        const filtered = prev.filter(c => (c._id || c) !== chatPartnerId);
+        return [{ _id: chatPartnerId, lastMessage: msg.text, lastTimestamp: msg.timestamp }, ...filtered];
+      });
+
       setUnreadCounts((prev) => {
-        const currentSelected = selectedMemberRef.current;
-        const currentIsChatOpen = isChatOpenRef.current;
-        
-        const isMessageFromActiveChat = isBroadcast ? !currentSelected : (currentSelected?.userId === msg.senderId);
-        
         if (!currentIsChatOpen || !isMessageFromActiveChat) {
           if (msg.senderId !== user.userId) {
             setNotification({
@@ -90,13 +97,11 @@ const ChatSlider = () => {
             });
             setTimeout(() => setNotification(null), 4000);
             
-            // Add to recent if not exists
-            setRecentUserIds(prev => prev.includes(msg.senderId) ? prev : [msg.senderId, ...prev]);
+            return {
+              ...prev,
+              [senderKey]: (prev[senderKey] || 0) + 1
+            };
           }
-           return {
-             ...prev,
-             [senderKey]: (prev[senderKey] || 0) + 1
-           };
         }
         return prev;
       });
@@ -281,6 +286,11 @@ const ChatSlider = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-sm text-gunmetal truncate">{emp.name}</p>
+            {viewTab === "chats" && (
+              <p className="text-[11px] text-dim-gray truncate opacity-80 mt-0.5 italic">
+                {recentUserIds.find(c => String(c._id || c) === String(emp.userId))?.lastMessage || "No messages yet"}
+              </p>
+            )}
           </div>
           <div className="flex flex-col items-end gap-1 min-w-[80px]">
             <span className="text-[8px] font-black text-battleship-gray bg-seasalt border border-platinum/50 px-2 py-0.5 rounded-lg uppercase tracking-widest text-right">
@@ -428,9 +438,9 @@ const ChatSlider = () => {
               className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider transition-all border-b-2 ${viewTab === "chats" ? "text-red border-red" : "text-battleship-gray border-transparent hover:text-red/60"}`}
             >
               Chats
-              {Object.keys(unreadCounts).length > 0 && (
+              {Object.values(unreadCounts).filter((v) => v > 0).length > 0 && (
                 <span className="ml-2 bg-red text-white px-1.5 py-0.5 rounded-full text-[8px]">
-                  {Object.keys(unreadCounts).length}
+                  {Object.values(unreadCounts).filter((v) => v > 0).length}
                 </span>
               )}
             </button>
@@ -544,33 +554,31 @@ const ChatSlider = () => {
               ) : filteredEmployees.length > 0 ? (
                 <div className="divide-y divide-platinum/30">
                   {viewTab === "chats" ? (
-                    /* Active Conversations View */
+                    /* Active Conversations View (Sorted by Activity) */
                     <>
                       <p className="px-6 py-3 text-[10px] font-black text-battleship-gray uppercase tracking-[0.1em] bg-white/50">
                         Your Conversations
                       </p>
-                      {filteredEmployees.filter(
-                        (emp) =>
-                          unreadCounts[emp.userId] > 0 ||
-                          recentUserIds.includes(emp.userId),
-                      ).length === 0 ? (
+                      {recentUserIds.length === 0 ? (
                         <div className="p-8 text-center text-xs text-dim-gray">
                           No chats yet. Go to Contacts to start a conversation.
                         </div>
                       ) : (
-                        filteredEmployees
-                          .filter(
-                            (emp) =>
-                              unreadCounts[emp.userId] > 0 ||
-                              recentUserIds.includes(emp.userId),
-                          )
+                        recentUserIds
+                          .map((chat) => employees.find((e) => String(e.userId) === String(chat._id || chat)))
+                          .filter(Boolean) // Remove if employee not found
+                          .filter((emp) => {
+                            const name = (emp.name || "").toLowerCase();
+                            const searchTerm = search.toLowerCase();
+                            return name.includes(searchTerm);
+                          })
                           .map((emp, idx, arr) =>
                             renderEmployeeItem(emp, idx, arr),
                           )
                       )}
                     </>
                   ) : (
-                    /* Full Directory View */
+                    /* Full Directory View (Sorted Alphabetically) */
                     filteredEmployees.map((emp, idx, arr) =>
                       renderEmployeeItem(emp, idx, arr),
                     )
