@@ -64,7 +64,18 @@ jobs:
           mv tmp.json src-tauri/tauri.conf.json
           echo "tauri.conf version:"; jq '.package.version' src-tauri/tauri.conf.json
 
-      # ── 3. Setup build environment ────────────────────────────────────
+      # ── 3. Create .env file for build ────────────────────────────────────
+      - name: Create .env file
+        shell: bash
+        run: |
+          cat > .env << EOF
+          NEXT_PUBLIC_SERVER=${{ secrets.NEXT_PUBLIC_SERVER }}
+          NEXT_PUBLIC_CHAT_SERVER=${{ secrets.NEXT_PUBLIC_CHAT_SERVER }}
+          EOF
+          echo ".env file created successfully"
+          cat .env
+
+      # ── 4. Setup build environment ────────────────────────────────────
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -79,19 +90,25 @@ jobs:
           workspaces: src-tauri
 
       - name: Install Node dependencies
-        env:
-          NEXT_PUBLIC_SERVER: ${{ secrets.NEXT_PUBLIC_SERVER }}
         run: npm install
 
-      # ── 4. Build signed Tauri app ─────────────────────────────────────
+      # ── 5. Build Next.js app ─────────────────────────────────────────────
+      - name: Build Next.js app
+        env:
+          NEXT_PUBLIC_SERVER: ${{ secrets.NEXT_PUBLIC_SERVER }}
+          NEXT_PUBLIC_CHAT_SERVER: ${{ secrets.NEXT_PUBLIC_CHAT_SERVER }}
+        run: npm run build
+
+      # ── 6. Build signed Tauri app ─────────────────────────────────────
       - name: Build Tauri app
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
           NEXT_PUBLIC_SERVER: ${{ secrets.NEXT_PUBLIC_SERVER }}
+          NEXT_PUBLIC_CHAT_SERVER: ${{ secrets.NEXT_PUBLIC_CHAT_SERVER }}
         run: npm run tauri build
 
-      # ── 5. Find built files ───────────────────────────────────────────
+      # ── 7. Find built files ───────────────────────────────────────────
       - name: Find installer files
         id: files
         shell: bash
@@ -109,7 +126,7 @@ jobs:
           if [ -z "$SIG" ]; then echo "ERROR: SIG not found! Check TAURI_PRIVATE_KEY secret"; exit 1; fi
           if [ -z "$ZIP" ]; then echo "ERROR: ZIP not found!"; exit 1; fi
 
-      # ── 6. Write version.json with signature for silent updater ───────
+      # ── 8. Write version.json with signature for silent updater ───────
       - name: Write version.json
         shell: bash
         run: |
@@ -137,7 +154,7 @@ jobs:
 
           echo "version.json:"; cat version.json
 
-      # ── 7. Commit all version files back to main ──────────────────────
+      # ── 9. Commit all version files back to main ──────────────────────
       - name: Commit and push
         shell: bash
         run: |
@@ -149,7 +166,7 @@ jobs:
           git pull --rebase --autostash origin main
           git push origin main
 
-      # ── 8. Create GitHub Release ──────────────────────────────────────
+      # ── 10. Create GitHub Release ──────────────────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
