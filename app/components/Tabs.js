@@ -181,6 +181,10 @@ function Tabs() {
                 src="/hourglass.png"
                 alt="Tasks"
                 className="w-full h-full object-contain"
+                style={{
+                  filter:
+                    "invert(20%) sepia(100%) saturate(700%) hue-rotate(340deg) brightness(90%)",
+                }}
               />
               {unreadTaskCount > 0 && (
                 <span
