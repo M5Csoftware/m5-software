@@ -12,6 +12,8 @@ import {
   Megaphone,
   Minus,
   Bell,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { GlobalContext } from "../lib/GlobalContext";
 import { useAuth } from "../Context/AuthContext";
@@ -37,7 +39,11 @@ const ChatSlider = () => {
   const [unreadCounts, setUnreadCounts] = useState({});
   const [viewTab, setViewTab] = useState("chats");
   const [recentUserIds, setRecentUserIds] = useState([]);
+  const [userStatuses, setUserStatuses] = useState({});
   const [notification, setNotification] = useState(null);
+  const [showBroadcastForm, setShowBroadcastForm] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastPriority, setBroadcastPriority] = useState("normal");
   const messagesEndRef = useRef(null);
 
   // Refs for real-time state access inside socket listeners
@@ -72,6 +78,14 @@ const ChatSlider = () => {
       newSocket.emit("join_chat", user.userId);
     }
 
+    newSocket.on("all_statuses", (statuses) => {
+      setUserStatuses(statuses);
+    });
+
+    newSocket.on("status_update", ({ userId, status }) => {
+      setUserStatuses((prev) => ({ ...prev, [userId]: status }));
+    });
+
     // Listen for incoming messages (Private or Broadcast)
     newSocket.on("receive_message", (msg) => {
       setMessages((prev) => {
@@ -86,7 +100,7 @@ const ChatSlider = () => {
       const currentIsChatOpen = isChatOpenRef.current;
 
       const isMessageFromActiveChat = isBroadcast
-        ? !currentSelected
+        ? currentSelected?.userId === "broadcast"
         : currentSelected?.userId === msg.senderId;
 
       // Move to top of recent list (WhatsApp style) and update preview
@@ -100,20 +114,29 @@ const ChatSlider = () => {
         return [
           {
             _id: chatPartnerId,
-            lastMessage: msg.text,
+            lastMessage: isBroadcast && msg.title ? msg.title : msg.text,
             lastTimestamp: msg.timestamp,
           },
           ...filtered,
         ];
       });
 
+      if (msg.senderId !== user.userId) {
+        try {
+          const audio = new Audio('/chat-notification.wav');
+          audio.play().catch(e => console.log("Audio play blocked by browser:", e));
+        } catch (err) {
+          console.error("Error playing audio", err);
+        }
+      }
+
       setUnreadCounts((prev) => {
         if (!currentIsChatOpen || !isMessageFromActiveChat) {
           if (msg.senderId !== user.userId) {
             setNotification({
-              senderName: msg.senderName,
-              text: msg.text,
-              senderId: msg.senderId,
+              senderName: isBroadcast ? "Team Announcement" : msg.senderName,
+              text: isBroadcast && msg.title ? msg.title : msg.text,
+              senderId: isBroadcast ? "broadcast" : msg.senderId,
             });
             setTimeout(() => setNotification(null), 4000);
 
@@ -129,6 +152,42 @@ const ChatSlider = () => {
 
     return () => newSocket.close();
   }, [user?.userId]);
+
+  // --- IDLE TIMEOUT HOOK ---
+  const idleTimerRef = useRef(null);
+  const isAwayRef = useRef(false);
+
+  useEffect(() => {
+    if (!socket || !user?.userId) return;
+
+    const resetIdleTimer = () => {
+      if (isAwayRef.current) {
+        isAwayRef.current = false;
+        socket.emit("set_status", { userId: user.userId, status: "online" });
+      }
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => {
+        isAwayRef.current = true;
+        socket.emit("set_status", { userId: user.userId, status: "away" });
+      }, 5 * 60 * 1000); // 5 minutes
+    };
+
+    // Events to track user activity
+    const events = ["mousemove", "keydown", "scroll", "click", "touchstart"];
+    events.forEach((event) => {
+      window.addEventListener(event, resetIdleTimer);
+    });
+
+    // Start timer initially
+    resetIdleTimer();
+
+    return () => {
+      events.forEach((event) => {
+        window.removeEventListener(event, resetIdleTimer);
+      });
+      clearTimeout(idleTimerRef.current);
+    };
+  }, [socket, user?.userId]);
 
   // Fetch Employees
   useEffect(() => {
@@ -156,14 +215,14 @@ const ChatSlider = () => {
     if (isChatOpen && user?.userId) {
       const fetchHistory = async () => {
         try {
-          const type = selectedMember ? "private" : "broadcast";
-          const params = selectedMember
-            ? {
+          const type = selectedMember?.userId === "broadcast" ? "broadcast" : "private";
+          const params = type === "broadcast"
+            ? { type: "broadcast" }
+            : {
                 user1: user.userId,
                 user2: selectedMember.userId,
                 type: "private",
-              }
-            : { type: "broadcast" };
+              };
 
           const res = await axios.get(`${NODE_SERVER}/chat/history`, {
             params,
@@ -246,22 +305,26 @@ const ChatSlider = () => {
       receiverName: type === "broadcast" ? "Team" : selectedMember.name,
       text: message,
       type: type,
+      title: type === "broadcast" ? broadcastTitle : undefined,
+      priority: type === "broadcast" ? broadcastPriority : undefined,
     };
 
     socket.emit("send_message", messageData);
-    if (type === "private") {
-      setRecentUserIds((prev) =>
-        prev.includes(selectedMember.userId)
-          ? prev
-          : [selectedMember.userId, ...prev],
-      );
-    } else if (type === "broadcast") {
+    if (type === "broadcast") {
+      setBroadcastTitle("");
+      setBroadcastPriority("normal");
       setUnreadCounts((prev) => {
         if (!prev["broadcast"]) return prev;
         const next = { ...prev };
         delete next["broadcast"];
         return next;
       });
+    } else if (type === "private") {
+      setRecentUserIds((prev) =>
+        prev.includes(selectedMember.userId)
+          ? prev
+          : [selectedMember.userId, ...prev],
+      );
     }
     setMessage("");
   };
@@ -286,6 +349,34 @@ const ChatSlider = () => {
       return (a.name || "").localeCompare(b.name || "");
     });
 
+  const formatMessageDate = (timestamp) => {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    const now = new Date();
+    
+    // Check if it's today
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // Check if it's yesterday
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    }
+    
+    // Check if it's within the last 7 days
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays <= 7) {
+      return date.toLocaleDateString([], { weekday: 'short' });
+    }
+    
+    // Otherwise show date
+    return date.toLocaleDateString([], { day: '2-digit', month: '2-digit', year: '2-digit' });
+  };
+
   const renderEmployeeItem = (emp, idx, arr) => {
     const isFirstAdmin =
       emp.role === "Admin" && (idx === 0 || arr[idx - 1].role !== "Admin");
@@ -293,7 +384,7 @@ const ChatSlider = () => {
       emp.role !== "Admin" && idx > 0 && arr[idx - 1].role === "Admin";
     return (
       <React.Fragment key={emp.userId}>
-        {isFirstAdmin && (
+        {isFirstAdmin && viewTab === "contacts" && (
           <div className="px-6 py-4 flex items-center gap-3">
             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red/20 to-transparent"></div>
             <p className="text-[9px] font-black text-red uppercase tracking-[0.2em] flex items-center gap-1.5">
@@ -302,7 +393,7 @@ const ChatSlider = () => {
             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red/20 to-transparent"></div>
           </div>
         )}
-        {isFirstRegular && (
+        {isFirstRegular && viewTab === "contacts" && (
           <div className="px-6 py-4 flex items-center gap-3">
             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-platinum to-transparent"></div>
             <p className="text-[9px] font-black text-battleship-gray uppercase tracking-[0.2em]">
@@ -320,6 +411,7 @@ const ChatSlider = () => {
             <div className="w-12 h-12 rounded-full bg-seasalt border border-platinum flex items-center justify-center text-red font-black text-lg group-hover:bg-red group-hover:text-white transition-all duration-300 shadow-inner group-hover:shadow-red/20">
               {(emp.name || "U").charAt(0)}
             </div>
+            <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white shadow-sm ${userStatuses[emp.userId] === 'online' ? 'bg-green-500' : userStatuses[emp.userId] === 'away' ? 'bg-yellow-400' : 'bg-platinum'}`} title={userStatuses[emp.userId] || 'offline'}></div>
             {unreadCounts[emp.userId] > 0 && (
               <div className="absolute -top-1 -right-1 w-4 h-4 bg-red border-2 border-white rounded-full flex items-center justify-center animate-pulse shadow-sm"></div>
             )}
@@ -351,14 +443,9 @@ const ChatSlider = () => {
                 (c) => String(c._id || c) === String(emp.userId),
               )?.lastTimestamp && (
                 <span className="text-[9px] mr-1 font-bold text-battleship-gray uppercase tracking-wider group-hover:text-red/80 transition-colors">
-                  {new Date(
-                    recentUserIds.find(
-                      (c) => String(c._id || c) === String(emp.userId),
-                    ).lastTimestamp,
-                  ).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {formatMessageDate(
+                    recentUserIds.find((c) => String(c._id || c) === String(emp.userId)).lastTimestamp
+                  )}
                 </span>
               )}
             {unreadCounts[emp.userId] > 0 ? (
@@ -418,12 +505,17 @@ const ChatSlider = () => {
         {notification && (
           <div
             onClick={() => {
-              const sender = employees.find(
-                (e) => e.userId === notification.senderId,
-              );
-              if (sender) {
-                setSelectedMember(sender);
+              if (notification.senderId === "broadcast") {
+                setSelectedMember({ userId: "broadcast", name: "Team Announcements", role: "Company-Wide" });
                 setViewTab("chats");
+              } else {
+                const sender = employees.find(
+                  (e) => e.userId === notification.senderId,
+                );
+                if (sender) {
+                  setSelectedMember(sender);
+                  setViewTab("chats");
+                }
               }
               setNotification(null);
             }}
@@ -461,9 +553,12 @@ const ChatSlider = () => {
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-misty-rose/20 rounded-full blur-2xl -ml-16 -mb-16"></div>
           <div className="relative z-10 flex justify-between items-center">
             <div className="flex items-center gap-4">
-              {selectedMember ? (
+              {selectedMember || showBroadcastForm ? (
                 <button
-                  onClick={() => setSelectedMember(null)}
+                  onClick={() => {
+                    setSelectedMember(null);
+                    setShowBroadcastForm(false);
+                  }}
                   className="p-2 hover:bg-red/10 rounded-xl transition-all text-red/80 hover:text-red hover:shadow-sm"
                 >
                   <ChevronRight size={20} className="rotate-180" />
@@ -474,10 +569,19 @@ const ChatSlider = () => {
                 </div>
               )}
               <div>
-                <h3 className="text-lg font-black tracking-tight text-gunmetal">
-                  {selectedMember ? selectedMember.name : "Team Connect"}
-                </h3>
-                {selectedMember && (
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black tracking-tight text-gunmetal">
+                    {showBroadcastForm ? "New Broadcast" : selectedMember ? selectedMember.name : "Team Connect"}
+                  </h3>
+                  {selectedMember && selectedMember.userId !== "broadcast" && !showBroadcastForm && (
+                    <div className={`w-2.5 h-2.5 rounded-full shadow-sm border border-white ${userStatuses[selectedMember.userId] === 'online' ? 'bg-green-500' : userStatuses[selectedMember.userId] === 'away' ? 'bg-yellow-400' : 'bg-platinum'}`} title={userStatuses[selectedMember.userId] || 'offline'}></div>
+                  )}
+                </div>
+                {showBroadcastForm ? (
+                   <p className="text-[11px] font-semibold text-battleship-gray uppercase tracking-widest mt-0.5 text-red/80">
+                     Send to All Members
+                   </p>
+                ) : selectedMember && (
                   <p className="text-[11px] font-semibold text-battleship-gray uppercase tracking-widest mt-0.5">
                     {selectedMember.department ||
                       selectedMember.role ||
@@ -498,6 +602,7 @@ const ChatSlider = () => {
                 onClick={() => {
                   setIsChatOpen(false);
                   setSelectedMember(null);
+                  setShowBroadcastForm(false);
                 }}
                 className="p-2 hover:bg-red/5 rounded-xl transition-all hover:rotate-90 duration-300 text-red"
                 title="Close Chat"
@@ -509,7 +614,7 @@ const ChatSlider = () => {
         </div>
 
         {/* Tab Switcher */}
-        {!selectedMember && (
+        {!selectedMember && !showBroadcastForm && (
           <div className="bg-white border-b border-platinum/50 px-6 py-3 relative z-10 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
             <div className="flex bg-seasalt rounded-xl p-1 shadow-inner border border-platinum/30 gap-1">
               <button
@@ -534,7 +639,33 @@ const ChatSlider = () => {
           </div>
         )}
 
-        {selectedMember ? (
+        {showBroadcastForm ? (
+          /* Broadcast Form View */
+          <div className="flex-1 flex flex-col bg-seasalt overflow-hidden p-6 space-y-5 table-scrollbar overflow-y-auto">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase text-battleship-gray tracking-widest ml-1">Title</label>
+              <input type="text" value={broadcastTitle} onChange={(e) => setBroadcastTitle(e.target.value)} placeholder="e.g. System Maintenance" className="w-full p-3.5 bg-white border border-platinum/70 rounded-2xl focus:outline-none focus:border-red focus:ring-4 focus:ring-red/5 transition-all text-[13px] font-medium text-gunmetal shadow-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase text-battleship-gray tracking-widest ml-1">Priority</label>
+              <select value={broadcastPriority} onChange={(e) => setBroadcastPriority(e.target.value)} className="w-full p-3.5 bg-white border border-platinum/70 rounded-2xl focus:outline-none focus:border-red focus:ring-4 focus:ring-red/5 transition-all text-[13px] font-medium text-gunmetal shadow-sm appearance-none cursor-pointer">
+                <option value="normal">Normal</option>
+                <option value="important">Important</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <div className="space-y-1.5 flex-1 flex flex-col min-h-[200px]">
+              <label className="text-[10px] font-black uppercase text-battleship-gray tracking-widest ml-1">Message</label>
+              <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Write your announcement..." className="w-full flex-1 p-4 bg-white border border-platinum/70 rounded-2xl focus:outline-none focus:border-red focus:ring-4 focus:ring-red/5 transition-all text-[13px] font-medium text-gunmetal shadow-sm resize-none"></textarea>
+            </div>
+            <button onClick={(e) => {
+               handleSendMessage(e, "broadcast");
+               setShowBroadcastForm(false);
+            }} disabled={!message.trim() || !broadcastTitle.trim()} className="w-full py-4 mt-2 bg-gradient-to-r from-red to-dark-red text-white font-black text-[13px] rounded-2xl shadow-lg shadow-red/30 hover:shadow-red/40 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:scale-100 disabled:shadow-none uppercase tracking-wider flex items-center justify-center gap-2">
+              <Megaphone size={16} /> Send Broadcast
+            </button>
+          </div>
+        ) : selectedMember ? (
           /* Active Chat View */
           <div className="flex-1 flex flex-col bg-seasalt overflow-hidden">
             {/* Messages Area */}
@@ -556,6 +687,57 @@ const ChatSlider = () => {
               ) : (
                 messages.map((msg, idx) => {
                   const isMe = msg.senderId === user.userId;
+                  const sender = employees.find((e) => String(e.userId) === String(msg.senderId));
+                  const displayName = sender?.name || msg.senderName || 'Team Member';
+                  const department = sender?.department || sender?.role || '';
+                  if (msg.type === "broadcast") {
+                    return (
+                      <div key={msg._id || idx} className="flex flex-col animate-in slide-in-from-bottom-2 duration-300 my-4 px-2">
+                        <div className={`w-full bg-white border border-platinum rounded-2xl shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)] overflow-hidden transition-all hover:shadow-[0_8px_30px_-5px_rgba(0,0,0,0.08)] ${msg.priority === 'urgent' ? 'border-t-4 border-t-red' : msg.priority === 'important' ? 'border-t-4 border-t-orange-400' : 'border-t-4 border-t-battleship-gray'}`}>
+                          
+                          {/* Card Header */}
+                          <div className={`px-5 py-3 flex items-center justify-between border-b ${msg.priority === 'urgent' ? 'bg-red/5 border-red/10' : msg.priority === 'important' ? 'bg-orange-50 border-orange-200/50' : 'bg-seasalt border-platinum'}`}>
+                            <div className="flex items-center gap-2.5">
+                               <div className={`p-1.5 rounded-lg ${msg.priority === 'urgent' ? 'bg-red/10 text-red' : msg.priority === 'important' ? 'bg-orange-500/10 text-orange-600' : 'bg-battleship-gray/10 text-battleship-gray'}`}>
+                                 {msg.priority === 'urgent' ? <AlertTriangle size={14} /> : msg.priority === 'important' ? <Info size={14} /> : <Megaphone size={14} />}
+                               </div>
+                               <span className={`text-[11px] font-bold uppercase tracking-wider ${msg.priority === 'urgent' ? 'text-red' : msg.priority === 'important' ? 'text-orange-600' : 'text-gunmetal'}`}>
+                                 {msg.title || 'Announcement'}
+                               </span>
+                            </div>
+                            <span className="text-[9px] font-bold text-battleship-gray uppercase tracking-widest bg-white px-2 py-1 rounded-md shadow-sm border border-platinum/50">
+                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          
+                          {/* Card Body */}
+                          <div className="p-5 bg-white">
+                            <p className="text-[13px] text-gunmetal font-medium leading-relaxed whitespace-pre-wrap">
+                              {msg.text}
+                            </p>
+                          </div>
+                          
+                          {/* Card Footer: Sender Info */}
+                          <div className="px-5 py-2.5 bg-seasalt border-t border-platinum flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <p className="text-[9px] font-black text-battleship-gray uppercase tracking-widest">Sent By</p>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white px-2.5 py-1 rounded-lg border border-platinum/60 shadow-sm">
+                              <div className="w-4 h-4 rounded-full bg-red/10 flex items-center justify-center text-[8px] font-black text-red">
+                                {displayName.charAt(0)}
+                              </div>
+                              <p className="text-[10px] font-bold text-gunmetal">
+                                {displayName}
+                                {department && <span className="text-dim-gray font-medium ml-1.5 border-l border-platinum pl-1.5">{department}</span>}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Standard Private Chat Message
                   return (
                     <div
                       key={msg._id || idx}
@@ -571,7 +753,7 @@ const ChatSlider = () => {
                               : "bg-white border border-platinum/50 text-gunmetal rounded-[20px] rounded-tl-[4px] shadow-platinum/20"
                           }`}
                         >
-                          <p className="font-medium leading-relaxed">
+                          <p className="font-medium leading-relaxed whitespace-pre-wrap">
                             {msg.text}
                           </p>
                         </div>
@@ -594,27 +776,35 @@ const ChatSlider = () => {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-white border-t border-platinum/60">
-              <form
-                onSubmit={(e) => handleSendMessage(e, "private")}
-                className="relative flex items-center gap-3 bg-seasalt border border-platinum/60 rounded-2xl p-1.5 focus-within:border-red/40 focus-within:ring-4 focus-within:ring-red/5 transition-all shadow-inner"
-              >
-                <input
-                  type="text"
-                  placeholder="Write a message..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  className="flex-1 px-4 py-2.5 bg-transparent focus:outline-none text-[13px] font-medium text-gunmetal placeholder:text-dim-gray/60"
-                />
-                <button
-                  type="submit"
-                  disabled={!message.trim()}
-                  className="p-2.5 bg-red text-white rounded-xl shadow-md shadow-red/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 disabled:shadow-none flex items-center justify-center"
+            {selectedMember.userId === "broadcast" ? (
+              <div className="p-4 bg-white border-t border-platinum/60 flex flex-col items-center justify-center py-5">
+                <p className="text-[11px] font-black text-battleship-gray uppercase tracking-widest flex items-center gap-2 bg-seasalt px-4 py-2 rounded-xl border border-platinum/50">
+                  <Shield size={14} className="text-red/60" /> Read-only broadcast channel
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 bg-white border-t border-platinum/60">
+                <form
+                  onSubmit={(e) => handleSendMessage(e, "private")}
+                  className="relative flex items-center gap-3 bg-seasalt border border-platinum/60 rounded-2xl p-1.5 focus-within:border-red/40 focus-within:ring-4 focus-within:ring-red/5 transition-all shadow-inner"
                 >
-                  <Send size={16} className="ml-0.5" />
-                </button>
-              </form>
-            </div>
+                  <input
+                    type="text"
+                    placeholder="Write a message..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="flex-1 px-4 py-2.5 bg-transparent focus:outline-none text-[13px] font-medium text-gunmetal placeholder:text-dim-gray/60"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!message.trim()}
+                    className="p-2.5 bg-red text-white rounded-xl shadow-md shadow-red/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 disabled:shadow-none flex items-center justify-center"
+                  >
+                    <Send size={16} className="ml-0.5" />
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         ) : (
           /* Contact List View */
@@ -653,6 +843,53 @@ const ChatSlider = () => {
                       <p className="px-6 pt-3 pb-1 text-[10px] font-black text-battleship-gray uppercase tracking-[0.1em]">
                         Your Conversations
                       </p>
+
+                      {/* Permanent Broadcast Card */}
+                      <div
+                        onClick={() => setSelectedMember({ userId: "broadcast", name: "Team Announcements", role: "Company-Wide" })}
+                        className="flex items-center gap-4 p-4 mx-4 my-2 bg-white hover:bg-gradient-to-r hover:from-white hover:to-misty-rose/20 cursor-pointer transition-all duration-300 border border-red/30 rounded-2xl shadow-[0_2px_10px_-3px_rgba(234,27,64,0.1)] hover:border-red/50 hover:shadow-[0_8px_20px_-6px_rgba(234,27,64,0.2)] group relative overflow-hidden"
+                      >
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red opacity-100"></div>
+                        <div className="relative">
+                          <div className="w-12 h-12 rounded-full bg-red/10 border border-red/30 flex items-center justify-center text-red font-black text-lg group-hover:bg-red group-hover:text-white transition-all duration-300 shadow-inner group-hover:shadow-red/20">
+                            <Megaphone size={20} />
+                          </div>
+                          {unreadCounts["broadcast"] > 0 && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red border-2 border-white rounded-full flex items-center justify-center animate-pulse shadow-sm"></div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col justify-center">
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-[13px] text-gunmetal truncate group-hover:text-red transition-colors">
+                              Team Announcements
+                            </p>
+                            <span className="shrink-0 text-[8px] font-black text-red bg-misty-rose/50 border border-red/20 px-1.5 py-0.5 rounded uppercase tracking-widest transition-all">
+                              Broadcasts
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-dim-gray truncate mt-0.5 font-medium">
+                            {recentUserIds.find(c => String(c._id || c) === "broadcast")?.lastMessage || "View company updates..."}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end justify-center gap-1.5 min-w-[70px]">
+                          {recentUserIds.find(c => String(c._id || c) === "broadcast")?.lastTimestamp && (
+                            <span className="text-[9px] mr-1 font-bold text-battleship-gray uppercase tracking-wider group-hover:text-red/80 transition-colors">
+                              {formatMessageDate(recentUserIds.find(c => String(c._id || c) === "broadcast").lastTimestamp)}
+                            </span>
+                          )}
+                          {unreadCounts["broadcast"] > 0 ? (
+                            <span className="bg-red text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm flex items-center justify-center">
+                              {unreadCounts["broadcast"]} new
+                            </span>
+                          ) : (
+                            <ChevronRight
+                              size={14}
+                              className="text-platinum group-hover:text-red transition-colors opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 mr-1"
+                            />
+                          )}
+                        </div>
+                      </div>
+
                       {recentUserIds.length === 0 ? (
                         <div className="p-8 text-center text-xs text-dim-gray">
                           No chats yet. Go to Contacts to start a conversation.
@@ -703,28 +940,30 @@ const ChatSlider = () => {
         )}
 
         {/* Footer Info - Generalized Broadcast Message */}
-        <div className="p-4 bg-gradient-to-b from-white to-seasalt border-t border-platinum/60">
-          <button
-            onClick={(e) => handleSendMessage(e, "broadcast")}
-            className="w-full relative overflow-hidden flex items-center justify-center gap-3 py-3.5 bg-white border border-platinum/80 rounded-2xl text-gunmetal hover:text-red hover:border-red/30 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_20px_-6px_rgba(234,27,64,0.15)] transition-all duration-300 group"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-red/0 via-red/5 to-red/0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
-            <Megaphone
-              size={16}
-              className="group-hover:rotate-[-15deg] group-hover:scale-110 transition-transform duration-300 text-red"
-            />
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-black uppercase tracking-[0.15em]">
-                Broadcast to Team
-              </span>
-              {unreadCounts["broadcast"] > 0 && (
-                <span className="bg-red text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-bounce">
-                  {unreadCounts["broadcast"]}
+        {!selectedMember && !showBroadcastForm && (
+          <div className="p-4 bg-gradient-to-b from-white to-seasalt border-t border-platinum/60">
+            <button
+              onClick={() => setShowBroadcastForm(true)}
+              className="w-full relative overflow-hidden flex items-center justify-center gap-3 py-3.5 bg-white border border-platinum/80 rounded-2xl text-gunmetal hover:text-red hover:border-red/30 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_20px_-6px_rgba(234,27,64,0.15)] transition-all duration-300 group"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-red/0 via-red/5 to-red/0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+              <Megaphone
+                size={16}
+                className="group-hover:rotate-[-15deg] group-hover:scale-110 transition-transform duration-300 text-red"
+              />
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-black uppercase tracking-[0.15em]">
+                  Broadcast to Team
                 </span>
-              )}
-            </div>
-          </button>
-        </div>
+                {unreadCounts["broadcast"] > 0 && (
+                  <span className="bg-red text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm animate-bounce">
+                    {unreadCounts["broadcast"]}
+                  </span>
+                )}
+              </div>
+            </button>
+          </div>
+        )}
       </div>
 
       <style jsx global>{`
