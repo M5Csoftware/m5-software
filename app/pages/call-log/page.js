@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { SimpleButton, OutlinedButtonRed } from "@/app/components/Buttons";
 import { DummyInputBoxWithLabelLightGray } from "@/app/components/DummyInputBox";
 import Heading from "@/app/components/Heading";
@@ -19,6 +19,7 @@ import {
   Users,
   CheckCircle,
   AlertCircle,
+  History,
 } from "lucide-react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -600,7 +601,7 @@ const StatsCard = ({ title, value, icon: Icon, color }) => (
 
 // ─── Main CallLog component ───────────────────────────────────────────────────
 const CallLog = () => {
-  const { server } = useContext(GlobalContext);
+  const { server, setActiveTabs, activeTabs, setCurrentTab } = useContext(GlobalContext);
   const [calls, setCalls] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -837,6 +838,9 @@ const CallLog = () => {
                     Duration
                   </th>
                   <th className="p-4 text-left font-semibold text-eerie-black text-xs uppercase tracking-wider">
+                    Customer Timeline
+                  </th>
+                  <th className="p-4 text-left font-semibold text-eerie-black text-xs uppercase tracking-wider">
                     Related To
                   </th>
                   <th className="p-4 text-left font-semibold text-eerie-black text-xs uppercase tracking-wider">
@@ -851,7 +855,7 @@ const CallLog = () => {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="p-12 text-center text-battleship-gray text-sm"
                     >
                       Loading calls...
@@ -860,7 +864,7 @@ const CallLog = () => {
                 ) : calls.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="p-12 text-center text-battleship-gray text-sm"
                     >
                       No calls recorded yet
@@ -912,6 +916,24 @@ const CallLog = () => {
                       </td>
                       <td className="p-4 text-dim-gray text-xs">
                         {formatDuration(call)}
+                      </td>
+                      <td className="p-4">
+                        <button
+                          onClick={() => {
+                            const customer = call.callForSearch || call.callFor || "General";
+                            const tabName = `Timeline: ${customer}`;
+                            if (!activeTabs.find((t) => t.subfolder === tabName)) {
+                              setActiveTabs((prev) => [
+                                ...prev,
+                                { folder: "CRM", subfolder: tabName, customer },
+                              ]);
+                            }
+                            setCurrentTab(tabName);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-misty-rose text-red hover:bg-red hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider shadow-sm"
+                        >
+                          <History size={12} /> View Timeline
+                        </button>
                       </td>
                       <td className="p-4">
                         {call.relatedToSearch || call.relatedTo || "—"}

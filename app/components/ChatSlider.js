@@ -333,19 +333,18 @@ const ChatSlider = () => {
     .filter((emp) => {
       const name = (emp.name || "").toLowerCase();
       const role = (emp.role || "").toLowerCase();
+      const department = (emp.department || "").toLowerCase();
       const searchTerm = search.toLowerCase();
       return (
-        (name.includes(searchTerm) || role.includes(searchTerm)) &&
+        (name.includes(searchTerm) || role.includes(searchTerm) || department.includes(searchTerm)) &&
         emp.userId !== user?.userId
       );
     })
     .sort((a, b) => {
-      const isAAdmin =
-        (a.role || "").toLowerCase() === "admin" || a.userId === "11111111";
-      const isBAdmin =
-        (b.role || "").toLowerCase() === "admin" || b.userId === "11111111";
-      if (isAAdmin && !isBAdmin) return -1;
-      if (!isAAdmin && isBAdmin) return 1;
+      const deptA = (a.department || "Other").toLowerCase();
+      const deptB = (b.department || "Other").toLowerCase();
+      if (deptA < deptB) return -1;
+      if (deptA > deptB) return 1;
       return (a.name || "").localeCompare(b.name || "");
     });
 
@@ -378,26 +377,17 @@ const ChatSlider = () => {
   };
 
   const renderEmployeeItem = (emp, idx, arr) => {
-    const isFirstAdmin =
-      emp.role === "Admin" && (idx === 0 || arr[idx - 1].role !== "Admin");
-    const isFirstRegular =
-      emp.role !== "Admin" && idx > 0 && arr[idx - 1].role === "Admin";
+    const currentDept = emp.department || "Other";
+    const prevDept = idx > 0 ? (arr[idx - 1].department || "Other") : null;
+    const isNewDept = currentDept !== prevDept;
+    
     return (
       <React.Fragment key={emp.userId}>
-        {isFirstAdmin && viewTab === "contacts" && (
-          <div className="px-6 py-4 flex items-center gap-3">
-            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red/20 to-transparent"></div>
-            <p className="text-[9px] font-black text-red uppercase tracking-[0.2em] flex items-center gap-1.5">
-              <Shield size={10} /> Support
-            </p>
-            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red/20 to-transparent"></div>
-          </div>
-        )}
-        {isFirstRegular && viewTab === "contacts" && (
+        {isNewDept && viewTab === "contacts" && (
           <div className="px-6 py-4 flex items-center gap-3">
             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-platinum to-transparent"></div>
-            <p className="text-[9px] font-black text-battleship-gray uppercase tracking-[0.2em]">
-              Team
+            <p className="text-[9px] font-black text-battleship-gray uppercase tracking-[0.2em] flex items-center gap-1.5">
+              {currentDept}
             </p>
             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-platinum to-transparent"></div>
           </div>

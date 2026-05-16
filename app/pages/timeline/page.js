@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+
+import React, { useState, useEffect, useMemo, useContext, Suspense} from "react";
 import { useForm } from "react-hook-form";
+import { useSearchParams } from "next/navigation";
+import { GlobalContext } from "@/app/lib/GlobalContext";
 import axios from "axios";
 import {
   Calendar as LucideCalendar,
@@ -26,6 +29,15 @@ import { toast, Toaster } from "react-hot-toast";
 import { format, isSameDay, parseISO, startOfDay } from "date-fns";
 
 const TimelinePage = () => {
+  const { activeTabs, currentTab } = useContext(GlobalContext);
+  const searchParams = useSearchParams();
+
+  // Get customer from current tab metadata or search params
+  const customerParam = useMemo(() => {
+    const currentTabData = activeTabs.find((t) => t.subfolder === currentTab);
+    return currentTabData?.customer || searchParams.get("customer");
+  }, [activeTabs, currentTab, searchParams]);
+
   const [activeTab, setActiveTab] = useState("view");
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -54,9 +66,12 @@ const TimelinePage = () => {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const [timelineRes, effectiveRes] = await Promise.all([
+      const [timelineRes, effectiveRes, callLogRes] = await Promise.all([
         axios.get(API_URL).catch(() => ({ data: [] })),
         axios.get(EFFECTIVE_API_URL).catch(() => ({ data: [] })),
+        axios.get(`${API_URL.replace("/timeline", "/call-log")}`).catch(() => ({
+          data: { success: false, data: [] },
+        })),
       ]);
 
       const timelineEvents = timelineRes.data;
@@ -67,9 +82,29 @@ const TimelinePage = () => {
         endDate: ev.effectiveUntil,
       }));
 
-      const merged = [...timelineEvents, ...effectiveEvents].sort(
-        (a, b) => new Date(b.date) - new Date(a.date),
-      );
+      const callLogEvents = (callLogRes.data?.data || []).map((call) => {
+        let normalizedDate = call.callStartDate;
+        if (normalizedDate && normalizedDate.includes("/")) {
+          const [m, d, y] = normalizedDate.split("/");
+          normalizedDate = `${y}-${m}-${d}`;
+        }
+        return {
+          _id: call._id,
+          title: `Call: ${call.subject || "No Subject"}`,
+          description: `Call with ${call.callForSearch || call.callFor}. Type: ${call.callType}. Purpose: ${call.callPurpose}. Result: ${call.callResult}. ${call.outcomeDescription || call.incomingDescription || ""}`,
+          date: normalizedDate,
+          category: "Meeting",
+          type: "call-log",
+          status: call.status,
+          customer: call.callForSearch || call.callFor,
+        };
+      });
+
+      const merged = [
+        ...timelineEvents,
+        ...effectiveEvents,
+        ...callLogEvents,
+      ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
       setEvents(merged);
     } catch (error) {
@@ -82,6 +117,25 @@ const TimelinePage = () => {
   useEffect(() => {
     fetchEvents();
   }, []);
+
+  const safeFormat = (dateStr, fmt) => {
+    try {
+      if (!dateStr) return "N/A";
+      const date = parseISO(dateStr);
+      if (isNaN(date.getTime())) return "Invalid Date";
+      return format(date, fmt);
+    } catch (e) {
+      return "Invalid Date";
+    }
+  };
+
+  useEffect(() => {
+    if (customerParam) {
+      document.title = `Customer Timeline: ${customerParam}`;
+    } else {
+      document.title = "Timeline Hub";
+    }
+  }, [customerParam]);
 
   const onSubmit = async (data) => {
     try {
@@ -161,11 +215,23 @@ const TimelinePage = () => {
   };
 
   const filteredEvents = useMemo(() => {
-    if (!filterByDate) return events;
-    return events.filter((event) =>
-      isSameDay(parseISO(event.date), selectedDate),
-    );
-  }, [events, selectedDate, filterByDate]);
+    let result = events;
+    if (filterByDate) {
+      result = result.filter((event) =>
+        isSameDay(parseISO(event.date), selectedDate),
+      );
+    }
+    if (customerParam) {
+      const query = customerParam.toLowerCase();
+      result = result.filter(
+        (event) =>
+          (event.title && event.title.toLowerCase().includes(query)) ||
+          (event.topic && event.topic.toLowerCase().includes(query)) ||
+          (event.description && event.description.toLowerCase().includes(query)),
+      );
+    }
+    return result;
+  }, [events, selectedDate, filterByDate, customerParam]);
 
   const handleDownloadExcel = async () => {
     try {
@@ -255,7 +321,7 @@ const TimelinePage = () => {
               <History className="text-white" size={16} />
             </div>
             <h1 className="text-xl font-bold text-eerie-black tracking-tight whitespace-nowrap">
-              Timeline Hub
+              {customerParam ? `Timeline: ${customerParam}` : "Timeline Hub"}
             </h1>
           </div>
         </div>
@@ -490,7 +556,7 @@ const TimelinePage = () => {
 
                 <button
                   type="submit"
-                  className="max-w-[500px] min-w-[450px] mx-auto bg-gradient-to-r px-4 from-red to-dark-red text-white py-2 rounded-xl font-bold hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 shadow-lg shadow-red/25 flex items-center justify-center gap-2 text-sm tracking-wide"
+                  className="w-full bg-gradient-to-r px-4 from-red to-dark-red text-white py-3 rounded-xl font-bold hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 shadow-lg shadow-red/25 flex items-center justify-center gap-2 text-sm tracking-wide"
                 >
                   <FileText size={18} />
                   Record to Timeline
@@ -565,7 +631,7 @@ const TimelinePage = () => {
             </div>
 
             {/* Main Content: Timeline Feed */}
-            <div className="flex-1 bg-white-smoke p-6 rounded-[2.5rem] border border-french-gray/10 shadow-inner min-h-[600px] max-h-[600px] overflow-y-auto custom-scrollbar">
+            <div className="flex-1 bg-white-smoke p-6 rounded-[2.5rem] border border-french-gray/10 shadow-inner min-h-[700px] overflow-y-auto custom-scrollbar">
               {/* Filter Display Header */}
               <div className="mb-4 flex items-center justify-between bg-white px-6 py-4 rounded-2xl shadow-sm border border-french-gray/10">
                 <div className="flex items-center gap-3">
@@ -644,10 +710,10 @@ const TimelinePage = () => {
                         <div className="relative flex flex-col items-center">
                           <div className="w-[60px] hidden md:flex flex-col items-center justify-center bg-white border border-french-gray/20 rounded-xl py-1.5 shadow-sm group-hover:border-red/30 transition-colors">
                             <span className="text-[9px] font-semibold text-dim-gray uppercase">
-                              {format(parseISO(event.date), "MMM")}
+                              {safeFormat(event.date, "MMM")}
                             </span>
                             <span className="text-lg font-bold text-eerie-black leading-none">
-                              {format(parseISO(event.date), "dd")}
+                              {safeFormat(event.date, "dd")}
                             </span>
                           </div>
                           <div className="absolute left-[-22px] md:left-auto md:right-[-22px] top-4 w-4 h-4 rounded-full bg-white border-[4px] border-red shadow-md shadow-red/20 z-10 transform scale-100 group-hover:scale-125 transition-transform duration-300">
@@ -678,14 +744,14 @@ const TimelinePage = () => {
                               <div className="flex items-center gap-2 text-black/70 text-[10px]">
                                 <div className="flex items-center gap-1">
                                   <Clock size={8} className="text-red/90" />
-                                  {format(parseISO(event.date), "MMM dd, yyyy")}
+                                  {safeFormat(event.date, "MMM dd, yyyy")}
                                 </div>
                                 {event.endDate && (
                                   <div className="flex items-center gap-1">
                                     <span className="text-red/80">→</span>
                                     <span className="">
-                                      {format(
-                                        parseISO(event.endDate),
+                                      {safeFormat(
+                                        event.endDate,
                                         "MMM dd, yyyy",
                                       )}
                                     </span>

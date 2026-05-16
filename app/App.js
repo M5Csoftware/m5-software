@@ -242,6 +242,7 @@ const dynamicPages = {
   144: dynamic(() => import("./pages/schedule-meeting/page"), { ssr: false }),
   145: dynamic(() => import("./pages/vendor-management/page"), { ssr: false }),
   146: dynamic(() => import("./pages/timeline/page"), { ssr: false }),
+  148: dynamic(() => import("./pages/customer-timeline/page"), { ssr: false }),
   // ── NEW ──
   147: dynamic(() => import("./components/TaskChatOrganiser"), { ssr: false }),
 };
@@ -422,6 +423,7 @@ const App = () => {
     "Schedule Meeting": 144,
     "Vendor Management": 145,
     Timeline: 146,
+    "Customer Timeline": 148,
     // ── NEW ──
     "Task & Chat Organiser": 147,
   };
@@ -429,10 +431,16 @@ const App = () => {
   const [tabHistory, setTabHistory] = useState([0]);
   const MAX_MOUNTED_TABS = 10;
 
-  const activeViewId = tabMapping[currentTab] || 0;
+  const getActiveViewId = (tabName) => {
+    if (tabName?.startsWith("Timeline:")) return 148;
+    if (tabName === "Timeline") return 146;
+    return tabMapping[tabName] || 0;
+  };
+
+  const activeViewId = getActiveViewId(currentTab);
 
   useEffect(() => {
-    const newView = tabMapping[currentTab] || 0;
+    const newView = getActiveViewId(currentTab);
 
     setTabHistory((prev) => {
       const filtered = prev.filter((id) => id !== newView);
@@ -460,7 +468,7 @@ const App = () => {
 
   useEffect(() => {
     const activeViews = new Set(
-      activeTabs.map((tab) => tabMapping[tab.subfolder] || 0),
+      activeTabs.map((tab) => getActiveViewId(tab.subfolder)),
     );
     activeViews.add(0);
 
@@ -469,7 +477,7 @@ const App = () => {
       prev.forEach((id) => {
         if (activeViews.has(id)) nextSet.add(id);
       });
-      const currentView = tabMapping[currentTab] || 0;
+      const currentView = getActiveViewId(currentTab);
       nextSet.add(currentView);
       return nextSet;
     });
