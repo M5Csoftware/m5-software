@@ -494,7 +494,7 @@ export default function TaskOrganiser() {
         </div>
 
         {/* Department Selector */}
-        <div className="px-4 py-4 border-b border-gray-100 bg-gray-50 flex-shrink-0">
+        {/* <div className="px-4 py-4 border-b border-gray-100 bg-gray-50 flex-shrink-0">
           <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2">
             <Building2 size={12} />
             <span>SELECT DEPARTMENT</span>
@@ -517,7 +517,7 @@ export default function TaskOrganiser() {
               );
             })}
           </select>
-        </div>
+        </div> */}
 
         {/* Tabs */}
         <div className="flex border-b border-gray-200 bg-white px-4 pt-2 flex-shrink-0">
@@ -1109,9 +1109,34 @@ export default function TaskOrganiser() {
                       Assign to {selectedDepartment}
                     </h3>
                   </div>
+                  <div className="px-4 py-4 border-b border-gray-100 bg-gray-50 flex-shrink-0 rounded-xl">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2">
+                      <Building2 size={12} />
+                      <span>SELECT DEPARTMENT</span>
+                    </div>
+                    <select
+                      value={selectedDepartment}
+                      onChange={(e) => {
+                        setSelectedDepartment(e.target.value);
+                        setSelectedAssignee("");
+                      }}
+                      className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none bg-white font-medium"
+                    >
+                      <option value="">— Choose a department —</option>
+                      {departmentList.map((dept) => {
+                        const userCount = employeesByDept[dept]?.length || 0;
+                        return (
+                          <option key={dept} value={dept}>
+                            {dept} ({userCount}{" "}
+                            {userCount === 1 ? "member" : "members"})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
 
                   {/* ── Row 1: Team toggle + Assignee selector ── */}
-                  <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div className="grid grid-cols-2 gap-6 mb-6 py-6">
                     {/* Team toggle */}
                     <div
                       className="flex items-center justify-between p-4 rounded-xl border border-gray-200"
