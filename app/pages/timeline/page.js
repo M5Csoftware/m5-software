@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useContext } from "react";
+
+import React, { useState, useEffect, useMemo, useContext, Suspense} from "react";
 import { useForm } from "react-hook-form";
 import { useSearchParams } from "next/navigation";
 import { GlobalContext } from "@/app/lib/GlobalContext";
