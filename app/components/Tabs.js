@@ -167,7 +167,7 @@ function Tabs() {
           </ul>
         </div>
 
-        <div className="flex items-center gap-1 justify-center px-4 bg-gray-50 border-l sticky right-0 bg-white z-50">
+        <div className="flex items-center gap-1 justify-center px-4 bg-gray-50 border-l sticky right-0  z-50">
           <UpdateNotification variant="topbar" />
 
           {/* ── TASK & CHAT ORGANISER BUTTON ── */}
