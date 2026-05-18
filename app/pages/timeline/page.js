@@ -1,7 +1,6 @@
 "use client";
 
-
-import React, { useState, useEffect, useMemo, useContext, Suspense} from "react";
+import React, { useState, useEffect, useMemo, useContext, Suspense } from "react";
 import { useForm } from "react-hook-form";
 import { useSearchParams } from "next/navigation";
 import { GlobalContext } from "@/app/lib/GlobalContext";
@@ -982,4 +981,10 @@ const TimelinePage = () => {
   );
 };
 
-export default TimelinePage;
+export default function TimelinePageWrapper() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center text-dim-gray animate-pulse">Loading timeline...</div>}>
+      <TimelinePage />
+    </Suspense>
+  );
+}
