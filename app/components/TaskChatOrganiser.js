@@ -493,32 +493,6 @@ export default function TaskOrganiser() {
           </div>
         </div>
 
-        {/* Department Selector */}
-        {/* <div className="px-4 py-4 border-b border-gray-100 bg-gray-50 flex-shrink-0">
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2">
-            <Building2 size={12} />
-            <span>SELECT DEPARTMENT</span>
-          </div>
-          <select
-            value={selectedDepartment}
-            onChange={(e) => {
-              setSelectedDepartment(e.target.value);
-              setSelectedAssignee("");
-            }}
-            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none bg-white font-medium"
-          >
-            <option value="">— Choose a department —</option>
-            {departmentList.map((dept) => {
-              const userCount = employeesByDept[dept]?.length || 0;
-              return (
-                <option key={dept} value={dept}>
-                  {dept} ({userCount} {userCount === 1 ? "member" : "members"})
-                </option>
-              );
-            })}
-          </select>
-        </div> */}
-
         {/* Tabs */}
         <div className="flex border-b border-gray-200 bg-white px-4 pt-2 flex-shrink-0">
           {TABS.map((tab) => (
@@ -689,7 +663,7 @@ export default function TaskOrganiser() {
                     No tasks assigned by you
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
-                    Select a department to assign tasks
+                    Use the form on the right to assign tasks
                   </p>
                 </div>
               )}
@@ -760,7 +734,7 @@ export default function TaskOrganiser() {
       {/* ─────────────────────────── Right Panel ─────────────────────────── */}
       <div className="flex-1 flex flex-col bg-white h-full overflow-hidden">
         {selectedTaskForDetail ? (
-          /* ── Task Detail View (unchanged) ── */
+          /* ── Task Detail View ── */
           <div className="h-full flex flex-col overflow-hidden">
             <div className="px-8 py-5 border-b border-gray-200 bg-white flex-shrink-0">
               <div className="flex items-center justify-between">
@@ -1056,7 +1030,7 @@ export default function TaskOrganiser() {
             </div>
           </div>
         ) : (
-          /* ── Empty / Assignment State — REDESIGNED ── */
+          /* ── Empty / Assignment State ── */
           <div className="h-full flex flex-col overflow-y-auto">
             {/* ── Top-left heading bar ── */}
             <div className="px-8 py-6 border-b border-gray-100 flex-shrink-0">
@@ -1083,18 +1057,14 @@ export default function TaskOrganiser() {
                   <p className="text-sm text-gray-500 mt-0.5">
                     {activeTab === "My Tasks"
                       ? "Select any task from the left panel to view details and update progress"
-                      : activeTab === "Assigned Tasks"
-                        ? selectedDepartment
-                          ? `Assign a new task to ${selectedDepartment}`
-                          : "Select a department from the left panel to start assigning tasks"
-                        : ""}
+                      : "Select a department and assign tasks to your team"}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* ── Full-width Assignment Form ── */}
-            {activeTab === "Assigned Tasks" && selectedDepartment && (
+            {/* ── Full-width Assignment Form (always visible on Assigned Tasks tab) ── */}
+            {activeTab === "Assigned Tasks" && (
               <div className="flex-1 p-8 overflow-y-auto">
                 <div className="w-full bg-white border border-gray-200 rounded-2xl shadow-sm p-8">
                   {/* Form Header */}
@@ -1106,10 +1076,12 @@ export default function TaskOrganiser() {
                       <Plus size={16} style={{ color: "#dc2626" }} />
                     </div>
                     <h3 className="text-lg font-bold text-gray-800">
-                      Assign to {selectedDepartment}
+                      Assign New Task
                     </h3>
                   </div>
-                  <div className="px-4 py-4 border-b border-gray-100 bg-gray-50 flex-shrink-0 rounded-xl">
+
+                  {/* Department Selector */}
+                  <div className="mb-6 p-4 border border-gray-200 bg-gray-50 rounded-xl">
                     <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 mb-2">
                       <Building2 size={12} />
                       <span>SELECT DEPARTMENT</span>
@@ -1119,8 +1091,9 @@ export default function TaskOrganiser() {
                       onChange={(e) => {
                         setSelectedDepartment(e.target.value);
                         setSelectedAssignee("");
+                        setAssignToTeam(false);
                       }}
-                      className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none bg-white font-medium"
+                      className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none bg-white font-medium focus:ring-2 focus:ring-red-100 focus:border-red-400"
                     >
                       <option value="">— Choose a department —</option>
                       {departmentList.map((dept) => {
@@ -1136,7 +1109,7 @@ export default function TaskOrganiser() {
                   </div>
 
                   {/* ── Row 1: Team toggle + Assignee selector ── */}
-                  <div className="grid grid-cols-2 gap-6 mb-6 py-6">
+                  <div className="grid grid-cols-2 gap-6 mb-6">
                     {/* Team toggle */}
                     <div
                       className="flex items-center justify-between p-4 rounded-xl border border-gray-200"
@@ -1179,9 +1152,14 @@ export default function TaskOrganiser() {
                             onChange={(e) =>
                               setSelectedAssignee(e.target.value)
                             }
-                            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 outline-none bg-white focus:ring-2 focus:ring-red-100 focus:border-red-400 h-[50px]"
+                            disabled={!selectedDepartment}
+                            className="w-full text-sm border border-gray-200 rounded-xl px-4 py-3 outline-none bg-white focus:ring-2 focus:ring-red-100 focus:border-red-400 h-[50px] disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <option value="">— Select team member —</option>
+                            <option value="">
+                              {selectedDepartment
+                                ? "— Select team member —"
+                                : "— Select a department first —"}
+                            </option>
                             {getDepartmentUsers().map((user) => (
                               <option key={user.userId} value={user.name}>
                                 {user.name}
@@ -1201,7 +1179,10 @@ export default function TaskOrganiser() {
                           <p className="text-sm" style={{ color: "#166534" }}>
                             📋 Task will be sent to all{" "}
                             <strong>{getDepartmentUsers().length}</strong>{" "}
-                            member(s) in {selectedDepartment}
+                            member(s)
+                            {selectedDepartment
+                              ? ` in ${selectedDepartment}`
+                              : ""}
                           </p>
                         </div>
                       )}
@@ -1399,33 +1380,6 @@ export default function TaskOrganiser() {
                       )}
                     </button>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* ── No department selected notice ── */}
-            {activeTab === "Assigned Tasks" && !selectedDepartment && (
-              <div className="flex-1 flex items-center justify-center p-8">
-                <div
-                  className="max-w-sm w-full p-6 rounded-2xl border text-center"
-                  style={{ backgroundColor: "#fef3c7", borderColor: "#fde68a" }}
-                >
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
-                    style={{ backgroundColor: "#fde68a" }}
-                  >
-                    <Building2 size={20} style={{ color: "#92400e" }} />
-                  </div>
-                  <p
-                    className="text-sm font-semibold"
-                    style={{ color: "#92400e" }}
-                  >
-                    No Department Selected
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: "#b45309" }}>
-                    Please select a department from the left panel to assign
-                    tasks
-                  </p>
                 </div>
               </div>
             )}
