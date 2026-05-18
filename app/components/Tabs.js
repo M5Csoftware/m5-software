@@ -121,10 +121,10 @@ function Tabs() {
 
   return (
     <>
-      <div className="h-10 sticky top-0 flex border-b font-medium text-xs justify-between">
-        <div>
+      <div className="h-10 sticky top-0 flex border-b font-medium text-xs justify-between bg-white z-50">
+        <div className="flex-1 overflow-x-auto hidden-scrollbar">
           <ul
-            className={`h-10 sticky top-0 flex border-b font-medium text-xs overflow-x-auto max-w-[80.8vw] hidden-scrollbar ${
+            className={`h-10 flex font-medium text-xs ${
               activeTabs.length < 1 ? "hidden" : ""
             }`}
           >
@@ -167,20 +167,24 @@ function Tabs() {
           </ul>
         </div>
 
-        <div className="flex items-center gap-1 justify-center px-4 bg-gray-50 border-r min-w-fit">
+        <div className="flex items-center gap-1 justify-center px-4 bg-gray-50 border-l sticky right-0  z-50">
           <UpdateNotification variant="topbar" />
 
           {/* ── TASK & CHAT ORGANISER BUTTON ── */}
           <button
             onClick={handleOpenTaskChat}
             title="Task & Chat Organiser"
-            className="relative flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+            className="relative flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-gray-600 hover:bg-gray-100 transition-colors whitespace-nowrap"
           >
             <div className="relative w-[17px] h-[17px]">
               <img
                 src="/hourglass.png"
                 alt="Tasks"
                 className="w-full h-full object-contain"
+                style={{
+                  filter:
+                    "invert(20%) sepia(100%) saturate(700%) hue-rotate(340deg) brightness(90%)",
+                }}
               />
               {unreadTaskCount > 0 && (
                 <span
@@ -203,7 +207,7 @@ function Tabs() {
 
           <button
             onClick={handleLogoutClick}
-            className="flex items-center justify-center hover:opacity-80 transition-opacity"
+            className="flex items-center justify-center hover:opacity-80 transition-opacity whitespace-nowrap"
           >
             <Image
               src="/logout.svg"
