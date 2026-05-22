@@ -34,9 +34,9 @@ module.exports = {
         "old-gold": "#CFB400",
         "Denim": "#275DAD",
         "green": {
-          1: "#EA1B40", // Premium vibrant red
-          2: "#C51636", // Medium brand red
-          3: '#9D0F26', // Deep elegant red
+          1: "#34C759",
+          2: "#14A166",
+          3: '#047644',
         },
         "vista-blue": "#8095E4",
       },
