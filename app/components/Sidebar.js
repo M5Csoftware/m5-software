@@ -550,7 +550,7 @@ function Sidebar() {
             </span>
             <input
               type="text"
-              placeholder="Search modules..."
+              placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-7 py-1.5 text-xs text-gunmetal placeholder-gray-400 bg-white border border-gray-200 rounded-md focus:outline-none focus:border-red transition-colors shadow-sm"
