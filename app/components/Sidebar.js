@@ -269,9 +269,230 @@ function Sidebar() {
 
   const activeFolders = activeMode === "Export" ? exportFolders : importFolders;
 
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const searchableItems = React.useMemo(() => {
+    if (!user) return [];
+
+    const items = [];
+
+    // Dashboard
+    items.push({
+      label: "Dashboard",
+      folder: "Dashboard",
+      subfolder: "Dashboard",
+      mode: activeMode,
+    });
+
+    const processFoldersList = (foldersList, mode) => {
+      foldersList.forEach((folder) => {
+        const titleKey = `title-${folder.name}`;
+        if (titleKey in (user?.permissions || {})) {
+          if (!user.permissions[titleKey]) return;
+        }
+
+        // Standard subfolders
+        folder.subfolders.forEach((subfolder) => {
+          // Check standard subfolder permission
+          const mapping = permissionKeyMap[subfolder];
+          let allowed = false;
+          if (Array.isArray(mapping)) {
+            allowed = mapping.some(
+              (perm) => user?.permissions?.[perm] === true,
+            );
+          } else {
+            const key = mapping || subfolder;
+            allowed = user?.permissions?.[key] === true;
+          }
+
+          if (allowed) {
+            items.push({
+              label: `${folder.name} ➔ ${subfolder}`,
+              folder: folder.name,
+              subfolder: subfolder,
+              mode: mode,
+            });
+          }
+        });
+
+        // Extra custom reports/summaries per folder
+        if (mode === "Export") {
+          if (folder.name === "Admin") {
+            const adminReports = [
+              "Custom Reports",
+              "Monitoring Report",
+              "New Booking Report",
+              "HSSB Report",
+              "Hold Report",
+            ];
+            adminReports.forEach((item) => {
+              if (hasPerm(item)) {
+                items.push({
+                  label: `Admin ➔ Report ➔ ${item}`,
+                  folder: "Admin",
+                  subfolder: item,
+                  mode: "Export",
+                });
+              }
+            });
+          }
+
+          if (folder.name === "Operations") {
+            const operationsReports = [
+              "Child AWB No Report",
+              "Manifest Report",
+              "Manifest Report D",
+              "Club Report",
+              "Bag Report",
+              "EDI Report",
+              "Message Sheet",
+              "Custom Invoice",
+              "RTO Shipment Report",
+              "CSB V Report",
+              "Run Number Report",
+            ];
+            operationsReports.forEach((item) => {
+              if (hasPerm(item)) {
+                items.push({
+                  label: `Operations ➔ Report ➔ ${item}`,
+                  folder: "Operations",
+                  subfolder: item,
+                  mode: "Export",
+                });
+              }
+            });
+          }
+
+          if (folder.name === "Customer Care") {
+            const ccReports = [
+              "Tracking Report",
+              "Complaint Report",
+              "Client Report",
+              "Multiple Run Wise",
+              "Shipment Status Report",
+              "Child Shipment Status Report",
+              "Forwarding Number Report",
+              "Run Summary",
+            ];
+            ccReports.forEach((item) => {
+              if (hasPerm(item)) {
+                items.push({
+                  label: `Customer Care ➔ Report ➔ ${item}`,
+                  folder: "Customer Care",
+                  subfolder: item,
+                  mode: "Export",
+                });
+              }
+            });
+          }
+
+          if (folder.name === "Booking") {
+            const bookingReports = ["Branch Manifest Report"];
+            bookingReports.forEach((item) => {
+              if (hasPerm(item)) {
+                items.push({
+                  label: `Booking ➔ Report ➔ ${item}`,
+                  folder: "Booking",
+                  subfolder: item,
+                  mode: "Export",
+                });
+              }
+            });
+          }
+
+          if (folder.name === "Account") {
+            const accountReports = [
+              "Total Outstanding",
+              "Run Wise Sale Report",
+              "Amount Log",
+              "Payment Collection Report",
+              "Sale With Collection Report",
+              "Sale With Total Receiving",
+              "Booking Report With Amount",
+              "Credit Limit Report",
+              "Credit Limit Report With Days",
+              "Month Sale",
+              "New Sale Report",
+            ];
+            accountReports.forEach((item) => {
+              if (hasPerm(item)) {
+                items.push({
+                  label: `Account ➔ Report ➔ ${item}`,
+                  folder: "Account",
+                  subfolder: item,
+                  mode: "Export",
+                });
+              }
+            });
+
+            const accountSummaries = [
+              "Payment Receipt Summary",
+              "Credit Summary Report",
+              "Debit Summary Report",
+            ];
+            accountSummaries.forEach((item) => {
+              if (hasPerm(item)) {
+                items.push({
+                  label: `Account ➔ Summary ➔ ${item}`,
+                  folder: "Account",
+                  subfolder: item,
+                  mode: "Export",
+                });
+              }
+            });
+          }
+
+          if (folder.name === "Billing") {
+            const billingReports = [
+              "Sale Report With Hold",
+              "Sale With Collection Report",
+              "Credit Limit Report",
+              "Account Ledger",
+              "Credit Limit Report With Days",
+              "Sale Summary Sector Wise",
+              "Run Summary",
+              "Sale Report With Child Number",
+              "Month Sale",
+              "Credit Note Summary AWB No. Wise",
+              "Day Wise Sale",
+              "Sales Report",
+              "Invoice Summary",
+              "Invoice PTP Summary",
+            ];
+            billingReports.forEach((item) => {
+              if (hasPerm(item)) {
+                items.push({
+                  label: `Billing ➔ Report ➔ ${item}`,
+                  folder: "Billing",
+                  subfolder: item,
+                  mode: "Export",
+                });
+              }
+            });
+          }
+        }
+      });
+    };
+
+    processFoldersList(exportFolders, "Export");
+    processFoldersList(importFolders, "Import");
+
+    return items;
+  }, [user, activeMode]);
+
+  const filteredSearchItems = React.useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase();
+    return searchableItems.filter(
+      (item) =>
+        item.label.toLowerCase().includes(query) ||
+        item.subfolder.toLowerCase().includes(query),
+    );
+  }, [searchQuery, searchableItems]);
+
   return (
     <nav className="flex flex-col min-w-56 w-[15vw] gap-3 text-gunmetal bg-seasalt h-screen overflow-auto hidden-scrollbar">
-      <div className="sticky top-0 flex flex-col gap-3 bg-seasalt">
+      <div className="sticky top-0 flex flex-col gap-3 bg-seasalt z-10">
         <div className="px-2 pt-3 ">
           <Image src="/logo-and-name.svg" alt="" width={130} height={24} />
         </div>
@@ -302,136 +523,281 @@ function Sidebar() {
           )}
         </div>
 
-        <div className="flex justify-start pl-6 items-center w-full mt-3">
+        <div className="flex justify-start pl-6 items-center w-full mt-1">
           <span className="text-xs font-semibold tracking-wide text-green-1">
-            Login ID: {user.userId}
+            Login ID: {user?.userId}
           </span>
+        </div>
+
+        {/* Global Search Bar */}
+        <div className="px-4 pb-1">
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+              <svg
+                className="w-4 h-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                ></path>
+              </svg>
+            </span>
+            <input
+              type="text"
+              placeholder="Search modules..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-7 py-1.5 text-xs text-gunmetal placeholder-gray-400 bg-white border border-gray-200 rounded-md focus:outline-none focus:border-red transition-colors shadow-sm"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  ></path>
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Import Mode */}
-      {activeMode === "Import" ? (
-        <ul className="mx-4 text-sm">
-          {importFolders.length === 0 ? (
-            <li className="p-2 text-sm text-gray-400 italic">
-              Import modules coming soon...
-            </li>
+      {/* Search Results or Directory Menu */}
+      {searchQuery ? (
+        <div className="flex-1 overflow-auto mx-4 text-sm hidden-scrollbar">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-red mb-2 px-1 opacity-70">
+            Search Results ({filteredSearchItems.length})
+          </div>
+          {filteredSearchItems.length === 0 ? (
+            <div className="p-3 text-xs text-gray-400 italic text-center bg-white/50 rounded-md border border-dashed border-gray-200">
+              No matching modules found
+            </div>
           ) : (
-            importFolders.map((folder, index) => {
-              const titleKey = `title-${folder.name}`;
-              if (titleKey in (user?.permissions || {})) {
-                if (!user.permissions[titleKey]) return null;
-              }
-
-              const allowedSubfolders = folder.subfolders.filter((sub) => {
-                const mapping = permissionKeyMap[sub];
-                if (Array.isArray(mapping)) {
-                  return mapping.some(
-                    (perm) => user?.permissions?.[perm] === true,
-                  );
-                }
-                const key = mapping || sub;
-                return user?.permissions?.[key] === true;
-              });
-
-              if (allowedSubfolders.length === 0) return null;
-
-              return (
-                <Folder
-                  key={index}
-                  name={folder.name}
-                  subfolders={allowedSubfolders}
-                  activeFolder={activeFolder}
-                  toggleFolder={toggleFolder}
-                  activeTabs={activeTabs}
-                  handleSubfolderClick={handleSubfolderClick}
-                  reportOpen={reportOpen}
-                  operationreportOpen={operationreportOpen}
-                  branchreportOpen={branchreportOpen}
-                  accountReportOpen={accountReportOpen}
-                  setAccountReportOpen={setAccountReportOpen}
-                  accountSummaryOpen={accountSummaryOpen}
-                  setAccountSummaryOpen={setAccountSummaryOpen}
-                  billingReportOpen={billingReportOpen}
-                  setBillingReportOpen={setBillingReportOpen}
-                  adminreportOpen={adminreportOpen}
-                  setAdminreportOpen={setAdminreportOpen}
-                  hasPerm={hasPerm}
-                />
-              );
-            })
-          )}
-        </ul>
-      ) : (
-        /* Export Mode */
-        <ul className="mx-4 text-sm">
-          <li
-            onClick={() => {
-              const tab = { folder: "Dashboard", subfolder: "Dashboard" };
-              setActiveTabs((prev) =>
-                prev.some(
-                  (item) =>
-                    item.folder === tab.folder &&
-                    item.subfolder === tab.subfolder,
-                )
-                  ? prev
-                  : [...prev, tab],
-              );
-              setCurrentTab("Dashboard");
-            }}
-            className="flex gap-1 font-semibold items-center cursor-pointer hover:bg-foggy-white transition-all p-1 rounded-md"
-          >
-            <Image src="/dashboard.svg" alt="" width={16} height={24} />
-            <span>Dashboard</span>
-          </li>
-
-          {exportFolders.map((folder, index) => {
-            const titleKey = `title-${folder.name}`;
-
-            if (titleKey in (user?.permissions || {})) {
-              if (!user.permissions[titleKey]) return null;
-            }
-
-            const allowedSubfolders = folder.subfolders.filter((sub) => {
-              const mapping = permissionKeyMap[sub];
-
-              if (Array.isArray(mapping)) {
-                return mapping.some(
-                  (perm) => user?.permissions?.[perm] === true,
+            <ul className="flex flex-col gap-1">
+              {filteredSearchItems.map((item, index) => {
+                const isActive = activeTabs.some(
+                  (tab) =>
+                    tab.folder === item.folder &&
+                    tab.subfolder === item.subfolder,
                 );
-              }
+                return (
+                  <li
+                    key={index}
+                    onClick={() => {
+                      // Switch mode if necessary
+                      if (item.mode && activeMode !== item.mode) {
+                        setActiveMode(item.mode);
+                      }
 
-              const key = mapping || sub;
-              return user?.permissions?.[key] === true;
-            });
+                      // Open the tab
+                      if (item.folder === "Dashboard") {
+                        const tab = {
+                          folder: "Dashboard",
+                          subfolder: "Dashboard",
+                        };
+                        setActiveTabs((prev) =>
+                          prev.some(
+                            (t) =>
+                              t.folder === tab.folder &&
+                              t.subfolder === tab.subfolder,
+                          )
+                            ? prev
+                            : [...prev, tab],
+                        );
+                        setCurrentTab("Dashboard");
+                      } else {
+                        // Expand the folder in sidebar
+                        if (!activeFolder.includes(item.folder)) {
+                          setActiveFolder((prev) => [...prev, item.folder]);
+                        }
 
-            if (allowedSubfolders.length === 0) return null;
+                        // Automatically expand subfolders if they are reports or summaries
+                        if (item.label.includes("➔ Report ➔")) {
+                          if (item.folder === "Admin") setAdminreportOpen(true);
+                          else if (item.folder === "Operations")
+                            setOperationreportOpen(true);
+                          else if (item.folder === "Booking")
+                            setBranchreportOpen(true);
+                          else if (item.folder === "Customer Care")
+                            toggleReportOpen(true);
+                          else if (item.folder === "Account")
+                            setAccountReportOpen(true);
+                          else if (item.folder === "Billing")
+                            setBillingReportOpen(true);
+                        } else if (item.label.includes("➔ Summary ➔")) {
+                          if (item.folder === "Account")
+                            setAccountSummaryOpen(true);
+                        }
 
-            return (
-              <Folder
-                key={index}
-                name={folder.name}
-                subfolders={allowedSubfolders}
-                activeFolder={activeFolder}
-                toggleFolder={toggleFolder}
-                activeTabs={activeTabs}
-                handleSubfolderClick={handleSubfolderClick}
-                reportOpen={reportOpen}
-                operationreportOpen={operationreportOpen}
-                branchreportOpen={branchreportOpen}
-                accountReportOpen={accountReportOpen}
-                setAccountReportOpen={setAccountReportOpen}
-                accountSummaryOpen={accountSummaryOpen}
-                setAccountSummaryOpen={setAccountSummaryOpen}
-                billingReportOpen={billingReportOpen}
-                setBillingReportOpen={setBillingReportOpen}
-                adminreportOpen={adminreportOpen}
-                setAdminreportOpen={setAdminreportOpen}
-                hasPerm={hasPerm}
-              />
-            );
-          })}
-        </ul>
+                        handleSubfolderClick(item.folder, item.subfolder);
+                      }
+
+                      // Clear search query
+                      setSearchQuery("");
+                    }}
+                    className={`flex flex-col p-2 cursor-pointer hover:bg-platinum rounded-md border border-transparent transition-all ${
+                      isActive
+                        ? "bg-platinum font-semibold text-red border-gray-200"
+                        : "hover:text-red"
+                    }`}
+                  >
+                    <span className="text-[10px] font-semibold text-gray-400">
+                      {item.folder} {item.mode === "Import" ? "(Import)" : ""}
+                    </span>
+                    <span className="text-xs font-semibold">
+                      {item.subfolder}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Import Mode */}
+          {activeMode === "Import" ? (
+            <ul className="mx-4 text-sm">
+              {importFolders.length === 0 ? (
+                <li className="p-2 text-sm text-gray-400 italic">
+                  Import modules coming soon...
+                </li>
+              ) : (
+                importFolders.map((folder, index) => {
+                  const titleKey = `title-${folder.name}`;
+                  if (titleKey in (user?.permissions || {})) {
+                    if (!user.permissions[titleKey]) return null;
+                  }
+
+                  const allowedSubfolders = folder.subfolders.filter((sub) => {
+                    const mapping = permissionKeyMap[sub];
+                    if (Array.isArray(mapping)) {
+                      return mapping.some(
+                        (perm) => user?.permissions?.[perm] === true,
+                      );
+                    }
+                    const key = mapping || sub;
+                    return user?.permissions?.[key] === true;
+                  });
+
+                  if (allowedSubfolders.length === 0) return null;
+
+                  return (
+                    <Folder
+                      key={index}
+                      name={folder.name}
+                      subfolders={allowedSubfolders}
+                      activeFolder={activeFolder}
+                      toggleFolder={toggleFolder}
+                      activeTabs={activeTabs}
+                      handleSubfolderClick={handleSubfolderClick}
+                      reportOpen={reportOpen}
+                      operationreportOpen={operationreportOpen}
+                      branchreportOpen={branchreportOpen}
+                      accountReportOpen={accountReportOpen}
+                      setAccountReportOpen={setAccountReportOpen}
+                      accountSummaryOpen={accountSummaryOpen}
+                      setAccountSummaryOpen={setAccountSummaryOpen}
+                      billingReportOpen={billingReportOpen}
+                      setBillingReportOpen={setBillingReportOpen}
+                      adminreportOpen={adminreportOpen}
+                      setAdminreportOpen={setAdminreportOpen}
+                      hasPerm={hasPerm}
+                    />
+                  );
+                })
+              )}
+            </ul>
+          ) : (
+            /* Export Mode */
+            <ul className="mx-4 text-sm">
+              <li
+                onClick={() => {
+                  const tab = { folder: "Dashboard", subfolder: "Dashboard" };
+                  setActiveTabs((prev) =>
+                    prev.some(
+                      (item) =>
+                        item.folder === tab.folder &&
+                        item.subfolder === tab.subfolder,
+                    )
+                      ? prev
+                      : [...prev, tab],
+                  );
+                  setCurrentTab("Dashboard");
+                }}
+                className="flex gap-1 font-semibold items-center cursor-pointer hover:bg-foggy-white transition-all p-1 rounded-md"
+              >
+                <Image src="/dashboard.svg" alt="" width={16} height={24} />
+                <span>Dashboard</span>
+              </li>
+
+              {exportFolders.map((folder, index) => {
+                const titleKey = `title-${folder.name}`;
+
+                if (titleKey in (user?.permissions || {})) {
+                  if (!user.permissions[titleKey]) return null;
+                }
+
+                const allowedSubfolders = folder.subfolders.filter((sub) => {
+                  const mapping = permissionKeyMap[sub];
+
+                  if (Array.isArray(mapping)) {
+                    return mapping.some(
+                      (perm) => user?.permissions?.[perm] === true,
+                    );
+                  }
+
+                  const key = mapping || sub;
+                  return user?.permissions?.[key] === true;
+                });
+
+                if (allowedSubfolders.length === 0) return null;
+
+                return (
+                  <Folder
+                    key={index}
+                    name={folder.name}
+                    subfolders={allowedSubfolders}
+                    activeFolder={activeFolder}
+                    toggleFolder={toggleFolder}
+                    activeTabs={activeTabs}
+                    handleSubfolderClick={handleSubfolderClick}
+                    reportOpen={reportOpen}
+                    operationreportOpen={operationreportOpen}
+                    branchreportOpen={branchreportOpen}
+                    accountReportOpen={accountReportOpen}
+                    setAccountReportOpen={setAccountReportOpen}
+                    accountSummaryOpen={accountSummaryOpen}
+                    setAccountSummaryOpen={setAccountSummaryOpen}
+                    billingReportOpen={billingReportOpen}
+                    setBillingReportOpen={setBillingReportOpen}
+                    adminreportOpen={adminreportOpen}
+                    setAdminreportOpen={setAdminreportOpen}
+                    hasPerm={hasPerm}
+                  />
+                );
+              })}
+            </ul>
+          )}
+        </>
       )}
 
       <div className="px-8 pb-4 text-[10px] flex flex-col gap-0.5 font-bold text-green-1">
