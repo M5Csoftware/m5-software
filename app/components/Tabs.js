@@ -5,6 +5,10 @@ import Image from "next/image";
 import { SimpleButton } from "./Buttons";
 import { useAuth } from "../Context/AuthContext";
 import UpdateNotification from "./UpdateNotification";
+import io from "socket.io-client";
+
+const NODE_SERVER =
+  process.env.NEXT_PUBLIC_CHAT_SERVER || "http://localhost:5000";
 
 function Tabs() {
   const { activeTabs, setActiveTabs, currentTab, setCurrentTab, server } =
@@ -14,27 +18,42 @@ function Tabs() {
   const [unreadTaskCount, setUnreadTaskCount] = useState(0);
   const { logout, user } = useAuth();
 
-  // Fetch unread task count
+  // Real-time unread task count via Fastify Socket.io (No polling!)
   useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (!user?.userId || !server) return;
+    if (!user?.userId) return;
+
+    // 1. Initial REST fetch for robustness & immediate load
+    const fetchInitialCount = async () => {
       try {
         const response = await fetch(
-          `${server}/tasks?userId=${user.userId}&type=received`,
+          `${NODE_SERVER}/tasks/unread-count?userId=${user.userId}`
         );
         const data = await response.json();
         if (data.success) {
-          setUnreadTaskCount(data.stats?.unread || 0);
+          setUnreadTaskCount(data.count || 0);
         }
       } catch (error) {
-        console.error("Failed to fetch unread tasks:", error);
+        console.error("Failed to fetch initial unread tasks:", error);
       }
     };
+    fetchInitialCount();
 
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, [user?.userId, server]);
+    // 2. Establish Socket.io connection for real-time pushed updates
+    const socket = io(NODE_SERVER, {
+      transports: ["websocket"],
+      upgrade: false,
+    });
+
+    socket.emit("join_chat", user.userId);
+
+    socket.on("task_unread_count", ({ count }) => {
+      setUnreadTaskCount(count);
+    });
+
+    return () => {
+      socket.close();
+    };
+  }, [user?.userId]);
 
   const handleOpenTaskChat = () => {
     const TAB_NAME = "Task & Chat Organiser";
