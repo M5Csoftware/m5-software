@@ -1,11 +1,11 @@
 {
-  "version": "0.1.85",
-  "notes": "Merge pull request #239 from M5Csoftware/Altaf",
-  "pub_date": "2026-05-15T11:29:34Z",
+  "version": "0.1.86",
+  "notes": "Merge pull request #244 from M5Csoftware/Altaf",
+  "pub_date": "2026-05-18T07:20:38Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYzJGbVhBYXhjVTA1K3h4ZGlraHlDd3NYYXdHaGpHMldJVDdYa1RnYWhVOUJzTUZhRGpMZ3dVU0R5dWJSYkgwQXlYcjIza1JuUkprb3A2TmNnTlJpZ2dzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4ODQ0NTczCWZpbGU6TTVDIExvZ3NfMC4xLjg1X3g2NF9lbi1VUy5tc2kuemlwClJNcUhRYWl5N3VCZUVoUHljRXdxQjhLK1hEdGV1bmNrY2R6a3VGcVNMUkNSYXFLb0FmUkdQYWhZOTFQWmRIaDVORmdQQ2VXM2ZtYVo0MVhpZkZFdkFRPT0K",
-      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.85/M5C.Logs_0.1.85_x64_en-US.msi.zip"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYzU2a2VEcnkrTU9oREc3azNNcUlrZ3hyTng4ZnM0L2YvbHM2UUJCK0VTUzlIWkh4azNWUXZTcHB5aXhiUjczNDJzR1RuN0syRTJLUmJGWm9PbHNBWXdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5MDg4ODM4CWZpbGU6TTVDIExvZ3NfMC4xLjg2X3g2NF9lbi1VUy5tc2kuemlwCkQ1bHpMVFhlcytUaHo5NERSWEk2RTF2Mi9GOUU3dnZtNGl3QmdZVmpuMFo1Wm5ydDAvWTJkdllCeWJrbW1SVkUwbHlVckU5Vm5QRXM3NlIyRElVeERBPT0K",
+      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.86/M5C.Logs_0.1.86_x64_en-US.msi.zip"
     }
   }
 }
