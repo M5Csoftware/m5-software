@@ -38,10 +38,9 @@ const CustomerTimeline = () => {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const [timelineRes, effectiveRes, callLogRes] = await Promise.all([
+      const [timelineRes, effectiveRes] = await Promise.all([
         axios.get(API_URL).catch(() => ({ data: [] })),
         axios.get(EFFECTIVE_API_URL).catch(() => ({ data: [] })),
-        axios.get(`${server}/call-log`).catch(() => ({ data: { success: false, data: [] } })),
       ]);
 
       const timelineEvents = timelineRes.data;
@@ -52,32 +51,8 @@ const CustomerTimeline = () => {
         endDate: ev.effectiveUntil,
       }));
 
-      const callLogEvents = (callLogRes.data?.data || []).map((call) => {
-        let normalizedDate = call.callStartDate;
-        if (normalizedDate && normalizedDate.includes("/")) {
-          const [m, d, y] = normalizedDate.split("/");
-          normalizedDate = `${y}-${m}-${d}`;
-        }
-        return {
-          _id: call._id,
-          title: call.subject || "Voice Interaction",
-          description: call.outcomeDescription || call.incomingDescription || call.description || "No notes provided.",
-          date: normalizedDate,
-          category: "Meeting",
-          type: "call-log",
-          status: call.status,
-          customer: call.callForSearch || call.callFor,
-          meta: {
-            duration: `${call.callDurationMin || 0}m`,
-            purpose: call.callPurpose,
-            result: call.callResult,
-            direction: call.callType
-          }
-        };
-      });
-
       const query = customerName.toLowerCase();
-      const merged = [...timelineEvents, ...effectiveEvents, ...callLogEvents]
+      const merged = [...timelineEvents, ...effectiveEvents]
         .filter((event) => {
           const cName = (event.customer || "").toLowerCase();
           const title = (event.title || "").toLowerCase();
