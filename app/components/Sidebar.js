@@ -553,7 +553,7 @@ function Sidebar() {
               placeholder="Search modules..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-7 py-1.5 text-xs text-gunmetal placeholder-gray-400 bg-white border border-gray-200 rounded-md focus:outline-none focus:border-green-1 transition-colors shadow-sm"
+              className="w-full pl-8 pr-7 py-1.5 text-xs text-gunmetal placeholder-gray-400 bg-white border border-gray-200 rounded-md focus:outline-none focus:border-red transition-colors shadow-sm"
             />
             {searchQuery && (
               <button
@@ -583,7 +583,7 @@ function Sidebar() {
       {/* Search Results or Directory Menu */}
       {searchQuery ? (
         <div className="flex-1 overflow-auto mx-4 text-sm hidden-scrollbar">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-green-1 mb-2 px-1 opacity-70">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-red mb-2 px-1 opacity-70">
             Search Results ({filteredSearchItems.length})
           </div>
           {filteredSearchItems.length === 0 ? (
@@ -655,8 +655,8 @@ function Sidebar() {
                     }}
                     className={`flex flex-col p-2 cursor-pointer hover:bg-platinum rounded-md border border-transparent transition-all ${
                       isActive
-                        ? "bg-platinum font-semibold text-green-1 border-gray-200"
-                        : "hover:text-green-1"
+                        ? "bg-platinum font-semibold text-red border-gray-200"
+                        : "hover:text-red"
                     }`}
                   >
                     <span className="text-[10px] font-semibold text-gray-400">
