@@ -123,7 +123,7 @@ const AddressAndContact = ({
           // console.log("Account Code:", accountCodeFromUrl);
 
           const response = await axios.get(
-            `${server}/customer-account?accountCode=${accountCodeFromUrl}`
+            `${server}/customer-account?accountCode=${accountCodeFromUrl}`,
           );
 
           // console.log("Fetched customer data:", response.data);
@@ -369,6 +369,7 @@ const AddressAndContact = ({
                 onChange={(value) => handleFieldChange("addressLine2", value)}
               />
               <LabeledDropdown
+                key={`city-${formData.city}`}
                 options={cities.map((city) => city.name)}
                 register={register}
                 setValue={(field, value) => {
@@ -381,6 +382,7 @@ const AddressAndContact = ({
                 resetFactor={resetFactor}
               />
               <LabeledDropdown
+                key={`state-${formData.state}`}
                 options={states.map((state) => state.name)}
                 register={register}
                 setValue={(field, value) => {
@@ -394,6 +396,7 @@ const AddressAndContact = ({
               />
 
               <LabeledDropdown
+                key={`country-${formData.country}`}
                 options={countries.map((country) => country.name)}
                 register={register}
                 setValue={(field, value) => {
