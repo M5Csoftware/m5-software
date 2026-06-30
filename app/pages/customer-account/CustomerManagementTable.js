@@ -5,6 +5,8 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import NotificationFlag from "@/app/components/Notificationflag";
 import AssignCodeModal from "@/app/components/customer-details/AssignCodeModal";
 import * as XLSX from "xlsx";
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 
 // Delete Confirmation Modal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, userName }) => {
@@ -61,7 +63,25 @@ export default function CustomerManagementTable({
   setSelectedIds,
   onEditCustomer,
 }) {
-  const [activeMenu, setActiveMenu] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [menuUser, setMenuUser] = useState(null);
+
+  const handleOpenMenu = (event, user) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setMenuUser(user);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+    setMenuUser(null);
+  };
+
+  const setActiveMenu = (val) => {
+    if (val === null) {
+      handleCloseMenu();
+    }
+  };
   const [emailSending, setEmailSending] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null });
   const [assignModal, setAssignModal] = useState({ isOpen: false, user: null });
@@ -323,20 +343,7 @@ export default function CustomerManagementTable({
     );
   };
 
-  useEffect(() => {
-    const handler = (e) => {
-      const isMenuButton = e.target.closest("button[data-menu-trigger]");
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(e.target) &&
-        !isMenuButton
-      ) {
-        setActiveMenu(null);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
+
 
   const getSortIcon = (key) => {
     if (sortConfig.key === key)
@@ -421,7 +428,7 @@ export default function CustomerManagementTable({
 
           {/* Scrollable Rows */}
           <div className="max-h-[500px] overflow-y-auto table-scrollbar scrollbar-thumb-gray-300 scrollbar-track-transparent">
-            {users.map((user) => (
+            {users.map((user, index) => (
               <div
                 key={user._id || user.id}
                 className="bg-white border-b border-gray-200 px-4 md:px-6 py-4 hover:bg-gray-50 text-sm text-[#18181B]"
@@ -553,45 +560,11 @@ export default function CustomerManagementTable({
                   {/* Actions Menu */}
                   <div className="relative flex items-center justify-center">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveMenu(
-                          activeMenu === (user._id || user.id)
-                            ? null
-                            : user._id || user.id
-                        );
-                      }}
-                      data-menu-trigger
+                      onClick={(e) => handleOpenMenu(e, user)}
                       className="p-2 hover:bg-gray-100 rounded transition-colors"
                     >
                       <Image src="/three-dot.svg" alt="menu" width={5} height={5} />
                     </button>
-
-                    {activeMenu === (user._id || user.id) && (
-                      <div
-                        ref={menuRef}
-                        className="absolute right-0 top-full mt-2 w-48 bg-white border rounded shadow-lg z-10"
-                      >
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleExportDetails(user);
-                          }}
-                          className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                        >
-                          Export details
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDeleteModal(user);
-                          }}
-                          className="w-full text-left px-4 py-2 hover:bg-red-100 text-red-600 text-sm"
-                        >
-                          Delete user
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -599,6 +572,49 @@ export default function CustomerManagementTable({
           </div>
         </div>
       </div>
+      {menuUser && (
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleCloseMenu}
+          onClick={(e) => e.stopPropagation()}
+          PaperProps={{
+            style: {
+              width: '12rem',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              border: '1px solid #E5E7EB',
+              borderRadius: '0.5rem',
+            }
+          }}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <MenuItem
+            onClick={() => {
+              handleCloseMenu();
+              handleExportDetails(menuUser);
+            }}
+            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+          >
+            Export details
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              handleCloseMenu();
+              openDeleteModal(menuUser);
+            }}
+            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', color: '#DC2626' }}
+          >
+            Delete user
+          </MenuItem>
+        </Menu>
+      )}
     </div>
   );
 }
