@@ -51,8 +51,10 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
   // Get unique shipper names from uploaded data
   const uniqueShippers = useMemo(() => {
     if (!rowData || rowData.length === 0) return [];
-    
-    const unique = [...new Set(rowData.map(item => item.shipper))].filter(Boolean);
+
+    const unique = [...new Set(rowData.map((item) => item.shipper))].filter(
+      Boolean,
+    );
     return unique.sort();
   }, [rowData]);
 
@@ -67,7 +69,7 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
       complete: (result) => {
         // console.log("Raw parsed data:", result.data[0]); // Debug log
         // console.log("CSV headers:", result.meta.fields); // Debug log
-        
+
         const parsedData = result.data.map((row, index) => {
           // Build the JSON object with the correct column mapping
           const jsonData = {
@@ -84,9 +86,9 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
           for (let i = 1; i <= 35; i++) {
             const columnName = i.toString();
             const value = row[columnName]?.trim();
-            
+
             // Parse the value - handle empty strings and zeros
-            if (value === '' || value === '0') {
+            if (value === "" || value === "0") {
               jsonData[i] = 0;
             } else {
               const number = parseFloat(value);
@@ -101,7 +103,10 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
         setRowData(parsedData);
         setSearchFilteredData(parsedData);
         setSelectedRows([]); // Clear selection
-        showNotification("success", `Loaded ${parsedData.length} records from CSV`);
+        showNotification(
+          "success",
+          `Loaded ${parsedData.length} records from CSV`,
+        );
       },
       error: (error) => {
         console.error("Error parsing CSV:", error);
@@ -121,14 +126,14 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
 
     // Filter by shipper dropdown
     if (selectedShipper) {
-      result = result.filter(item => item.shipper === selectedShipper);
+      result = result.filter((item) => item.shipper === selectedShipper);
     }
 
     // Filter by search query across all columns
     if (debouncedSearchQuery.trim()) {
       const query = debouncedSearchQuery.toLowerCase().trim();
-      result = result.filter(item => {
-        return columns.some(column => {
+      result = result.filter((item) => {
+        return columns.some((column) => {
           const value = item[column.key];
           if (value === null || value === undefined) return false;
           return value.toString().toLowerCase().includes(query);
@@ -161,21 +166,28 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete ${selectedRows.length} record(s)?`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete ${selectedRows.length} record(s)?`,
+      )
+    ) {
       return;
     }
 
     try {
       // Remove selected rows from rowData
       const updatedData = rowData.filter(
-        item => !selectedRows.includes(item._tempId)
+        (item) => !selectedRows.includes(item._tempId),
       );
 
       setRowData(updatedData);
       setSearchFilteredData(updatedData);
       setSelectedRows([]);
-      
-      showNotification("success", `Successfully deleted ${selectedRows.length} record(s)`);
+
+      showNotification(
+        "success",
+        `Successfully deleted ${selectedRows.length} record(s)`,
+      );
     } catch (error) {
       console.error("Error deleting records:", error);
       showNotification("error", "Failed to delete records");
@@ -193,7 +205,10 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
 
   const handleSave = () => {
     if (rowData.length === 0) {
-      showNotification("error", "No data to upload. Please upload a valid CSV file.");
+      showNotification(
+        "error",
+        "No data to upload. Please upload a valid CSV file.",
+      );
       return;
     }
 
@@ -217,7 +232,7 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
     setSelectedShipper("");
     setSelectedRows([]);
     setIsEditMode(false);
-    
+
     // Reset file input
     const fileInput = document.getElementById("rate-upload");
     if (fileInput) {
@@ -249,29 +264,27 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
           </div>
         </div>
 
+        {/*
+          Type and Sector dropdowns removed: handleSave/dataToSave never included
+          the form's `type` or `sector` values in the upload payload (only the
+          parsed CSV rows are sent, and each CSV row already carries its own
+          `type` column). Keeping these dropdowns visible implied they were
+          required for upload when they were not, so they've been dropped from
+          the form. Network, Zone Tariff, and the effective dates remain.
+        */}
         <div className="flex justify-between gap-3">
           <div className="flex flex-col gap-3 w-full">
-            <LabeledDropdown
-              options={["Bulk", "Slab"]}
-              register={register}
-              setValue={setValue}
-              value="type"
-              title="Type"
-              resetFactor={tabChange}
-            />
-            <LabeledDropdown
-              options={sectors.map((sector) => sector.name)}
-              register={register}
-              setValue={setValue}
-              value="sector"
-              title="Sector"
-              resetFactor={tabChange}
-            />
             <DateInputBox
               register={register}
               setValue={setValue}
               value="effectiveFrom"
               placeholder="Effective From"
+            />
+            <DateInputBox
+              register={register}
+              setValue={setValue}
+              value="to"
+              placeholder="Effective To"
             />
           </div>
           <div className="flex flex-col gap-3 w-full">
@@ -291,25 +304,20 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
               setValue={setValue}
               value="zoneTariff"
             />
-            <DateInputBox
-              register={register}
-              setValue={setValue}
-              value="to"
-              placeholder="To"
-            />
+            
           </div>
         </div>
       </div>
 
       <div className="flex justify-between">
         <div className="flex gap-3">
-          <EditButton 
-            perm="Accounts Edit" 
+          <EditButton
+            perm="Accounts Edit"
             onClick={handleEdit}
             disabled={selectedRows.length === 0}
           />
-          <DeleteButton 
-            perm="Accounts Deletion" 
+          <DeleteButton
+            perm="Accounts Deletion"
             onClick={handleDelete}
             disabled={selectedRows.length === 0}
           />
@@ -344,7 +352,9 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <div className="text-sm text-gray-700 flex items-center gap-2">
             <span className="font-semibold">Loaded:</span>
-            <span className="text-green-600 font-semibold">{rowData.length} records</span>
+            <span className="text-green-600 font-semibold">
+              {rowData.length} records
+            </span>
             {searchFilteredData.length !== rowData.length && (
               <span className="text-blue-600 font-semibold">
                 | Showing: {searchFilteredData.length}
@@ -371,8 +381,8 @@ const UploadRate = ({ register, setValue, reset, onSubmit }) => {
             title="RateSheet Name"
             value="rateSheetName"
           />
-          <SearchInputBox 
-            placeholder="Search Rate Sheet" 
+          <SearchInputBox
+            placeholder="Search Rate Sheet"
             onChange={(e) => setSearchQuery(e.target.value)}
             value={searchQuery}
           />

@@ -13,7 +13,15 @@ import Table from "../Table";
 import NotificationFlag from "../Notificationflag";
 
 // Confirmation Modal Component
-const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Yes", cancelText = "No" }) => {
+const ConfirmationModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmText = "Yes",
+  cancelText = "No",
+}) => {
   if (!isOpen) return null;
 
   return (
@@ -40,7 +48,14 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
   );
 };
 
-const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) => {
+const UploadZones = ({
+  register,
+  setValue,
+  watch,
+  onSubmit,
+  tabChange,
+  reset,
+}) => {
   const { sectors, server } = useContext(GlobalContext);
   const [rowData, setRowData] = useState([]);
   const [searchFilteredData, setSearchFilteredData] = useState([]);
@@ -67,7 +82,7 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
       { key: "destination", label: "Destination" },
       { key: "zipcode", label: "Zipcode" },
     ],
-    []
+    [],
   );
 
   const [notification, setNotification] = useState({
@@ -87,8 +102,10 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
 
   const uniqueZoneMatrices = useMemo(() => {
     if (!rowData || rowData.length === 0) return [];
-    
-    const unique = [...new Set(rowData.map(zone => zone.zoneMatrix))].filter(Boolean);
+
+    const unique = [...new Set(rowData.map((zone) => zone.zoneMatrix))].filter(
+      Boolean,
+    );
     return unique.sort();
   }, [rowData]);
 
@@ -99,15 +116,15 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
 
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
       const [d, m, y] = val.split("/");
-      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
     }
 
     try {
       const date = new Date(val);
       if (!isNaN(date.getTime())) {
         const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
         return `${year}-${month}-${day}`;
       }
     } catch (e) {
@@ -119,23 +136,23 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
 
   const validateCSVData = (data) => {
     const errors = [];
-    
+
     data.forEach((row, index) => {
       const rowNum = index + 2;
-      
-      if (!row.zoneMatrix || row.zoneMatrix.trim() === '') {
+
+      if (!row.zoneMatrix || row.zoneMatrix.trim() === "") {
         errors.push(`Row ${rowNum}: Zone Matrix is required`);
       }
-      if (!row.service || row.service.trim() === '') {
+      if (!row.service || row.service.trim() === "") {
         errors.push(`Row ${rowNum}: Service is required`);
       }
-      if (!row.sector || row.sector.trim() === '') {
+      if (!row.sector || row.sector.trim() === "") {
         errors.push(`Row ${rowNum}: Sector is required`);
       }
-      if (!row.zone || row.zone.toString().trim() === '') {
+      if (!row.zone || row.zone.toString().trim() === "") {
         errors.push(`Row ${rowNum}: Zone is required`);
       }
-      if (!row.destination || row.destination.trim() === '') {
+      if (!row.destination || row.destination.trim() === "") {
         errors.push(`Row ${rowNum}: Destination is required`);
       }
     });
@@ -145,14 +162,14 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
-    
+
     if (!file) {
       setErrorMessage("No file selected.");
       showNotification("error", "No file selected");
       return;
     }
 
-    if (!file.name.endsWith('.csv')) {
+    if (!file.name.endsWith(".csv")) {
       setErrorMessage("Please upload a valid CSV file.");
       showNotification("error", "Invalid file type. Please upload a CSV file");
       event.target.value = null;
@@ -161,14 +178,17 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
 
     if (!effectiveFrom || !effectiveTo) {
       setErrorMessage("Please select Effective From and To dates first.");
-      showNotification("error", "Please select effective dates before uploading CSV");
+      showNotification(
+        "error",
+        "Please select effective dates before uploading CSV",
+      );
       event.target.value = null;
       return;
     }
 
     const fromDate = new Date(effectiveFrom);
     const toDate = new Date(effectiveTo);
-    
+
     if (fromDate > toDate) {
       setErrorMessage("'From' date cannot be after 'To' date.");
       showNotification("error", "Invalid date range");
@@ -195,36 +215,55 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         const headers = result.meta.fields || [];
         // console.log("CSV Headers:", headers);
 
-        const normalizedHeaders = headers.map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
-        
+        const normalizedHeaders = headers.map((h) =>
+          h.trim().toLowerCase().replace(/\s+/g, ""),
+        );
+
         const requiredColumns = [
-          { key: 'zoneMatrix', variations: ['zonematrix', 'zone matrix', 'zone_matrix'] },
-          { key: 'service', variations: ['service'] },
-          { key: 'sector', variations: ['sector'] },
-          { key: 'zone', variations: ['zone'] },
-          { key: 'destination', variations: ['destination'] },
-          { key: 'zipcode', variations: ['zipcode', 'zip code', 'zip_code', 'pincode', 'pin_code'] }
+          {
+            key: "zoneMatrix",
+            variations: ["zonematrix", "zone matrix", "zone_matrix"],
+          },
+          { key: "service", variations: ["service"] },
+          { key: "sector", variations: ["sector"] },
+          { key: "zone", variations: ["zone"] },
+          { key: "destination", variations: ["destination"] },
+          {
+            key: "zipcode",
+            variations: [
+              "zipcode",
+              "zip code",
+              "zip_code",
+              "pincode",
+              "pin_code",
+            ],
+          },
         ];
 
         const columnMapping = {};
-        requiredColumns.forEach(col => {
+        requiredColumns.forEach((col) => {
           const matchedHeader = headers.find((h, idx) => {
-            const normalized = h.trim().toLowerCase().replace(/\s+/g, '');
+            const normalized = h.trim().toLowerCase().replace(/\s+/g, "");
             return col.variations.includes(normalized);
           });
-          
+
           if (matchedHeader) {
             columnMapping[col.key] = matchedHeader;
           }
         });
 
         const missingColumns = requiredColumns
-          .filter(col => !columnMapping[col.key])
-          .map(col => col.key);
+          .filter((col) => !columnMapping[col.key])
+          .map((col) => col.key);
 
         if (missingColumns.length > 0) {
-          setErrorMessage(`Missing required columns: ${missingColumns.join(', ')}. Found columns: ${headers.join(', ')}`);
-          showNotification("error", `Missing columns: ${missingColumns.join(', ')}`);
+          setErrorMessage(
+            `Missing required columns: ${missingColumns.join(", ")}. Found columns: ${headers.join(", ")}`,
+          );
+          showNotification(
+            "error",
+            `Missing columns: ${missingColumns.join(", ")}`,
+          );
           event.target.value = null;
           return;
         }
@@ -233,15 +272,17 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         const to = normalizeDate(effectiveTo);
 
         const parsedData = result.data
-          .filter(row => {
-            return Object.values(row).some(val => val && val.toString().trim() !== '');
+          .filter((row) => {
+            return Object.values(row).some(
+              (val) => val && val.toString().trim() !== "",
+            );
           })
           .map((row, index) => {
             const safeValue = (val) => {
-              if (val === null || val === undefined || val === '') return '';
+              if (val === null || val === undefined || val === "") return "";
               const str = val.toString().trim();
               if (/^\d+\.0+$/.test(str)) {
-                return str.split('.')[0];
+                return str.split(".")[0];
               }
               return str;
             };
@@ -260,10 +301,15 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
           });
 
         const validationErrors = validateCSVData(parsedData);
-        
+
         if (validationErrors.length > 0) {
-          setErrorMessage(`Validation errors found:\n${validationErrors.slice(0, 5).join('\n')}`);
-          showNotification("error", `Found ${validationErrors.length} validation error(s)`);
+          setErrorMessage(
+            `Validation errors found:\n${validationErrors.slice(0, 5).join("\n")}`,
+          );
+          showNotification(
+            "error",
+            `Found ${validationErrors.length} validation error(s)`,
+          );
           console.error("Validation Errors:", validationErrors);
           event.target.value = null;
           return;
@@ -273,8 +319,11 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         setRowData(parsedData);
         setSearchFilteredData(parsedData);
         setErrorMessage("");
-        showNotification("success", `Successfully loaded ${parsedData.length} zones from ${file.name}`);
-        
+        showNotification(
+          "success",
+          `Successfully loaded ${parsedData.length} zones from ${file.name}`,
+        );
+
         event.target.value = null;
       },
       error: (error) => {
@@ -284,7 +333,7 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         showNotification("error", "Failed to parse CSV file");
         console.error("CSV Parse Error:", error);
         event.target.value = null;
-      }
+      },
     });
   };
 
@@ -297,13 +346,13 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
     let result = [...rowData];
 
     if (selectedZoneMatrix) {
-      result = result.filter(zone => zone.zoneMatrix === selectedZoneMatrix);
+      result = result.filter((zone) => zone.zoneMatrix === selectedZoneMatrix);
     }
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      result = result.filter(zone => {
-        return columns.some(column => {
+      result = result.filter((zone) => {
+        return columns.some((column) => {
           const value = zone[column.key];
           if (value === null || value === undefined) return false;
           return value.toString().toLowerCase().includes(query);
@@ -334,20 +383,23 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
 
   const confirmUpdate = () => {
     setShowEditModal(false);
-    
+
     // Update the rowData with edited values
-    const updatedRowData = rowData.map(row => {
+    const updatedRowData = rowData.map((row) => {
       const updated = editedData[row.id];
       return updated || row;
     });
-    
+
     setRowData(updatedRowData);
     setSearchFilteredData(updatedRowData);
     setIsEditMode(false);
     setEditedData({});
     setSelectedRows([]);
-    
-    showNotification("success", `Successfully updated ${selectedRows.length} zone(s) in preview`);
+
+    showNotification(
+      "success",
+      `Successfully updated ${selectedRows.length} zone(s) in preview`,
+    );
   };
 
   const handleDeleteClick = () => {
@@ -360,20 +412,28 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
 
   const confirmDelete = () => {
     setShowDeleteModal(false);
-    
+
     // Filter out selected rows
-    const updatedData = rowData.filter(zone => !selectedRows.includes(zone.id));
-    
+    const updatedData = rowData.filter(
+      (zone) => !selectedRows.includes(zone.id),
+    );
+
     setRowData(updatedData);
     setSearchFilteredData(updatedData);
     setSelectedRows([]);
-    
-    showNotification("success", `Removed ${selectedRows.length} zone(s) from preview`);
+
+    showNotification(
+      "success",
+      `Removed ${selectedRows.length} zone(s) from preview`,
+    );
   };
 
   const handleSave = async () => {
     if (!rowData || rowData.length === 0) {
-      showNotification("error", "No data to upload. Please upload a CSV file first");
+      showNotification(
+        "error",
+        "No data to upload. Please upload a CSV file first",
+      );
       return;
     }
 
@@ -402,45 +462,67 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         effectiveDateFrom: normalizeDate(effectiveFrom),
         effectiveDateTo: normalizeDate(effectiveTo),
         remoteZones: Array.isArray(remoteZones) ? remoteZones : [],
-        unserviceableZones: Array.isArray(unserviceableZones) ? unserviceableZones : [],
+        unserviceableZones: Array.isArray(unserviceableZones)
+          ? unserviceableZones
+          : [],
         uploadDate: new Date().toISOString(),
-        totalRecords: rowData.length
+        totalRecords: rowData.length,
       };
 
       // console.log("Submitting Zone Data:", dataToSubmit);
 
       const response = await fetch(`${server}/zones`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(dataToSubmit)
+        body: JSON.stringify(dataToSubmit),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to upload zones');
+        throw new Error(result.error || "Failed to upload zones");
       }
 
       // console.log("Upload successful:", result);
 
       showNotification(
-        "success", 
+        "success",
         `Successfully uploaded ${result.count || rowData.length} zones` +
-        (remoteZones.length > 0 ? ` with ${remoteZones.length} remote zones` : '') +
-        (unserviceableZones.length > 0 ? ` and ${unserviceableZones.length} unserviceable zones` : '')
+          (remoteZones.length > 0
+            ? ` with ${remoteZones.length} remote zones`
+            : "") +
+          (unserviceableZones.length > 0
+            ? ` and ${unserviceableZones.length} unserviceable zones`
+            : ""),
       );
-      
+
       handleClear();
 
+      // IMPORTANT: The save is already complete via the fetch() call above — that is
+      // the ONLY call that should hit POST /zones for this upload.
+      //
+      // The `onSubmit` prop passed down from the parent (Zone page) also performs its
+      // own axios.post(`${server}/zones`, rowData) internally. Calling it here with
+      // `dataToSubmit` (as the old code did) caused the exact same batch of zones to
+      // be inserted a SECOND time, which is why uploading 245 rows resulted in 490
+      // rows showing up in View Zones.
+      //
+      // We still want to let the parent know the upload finished (so it can, e.g.,
+      // switch back to the "View Zones" tab / refresh), but we must NOT pass it data
+      // that it will re-POST. If your parent's onSubmit still expects a payload and
+      // re-submits, update the parent to only refresh/switch tabs instead of posting,
+      // or pass a separate "onUploadComplete" callback prop instead of reusing onSubmit.
       if (onSubmit) {
-        await onSubmit(dataToSubmit);
+        await onSubmit();
       }
-
     } catch (error) {
       console.error("Error uploading zones:", error);
-      showNotification("error", `Upload failed: ${error.message || 'Unknown error'}`);
+      showNotification(
+        "error",
+        `Upload failed: ${error.message || "Unknown error"}`,
+      );
     } finally {
       setIsUploading(false);
     }
@@ -458,35 +540,37 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
     setSelectedRows([]);
     setIsEditMode(false);
     setEditedData({});
-    
+
     setValue("zoneTariff", "");
     setValue("sector", "");
     setValue("effectiveDateFrom", "");
     setValue("effectiveDateTo", "");
     setValue("remoteZones", []);
     setValue("unserviceableZones", []);
-    
+
     const fileInput = document.getElementById("zone-upload");
     if (fileInput) {
       fileInput.value = null;
     }
 
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   useEffect(() => {
     if (rowData.length > 0) {
       const from = normalizeDate(effectiveFrom);
       const to = normalizeDate(effectiveTo);
-      
-      const updatedData = rowData.map(row => ({
+
+      const updatedData = rowData.map((row) => ({
         ...row,
         effectiveDateFrom: from,
         effectiveDateTo: to,
         remoteZones: Array.isArray(remoteZones) ? remoteZones : [],
-        unserviceableZones: Array.isArray(unserviceableZones) ? unserviceableZones : []
+        unserviceableZones: Array.isArray(unserviceableZones)
+          ? unserviceableZones
+          : [],
       }));
-      
+
       setRowData(updatedData);
     }
   }, [effectiveFrom, effectiveTo, remoteZones, unserviceableZones]);
@@ -499,7 +583,7 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
         visible={notification.visible}
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
-      
+
       <ConfirmationModal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
@@ -593,23 +677,26 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
           <div className="flex gap-2">
             {isEditMode ? (
               <button
+                type="button"
                 onClick={handleUpdateClick}
                 disabled={selectedRows.length === 0 || isUploading}
                 className={`px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors ${
-                  (selectedRows.length === 0 || isUploading) ? 'opacity-50 cursor-not-allowed' : ''
+                  selectedRows.length === 0 || isUploading
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
                 }`}
               >
                 Update
               </button>
             ) : (
-              <EditButton 
-                perm="Accounts Edit" 
+              <EditButton
+                perm="Accounts Edit"
                 onClick={handleEdit}
                 disabled={selectedRows.length === 0 || isUploading}
               />
             )}
-            <DeleteButton 
-              perm="Accounts Deletion" 
+            <DeleteButton
+              perm="Accounts Deletion"
               onClick={handleDeleteClick}
               disabled={selectedRows.length === 0 || isUploading}
             />
@@ -617,11 +704,13 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
           <div className="flex gap-2">
             <label
               className={`cursor-pointer bg-red text-white font-semibold rounded-md text-sm text-center py-1.5 w-36 transition-opacity ${
-                isUploading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-red-600'
+                isUploading
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-red-600"
               }`}
               htmlFor="zone-upload"
             >
-              <span>{isUploading ? 'Loading...' : 'Browse CSV'}</span>
+              <span>{isUploading ? "Loading..." : "Browse CSV"}</span>
             </label>
             <input
               type="file"
@@ -633,29 +722,33 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
               key={`file-${refreshKey}`}
             />
             <div className="w-36">
-              <OutlinedButtonRed 
-                label={isUploading ? 'Saving...' : 'Save'} 
+              <OutlinedButtonRed
+                label={isUploading ? "Saving..." : "Save"}
                 onClick={handleSave}
                 disabled={isUploading || rowData.length === 0}
               />
             </div>
             <div className="w-36">
-              <OutlinedButtonRed 
-                label="Clear" 
+              <OutlinedButtonRed
+                label="Clear"
                 onClick={handleClear}
                 disabled={isUploading}
               />
             </div>
           </div>
         </div>
-        
-        {(fileName || remoteZones.length > 0 || unserviceableZones.length > 0) && (
+
+        {(fileName ||
+          remoteZones.length > 0 ||
+          unserviceableZones.length > 0) && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
             {fileName && (
               <div className="text-sm text-gray-700 flex items-center gap-2">
                 <span className="font-semibold">Loaded:</span>
                 <span>{fileName}</span>
-                <span className="text-green-600 font-semibold">({rowData.length} records)</span>
+                <span className="text-green-600 font-semibold">
+                  ({rowData.length} records)
+                </span>
                 {searchFilteredData.length !== rowData.length && (
                   <span className="text-blue-600 font-semibold">
                     | Showing: {searchFilteredData.length}
@@ -671,19 +764,23 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
             {remoteZones.length > 0 && (
               <div className="text-sm text-gray-700 flex items-center gap-2">
                 <span className="font-semibold">Remote Zones:</span>
-                <span className="text-orange-600">{remoteZones.join(', ')}</span>
+                <span className="text-orange-600">
+                  {remoteZones.join(", ")}
+                </span>
               </div>
             )}
             {unserviceableZones.length > 0 && (
               <div className="text-sm text-gray-700 flex items-center gap-2">
                 <span className="font-semibold">Unserviceable Zones:</span>
-                <span className="text-red-600">{unserviceableZones.join(', ')}</span>
+                <span className="text-red-600">
+                  {unserviceableZones.join(", ")}
+                </span>
               </div>
             )}
           </div>
         )}
       </div>
-      
+
       <div className="flex flex-col gap-3">
         <div className="flex gap-9">
           <DropdownRedLabel
@@ -697,19 +794,19 @@ const UploadZones = ({ register, setValue, watch, onSubmit, tabChange, reset }) 
             title={`Zones`}
             value={`zones`}
           />
-          <SearchInputBox 
-            placeholder="Search Zones" 
+          <SearchInputBox
+            placeholder="Search Zones"
             onChange={(e) => setSearchQuery(e.target.value)}
             value={searchQuery}
           />
         </div>
-        
+
         {errorMessage && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
             <span className="block sm:inline">{errorMessage}</span>
           </div>
         )}
-        
+
         <div>
           {rowData.length > 0 && (
             <div className="mb-2 text-sm font-semibold text-gray-700">

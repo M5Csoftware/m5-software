@@ -16,7 +16,8 @@ const Zone = () => {
   const [tabChange, setTabChange] = useState(false);
   const [accountType, setAccountType] = useState("ViewZones");
   const [refreshKey, setRefreshKey] = useState(0); // Add refresh key
-  const { register, setValue, handleSubmit, getValues, watch, reset } = useForm();
+  const { register, setValue, handleSubmit, getValues, watch, reset } =
+    useForm();
   const { zones } = useContext(GlobalContext);
 
   const [notification, setNotification] = useState({
@@ -52,12 +53,20 @@ const Zone = () => {
   };
 
   // Upload zone data
+  // NOTE: This is only used by the <form onSubmit={handleSubmit(onSubmit)}> native
+  // submission path. It is intentionally NOT passed down to <UploadZones> anymore —
+  // UploadZones now performs its own complete POST /zones save internally (with its
+  // own validation, notifications, and payload shape). Previously this function was
+  // also passed to UploadZones as its `onSubmit` prop, so every "Save" click fired
+  // TWO inserts of the same batch (one from UploadZones' internal fetch, one from
+  // this axios.post) — that's what caused uploaded zones to show up doubled in
+  // View Zones (e.g. 245 rows uploaded -> 490 rows visible).
   const onSubmit = async (rowData) => {
     try {
       const response = await axios.post(`${server}/zones`, rowData);
       // console.log("Upload successful", response.data);
       showNotification("success", "Data uploaded successfully");
-      
+
       // After successful upload, refresh the form
       handleRefresh();
     } catch (error) {
@@ -80,23 +89,23 @@ const Zone = () => {
       remoteZones: [],
       unserviceableZones: [],
     });
-    
+
     // Reset tab to View Zones
     setActiveTab(0);
     setAccountType("ViewZones");
-    
+
     // Increment refresh key to force child components to re-render
-    setRefreshKey(prev => prev + 1);
-    
+    setRefreshKey((prev) => prev + 1);
+
     // Toggle tabChange to trigger child refresh
-    setTabChange(prev => !prev);
-    
+    setTabChange((prev) => !prev);
+
     showNotification("success", "Page refreshed successfully");
   };
 
   return (
-    <form 
-      className="flex flex-col gap-3" 
+    <form
+      className="flex flex-col gap-3"
       onSubmit={handleSubmit(onSubmit)}
       key={refreshKey} // Add key to force form re-render
     >
@@ -106,11 +115,11 @@ const Zone = () => {
         visible={notification.visible}
         setVisible={(v) => setNotification({ ...notification, visible: v })}
       />
-      <Heading 
-        title="Zone" 
-        bulkUploadBtn="hidden" 
-        codeListBtn="hidden" 
-        onRefresh={handleRefresh} 
+      <Heading
+        title="Zone"
+        bulkUploadBtn="hidden"
+        codeListBtn="hidden"
+        onRefresh={handleRefresh}
       />
       <RadioRedButton
         tabs={tabs}
@@ -152,7 +161,7 @@ const Zone = () => {
             tabChange={tabChange}
             reset={reset}
             watch={watch}
-            onSubmit={onSubmit}
+            onSubmit={handleRefresh}
             key={`upload-${refreshKey}`} // Add key for refresh
           />
         </div>
