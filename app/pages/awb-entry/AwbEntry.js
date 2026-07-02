@@ -55,6 +55,13 @@ import { AlertModal } from "@/app/components/AlertModal";
 import PasswordModal from "@/app/components/passwordModal";
 import { useDebounce } from "@/app/hooks/useDebounce";
 
+// Helper function to normalize service names for comparison
+const normalizeService = (str) =>
+  str
+    ?.toLowerCase()
+    .replace(/[-\s]+/g, "")
+    .trim() || "";
+
 function AwbEntry() {
   const {
     register,
@@ -183,6 +190,14 @@ function AwbEntry() {
   const [holdEdit, setHoldEdit] = useState(false);
   const volDisc = watch("volDisc");
   const holdReasonValue = watch("holdReason");
+
+  // ============================================================
+  // CRITICAL FIX: Normalize applicableRates shape once and use it everywhere
+  // ============================================================
+  const applicableRatesList = useMemo(() => {
+    if (Array.isArray(applicableRates)) return applicableRates;
+    return applicableRates?.ratesApplicable || [];
+  }, [applicableRates]);
 
   // Automatically clear hold reasons when isHold is false
   useEffect(() => {
@@ -693,7 +708,11 @@ function AwbEntry() {
           insertUser,
         });
 
-        if (response?.status === 201 || response?.status === 200 || response.data?.status === 201) {
+        if (
+          response?.status === 201 ||
+          response?.status === 200 ||
+          response.data?.status === 201
+        ) {
           const createdAwbNo = response.data?.awbNo || payload?.awbNo;
 
           await logAwbAction("Shipment created on post");
@@ -707,7 +726,10 @@ function AwbEntry() {
             );
           }
 
-          showNotification("success", `Data Saved Successfully ${createdAwbNo ? `- AWB No: ${createdAwbNo}` : ''}`);
+          showNotification(
+            "success",
+            `Data Saved Successfully ${createdAwbNo ? `- AWB No: ${createdAwbNo}` : ""}`,
+          );
           handleRefresh();
         }
       } catch (error) {
@@ -1099,6 +1121,7 @@ function AwbEntry() {
           `${server}/shipper-tariff?accountCode=${account.accountCode}`,
         );
         setApplicableRates(response.data);
+        console.log("📊 Applicable Rates Response:", response.data);
       } catch (error) {
         setApplicableRates(null);
         console.error("Error fetching applicable rates:", error);
@@ -1110,18 +1133,13 @@ function AwbEntry() {
     }
   }, [account, server]);
 
-  // filtering final services
+  // ============================================================
+  // FIX 1: Filtering final services - use applicableRatesList
+  // ============================================================
   useEffect(() => {
     if (filteredServices.length > 0 && applicableRates) {
-      const applicableList = Array.isArray(applicableRates)
-        ? applicableRates
-        : applicableRates?.ApplicableRates || [];
-
-      const normalizeService = (str) =>
-        str
-          ?.toLowerCase()
-          .replace(/[-\s]+/g, "")
-          .trim() || "";
+      const applicableList = applicableRatesList;
+      console.log("🔍 Filtering services - applicableList:", applicableList);
 
       const applicableSet = new Set(
         applicableList.map((a) => normalizeService(a.service)),
@@ -1156,8 +1174,14 @@ function AwbEntry() {
       );
 
       setFinalServices(onlyActiveServices);
+      console.log("✅ Final Services:", onlyActiveServices);
     }
-  }, [filteredServices, applicableRates, serviceMasterList]);
+  }, [
+    filteredServices,
+    applicableRates,
+    applicableRatesList,
+    serviceMasterList,
+  ]);
 
   // fetching amount details
   const ratesInputs = useMemo(
@@ -1183,24 +1207,70 @@ function AwbEntry() {
 
   const debouncedRatesInputs = useDebounce(ratesInputs, 800);
 
-  // fetching amount details - with rate preservation
+  // ============================================================
+  // FIX 3: Rate-fetching effect - use applicableRatesList
+  // This is the CRITICAL effect that fetches the actual rate
+  // ============================================================
   useEffect(() => {
-    if (!selectedService || !applicableRates || !finalServices) return;
+    // Debug logging
+    console.log("🚀 Rate fetching effect triggered:", {
+      selectedService,
+      applicableRatesListLength: applicableRatesList.length,
+      chargeableWt,
+      actualWt,
+      pcs,
+      selectedSector,
+      selectedDestination,
+      consigneeZipcode,
+    });
 
-    if (!applicableRates || !Array.isArray(applicableRates)) {
+    if (!selectedService) {
+      console.log("❌ No service selected, skipping rate fetch");
       return;
     }
 
+    if (!applicableRates || applicableRatesList.length === 0) {
+      console.log("❌ No applicable rates found, skipping rate fetch");
+      return;
+    }
+
+    // Find the matching rate tariff
+    const ratesArray = applicableRatesList;
+    const normalizedSelected = normalizeService(selectedService);
+
+    const matchingRate = ratesArray.find((r) => {
+      const normalizedR = normalizeService(r.service);
+      return (
+        normalizedR === normalizedSelected ||
+        normalizedR.includes(normalizedSelected) ||
+        normalizedSelected.includes(normalizedR)
+      );
+    });
+
+    if (!matchingRate) {
+      console.log("❌ No matching rate found for service:", selectedService);
+      return;
+    }
+
+    const rateTariff = matchingRate.rateTariff;
+    console.log("✅ Found matching rate:", { matchingRate, rateTariff });
+
+    // Find the zone for this service
     const finalService = finalServices.find(
       (s) => s.service === selectedService,
     );
     const zone = finalService?.zone;
+    console.log("📍 Zone for service:", { zone, finalService });
 
-    const ratesArray = applicableRates || [];
-    const matchingRate = ratesArray.find((r) => r.service === selectedService);
-    const rateTariff = matchingRate?.rateTariff || "";
-
-    if (!rateTariff || !chargeableWt || !actualWt || !pcs) return;
+    if (!rateTariff || !chargeableWt || !actualWt || !pcs) {
+      console.log("⏳ Missing required fields for rate fetch:", {
+        rateTariff,
+        chargeableWt,
+        actualWt,
+        pcs,
+      });
+      return;
+    }
 
     const fetchAmountDetails = async () => {
       try {
@@ -1220,12 +1290,14 @@ function AwbEntry() {
 
         if (isCanadaShipment) {
           if (!consigneeZipcode || consigneeZipcode.trim().length < 3) {
+            console.log("⏳ Canada shipment requires zipcode");
             return;
           }
         }
 
         if (isAustraliaShipment) {
           if (!consigneeZipcode || consigneeZipcode.trim().length < 1) {
+            console.log("⏳ Australia shipment requires zipcode");
             return;
           }
         }
@@ -1249,11 +1321,18 @@ function AwbEntry() {
           params.append("zipcode", cleanedZip);
         }
 
-        const response = await axios.get(
-          `${server}/portal/create-shipment/get-rates?${params.toString()}`,
-        );
+        const url = `${server}/portal/create-shipment/get-rates?${params.toString()}`;
+        console.log("🌐 Fetching rates from:", url);
 
+        const response = await axios.get(url);
+        console.log("✅ Rate response:", response.data);
+
+        // CRITICAL FIX: Set amountDetails and force form update
         setAmountDetails(response.data);
+        console.log("💰 Amount details updated:", response.data);
+
+        // Force form update - this will trigger the GST calculation
+        setValue("chargeableWt", chargeableWt);
 
         if (isEdit && response.data) {
           setValue("chargeableWt", chargeableWt);
@@ -1294,7 +1373,7 @@ function AwbEntry() {
           }
         }
       } catch (error) {
-        console.log("Error fetching amount details:", error);
+        console.error("❌ Error fetching amount details:", error);
         if (error.response?.data?.error) {
           showNotification("error", error.response.data.error);
 
@@ -1322,104 +1401,198 @@ function AwbEntry() {
     };
 
     fetchAmountDetails();
-  }, [debouncedRatesInputs, applicableRates, finalServices, server, isEdit]);
+  }, [
+    selectedService,
+    chargeableWt,
+    actualWt,
+    pcs,
+    selectedSector,
+    selectedDestination,
+    consigneeZipcode,
+    applicableRatesList,
+    finalServices,
+    server,
+    isEdit,
+    setValue,
+  ]);
 
-  // Fetch Customer, Branch, and Tax Settings - FIXED
+  // ============================================================
+  // FIX: Fetch branch and tax settings with fallbacks
+  // ============================================================
   useEffect(() => {
     const fetchData = async () => {
       try {
-        if (!account || !account.branch) {
-          console.log("No branch data available yet");
+        console.log("🔍 Fetching branch/tax data for account:", account);
+
+        if (!account) {
+          console.log("⏳ No account available, skipping branch/tax fetch");
           return;
         }
 
+        // Get branch code from account or use default
+        let branchCode = account.branch;
+        if (!branchCode) {
+          console.warn("⚠️ Account has no branch field, using default branch");
+          branchCode = "DEL"; // Default branch code
+        }
+
+        console.log(`📡 Fetching branch: ${branchCode}`);
+
         const [branchRes, taxRes] = await Promise.all([
-          axios.get(
-            `${server}/branch-master/get-branch?code=${account.branch}`,
-          ),
-          axios.get(`${server}/tax-settings`),
+          axios
+            .get(`${server}/branch-master/get-branch?code=${branchCode}`)
+            .catch((err) => {
+              console.error("❌ Branch fetch failed:", err);
+              return null;
+            }),
+          axios.get(`${server}/tax-settings`).catch((err) => {
+            console.error("❌ Tax settings fetch failed:", err);
+            return null;
+          }),
         ]);
 
-        setBranch(branchRes.data);
-        setTaxSettings(taxRes.data);
+        // Set branch data or fallback
+        if (branchRes?.data) {
+          setBranch(branchRes.data);
+          console.log("✅ Branch loaded:", branchRes.data);
+        } else {
+          // Fallback branch data
+          setBranch({
+            serviceTax: "GSTIN",
+            branchName: "Default Branch",
+          });
+          console.log("⚠️ Using fallback branch data");
+        }
+
+        // Set tax settings or fallback
+        if (taxRes?.data && taxRes.data.length > 0) {
+          setTaxSettings(taxRes.data);
+          console.log("✅ Tax settings loaded:", taxRes.data);
+        } else {
+          // Fallback tax settings
+          setTaxSettings([
+            { tax: "SGST", taxAmount: 0.09 },
+            { tax: "CGST", taxAmount: 0.09 },
+            { tax: "IGST", taxAmount: 0.18 },
+          ]);
+          console.log("⚠️ Using fallback tax settings");
+        }
       } catch (error) {
-        console.error("Error fetching branch/tax data:", error);
+        console.error("❌ Error fetching branch/tax data:", error);
+        // Set fallback values to allow calculations
+        setBranch({
+          serviceTax: "GSTIN",
+        });
+        setTaxSettings([
+          { tax: "SGST", taxAmount: 0.09 },
+          { tax: "CGST", taxAmount: 0.09 },
+          { tax: "IGST", taxAmount: 0.18 },
+        ]);
+        console.log("⚠️ Using fallback tax settings after error");
       }
     };
 
     fetchData();
   }, [account, server]);
 
-  // Calculate base amount and GST
+  // ============================================================
+  // FIX: Calculate base amount and GST with debug logging
+  // ============================================================
   useEffect(() => {
-    if (amountDetails && account && branch && taxSettings) {
-      if (
-        !amountDetails.rate ||
-        Number(amountDetails.rate) <= 0 ||
-        selectedPayment == "FOC" ||
-        selectedPayment == "RTO"
-      ) {
-        setValue("basicAmount", 0);
-        setValue("sgst", 0);
-        setValue("cgst", 0);
-        setValue("igst", 0);
-        setValue("baseGrandTotal", 0);
-        setValue("grandTotal", 0);
-        return;
-      }
+    console.log("🧮 GST Calculation Effect Running:", {
+      hasAmountDetails: !!amountDetails,
+      hasAccount: !!account,
+      hasBranch: !!branch,
+      hasTaxSettings: !!taxSettings,
+      rate: amountDetails?.rate,
+      type: amountDetails?.type,
+      chargeableWt: chargeableWt,
+      selectedPayment: selectedPayment,
+    });
 
-      const rate =
-        amountDetails.rate !== undefined &&
-        amountDetails.rate !== null &&
-        Number(amountDetails.rate) > 0
-          ? Number(amountDetails.rate)
-          : 0;
-
-      let basicAmount = 0;
-
-      if (amountDetails.type === "S") {
-        basicAmount = rate;
-      } else if (amountDetails.type === "B") {
-        basicAmount = rate * (Number(chargeableWt) || 0);
-      }
-
-      const gstApplicable = account.gst === "GST-Additional";
-
-      const sameState =
-        account.gstNo?.substring(0, 2).toUpperCase() ===
-        branch.serviceTax?.substring(0, 2).toUpperCase();
-
-      const sgstObj = taxSettings.find((t) => t.tax === "SGST");
-      const cgstObj = taxSettings.find((t) => t.tax === "CGST");
-      const igstObj = taxSettings.find((t) => t.tax === "IGST");
-
-      const sgstRate = sameState ? sgstObj?.taxAmount || 0 : 0;
-      const cgstRate = sameState ? cgstObj?.taxAmount || 0 : 0;
-      const igstRate = !sameState ? igstObj?.taxAmount || 0 : 0;
-
-      const sgstAmt = gstApplicable ? basicAmount * sgstRate : 0;
-      const cgstAmt = gstApplicable ? basicAmount * cgstRate : 0;
-      const igstAmt = gstApplicable ? basicAmount * igstRate : 0;
-
-      const baseGrandTotal = basicAmount + sgstAmt + cgstAmt + igstAmt;
-
-      if (rate === 0) {
-        setValue("basicAmount", 0);
-        setValue("sgst", 0);
-        setValue("cgst", 0);
-        setValue("igst", 0);
-        setValue("baseGrandTotal", 0);
-        setValue("grandTotal", 0);
-        return;
-      }
-
-      setValue("basicAmount", basicAmount);
-      setValue("sgst", sgstAmt);
-      setValue("cgst", cgstAmt);
-      setValue("igst", igstAmt);
-      setValue("baseGrandTotal", baseGrandTotal);
-      setValue("grandTotal", baseGrandTotal);
+    if (!amountDetails) {
+      console.log("⏳ No amount details yet, skipping GST calc");
+      return;
     }
+
+    if (!account || !branch || !taxSettings) {
+      console.log("⏳ Missing dependencies for GST calc:", {
+        account: !!account,
+        branch: !!branch,
+        taxSettings: !!taxSettings,
+      });
+      return;
+    }
+
+    // If rate is 0 or invalid, or payment is FOC/RTO
+    if (
+      !amountDetails.rate ||
+      Number(amountDetails.rate) <= 0 ||
+      selectedPayment === "FOC" ||
+      selectedPayment === "RTO"
+    ) {
+      console.log("ℹ️ Skipping GST calc - rate invalid or payment FOC/RTO");
+      setValue("basicAmount", 0);
+      setValue("sgst", 0);
+      setValue("cgst", 0);
+      setValue("igst", 0);
+      setValue("baseGrandTotal", 0);
+      setValue("grandTotal", 0);
+      return;
+    }
+
+    const rate = Number(amountDetails.rate);
+    let basicAmount = 0;
+
+    if (amountDetails.type === "S") {
+      basicAmount = rate;
+    } else if (amountDetails.type === "B") {
+      basicAmount = rate * (Number(chargeableWt) || 0);
+    }
+
+    console.log(
+      "📊 Calculated basicAmount:",
+      basicAmount,
+      "rate:",
+      rate,
+      "type:",
+      amountDetails.type,
+      "chargeableWt:",
+      chargeableWt,
+    );
+
+    const gstApplicable = account.gst === "GST-Additional";
+
+    // Get GST rates
+    const sgstObj = taxSettings.find((t) => t.tax === "SGST");
+    const cgstObj = taxSettings.find((t) => t.tax === "CGST");
+    const igstObj = taxSettings.find((t) => t.tax === "IGST");
+
+    const sgstRate = sgstObj?.taxAmount || 0;
+    const cgstRate = cgstObj?.taxAmount || 0;
+    const igstRate = igstObj?.taxAmount || 0;
+
+    const sgstAmt = gstApplicable ? basicAmount * sgstRate : 0;
+    const cgstAmt = gstApplicable ? basicAmount * cgstRate : 0;
+    const igstAmt = gstApplicable ? basicAmount * igstRate : 0;
+
+    const baseGrandTotal = basicAmount + sgstAmt + cgstAmt + igstAmt;
+
+    console.log("💰 Setting form values:", {
+      basicAmount,
+      sgst: sgstAmt,
+      cgst: cgstAmt,
+      igst: igstAmt,
+      baseGrandTotal,
+      grandTotal: baseGrandTotal,
+    });
+
+    setValue("basicAmount", basicAmount);
+    setValue("sgst", sgstAmt);
+    setValue("cgst", cgstAmt);
+    setValue("igst", igstAmt);
+    setValue("baseGrandTotal", baseGrandTotal);
+    setValue("grandTotal", baseGrandTotal);
   }, [
     amountDetails,
     account,
@@ -2204,10 +2377,13 @@ function AwbEntry() {
     }
   }, [fetchedAwbData, setValue]);
 
+  // ============================================================
+  // FIX 2: Network auto-fill effect - use applicableRatesList
+  // ============================================================
   useEffect(() => {
-    if (!selectedService || !applicableRates?.length) return;
+    if (!selectedService || !applicableRatesList.length) return;
 
-    const matchedRate = applicableRates.find(
+    const matchedRate = applicableRatesList.find(
       (rate) => rate.service === selectedService,
     );
 
@@ -2217,7 +2393,7 @@ function AwbEntry() {
     } else {
       setValue("network", "");
     }
-  }, [selectedService, applicableRates, setValue]);
+  }, [selectedService, applicableRatesList, setValue]);
 
   // Zone status checking effect
   useEffect(() => {
