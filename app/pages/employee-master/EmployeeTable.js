@@ -1,5 +1,7 @@
 import Image from "next/image";
 import { useRef, useState, useEffect } from "react";
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 
 // Improved ConfirmationModal Component
 function ConfirmationModal({
@@ -230,7 +232,25 @@ export default function EmployeeTable({
   selectedIds,
   setSelectedIds,
 }) {
-  const [activeMenu, setActiveMenu] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [menuUser, setMenuUser] = useState(null);
+
+  const handleOpenMenu = (event, user) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setMenuUser(user);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+    setMenuUser(null);
+  };
+
+  const setActiveMenu = (val) => {
+    if (val === null) {
+      handleCloseMenu();
+    }
+  };
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -400,31 +420,7 @@ export default function EmployeeTable({
     }
   };
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handler = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setActiveMenu(null);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("touchstart", handler); // For mobile
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("touchstart", handler);
-    };
-  }, []);
 
-  // Close menu on escape key
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === "Escape") {
-        setActiveMenu(null);
-      }
-    };
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, []);
 
   const getSortIcon = (key) => {
     if (sortConfig.key === key)
@@ -605,10 +601,10 @@ export default function EmployeeTable({
                         })}
                   </div>
 
-                  {/* Menu Button and Dropdown */}
+                  {/* Menu Button */}
                   <div className="relative w-[30px]">
                     <button
-                      onClick={(e) => handleMenuToggle(userId, e)}
+                      onClick={(e) => handleOpenMenu(e, user)}
                       className="p-2 hover:bg-gray-200 rounded-full transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-300 focus:bg-gray-200"
                       aria-label="More options"
                       type="button"
@@ -619,158 +615,6 @@ export default function EmployeeTable({
                         <div className="w-1 h-1 bg-gray-600 rounded-full"></div>
                       </div>
                     </button>
-
-                    {/* Improved Dropdown Menu */}
-                    {activeMenu === userId && (
-                      <>
-                        {/* Backdrop for mobile */}
-                        <div
-                          className="fixed inset-0 z-10 md:hidden"
-                          onClick={() => setActiveMenu(null)}
-                        ></div>
-
-                        {/* Menu */}
-                        <div
-                          ref={menuRef}
-                          className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-2 animate-in fade-in-0 zoom-in-95 duration-200"
-                          role="menu"
-                          aria-orientation="vertical"
-                        >
-                          <button
-                            onClick={(e) => handleMenuAction("edit", user, e)}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-50 active:bg-gray-100 text-sm text-gray-700 flex items-center gap-3 transition-colors duration-150 group"
-                            role="menuitem"
-                            type="button"
-                          >
-                            <div className="w-4 h-4 flex items-center justify-center">
-                              <svg
-                                className="w-4 h-4 text-gray-500 group-hover:text-gray-700"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={1.5}
-                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                />
-                              </svg>
-                            </div>
-                            <span>Edit details</span>
-                          </button>
-
-                          {/* Removed Change permissions */}
-
-                          {/* Divider */}
-                          <div className="my-2 border-t border-gray-100"></div>
-
-                          <button
-                            onClick={(e) => handleMenuAction("delete", user, e)}
-                            className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-red text-sm text-red flex items-center gap-3 transition-colors duration-150 group"
-                            role="menuitem"
-                            type="button"
-                          >
-                            <div className="w-4 h-4 flex items-center justify-center">
-                              <svg
-                                className="w-4 h-4 text-red group-hover:text-red"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={1.5}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </div>
-                            <span>Delete user</span>
-                          </button>
-
-                          {!user.deactivated ? (
-                            <button
-                              onClick={(e) =>
-                                handleMenuAction("deactivate", user, e)
-                              }
-                              className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-red text-sm text-red flex items-center gap-3 transition-colors duration-150 group"
-                              role="menuitem"
-                              type="button"
-                            >
-                              <div className="w-4 h-4 flex items-center justify-center">
-                                <svg
-                                  className="w-4 h-4 text-red group-hover:text-red"
-                                  fill="currentColor"
-                                  viewBox="0 0 24 24"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                >
-                                  <circle
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    fill="currentColor"
-                                  />
-                                  <line
-                                    x1="8"
-                                    y1="8"
-                                    x2="16"
-                                    y2="16"
-                                    stroke="white"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                  />
-                                  <line
-                                    x1="16"
-                                    y1="8"
-                                    x2="8"
-                                    y2="16"
-                                    stroke="white"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                  />
-                                </svg>
-                              </div>
-                              <span>De-activate user</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={(e) =>
-                                handleMenuAction("activate", user, e)
-                              }
-                              className="w-full text-left px-4 py-3 hover:bg-gray-100 active:bg-green-100 text-sm text-green-600 flex items-center gap-3 transition-colors duration-150 group"
-                              role="menuitem"
-                              type="button"
-                            >
-                              <div className="w-4 h-4 flex items-center justify-center">
-                                <svg
-                                  className="w-4 h-4 text-green-600 group-hover:text-green-700"
-                                  fill="currentColor"
-                                  viewBox="0 0 24 24"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                >
-                                  <circle
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    fill="currentColor"
-                                  />
-                                  <path
-                                    d="M9 12l2 2 4-4"
-                                    stroke="white"
-                                    strokeWidth="2"
-                                    fill="none"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                              </div>
-                              <span>Activate user</span>
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    )}
                   </div>
                 </div>
               </div>
@@ -819,6 +663,128 @@ export default function EmployeeTable({
           isLoading={isActivating}
           variant="success"
         />
+      )}
+      {menuUser && (
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleCloseMenu}
+          onClick={(e) => e.stopPropagation()}
+          PaperProps={{
+            style: {
+              width: '13rem',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              border: '1px solid #E5E7EB',
+              borderRadius: '0.75rem',
+              padding: '0.25rem 0',
+            }
+          }}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <MenuItem
+            onClick={(e) => {
+              handleCloseMenu();
+              handleMenuAction("edit", menuUser, e);
+            }}
+            style={{ fontSize: '0.875rem', padding: '0.75rem 1rem', display: 'flex', gap: '0.75rem' }}
+          >
+            <div className="w-4 h-4 flex items-center justify-center">
+              <svg
+                className="w-4 h-4 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+            </div>
+            <span className="text-gray-700">Edit details</span>
+          </MenuItem>
+
+          <div className="my-1 border-t border-gray-100"></div>
+
+          <MenuItem
+            onClick={(e) => {
+              handleCloseMenu();
+              handleMenuAction("delete", menuUser, e);
+            }}
+            style={{ fontSize: '0.875rem', padding: '0.75rem 1rem', display: 'flex', gap: '0.75rem', color: '#EF4444' }}
+          >
+            <div className="w-4 h-4 flex items-center justify-center">
+              <svg
+                className="w-4 h-4 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </div>
+            <span>Delete user</span>
+          </MenuItem>
+
+          {!menuUser.deactivated ? (
+            <MenuItem
+              onClick={(e) => {
+                handleCloseMenu();
+                handleMenuAction("deactivate", menuUser, e);
+              }}
+              style={{ fontSize: '0.875rem', padding: '0.75rem 1rem', display: 'flex', gap: '0.75rem', color: '#EF4444' }}
+            >
+              <div className="w-4 h-4 flex items-center justify-center">
+                <svg
+                  className="w-4 h-4 text-red-500"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <circle cx="12" cy="12" r="10" fill="currentColor" />
+                  <line x1="8" y1="8" x2="16" y2="16" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="16" y1="8" x2="8" y2="16" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </div>
+              <span>De-activate user</span>
+            </MenuItem>
+          ) : (
+            <MenuItem
+              onClick={(e) => {
+                handleCloseMenu();
+                handleMenuAction("activate", menuUser, e);
+              }}
+              style={{ fontSize: '0.875rem', padding: '0.75rem 1rem', display: 'flex', gap: '0.75rem', color: '#16A34A' }}
+            >
+              <div className="w-4 h-4 flex items-center justify-center">
+                <svg
+                  className="w-4 h-4 text-green-600"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <circle cx="12" cy="12" r="10" fill="currentColor" />
+                  <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <span>Activate user</span>
+            </MenuItem>
+          )}
+        </Menu>
       )}
     </>
   );
