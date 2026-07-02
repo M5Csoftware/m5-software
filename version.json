@@ -1,11 +1,11 @@
 {
-  "version": "0.1.94",
-  "notes": "Merge pull request #260 from M5Csoftware/Harman-M5C",
-  "pub_date": "2026-07-02T08:55:47Z",
+  "version": "0.1.95",
+  "notes": "Merge pull request #261 from M5Csoftware/Altaf",
+  "pub_date": "2026-07-02T10:25:21Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYzBIZmYvRktMZERzNTVoM1hwaUhrdk5kV1Jucm11Qk5ESnJjR3h2YUxXOU9kNGJURm92T3g3RHQzMnlnZ3pDVC9hTjNkWkIvSHhXOUF0cGl3dVpLRUFvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyOTgyNTQ3CWZpbGU6TTVDIExvZ3NfMC4xLjk0X3g2NF9lbi1VUy5tc2kuemlwCjZjd001R2RNdTRySjZaOEhvVTZlUXVqQXhidlUwWm45WWZzZW4yYWRoNXpDWjUwWVRzRnZ5dEw5OEhDYXlGSUlYSmR6V2ZMY0owdHExbU1MWG9vQkRBPT0K",
-      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.94/M5C.Logs_0.1.94_x64_en-US.msi.zip"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUTFBibkd3Zm5IYzRkdE9xRkh4VEhxaGtIa3E4QzZ2K09nYW5uU09SUHlERk9OYlRMZEM0YUVWemFKTTZ5Y1NKOXUzRitNNUZmdWlpM2NaRWp4cVpReGxvditRYmdkUUFvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyOTg3OTIwCWZpbGU6TTVDIExvZ3NfMC4xLjk1X3g2NF9lbi1VUy5tc2kuemlwCnpZZ0Y1U2U4VE1MYXVZTjVNN2FUcCtyWFU4Qk9lZkdmY1Z6MVpVK1YxcWxmSUkwVWFDMVFuOGVaV002WlZyaG1BWUhEYzF6WmpQWU9KNDZqWEFkY0F3PT0K",
+      "url": "https://github.com/M5Csoftware/m5-software/releases/download/v0.1.95/M5C.Logs_0.1.95_x64_en-US.msi.zip"
     }
   }
 }
