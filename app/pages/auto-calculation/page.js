@@ -11,6 +11,15 @@ import { useForm } from "react-hook-form";
 import axios from "axios";
 import { AutoCalcModal } from "@/app/components/AutoCalcModal";
 
+const formatDateForBackend = (date) => {
+  if (!date) return new Date().toISOString().split("T")[0];
+  if (typeof date === "string" && date.includes("/")) {
+    const [day, month, year] = date.split("/");
+    return `${year}-${month}-${day}`;
+  }
+  return new Date(date).toISOString().split("T")[0];
+};
+
 const AutoCalculation = () => {
   const { register, setValue, watch } = useForm();
   const { server } = useContext(GlobalContext);
@@ -419,15 +428,6 @@ const AutoCalculation = () => {
 
   // Update shipment in database
   const updateShipmentInDB = async (shipment, calculated) => {
-    const formatDateForBackend = (date) => {
-      if (!date) return new Date().toISOString().split("T")[0];
-      if (typeof date === "string" && date.includes("/")) {
-        const [day, month, year] = date.split("/");
-        return `${year}-${month}-${day}`;
-      }
-      return new Date(date).toISOString().split("T")[0];
-    };
-
     const payload = {
       accountCode: selectedAccount.accountCode,
       customer: selectedAccount.name,

@@ -44,6 +44,50 @@ const TimelinePage = () => {
   const [filterByDate, setFilterByDate] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
 
+  // Search & Pagination States for Manage Records
+  const [manageSearchQuery, setManageSearchQuery] = useState("");
+  const [manageDateQuery, setManageDateQuery] = useState("");
+  const [managePage, setManagePage] = useState(1);
+  const itemsPerPage = 15;
+
+  const filteredManagedEvents = useMemo(() => {
+    let result = events;
+
+    // 1. Filter by Selected Date Picker (exact match on date prefix YYYY-MM-DD)
+    if (manageDateQuery) {
+      result = result.filter(
+        (event) => event.date && event.date.startsWith(manageDateQuery)
+      );
+    }
+
+    // 2. Filter by Search Query Text
+    if (manageSearchQuery) {
+      const query = manageSearchQuery.toLowerCase();
+      result = result.filter(
+        (event) => {
+          const titleMatch = event.title && event.title.toLowerCase().includes(query);
+          const topicMatch = event.topic && event.topic.toLowerCase().includes(query);
+          const descMatch = event.description && event.description.toLowerCase().includes(query);
+          const catMatch = event.category && event.category.toLowerCase().includes(query);
+          return titleMatch || topicMatch || descMatch || catMatch;
+        }
+      );
+    }
+    return result;
+  }, [events, manageSearchQuery, manageDateQuery]);
+
+  const totalManagePages = Math.ceil(filteredManagedEvents.length / itemsPerPage);
+
+  const paginatedManagedEvents = useMemo(() => {
+    const start = (managePage - 1) * itemsPerPage;
+    return filteredManagedEvents.slice(start, start + itemsPerPage);
+  }, [filteredManagedEvents, managePage]);
+
+  // Reset pagination on search or date filter changes
+  useEffect(() => {
+    setManagePage(1);
+  }, [manageSearchQuery, manageDateQuery]);
+
   const API_URL =
     (process.env.NEXT_PUBLIC_SERVER || "http://localhost:3001/api") +
     "/timeline";
@@ -749,13 +793,64 @@ const TimelinePage = () => {
 
         {activeTab === "manage" && (
           <div className="bg-white p-6 rounded-3xl shadow-xl border border-french-gray/40 animate-slide-in-right relative overflow-hidden">
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <h2 className="text-lg font-bold text-eerie-black flex items-center gap-2">
                 <Settings className="text-red" size={20} />
                 Manage Records
               </h2>
-              <div className="text-[10px] font-bold text-dim-gray bg-white-smoke px-3 py-1 rounded-full uppercase tracking-widest border border-french-gray/10">
-                {events.length} total events
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Date Picker Selector */}
+                <div className="relative flex items-center gap-1.5 bg-white-smoke px-3 py-1.5 border border-french-gray/30 rounded-xl shadow-inner">
+                  <span className="text-[10px] font-bold text-dim-gray uppercase tracking-wider shrink-0">
+                    Filter Date:
+                  </span>
+                  <input
+                    type="date"
+                    value={manageDateQuery}
+                    onChange={(e) => setManageDateQuery(e.target.value)}
+                    className="bg-transparent text-xs text-eerie-black font-semibold outline-none focus:text-red transition-colors w-28"
+                  />
+                  {manageDateQuery && (
+                    <button
+                      onClick={() => setManageDateQuery("")}
+                      className="text-red hover:text-dark-red font-bold text-xs pl-1"
+                      title="Clear date filter"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Text Search Input */}
+                <div className="relative w-64">
+                  <input
+                    type="text"
+                    placeholder="Search by title, description..."
+                    value={manageSearchQuery}
+                    onChange={(e) => setManageSearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-8 py-2 text-xs border border-french-gray/30 rounded-xl outline-none focus:border-red focus:ring-2 focus:ring-red/10 bg-white"
+                  />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  {manageSearchQuery && (
+                    <button
+                      onClick={() => setManageSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <div className="text-[10px] font-bold text-dim-gray bg-white-smoke px-3 py-1.5 rounded-xl uppercase tracking-widest border border-french-gray/10 shrink-0">
+                  {filteredManagedEvents.length === events.length
+                    ? `${events.length} total`
+                    : `${filteredManagedEvents.length} of ${events.length} found`}
+                </div>
               </div>
             </div>
 
@@ -771,7 +866,7 @@ const TimelinePage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {events.map((event) => (
+                  {paginatedManagedEvents.map((event) => (
                     <tr
                       key={event._id}
                       className="group bg-white-smoke hover:bg-misty-rose/30 transition-colors rounded-xl overflow-hidden"
@@ -828,7 +923,32 @@ const TimelinePage = () => {
               </table>
             </div>
 
-            {events.length === 0 && (
+            {/* Pagination Controls */}
+            {totalManagePages > 1 && (
+              <div className="mt-6 flex items-center justify-between border-t border-french-gray/20 pt-4">
+                <span className="text-xs font-medium text-dim-gray">
+                  Showing page {managePage} of {totalManagePages}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setManagePage((prev) => Math.max(prev - 1, 1))}
+                    disabled={managePage === 1}
+                    className="px-3 py-1.5 border border-french-gray/30 rounded-lg text-xs font-semibold hover:bg-white-smoke disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setManagePage((prev) => Math.min(prev + 1, totalManagePages))}
+                    disabled={managePage === totalManagePages}
+                    className="px-3 py-1.5 border border-french-gray/30 rounded-lg text-xs font-semibold hover:bg-white-smoke disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {filteredManagedEvents.length === 0 && (
               <div className="text-center py-20">
                 <History
                   className="mx-auto text-french-gray/20 mb-4"

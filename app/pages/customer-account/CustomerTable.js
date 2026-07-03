@@ -6,6 +6,8 @@ import axios from "axios";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import NotificationFlag from "@/app/components/Notificationflag";
 import * as XLSX from "xlsx";
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 
 // Delete Confirmation Modal Component
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, userName }) => {
@@ -144,7 +146,25 @@ export default function CustomerTable({
   refetchUsers,
   onEditUser,
 }) {
-  const [activeMenu, setActiveMenu] = useState(null);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [menuUser, setMenuUser] = useState(null);
+
+  const handleOpenMenu = (event, user) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setMenuUser(user);
+  };
+
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+    setMenuUser(null);
+  };
+
+  const setActiveMenu = (val) => {
+    if (val === null) {
+      handleCloseMenu();
+    }
+  };
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null });
   const [deactivateModal, setDeactivateModal] = useState({
     isOpen: false,
@@ -573,20 +593,7 @@ export default function CustomerTable({
     );
   };
 
-  useEffect(() => {
-    const handler = (e) => {
-      const isMenuButton = e.target.closest("button[data-menu-trigger]");
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(e.target) &&
-        !isMenuButton
-      ) {
-        setActiveMenu(null);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
+
 
   const getSortIcon = (key) => {
     if (sortConfig.key === key)
@@ -684,7 +691,7 @@ export default function CustomerTable({
 
           {/* Scrollable Rows */}
           <div className="max-h-[500px] overflow-y-auto table-scrollbar scrollbar-thumb-gray-300 scrollbar-track-transparent">
-            {users.map((user) => {
+            {users.map((user, index) => {
               const isDeactivated = user.deactivateStatus === true;
               const hasForm16 = form16Status[user.accountCode || user._id];
 
@@ -837,15 +844,7 @@ export default function CustomerTable({
                     {/* Actions Menu */}
                     <div className="relative flex items-center justify-center">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveMenu(
-                            activeMenu === (user._id || user.id)
-                              ? null
-                              : user._id || user.id
-                          );
-                        }}
-                        data-menu-trigger
+                        onClick={(e) => handleOpenMenu(e, user)}
                         className="p-2 hover:bg-gray-200 rounded transition-colors"
                       >
                         <Image
@@ -855,78 +854,6 @@ export default function CustomerTable({
                           height={5}
                         />
                       </button>
-
-                      {activeMenu === (user._id || user.id) && (
-                        <div
-                          ref={menuRef}
-                          className="absolute right-0 top-full mt-2 w-48 bg-white border rounded shadow-lg z-10"
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditDetails(user);
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                          >
-                            Edit details
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleExportDetails(user);
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                          >
-                            Export details
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleForm16Download(user);
-                            }}
-                            disabled={!hasForm16}
-                            className={`w-full text-left px-4 py-2 text-sm ${
-                              hasForm16
-                                ? "hover:bg-blue-100 text-blue-600"
-                                : "text-gray-400 cursor-not-allowed bg-gray-50"
-                            }`}
-                            title={
-                              hasForm16
-                                ? "Download Form-16"
-                                : "No Form-16 available"
-                            }
-                          >
-                            Form-16
-                            {!hasForm16 && (
-                              <span className="ml-1 text-xs">
-                                (Not Available)
-                              </span>
-                            )}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDeleteModal(user);
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-red-100 text-red-600 text-sm"
-                          >
-                            Delete user
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDeactivateModal(user);
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm ${
-                              isDeactivated
-                                ? "hover:bg-green-100 text-green-600 font-semibold"
-                                : "hover:bg-orange-100 text-orange-600"
-                            }`}
-                          >
-                            {isDeactivated ? "Activate" : "Deactivate"}
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -935,6 +862,87 @@ export default function CustomerTable({
           </div>
         </div>
       </div>
+      {menuUser && (
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleCloseMenu}
+          onClick={(e) => e.stopPropagation()}
+          PaperProps={{
+            style: {
+              width: '12rem',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              border: '1px solid #E5E7EB',
+              borderRadius: '0.5rem',
+            }
+          }}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <MenuItem
+            onClick={() => {
+              handleCloseMenu();
+              handleEditDetails(menuUser);
+            }}
+            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+          >
+            Edit details
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              handleCloseMenu();
+              handleExportDetails(menuUser);
+            }}
+            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+          >
+            Export details
+          </MenuItem>
+          <MenuItem
+            disabled={!form16Status[menuUser.accountCode || menuUser._id]}
+            onClick={() => {
+              handleCloseMenu();
+              handleForm16Download(menuUser);
+            }}
+            style={{
+              fontSize: '0.875rem',
+              padding: '0.5rem 1rem',
+              color: form16Status[menuUser.accountCode || menuUser._id] ? '#2563EB' : undefined
+            }}
+          >
+            Form-16
+            {!form16Status[menuUser.accountCode || menuUser._id] && " (Not Available)"}
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              handleCloseMenu();
+              openDeleteModal(menuUser);
+            }}
+            style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', color: '#DC2626' }}
+          >
+            Delete user
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              handleCloseMenu();
+              openDeactivateModal(menuUser);
+            }}
+            style={{
+              fontSize: '0.875rem',
+              padding: '0.5rem 1rem',
+              color: menuUser.deactivateStatus === true ? '#16A34A' : '#EA580C',
+              fontWeight: menuUser.deactivateStatus === true ? 600 : undefined
+            }}
+          >
+            {menuUser.deactivateStatus === true ? "Activate" : "Deactivate"}
+          </MenuItem>
+        </Menu>
+      )}
     </div>
   );
 }
