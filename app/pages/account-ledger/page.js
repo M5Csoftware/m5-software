@@ -81,7 +81,6 @@ function AccountLedger() {
       { key: "RcvAmount", label: "Received Amount" },
       { key: "DebitAmount", label: "Debit Amount" },
       { key: "CreditAmount", label: "Credit Amount" },
-      { key: "Balance", label: "Balance" },
       { key: "Remark", label: "Remark" },
       { key: "ReferenceNo", label: "ReferenceNo." },
       { key: "RemainingBalance", label: "RemainingBalance." },
@@ -152,6 +151,7 @@ function AccountLedger() {
       setCustomerName("");
       setOpeningBalance("");
       setValue("email", "");
+      setValue("openingBalance", "");
       return;
     }
 
@@ -173,7 +173,7 @@ function AccountLedger() {
       // Set the values based on the API response
       const name = response.data.name || "";
       const email = response.data.email || "";
-      const balance = response.data.openingBalance || "";
+      const balance = response.data.openingBalance || 0;
 
       // console.log("🎯 Setting customerName to:", name);
       // console.log("🎯 Setting email to:", email);
@@ -181,6 +181,7 @@ function AccountLedger() {
 
       setCustomerName(name);
       setValue("email", email);
+      setValue("openingBalance", balance);
       setOpeningBalance(balance);
 
       if (!name) {
@@ -194,6 +195,7 @@ function AccountLedger() {
       setCustomerName("");
       setOpeningBalance("");
       setValue("email", "");
+      setValue("openingBalance", "");
       showNotification(
         "error",
         `Customer not found: ${error.response?.data?.error || error.message}`,
@@ -215,6 +217,7 @@ function AccountLedger() {
       setCustomerName("");
       setOpeningBalance("");
       setValue("email", "");
+      setValue("openingBalance", "");
       return;
     }
 
@@ -393,7 +396,7 @@ function AccountLedger() {
             onClick={() => {
               // Create clean data without internal properties
               const cleanRowData = rowData.map((row) => {
-                const { isHold, originalDate, type, ...cleanRow } = row;
+                const { isHold, originalDate, type, Balance, ...cleanRow } = row;
                 return cleanRow;
               });
 
