@@ -185,6 +185,8 @@ function PaymentEntry({ }) {
         entryUser,
       });
 
+      const isCreditNote = data.receiptType === "Credit Note";
+      const isDebitNote = data.receiptType === "Debit Note";
       const updatedLeftOverBalance =
         (leftOverBalance || 0) - Number(data.amount);
       const ledgerPayload = {
@@ -193,9 +195,9 @@ function PaymentEntry({ }) {
         openingBalance,
         date: data.date,
         payment: data.mode,
-        receivedAmount: Number(data.amount),
-        debitAmount: Number(data.debitAmount) || 0,
-        creditAmount: Number(data.creditAmount) || 0,
+        receivedAmount: (isCreditNote || isDebitNote) ? 0 : Number(data.amount),
+        debitAmount: isDebitNote ? (Number(data.debitAmount) || Number(data.amount)) : 0,
+        creditAmount: isCreditNote ? (Number(data.creditAmount) || Number(data.amount)) : 0,
         operationRemark: data.remarks,
         awbNo: data.receiptNo,
         leftOverBalance: updatedLeftOverBalance,
