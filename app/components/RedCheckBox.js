@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
 
 function RedCheckbox({ id, register, setValue, isChecked, setChecked, label, disabled = false }) {
 
   const toggleChecked = () => {
-    setChecked((prev) => !prev); // Toggle the state
-    setValue(id, isChecked)
+    const nextVal = !isChecked;
+    setChecked(nextVal); // Pass the correct updated value
+    setValue(id, nextVal);
   };
 
   return (
     <label
-      onClick={toggleChecked}
       className='flex gap-2.5 items-center cursor-pointer select-none'
       htmlFor={id}
     >
@@ -39,13 +39,13 @@ export function RedCheckboxBase({ id, register, setValue, isChecked, setChecked,
 
   const toggleChecked = () => {
     if (disabled) return;
-    setChecked((prev) => !prev); // Toggle the state
-    setValue(id, isChecked)
+    const nextVal = !isChecked;
+    setChecked(nextVal);
+    setValue(id, nextVal);
   };
 
   return (
     <label
-      onClick={toggleChecked}
       className={`flex gap-2.5 items-center cursor-pointer select-none text-xs  ${flip ? "flex-row-reverse" : "flex-row"}`}
       htmlFor={id}
     >
@@ -72,13 +72,13 @@ export function RedCheckboxBase({ id, register, setValue, isChecked, setChecked,
 export function RedCheckboxRedLabel({ id, register, setValue, isChecked, setChecked, label, flip = false }) {
 
   const toggleChecked = () => {
-    setChecked((prev) => !prev); // Toggle the state
-    setValue(id, isChecked)
+    const nextVal = !isChecked;
+    setChecked(nextVal);
+    setValue(id, nextVal);
   };
 
   return (
     <label
-      onClick={toggleChecked}
       className={`flex gap-2.5 items-center cursor-pointer select-none  ${flip ? "flex-row-reverse" : "flex-row"}`}
       htmlFor={id}
     >
