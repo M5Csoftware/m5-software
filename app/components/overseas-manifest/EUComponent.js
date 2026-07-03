@@ -12,7 +12,7 @@ import axios from "axios";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import SearchAndReplace from "@/app/components/SearchAndReplace"
+import SearchAndReplace from "@/app/components/SearchAndReplace";
 
 const EUComponent = () => {
   const { server } = useContext(GlobalContext);
@@ -37,6 +37,7 @@ const EUComponent = () => {
     { key: "shipperFullName", label: "Shipper Full Name" },
     { key: "shipperAddress1", label: "Shipper Address 1" },
     { key: "shipperAddress2", label: "Shipper Address 2" },
+    { key: "shipperAddress3", label: "Shipper Address 3" },
     { key: "shipperCity", label: "Shipper City" },
     { key: "shipperState", label: "Shipper State" },
     { key: "shipperPincode", label: "Shipper Pincode" },
@@ -44,6 +45,7 @@ const EUComponent = () => {
     { key: "receieverFullName", label: "Consignee Full Name" },
     { key: "receiverAddressLine1", label: "Consignee Address 1" },
     { key: "receiverAddressLine2", label: "Consignee Address 2" },
+    { key: "receiverAddressLine3", label: "Consignee Address 3" },
     { key: "receiverCity", label: "Consignee City" },
     { key: "receiverState", label: "Consignee State" },
     { key: "receiverPincode", label: "Consignee Pincode" },
@@ -59,7 +61,14 @@ const EUComponent = () => {
     { key: "vendor", label: "Vendor" },
     { key: "service", label: "Service" },
     { key: "returnAction", label: "Return Action" },
-    { key: "goodsType", label: "Goods Description" },
+    { key: "goodsType", label: "Items Description" },
+    { key: "hsnCode", label: "HSN Code" },
+    { key: "itemsQuantity", label: "Items Quantity" },
+    { key: "itemsValue", label: "Items Value" },
+    { key: "urlToProduct", label: "Weblinks (URL) to Product" },
+    { key: "urlToSalesInvoice", label: "Weblinks (URL) to Sales Invoice" },
+    { key: "iossNumber", label: "IOSS Number" },
+    { key: "sku", label: "SKU" },
   ];
 
   const showNotification = (type, message) => {
@@ -78,7 +87,7 @@ const EUComponent = () => {
   const handleReplace = (oldValue, newValue, location) => {
     showNotification(
       "success",
-      `Replaced "${oldValue}" with "${newValue}" in row ${location.rowIndex + 1}, ${location.columnLabel}`
+      `Replaced "${oldValue}" with "${newValue}" in row ${location.rowIndex + 1}, ${location.columnLabel}`,
     );
   };
 
@@ -115,7 +124,7 @@ const EUComponent = () => {
       console.error("Error fetching data:", error);
       showNotification(
         "error",
-        error.response?.data?.message || "Failed to fetch data"
+        error.response?.data?.message || "Failed to fetch data",
       );
       setRows([]);
       setRunInfo(null);
@@ -141,7 +150,7 @@ const EUComponent = () => {
             const value = row[col.key] || "";
             return `"${String(value).replace(/"/g, '""')}"`;
           })
-          .join(",")
+          .join(","),
       );
 
       const csvContent = [headers, ...csvRows].join("\n");
@@ -188,7 +197,7 @@ const EUComponent = () => {
         columnsEU.map((col) => {
           const value = row[col.key];
           return value !== null && value !== undefined ? String(value) : "";
-        })
+        }),
       );
 
       autoTable(doc, {
@@ -251,7 +260,7 @@ const EUComponent = () => {
               fgColor: { rgb: "E0E0E0" },
             };
           }
-          
+
           ws[cellAddress].s.alignment = { wrapText: true, vertical: "top" };
         }
       }
