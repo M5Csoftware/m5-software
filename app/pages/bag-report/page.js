@@ -189,7 +189,11 @@ export default function BagReport() {
       baggingData.rowData.forEach((item) => {
         const awb = item.awbNo || item.childShipment;
         if (awb)
-          lookup[awb] = { bagNo: item.bagNo, mhbsNo: baggingData.mhbsNo };
+          lookup[awb] = {
+            bagNo: item.bagNo,
+            mhbsNo: baggingData.mhbsNo,
+            weight: item.weight || item.bagWeight || "",
+          };
       });
     }
     if (branchBaggingData && branchBaggingData.rowData) {
@@ -199,6 +203,7 @@ export default function BagReport() {
           lookup[awb] = {
             bagNo: item.bagNo,
             mhbsNo: branchBaggingData.mawb || "",
+            weight: item.weight || item.bagWeight || "",
           };
       });
     }
@@ -212,7 +217,7 @@ export default function BagReport() {
         awbNo: item.awbNo || "",
         date: item.date ? new Date(item.date).toLocaleDateString("en-GB") : "",
         bagNo: baggingInfo.bagNo || "",
-        weight: item.totalActualWt || "",
+        weight: baggingInfo.weight || "",
         shipperName: item.shipperFullName || "",
         shipperAddress: [
           item.shipperAddressLine1,
@@ -241,7 +246,7 @@ export default function BagReport() {
         awbNo: item.awbNo || "",
         date: item.date ? new Date(item.date).toLocaleDateString("en-GB") : "",
         bagNo: baggingInfo.bagNo || "",
-        weight: item.totalActualWt || "",
+        weight: baggingInfo.weight || "",
         shipper: item.shipperFullName || "",
         consignee: item.receiverFullName || item.receiverName || "",
         destination: item.destination || item.receiverCity || "",
