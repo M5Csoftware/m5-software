@@ -81,7 +81,7 @@ const USAComponent = () => {
       console.error("Error fetching data:", error);
       showNotification(
         "error",
-        error.response?.data?.message || "Failed to fetch data"
+        error.response?.data?.message || "Failed to fetch data",
       );
       setRows([]);
       setRunInfo(null);
@@ -107,7 +107,7 @@ const USAComponent = () => {
             const value = row[col.key] || "";
             return `"${String(value).replace(/"/g, '""')}"`;
           })
-          .join(",")
+          .join(","),
       );
 
       const csvContent = [headers, ...csvRows].join("\n");
@@ -154,7 +154,7 @@ const USAComponent = () => {
         columnsUSA.map((col) => {
           const value = row[col.key];
           return value !== null && value !== undefined ? String(value) : "";
-        })
+        }),
       );
 
       autoTable(doc, {
@@ -217,7 +217,7 @@ const USAComponent = () => {
               fgColor: { rgb: "E0E0E0" },
             };
           }
-          
+
           ws[cellAddress].s.alignment = { wrapText: true, vertical: "top" };
         }
       }
@@ -271,7 +271,7 @@ const USAComponent = () => {
             className={`h-[50vh]`}
           />
         </div>
-        <div className="flex justify-end mt-1">
+        <div className="flex justify-end mt-1 w-[8%]">
           <DownloadDropdown
             handleDownloadPDF={handleDownloadPDF}
             handleDownloadExcel={handleDownloadExcel}

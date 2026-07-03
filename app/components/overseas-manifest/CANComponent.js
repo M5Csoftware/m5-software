@@ -5,6 +5,7 @@ import InputBox from "@/app/components/InputBox";
 import { TableWithSorting } from "@/app/components/Table";
 import NotificationFlag from "@/app/components/Notificationflag";
 import SearchAndReplace from "@/app/components/SearchAndReplace";
+import Heading from "@/app/components/Heading";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import React, { useState, useContext, useRef } from "react";
 import { useForm } from "react-hook-form";
@@ -15,6 +16,7 @@ import * as XLSX from "xlsx";
 import { FiUpload, FiDownload, FiFileText, FiSave } from "react-icons/fi";
 import JsBarcode from "jsbarcode";
 import html2canvas from "html2canvas";
+import Image from "next/image";
 
 const CANComponent = () => {
   const { server } = useContext(GlobalContext);
@@ -113,6 +115,18 @@ const CANComponent = () => {
   // Get current rows based on active table
   const getCurrentRows = () => {
     return activeTable === "manifest" ? manifestRows : invoiceRows;
+  };
+
+  // Trigger the SearchAndReplace panel (same as pressing Ctrl+F) via the replace icon
+  const handleOpenSearchAndReplace = () => {
+    const event = new KeyboardEvent("keydown", {
+      key: "f",
+      code: "KeyF",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    document.dispatchEvent(event);
   };
 
   // Save data function
@@ -1098,9 +1112,9 @@ const CANComponent = () => {
       // console.log("RAW runNo →", runNo);
       // console.log("selectedAirport →", selectedAirport);
       // console.log(
-//         "Final API URL →",
-//         `${server}/overseas-manifest/can/run?runNo=${runNo}`,
-//       );
+      //         "Final API URL →",
+      //         `${server}/overseas-manifest/can/run?runNo=${runNo}`,
+      //       );
 
       // simple normalization
       const normalizedRunNo = `${runNo || ""}`.trim();
@@ -1551,7 +1565,7 @@ const CANComponent = () => {
             placeholder="Run Number"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-stretch">
           {/* Manifest Button - Show/Save toggle */}
           {manifestModified ? (
             <button
@@ -1658,6 +1672,20 @@ const CANComponent = () => {
               className="min-w-[140px]"
             />
           </div>
+
+          <button
+            type="button"
+            onClick={handleOpenSearchAndReplace}
+            title="Search & Replace (Ctrl+F)"
+            className="flex items-center justify-center px-4 py-1.5 border border-gray-300 rounded-md shadow-md hover:bg-gray-100 transition-all duration-200 focus:outline-none"
+          >
+            <Image
+              src="/replace.svg"
+              alt="Search and Replace"
+              width={20}
+              height={20}
+            />
+          </button>
         </div>
       </div>
 
