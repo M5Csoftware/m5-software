@@ -246,25 +246,60 @@ const ChildAwbNoReport = () => {
         }
       } else if (!runNumber && mawbNumber) {
         // Fetch by MAWB number
+        // Step 1: Find all child shipments belonging to this MAWB
         const res = await axios.get(
-          `${server}/portal/create-child?masterAwbNo=${mawbNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`,
+          `${server}/portal/create-child?masterAwbNo=${mawbNumber.toUpperCase()}`,
         );
-        const childShipments = Array.isArray(res.data) ? res.data : [res.data];
+        const childShipments = Array.isArray(res.data)
+          ? res.data
+          : res.data
+          ? [res.data]
+          : [];
 
+        if (childShipments.length === 0) {
+          showNotification(
+            "info",
+            "No child shipments found for this MAWB Number",
+          );
+          setRowData([]);
+          setLoading(false);
+          return;
+        }
+
+        // Step 2: For each child, look up the Bagging record that actually
+        // contains it - runNo, bagNo, bagWeight, and alMawb only live inside
+        // a Bagging document's rowData array, not on ChildShipment/Shipment.
+        // /bagging?containsAwb=<awb> searches rowData for a match (by awbNo
+        // or childShipment) and returns the bag-level fields.
         for (const child of childShipments) {
+          const awbNo = child.childAwbNo;
+          if (!awbNo) continue;
+
+          let baggingInfo = {};
+          try {
+            const baggingRes = await axios.get(
+              `${server}/bagging?containsAwb=${awbNo}`,
+            );
+            baggingInfo = baggingRes.data || {};
+          } catch (err) {
+            // Not bagged yet, or no bagging record found for this AWB - leave blank
+            baggingInfo = {};
+          }
+
           finalData.push({
-            childAwbNo: child.childAwbNo || "",
-            createdAt: child.createdAt || "",
-            sector: child.sector || "",
+            childAwbNo: awbNo,
+            createdAt: child.createdAt || baggingInfo.date || "",
+            sector: child.sector || baggingInfo.sector || "",
             destination: child.destination || "",
             shipperName: child.shipperName || "",
             consigneeName: child.consigneeName || "",
-            bagWeight: "",
-            runNumber: "",
-            bagNo: "",
-            alMawb: mawbNumber,
+            bagWeight: baggingInfo.bagWeight || "",
+            runNumber: baggingInfo.runNo || "",
+            bagNo: baggingInfo.bagNo || "",
+            alMawb: baggingInfo.alMawb || mawbNumber,
             forwarder: "",
-            forwardingNo: child.forwardingNo || "",
+            forwardingNo:
+              child.forwardingNo || baggingInfo.forwardingNo || "",
           });
         }
       } else if (runNumber && mawbNumber) {
