@@ -1899,8 +1899,15 @@ const BaggingWithBarcode = () => {
                   type="text"
                   placeholder="Weight"
                   {...register("weight")}
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-red"
+                  className={`flex-1 px-3 py-1 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-red ${
+                    isFinalised ? "cursor-not-allowed" : "cursor-pointer"
+                  }`}
                   readOnly={true}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (isFinalised) return;
+                    setEditWeightModalOpen(true);
+                  }}
                 />
                 <button
                   type="button"
