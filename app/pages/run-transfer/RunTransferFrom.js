@@ -7,12 +7,15 @@ import { useForm } from "react-hook-form";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 import axios from "axios";
 
+import { useDebounce } from "@/app/hooks/useDebounce";
+
 const RunTransferForm = ({ setCurrentView }) => {
   const { server } = useContext(GlobalContext);
   const { register, setValue, watch } = useForm();
   const [runData, setRunData] = useState([]);
   const [loading, setLoading] = useState(false);
   const runNumber = watch("runNumber");
+  const debouncedRunNumber = useDebounce(runNumber, 600);
 
   const [notification, setNotification] = useState({
     type: "success",
@@ -24,16 +27,16 @@ const RunTransferForm = ({ setCurrentView }) => {
     setNotification({ type, message, visible: true });
   };
 
-  const fetchDataByRunNo = async () => {
-    if (!runNumber || runNumber.trim() === "") {
-      showNotification("error", "Please enter a Run Number");
+  const fetchDataByRunNo = async (runNo) => {
+    if (!runNo || runNo.trim() === "") {
+      setRunData([]);
       return;
     }
 
     setLoading(true);
     try {
       const response = await axios.get(
-        `${server}/portal/create-shipment?runNo=${runNumber.toUpperCase()}`
+        `${server}/portal/create-shipment?runNo=${runNo.toUpperCase()}`
       );
       const filteredData = response.data;
 
@@ -94,8 +97,12 @@ const RunTransferForm = ({ setCurrentView }) => {
   };
 
   useEffect(() => {
-    if (runNumber) fetchDataByRunNo();
-  }, [runNumber]);
+    if (debouncedRunNumber && debouncedRunNumber.trim() !== "") {
+      fetchDataByRunNo(debouncedRunNumber.trim());
+    } else {
+      setRunData([]);
+    }
+  }, [debouncedRunNumber]);
 
   const handleTransfer = async () => {
     if (!runData || runData.length === 0) {
