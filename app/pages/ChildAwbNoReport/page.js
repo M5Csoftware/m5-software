@@ -215,7 +215,7 @@ const ChildAwbNoReport = () => {
               sector: masterData?.sector || baggingData.sector || "",
               destination:
                 childData?.destination || masterData?.destination || "",
-              shipperName: masterData?.shipperName || "",
+              shipperName: childData?.shipperName || masterData?.shipperName || "",
               consigneeName:
                 childData?.consigneeName || masterData?.consigneeName || "",
               bagWeight: item.bagWeight || "",
@@ -352,24 +352,22 @@ const ChildAwbNoReport = () => {
 
       setRowData(finalData);
 
-      // Update pagination state
-      // Note: Since this report combines multiple sources, we rely on the primary response's pagination
-      // For simplicity, we'll try to extract it from res.data where applicable
-      // This part might need backend-specific adjustment if res.data structure differs per endpoint
+      // Extract pagination metadata if returned by any backend response
+      const apiPagination = 
+        (typeof res !== "undefined" && res?.data?.pagination) || 
+        (typeof baggingRes !== "undefined" && baggingRes?.data?.pagination) || 
+        (typeof childRes !== "undefined" && childRes?.data?.pagination);
 
-      // Let's assume the first major response defines the pagination for now
-      // (This is a bit of a placeholder logic depending on backend response structure)
-      // const firstRes = runNumber ? (await axios.get(`${server}/bagging?runNo=${runNumber.toUpperCase()}&page=${page}&limit=${pageLimit}`)).data : null;
-      // Re-fetching just for pagination info is suboptimal, but ChildAwbNoReport logic is complex.
-      // Ideally, the backend would return a consistent pagination object.
-
-      // Actually, let's look at how other reports handled it.
-      // I'll assume res.data.pagination exists if the backend was updated.
-
-      // For now, I'll set basic values if pagination is missing
-      setTotalPages(1);
-      setTotalRecords(finalData.length);
-      setCurrentPage(page);
+      if (apiPagination) {
+        setTotalPages(apiPagination.totalPages || 1);
+        setTotalRecords(apiPagination.totalRecords || finalData.length);
+        setCurrentPage(apiPagination.currentPage || page);
+      } else {
+        // Fallback
+        setTotalPages(1);
+        setTotalRecords(finalData.length);
+        setCurrentPage(page);
+      }
 
       if (finalData.length === 0) {
         showNotification("info", "No data found for the given criteria");
