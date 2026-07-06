@@ -365,6 +365,7 @@ const Clubbing = () => {
           // Populate form fields
           setValue("runNo", clubData.runNo || "");
           setValue("date", formattedDate);
+          setDate(formattedDate);
           setValue("service", clubData.service || "");
           setValue("remarks", clubData.remarks || "");
 
@@ -384,7 +385,7 @@ const Clubbing = () => {
         }
       }
     },
-    [setValue, clearErrors, server, showNotification],
+    [setValue, clearErrors, server, showNotification, setDate],
   );
 
   const clearAwbFormFields = useCallback(() => {
@@ -437,7 +438,12 @@ const Clubbing = () => {
     setValue("runNo", "");
     setValue("service", "");
     setValue("remarks", "");
-  }, [setValue]);
+
+    const currentDate = new Date();
+    const formattedDate = formatDateForDisplay(currentDate);
+    setDate(formattedDate);
+    setValue("date", formatDateForInput(currentDate));
+  }, [setValue, formatDateForDisplay, formatDateForInput]);
 
   const completeReset = useCallback(() => {
     setClubbingReset(!clubbingReset);
@@ -460,7 +466,12 @@ const Clubbing = () => {
     });
 
     clearErrors();
-  }, [clubbingReset, reset, clearErrors]);
+
+    const currentDate = new Date();
+    const formattedDate = formatDateForDisplay(currentDate);
+    setDate(formattedDate);
+    setValue("date", formatDateForInput(currentDate));
+  }, [clubbingReset, reset, clearErrors, formatDateForDisplay, formatDateForInput, setValue]);
 
   // Event handlers with ENHANCED GLOBAL AWB VALIDATION
   const handleAdd = useCallback(async () => {
@@ -664,10 +675,16 @@ const Clubbing = () => {
           return;
         }
 
+        let dateToSend = data.date || date;
+        if (!dateToSend || dateToSend === "--/--/----") {
+          const d = new Date();
+          dateToSend = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+        }
+
         const payload = {
           runNo: data.runNo,
           clubNo: data.clubNo,
-          date: data.date,
+          date: dateToSend,
           service: data.service,
           remarks: data.remarks,
           rowData: rowData,
@@ -711,6 +728,7 @@ const Clubbing = () => {
       completeReset,
       server,
       showNotification,
+      date,
     ],
   );
 
