@@ -45,7 +45,7 @@ const ClubReport = () => {
     { key: "date", label: "Date" },
     { key: "sector", label: "Sector" },
     { key: "destination", label: "Destination" },
-    { key: "shipperFullName", label: "Consignee Name" },
+    { key: "receiverFullName", label: "Consignee Name" },
     { key: "clubNo", label: "Club Number" },
     { key: "bagNo", label: "Bag Number" },
     { key: "bag", label: "Bag Weight" },

@@ -5,6 +5,30 @@ import formatDate from "../lib/formatDate";
 const EMPTY_ARRAY = [];
 const EMPTY_OBJECT = {};
 
+const formatCellValue = (value, columnKey) => {
+  if (value === null || value === undefined) return "-";
+  
+  const decimalKeys = [
+    "weight", "bagweight", "bagWeight", "totalactualwt", "totalactualweight", 
+    "totalActualWt", "totalActualWeight", "actualwt", "actualWt", "runwt", "runWt",
+    "masterwt", "masterWt", "diffwt", "diffWt", "wt", "value", "amount", "rate", 
+    "totalweight", "totalWeight", "runweight", "runWeight", "invoicevalue", 
+    "invoiceValue", "totalinvoicevalue", "totalInvoiceValue", "cadrate", "cadRate",
+    "igst", "totaligst", "totalIgst", "igstpaid", "igstPaid", "totalIgstPaid", "bag"
+  ];
+  
+  const isDecimalColumn = decimalKeys.some(key => key.toLowerCase() === columnKey.toLowerCase());
+  
+  if (isDecimalColumn) {
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      return num.toFixed(2);
+    }
+  }
+  
+  return value;
+};
+
 export default function Table({
   register,
   setValue,
@@ -207,7 +231,7 @@ export default function Table({
                     ) : (
                       <span>
                         {currentRowData[column.key] !== null
-                          ? currentRowData[column.key]
+                          ? formatCellValue(currentRowData[column.key], column.key)
                           : "-"}
                       </span>
                     )}
@@ -278,7 +302,7 @@ const TableRow = memo(function TableRow({ rowData, columns }) {
           }`}
         >
           <span>
-            {rowData[column.key] !== null ? rowData[column.key] : "-"}
+            {rowData[column.key] !== null ? formatCellValue(rowData[column.key], column.key) : "-"}
           </span>
         </td>
       ))}
@@ -427,12 +451,9 @@ const TableRowWithSorting = memo(function TableRowWithSorting({
           <span>
             {column.key === "date"
               ? formatDate(rowData[column.key])
-              : column.type === "number" &&
-                  typeof rowData[column.key] === "number"
-                ? rowData[column.key].toFixed(2)
-                : isTicketDashboard && column.key === "ticketNo"
-                  ? rowData[column.key].ticketNo
-                  : rowData[column.key]}
+              : isTicketDashboard && column.key === "ticketNo"
+                ? rowData[column.key].ticketNo
+                : formatCellValue(rowData[column.key], column.key)}
           </span>{" "}
           <br />
           {isTicketDashboard && column.key === "ticketNo" && (
@@ -520,7 +541,7 @@ const TableRowWithCTA = memo(function TableRowWithCTA({
     <tr className="border-b border-alice-blue h-11">
       {columns.map((column, colIndex) => (
         <td key={colIndex} className="text-gray-600 pl-6 border-r">
-          <span>{rowData[column.key]}</span>
+          <span>{formatCellValue(rowData[column.key], column.key)}</span>
         </td>
       ))}
       <td className="flex gap-3 items-center justify-center mt-2">
@@ -800,7 +821,7 @@ const TableRowWithSortingCheckbox = memo(function TableRowWithSortingCheckbox({
           <span>
             {column.key === "date"
               ? formatDate(rowData[column.key])
-              : rowData[column.key]}
+              : formatCellValue(rowData[column.key], column.key)}
           </span>
         </td>
       ))}
@@ -999,7 +1020,7 @@ export function TableWithSortingAndCopy({
                   }}
                   onMouseUp={() => setIsSelecting(false)}
                 >
-                  {item[col.key]}
+                  {formatCellValue(item[col.key], col.key)}
                 </td>
               ))}
             </tr>
@@ -1216,7 +1237,7 @@ const TableRowWithCheckbox = memo(function TableRowWithCheckbox({
           <span>
             {column.key === "date"
               ? formatDate(rowData[column.key])
-              : rowData[column.key]}
+              : formatCellValue(rowData[column.key], column.key)}
           </span>
         </td>
       ))}
@@ -1305,7 +1326,7 @@ const TableRowWithTotal = memo(function TableRowWithTotal({
         >
           {column.key === "date"
             ? formatDate(rowData[column.key])
-            : rowData[column.key] || "-"}
+            : formatCellValue(rowData[column.key], column.key)}
         </td>
       ))}
     </tr>
@@ -1359,7 +1380,7 @@ const TableRowWithCTD = memo(function TableRowWithCTD({
     <tr className="border-b border-alice-blue h-11">
       {columns.map((column, colIndex) => (
         <td key={colIndex} className="text-gray-600 pl-6 border-r">
-          <span>{rowData[column.key]}</span>
+          <span>{formatCellValue(rowData[column.key], column.key)}</span>
         </td>
       ))}
 
