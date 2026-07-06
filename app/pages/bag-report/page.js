@@ -234,7 +234,7 @@ export default function BagReport() {
         zipCode: item.receiverPincode || "",
         service: item.service || "",
         forwardingNo: item.forwardingNo || item.reference || "",
-        shipmentRemark: item.shipmentType || "",
+        shipmentRemark: item.shipmentType || item.remarks || item.operationRemarks || "",
       };
     });
 
@@ -254,7 +254,7 @@ export default function BagReport() {
         zipCode: item.receiverPincode || "",
         service: item.service || "",
         forwardingNo: item.forwardingNo || item.reference || "",
-        shipmentRem: item.shipmentType || item.remarks || "",
+        shipmentRemark: item.shipmentType || item.remarks || item.operationRemarks || "",
       };
     });
 
