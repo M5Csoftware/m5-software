@@ -1,16 +1,20 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { useForm } from "react-hook-form";
 import { TableWithSorting } from "../Table";
 import { OutlinedButtonRed, SimpleButton } from "../Buttons";
 import * as XLSX from "xlsx";
 import NotificationFlag from "../Notificationflag";
+import { GlobalContext } from "@/app/lib/GlobalContext";
+import axios from "axios";
 
 const Excel = ({ onClose, onSave, refreshKey }) => {
+  const { server } = useContext(GlobalContext);
   const { register, setValue } = useForm();
   const [rowData, setRowData] = useState([]);
   const [fileUploaded, setFileUploaded] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const [notification, setNotification] = useState({
@@ -120,15 +124,56 @@ const Excel = ({ onClose, onSave, refreshKey }) => {
   };
 
   // Save Data
-  const handleSave = () => {
+  const handleSave = async () => {
     if (rowData.length === 0) {
       setError("No data to save.");
       showNotification("error", "No data available");
       return;
     }
 
-    showNotification("success", "Data saved!");
-    if (onSave) onSave(rowData);
+    setSaving(true);
+    setError("");
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (const row of rowData) {
+        if (!row.awbNo) continue;
+        try {
+          await axios.put(
+            `${server}/portal/create-shipment/update-forwarding-number?awbNo=${row.awbNo.toString().trim().toUpperCase()}`,
+            {
+              forwarder: row.forwarder,
+              fwdNumber: row.fwdNo,
+              coLoader: row.coLoader,
+              coLoaderNumber: row.coLoaderNo,
+            }
+          );
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to update AWB ${row.awbNo}:`, err);
+          failCount++;
+        }
+      }
+
+      if (failCount === 0) {
+        showNotification("success", `All ${successCount} forwarding numbers updated!`);
+        setRowData([]);
+        setFileUploaded(false);
+      } else {
+        showNotification(
+          "warning",
+          `Updated: ${successCount} | Failed: ${failCount}`
+        );
+      }
+
+      if (onSave) onSave(rowData);
+    } catch (err) {
+      console.error("Save failed:", err);
+      showNotification("error", "Failed to save data");
+    } finally {
+      setSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -199,7 +244,12 @@ const Excel = ({ onClose, onSave, refreshKey }) => {
             columns={columns}
             rowData={rowData}
           />
-          <SimpleButton name="Save" onClick={handleSave} perm="CC Edit" />
+          <SimpleButton 
+            name={saving ? "Saving..." : "Save"} 
+            onClick={handleSave} 
+            disabled={saving || rowData.length === 0} 
+            perm="CC Edit" 
+          />
         </div>
       </div>
 

@@ -300,12 +300,12 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
   };
 
   useEffect(() => {
-    if (!awbNo || manualSearch) {
+    if (!awbNo || awbNo.trim().length < 3 || manualSearch) {
       return;
     }
 
     // Skip auto-sync if we already have the complaint for this AWB loaded
-    if (registeredComplaint && registeredComplaint.awbNo === awbNo) {
+    if (registeredComplaint && registeredComplaint.awbNo === awbNo.trim().toUpperCase()) {
       return;
     }
 
@@ -313,7 +313,7 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
       clearErrors("awbNo");
       try {
         const response = await axios.get(
-          `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo}`,
+          `${server}/register-complaint/get-complaint-by-awb?awbNo=${awbNo.trim().toUpperCase()}`,
         );
 
         const complaintData = response.data.complaint;
@@ -329,8 +329,12 @@ const RegisterComplaint = ({ setRegisterComplaint, initialAwbNo = "" }) => {
       }
     };
 
-    checkAwbNo();
-  }, [awbNo, manualSearch, server, registeredComplaint, formatDDMMYYYY]);
+    const handler = setTimeout(() => {
+      checkAwbNo();
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [awbNo, manualSearch, server, registeredComplaint, formatDDMMYYYY, clearErrors]);
 
   useEffect(() => {
     setValue("actionUser", user?.userId);

@@ -154,8 +154,8 @@ const CustomerTimeline = () => {
             {/* Minimal Background Line */}
             <div className="absolute left-[44px] top-6 bottom-6 w-1 bg-gray-200 rounded-full opacity-30"></div>
 
-            {filteredEvents.map((event) => (
-              <div key={event._id} className="relative pl-24 group">
+            {filteredEvents.map((event, index) => (
+              <div key={event._id || event.id || `event-${index}`} className="relative pl-24 group">
                 {/* Visual Date Indicator */}
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-14 flex flex-col items-center">
                   <span className="text-[10px] font-black text-red uppercase tracking-tighter mb-0.5">{safeFormat(event.date, "MMM")}</span>
