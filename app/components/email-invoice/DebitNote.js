@@ -29,6 +29,12 @@ function DebitNote() {
   const fromDate = watch("from");
   const toDate = watch("to");
 
+  // Normalize customer code so "dl001", "Dl001", "DL001" etc. all resolve
+  // to the same account (backend stores/matches it as uppercase).
+  const normalizedCustomerCode = customerCode
+    ? customerCode.toString().trim().toUpperCase()
+    : "";
+
   const toISODate = (val) => {
     if (!val) return null;
 
@@ -70,14 +76,14 @@ function DebitNote() {
   // Fetch customer details when account code changes
   useEffect(() => {
     const fetchCustomerDetails = async () => {
-      if (!customerCode) {
+      if (!normalizedCustomerCode) {
         setValue("name", "");
         return;
       }
 
       try {
         const response = await axios.get(
-          `${server}/customer-account?accountCode=${customerCode}`
+          `${server}/customer-account?accountCode=${normalizedCustomerCode}`,
         );
         if (response.data) {
           setValue("name", response.data.name || "");
@@ -89,7 +95,7 @@ function DebitNote() {
     };
 
     fetchCustomerDetails();
-  }, [customerCode, server, setValue]);
+  }, [normalizedCustomerCode, server, setValue]);
 
   const columns = useMemo(
     () => [
@@ -101,7 +107,7 @@ function DebitNote() {
       { key: "branch", label: "Branch" },
       { key: "grandTotal", label: "Grand Total" },
     ],
-    []
+    [],
   );
 
   const handleShow = async () => {
@@ -146,12 +152,12 @@ function DebitNote() {
         toDate: toISO,
       });
 
-      if (customerCode) {
-        params.append("customerCode", customerCode);
+      if (normalizedCustomerCode) {
+        params.append("customerCode", normalizedCustomerCode);
       }
 
       const response = await axios.get(
-        `${server}/email-debit-note?${params.toString()}`
+        `${server}/email-debit-note?${params.toString()}`,
       );
 
       // console.log("API Response:", response.data);
@@ -170,7 +176,10 @@ function DebitNote() {
             if (debitNote.customerCode) {
               try {
                 const customerResponse = await axios.get(
-                  `${server}/customer-account?accountCode=${debitNote.customerCode}`
+                  `${server}/customer-account?accountCode=${debitNote.customerCode
+                    .toString()
+                    .trim()
+                    .toUpperCase()}`,
                 );
                 if (customerResponse.data?.billingEmailId) {
                   email = customerResponse.data.billingEmailId;
@@ -178,7 +187,7 @@ function DebitNote() {
               } catch (error) {
                 console.error(
                   `Error fetching email for ${debitNote.customerCode}:`,
-                  error
+                  error,
                 );
               }
             }
@@ -186,7 +195,7 @@ function DebitNote() {
             return {
               debitNoteNo: debitNote.debitNoteNo,
               debitNoteDate: new Date(
-                debitNote.debitNoteDate
+                debitNote.debitNoteDate,
               ).toLocaleDateString("en-IN"),
               customerCode: debitNote.customerCode,
               customerName: debitNote.customerName,
@@ -194,7 +203,7 @@ function DebitNote() {
               branch: debitNote.branch,
               grandTotal: `₹${debitNote.grandTotal.toFixed(2)}`,
             };
-          })
+          }),
         );
 
         setRowData(formattedData);
@@ -245,7 +254,7 @@ function DebitNote() {
 
     // Validate that all selected debit notes have emails
     const itemsWithoutEmail = selectedItems.filter(
-      (item) => !item.emailId || item.emailId === "N/A" || item.emailId === ""
+      (item) => !item.emailId || item.emailId === "N/A" || item.emailId === "",
     );
 
     if (itemsWithoutEmail.length > 0) {
@@ -295,7 +304,7 @@ function DebitNote() {
 
     // Validate that all selected debit notes have emails
     const itemsWithoutEmail = selectedItems.filter(
-      (item) => !item.emailId || item.emailId === "N/A" || item.emailId === ""
+      (item) => !item.emailId || item.emailId === "N/A" || item.emailId === "",
     );
 
     if (itemsWithoutEmail.length > 0) {
