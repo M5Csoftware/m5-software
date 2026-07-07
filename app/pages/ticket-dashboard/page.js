@@ -1,6 +1,6 @@
 //app/ticket-dashboard/page.js
 "use client";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useMemo } from "react";
 import { Search, RefreshCcw, ChevronDown, ExternalLink, X } from "lucide-react";
 import { TableWithSorting } from "@/app/components/Table";
 import { useForm } from "react-hook-form";
@@ -44,6 +44,21 @@ export default function TicketDashboard() {
   const [downloadFrom, setDownloadFrom] = useState("");
   const [downloadTo, setDownloadTo] = useState("");
   const [resetFactor, setResetFactor] = useState(false);
+  const [searchText, setSearchText] = useState("");
+
+  const filteredReports = useMemo(() => {
+    if (!searchText.trim()) return reports;
+    const query = searchText.toLowerCase();
+    return reports.filter((item) => {
+      return Object.entries(item).some(([key, val]) => {
+        if (key === "view") return false;
+        if (typeof val === "string" || typeof val === "number") {
+          return val.toString().toLowerCase().includes(query);
+        }
+        return false;
+      });
+    });
+  }, [reports, searchText]);
 
   const selectedRange = watch("dateRange");
   const fromDate = watch("fromDate");
@@ -173,11 +188,15 @@ export default function TicketDashboard() {
 
   const ymdToDmy = (d) => {
     if (!d) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const [yyyy, mm, dd] = d.split("-");
+      return `${dd}/${mm}/${yyyy}`;
+    }
     const date = new Date(d);
-    if (isNaN(date)) return "";
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = date.getFullYear();
+    if (isNaN(date.getTime())) return "";
+    const dd = String(date.getUTCDate()).padStart(2, "0");
+    const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const yyyy = date.getUTCFullYear();
     return `${dd}/${mm}/${yyyy}`;
   };
 
@@ -695,6 +714,8 @@ export default function TicketDashboard() {
               type="text"
               placeholder="Search Complaints"
               className="outline-none"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
             />
           </div>
 
@@ -705,7 +726,7 @@ export default function TicketDashboard() {
               setValue={setValue}
               name="complaintTable"
               columns={columns}
-              rowData={reports}
+              rowData={filteredReports}
               className={`h-[45vh]`}
             />
             {isFullscreen && (
@@ -732,7 +753,7 @@ export default function TicketDashboard() {
                   setValue={setValue}
                   name="complaintTable"
                   columns={columns}
-                  rowData={reports}
+                  rowData={filteredReports}
                   className={`h-[85vh]`}
                 />
               </div>
