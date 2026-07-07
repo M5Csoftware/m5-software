@@ -49,6 +49,12 @@ function DateRangeWise() {
   const fromDate = watch("from");
   const toDate = watch("to");
 
+  // Normalize customer code so "dl001", "Dl001", "DL001" etc. all resolve
+  // to the same account (backend stores/matches it as uppercase).
+  const normalizedCustomerCode = customerCode
+    ? customerCode.toString().trim().toUpperCase()
+    : "";
+
   const parseDateDDMMYYYY = (str) => {
     if (!str) return null;
     const [d, m, y] = str.split("/");
@@ -73,7 +79,7 @@ function DateRangeWise() {
       { key: "exchangeRate", label: "Exchange Rate" },
       { key: "exchangeAmount", label: "Exchange Amount" },
     ],
-    []
+    [],
   );
 
   const showNotification = (type, message) => {
@@ -87,13 +93,13 @@ function DateRangeWise() {
 
   // Fetch customer name when customer code changes
   useEffect(() => {
-    if (customerCode && customerCode.length > 0) {
-      fetchCustomerName(customerCode);
+    if (normalizedCustomerCode) {
+      fetchCustomerName(normalizedCustomerCode);
     } else {
       setCustomerName("");
       setValue("name", "");
     }
-  }, [customerCode]);
+  }, [normalizedCustomerCode]);
 
   const fetchBranches = async () => {
     try {
@@ -112,7 +118,7 @@ function DateRangeWise() {
   const fetchCustomerName = async (code) => {
     try {
       const response = await axios.get(
-        `${server}/customer-account?accountCode=${code}`
+        `${server}/customer-account?accountCode=${code}`,
       );
       if (response.data && response.data.name) {
         const name = response.data.name;
@@ -172,13 +178,16 @@ function DateRangeWise() {
       }
 
       if (customerCode) {
-        params.append("accountCode", customerCode);
+        params.append(
+          "accountCode",
+          customerCode.toString().trim().toUpperCase(),
+        );
       }
 
       console.log("Fetching with pagination:", { page, limit: pageLimit });
 
       const response = await axios.get(
-        `${server}/invoice-ptp-summary?${params.toString()}`
+        `${server}/invoice-ptp-summary?${params.toString()}`,
       );
 
       if (response.data.success && Array.isArray(response.data.data)) {
@@ -210,7 +219,7 @@ function DateRangeWise() {
         }));
 
         setRowData(formattedData);
-        
+
         // Set pagination info
         if (response.data.pagination) {
           setCurrentPage(response.data.pagination.currentPage);
@@ -220,7 +229,7 @@ function DateRangeWise() {
 
         showNotification(
           "success",
-          `Found ${formattedData.length} invoice(s) (Page ${response.data.pagination?.currentPage || page} of ${response.data.pagination?.totalPages || 1})`
+          `Found ${formattedData.length} invoice(s) (Page ${response.data.pagination?.currentPage || page} of ${response.data.pagination?.totalPages || 1})`,
         );
       } else {
         setRowData([]);
@@ -232,7 +241,7 @@ function DateRangeWise() {
       console.error("Error fetching invoice data:", error);
       showNotification(
         "error",
-        error.response?.data?.message || "Failed to fetch invoice data"
+        error.response?.data?.message || "Failed to fetch invoice data",
       );
       setRowData([]);
       setTotalRecords(0);
@@ -247,7 +256,7 @@ function DateRangeWise() {
     if (newPage < 1 || newPage > totalPages || !currentFilters) return;
 
     // Scroll to top of table
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
 
     // Fetch new page
     fetchInvoiceDataWithPagination(currentFilters, newPage);
@@ -273,19 +282,22 @@ function DateRangeWise() {
       fromDate,
       toDate,
       selectedBranch,
-      customerCode,
+      customerCode: normalizedCustomerCode,
     });
 
     // Reset to page 1 for new search
     setCurrentPage(1);
 
     // Fetch first page
-    await fetchInvoiceDataWithPagination({
-      fromDate,
-      toDate,
-      selectedBranch,
-      customerCode,
-    }, 1);
+    await fetchInvoiceDataWithPagination(
+      {
+        fromDate,
+        toDate,
+        selectedBranch,
+        customerCode: normalizedCustomerCode,
+      },
+      1,
+    );
   };
 
   const handlePrint = () => {
@@ -307,8 +319,8 @@ function DateRangeWise() {
       doc.text(`Branch: ${selectedBranch}`, 14, yPos);
       yPos += 5;
     }
-    if (customerCode) {
-      doc.text(`Customer Code: ${customerCode}`, 14, yPos);
+    if (normalizedCustomerCode) {
+      doc.text(`Customer Code: ${normalizedCustomerCode}`, 14, yPos);
       yPos += 5;
     }
     doc.text(`Date Range: ${fromDate || ""} to ${toDate || ""}`, 14, yPos);
@@ -565,16 +577,14 @@ function DateRangeWise() {
             rowData={rowData}
             className="h-[450px]"
           />
-          
+
           {/* Pagination Controls */}
           <PaginationControls />
 
           {/* Total Records Display */}
           <div className="flex justify-between mt-2">
             <div className="text-sm text-gray-600">
-              {totalRecords > 0 && (
-                <span>Total Records: {totalRecords}</span>
-              )}
+              {totalRecords > 0 && <span>Total Records: {totalRecords}</span>}
             </div>
           </div>
         </div>
