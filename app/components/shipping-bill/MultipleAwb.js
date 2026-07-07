@@ -295,6 +295,7 @@ const MultipleAwb = ({ register, setValue }) => {
         <TableWithSorting
           register={register}
           setValue={setValue}
+          name="shipping_bill_multiple"
           rowData={rowData}
           columns={columns}
           className="h-[45vh]"
