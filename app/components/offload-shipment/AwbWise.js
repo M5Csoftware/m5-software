@@ -83,6 +83,7 @@ function AwbWise() {
           accountCode: response.data.data.accountCode,
           customerName: response.data.data.customerName,
           email: response.data.data.email,
+          runNo: response.data.data.runNo || "",
         };
 
         setRowData((prev) => [...prev, newRow]);
