@@ -256,7 +256,7 @@ const PortalTicketDetails = () => {
           <h2>No Information Found!</h2>
           <button
             className="bg-red text-white px-4 py-2 rounded mt-3"
-            onClick={() => window.history.back()}
+            onClick={handleClose}
           >
             Go back to Ticket Dashboard
           </button>
