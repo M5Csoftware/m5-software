@@ -23,7 +23,7 @@ function DashboardSummaryCard({
 
     const formatAmount = (label, amount) => {
         return label.toLowerCase() === 'weight'
-            ? `${amount} Kg`
+            ? `${Number(amount).toFixed(2)} Kg`
             : `₹${amount.toLocaleString()}`;
     };
 
