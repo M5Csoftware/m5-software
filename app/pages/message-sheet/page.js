@@ -80,22 +80,93 @@ const MessageSheet = () => {
     }
   };
 
+  // Bagging API returns a single object shaped like { mhbsNo, rowData: [...] },
+  // not an array. Return it as-is instead of wrapping it in an array.
   const fetchBaggingDataByRunNo = async (runNo) => {
     try {
       const response = await axios.get(
         `${server}/bagging?runNo=${runNo.toUpperCase()}`,
       );
       // console.log("Bagging API Response:", response.data);
-      return Array.isArray(response.data) ? response.data : [response.data];
+      return response.data || null;
     } catch (error) {
       console.error("Error fetching bagging data:", error);
       showNotification("error", "Failed to fetch bagging data");
-      return [];
+      return null;
     }
   };
 
+  // Given a child AWB number, resolve its master AWB number using the
+  // existing `?awbNo=` endpoint (getAwbDetails), which checks the
+  // ChildShipment collection and returns { type: "child", masterAwbNo }.
+  const resolveMasterAwbForChild = async (childAwbNo) => {
+    try {
+      const response = await axios.get(
+        `${server}/bagging?awbNo=${childAwbNo.toString().trim().toUpperCase()}`,
+      );
+      return response.data?.masterAwbNo || null;
+    } catch (error) {
+      console.error(
+        `Error resolving master AWB for child shipment ${childAwbNo}:`,
+        error,
+      );
+      return null;
+    }
+  };
+
+  // Build an awbNo -> {bagNo, bagWeight, clubNo, childNo} lookup from
+  // baggingData.rowData. rowData contains two kinds of entries:
+  //  - master entries: { awbNo, bagNo, bagWeight, ... }
+  //  - child entries:  { childShipment, bagNo, bagWeight, ... } (no awbNo)
+  // A child entry has no direct link back to its master AWB inside rowData,
+  // so for each child entry we resolve its master AWB via the AWB details
+  // endpoint and attach the child number (dummy) onto that master's row.
+  const createBaggingLookup = async (baggingData) => {
+    const lookup = {};
+    if (!baggingData || !Array.isArray(baggingData.rowData)) return lookup;
+
+    // First pass: master rows
+    baggingData.rowData.forEach((item) => {
+      if (item.awbNo) {
+        lookup[item.awbNo] = {
+          bagNo: item.bagNo || "",
+          bagWeight: item.bagWeight || "",
+          clubNo: item.totalClubNo || baggingData.totalClubNo || "",
+          childNo: "",
+        };
+      }
+    });
+
+    // Second pass: child rows - resolve master AWB and attach childNo (dummy)
+    const childRows = baggingData.rowData.filter(
+      (item) => item.childShipment && !item.awbNo,
+    );
+
+    await Promise.all(
+      childRows.map(async (item) => {
+        const masterAwbNo = await resolveMasterAwbForChild(item.childShipment);
+        if (!masterAwbNo) return;
+
+        if (!lookup[masterAwbNo]) {
+          lookup[masterAwbNo] = {
+            bagNo: "",
+            bagWeight: "",
+            clubNo: "",
+            childNo: "",
+          };
+        }
+        lookup[masterAwbNo].childNo = item.childShipment;
+      }),
+    );
+
+    return lookup;
+  };
+
   // Data Processing Functions
-  const processShipmentData = (shipmentData, baggingData = []) => {
+  // Note: baggingLookup is now the already-resolved lookup object (built via
+  // createBaggingLookup), not the raw baggingData, since resolving child
+  // AWBs to their master requires async API calls done ahead of time.
+  const processShipmentData = (shipmentData, baggingLookup = {}) => {
     // console.log("Processing shipment data:", shipmentData);
     const processedData = [];
 
@@ -109,10 +180,8 @@ const MessageSheet = () => {
 
       // console.log("Processing shipment:", shipment);
 
-      // Find corresponding bagging data for this shipment
-      const baggingInfo = baggingData.find(
-        (bag) => bag.awbNo === shipment.awbNo || bag.runNo === shipment.runNo,
-      );
+      const awbNo = shipment.awbNo || shipment.awb || "";
+      const baggingInfo = baggingLookup[awbNo] || {};
 
       // Extract consignee address - handle different field structures
       const consigneeFields = [
@@ -145,23 +214,25 @@ const MessageSheet = () => {
       // Create table row with proper mapping
       const tableRow = {
         sno: index + 1,
-        clubNo: baggingInfo?.totalClubNo || "",
-        awbNo: shipment.awbNo || shipment.awb || "",
+        clubNo: baggingInfo.clubNo || "",
+        awbNo,
         consignee: consigneeAddress,
         pcs: pcsValue,
         runNo: shipment.runNo || "",
-        dummy: "",
-        bagNo: baggingInfo?.rowData?.[0]?.bagNo || baggingInfo?.bagNo || "",
-        bagWeight:
-          baggingInfo?.rowData?.[0]?.bagWeight || baggingInfo?.bagWeight || "",
+        dummy: baggingInfo.childNo || "",
+        bagNo: baggingInfo.bagNo || "",
+        bagWeight: baggingInfo.bagWeight || "",
         forwardingNo: shipment.forwardingNo || "",
         service: shipment.service || "",
       };
 
       // console.log("Created table row:", tableRow);
       processedData.push(tableRow);
-      showNotification("success", "Data loaded successfully");
     });
+
+    if (processedData.length > 0) {
+      showNotification("success", "Data loaded successfully");
+    }
 
     // console.log("Final processed data:", processedData);
     return processedData;
@@ -235,9 +306,13 @@ const MessageSheet = () => {
         return;
       }
 
+      // Build the awbNo -> {bagNo, bagWeight, clubNo, childNo} lookup,
+      // resolving each child shipment's master AWB via the API first.
+      const baggingLookup = await createBaggingLookup(baggingData);
+
       // Process the data to create table rows
       // console.log("Processing data...");
-      const processedData = processShipmentData(shipmentData, baggingData);
+      const processedData = processShipmentData(shipmentData, baggingLookup);
       // console.log("✓ Data processed:", processedData);
 
       if (processedData.length === 0) {
