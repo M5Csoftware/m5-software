@@ -26,7 +26,7 @@ function Tabs() {
     const fetchInitialCount = async () => {
       try {
         const response = await fetch(
-          `${NODE_SERVER}/tasks/unread-count?userId=${user.userId}`
+          `${NODE_SERVER}/tasks/unread-count?userId=${user.userId}`,
         );
         const data = await response.json();
         if (data.success) {
@@ -85,6 +85,12 @@ function Tabs() {
     }
 
     setActiveTabs(newActiveTabs);
+  };
+
+  // Close all open tabs at once
+  const handleCloseAll = () => {
+    setActiveTabs([]);
+    setCurrentTab(null);
   };
 
   const handleLogoutClick = () => {
@@ -187,6 +193,17 @@ function Tabs() {
         </div>
 
         <div className="flex items-center gap-1 justify-center px-4 bg-gray-50 border-l sticky right-0  z-50">
+          {activeTabs.length > 1 && (
+            <button
+              onClick={handleCloseAll}
+              title="Close All Tabs"
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-gray-600 hover:bg-gray-100 transition-colors whitespace-nowrap"
+            >
+              <Image src="/close.svg" alt="close all" width={14} height={14} />
+              <span>Close All</span>
+            </button>
+          )}
+
           <UpdateNotification variant="topbar" />
 
           {/* ── TASK & CHAT ORGANISER BUTTON ── */}

@@ -29,6 +29,12 @@ function Normal() {
   const fromDate = watch("from");
   const toDate = watch("to");
 
+  // Normalize customer code so "dl001", "Dl001", "DL001" etc. all resolve
+  // to the same account (backend stores/matches it as uppercase).
+  const normalizedCustomerCode = customerCode
+    ? customerCode.toString().trim().toUpperCase()
+    : "";
+
   // Fetch branches on mount
   useEffect(() => {
     const fetchBranches = async () => {
@@ -53,14 +59,14 @@ function Normal() {
   // Fetch customer details when account code changes
   useEffect(() => {
     const fetchCustomerDetails = async () => {
-      if (!customerCode) {
+      if (!normalizedCustomerCode) {
         setValue("name", "");
         return;
       }
 
       try {
         const response = await axios.get(
-          `${server}/customer-account?accountCode=${customerCode}`
+          `${server}/customer-account?accountCode=${normalizedCustomerCode}`,
         );
         if (response.data) {
           setValue("name", response.data.name || "");
@@ -72,7 +78,7 @@ function Normal() {
     };
 
     fetchCustomerDetails();
-  }, [customerCode, server, setValue]);
+  }, [normalizedCustomerCode, server, setValue]);
 
   const columns = useMemo(
     () => [
@@ -84,7 +90,7 @@ function Normal() {
       { key: "branch", label: "Branch" },
       { key: "grandTotal", label: "Grand Total" },
     ],
-    []
+    [],
   );
 
   const toISODate = (val) => {
@@ -157,12 +163,12 @@ function Normal() {
         toDate: toISO,
       });
 
-      if (customerCode) {
-        params.append("customerCode", customerCode);
+      if (normalizedCustomerCode) {
+        params.append("customerCode", normalizedCustomerCode);
       }
 
       const response = await axios.get(
-        `${server}/email-invoice?${params.toString()}`
+        `${server}/email-invoice?${params.toString()}`,
       );
 
       // console.log("API Response:", response.data);
@@ -181,7 +187,10 @@ function Normal() {
             if (invoice.customerCode) {
               try {
                 const customerResponse = await axios.get(
-                  `${server}/customer-account?accountCode=${invoice.customerCode}`
+                  `${server}/customer-account?accountCode=${invoice.customerCode
+                    .toString()
+                    .trim()
+                    .toUpperCase()}`,
                 );
                 if (customerResponse.data?.billingEmailId) {
                   email = customerResponse.data.billingEmailId;
@@ -189,7 +198,7 @@ function Normal() {
               } catch (error) {
                 console.error(
                   `Error fetching email for ${invoice.customerCode}:`,
-                  error
+                  error,
                 );
               }
             }
@@ -197,7 +206,7 @@ function Normal() {
             return {
               invoiceNo: invoice.invoiceNo,
               invoiceDate: new Date(invoice.invoiceDate).toLocaleDateString(
-                "en-IN"
+                "en-IN",
               ),
               customerCode: invoice.customerCode,
               customerName: invoice.customerName,
@@ -205,7 +214,7 @@ function Normal() {
               branch: invoice.branch,
               grandTotal: `₹${invoice.grandTotal.toFixed(2)}`,
             };
-          })
+          }),
         );
 
         setRowData(formattedData);
@@ -256,7 +265,7 @@ function Normal() {
 
     // Validate that all selected invoices have emails
     const itemsWithoutEmail = selectedItems.filter(
-      (item) => !item.emailId || item.emailId === "N/A" || item.emailId === ""
+      (item) => !item.emailId || item.emailId === "N/A" || item.emailId === "",
     );
 
     if (itemsWithoutEmail.length > 0) {
@@ -306,7 +315,7 @@ function Normal() {
 
     // Validate that all selected invoices have emails
     const itemsWithoutEmail = selectedItems.filter(
-      (item) => !item.emailId || item.emailId === "N/A" || item.emailId === ""
+      (item) => !item.emailId || item.emailId === "N/A" || item.emailId === "",
     );
 
     if (itemsWithoutEmail.length > 0) {
