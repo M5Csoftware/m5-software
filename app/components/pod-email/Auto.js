@@ -11,7 +11,7 @@ import { toast } from "react-hot-toast";
 import NotificationFlag from "../Notificationflag";
 
 const Auto = () => {
-  const { register, setValue, watch } = useForm();
+  const { register, setValue, getValues } = useForm();
   const { server } = useContext(GlobalContext);
   const [rowData, setRowData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -43,7 +43,7 @@ const Auto = () => {
   ];
 
   const handleSearch = async () => {
-    const sector = watch("sector");
+    const sector = getValues("sector");
 
     if (!sector) {
       toast.error("Please enter a sector");
@@ -202,7 +202,7 @@ const Auto = () => {
           <TableWithCheckbox
             register={register}
             setValue={setValue}
-            name="bagging"
+            name="pod_email_auto"
             columns={columns}
             rowData={filteredData}
             selectedItems={selectedItems}
