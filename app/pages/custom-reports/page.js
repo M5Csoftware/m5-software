@@ -15,6 +15,7 @@ import { TableWithSorting } from "@/app/components/Table";
 import { GlobalContext } from "@/app/lib/GlobalContext";
 
 const CustomReports = () => {
+  const { server, sectors } = useContext(GlobalContext);
   const { register, setValue, watch, reset } = useForm();
   const department = watch("department");
   const [selectedFields, setSelectedFields] = useState({
@@ -277,8 +278,6 @@ const CustomReports = () => {
     });
     setReportData([]);
   };
-
-  const { server, sectors } = useContext(GlobalContext);
 
   return (
     <div>
