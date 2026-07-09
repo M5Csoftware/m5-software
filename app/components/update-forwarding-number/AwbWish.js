@@ -57,14 +57,17 @@ const AwbWish = ({ refreshKey }) => {
     { key: "coLoaderNumber", label: "Co-Loader No." },
   ];
 
-  // Fetch AWB
+  // Fetch AWB with debounce
   useEffect(() => {
-    if (!watchedAwb) return;
+    if (!watchedAwb || watchedAwb.trim().length < 3) {
+      setRowData([]);
+      return;
+    }
 
     const fetchAwbData = async () => {
       try {
         const res = await axios.get(
-          `${server}/portal/create-shipment/update-forwarding-number?awbNo=${watchedAwb}`
+          `${server}/portal/create-shipment/update-forwarding-number?awbNo=${watchedAwb.trim().toUpperCase()}`
         );
 
         const data = res.data;
@@ -98,8 +101,12 @@ const AwbWish = ({ refreshKey }) => {
       }
     };
 
-    fetchAwbData();
-  }, [watchedAwb]);
+    const delayDebounceFn = setTimeout(() => {
+      fetchAwbData();
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [watchedAwb, server, setValue]);
 
   const handleSave = async () => {
     const valid = await trigger();

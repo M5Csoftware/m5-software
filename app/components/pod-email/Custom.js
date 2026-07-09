@@ -9,10 +9,9 @@ import { GlobalContext } from "@/app/lib/GlobalContext";
 import axios from "axios";
 import { toast } from "react-hot-toast";
 import NotificationFlag from "../Notificationflag";
-import { show } from "@tauri-apps/api/app";
 
 const Custom = () => {
-  const { register, setValue, watch } = useForm();
+  const { register, setValue, getValues } = useForm();
   const { server } = useContext(GlobalContext);
   const [rowData, setRowData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -43,9 +42,9 @@ const Custom = () => {
   ];
 
   const handleSearch = async () => {
-    const sector = watch("sector");
-    const from = watch("from");
-    const to = watch("to");
+    const sector = getValues("sector");
+    const from = getValues("from");
+    const to = getValues("to");
 
     if (!sector) {
       toast.error("Please enter a sector");
@@ -230,7 +229,7 @@ const Custom = () => {
           <TableWithCheckbox
             register={register}
             setValue={setValue}
-            name="bagging"
+            name="pod_email_custom"
             columns={columns}
             rowData={filteredData}
             selectedItems={selectedItems}

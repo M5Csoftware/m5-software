@@ -98,11 +98,16 @@ function DeleteShipment() {
 
     // ── Fetch customer name when code changes ─────────────────────────────────
     React.useEffect(() => {
-        if (customerCode && customerCode.trim().length >= 3) {
-            fetchCustomerName(customerCode.trim());
-        } else {
+        if (!customerCode || customerCode.trim().length < 3) {
             setValue("customerName", "");
+            return;
         }
+
+        const timeoutId = setTimeout(() => {
+            fetchCustomerName(customerCode.trim());
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
     }, [customerCode]);
 
     const fetchCustomerName = async (code) => {

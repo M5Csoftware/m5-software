@@ -764,33 +764,23 @@ function EventActivity() {
 
             {/* Results Table */}
             <div>
-              {/* <TableWithCheckbox
+              <TableWithCheckbox
                 register={register}
                 setValue={setValue}
-                name="event activity"
+                name="event_activity"
                 columns={columns}
                 rowData={rowData}
                 selectedItems={selectedItems}
                 setSelectedItems={setSelectedItems}
                 className={`h-[15vh]`}
-              /> */}
-              <TableWithSorting
-                register={register}
-                setValue={setValue}
-                name={"Event Activity"}
-                columns={columns}
-                rowData={rowData}
-                selectedItems={selectedItems}
-                setSelectedItems={setSelectedItems}
-                className={`h-[10vh]`}
               />
             </div>
 
-            {/* <OutlinedButtonRed
+            <OutlinedButtonRed
               label={"Exclude Selected"}
               onClick={handleExcludeSelected}
               disabled={loading || selectedItems.length === 0}
-            /> */}
+            />
           </div>
 
           {/* Shipment Event Activity Section */}

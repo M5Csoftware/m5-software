@@ -303,20 +303,27 @@ function PODEntry() {
     try {
       await createPODActivity(payload);
 
-      // ✅ NEW: Batch Logging
+      // ✅ OPTIMIZED: Batch Logging with Client-side Cache and Concurrent Calls
+      const customerCache = {};
       const getCustomerName = async (accountCode) => {
         if (!accountCode) return "";
+        if (customerCache[accountCode] !== undefined) {
+          return customerCache[accountCode];
+        }
         try {
           const res = await axios.get(
             `${server}/customer-account?accountCode=${accountCode}`,
           );
-          return res.data?.name || "";
+          const name = res.data?.name || "";
+          customerCache[accountCode] = name;
+          return name;
         } catch {
+          customerCache[accountCode] = "";
           return "";
         }
       };
 
-      for (const item of list) {
+      const logPromises = list.map(async (item) => {
         try {
           const customer = await getCustomerName(item.accountCode);
           await pushAWBLog({
@@ -330,7 +337,9 @@ function PODEntry() {
         } catch (logErr) {
           console.error("❌ Failed to push AWB Log for:", item.awbNo, logErr);
         }
-      }
+      });
+
+      await Promise.all(logPromises);
 
       handleRefresh();
     } catch {}

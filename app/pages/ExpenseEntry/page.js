@@ -186,23 +186,20 @@ function ExpenseEntry() {
   };
 
   const handleDownload = () => {
+    const fromISO = toISODate(downloadFrom);
+    const toISO = toISODate(downloadTo);
+
+    if (!fromISO || !toISO) {
+      showNotification("error", "Invalid download date range");
+      return;
+    }
+
+    const from = new Date(fromISO);
+    const to = new Date(toISO);
+
     const filteredData = rowData.filter((item) => {
-      const fromISO = toISODate(downloadFrom);
-      const toISO = toISODate(downloadTo);
-
-      if (!fromISO || !toISO) {
-        showNotification("error", "Invalid download date range");
-        return;
-      }
-
-      const from = new Date(fromISO);
-      const to = new Date(toISO);
-
-      const filteredData = rowData.filter((item) => {
-        const itemDate = new Date(item.date);
-        return itemDate >= from && itemDate <= to;
-      });
-
+      if (!item.date) return false;
+      const itemDate = new Date(item.date);
       return itemDate >= from && itemDate <= to;
     });
 

@@ -155,7 +155,6 @@ const ExcelPoa = () => {
           shipmentDate: formatDate(watchedDate),
         })),
       );
-      showNotification("success", "Date applied to all rows");
     }
   }, [watchedDate]);
 

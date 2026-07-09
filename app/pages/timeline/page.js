@@ -28,7 +28,7 @@ import { toast, Toaster } from "react-hot-toast";
 import { format, isSameDay, parseISO, startOfDay } from "date-fns";
 
 const TimelinePage = () => {
-  const { activeTabs, currentTab } = useContext(GlobalContext);
+  const { activeTabs, currentTab, server } = useContext(GlobalContext);
   const searchParams = useSearchParams();
 
   // Get customer from current tab metadata or search params
@@ -88,12 +88,8 @@ const TimelinePage = () => {
     setManagePage(1);
   }, [manageSearchQuery, manageDateQuery]);
 
-  const API_URL =
-    (process.env.NEXT_PUBLIC_SERVER || "http://localhost:3001/api") +
-    "/timeline";
-  const EFFECTIVE_API_URL =
-    (process.env.NEXT_PUBLIC_SERVER || "http://localhost:3001/api") +
-    "/effective-events";
+  const API_URL = `${server}/timeline`;
+  const EFFECTIVE_API_URL = `${server}/effective-events`;
 
   const { register, handleSubmit, reset, setValue, watch } = useForm({
     defaultValues: {
@@ -726,7 +722,7 @@ const TimelinePage = () => {
 
                   <div className="space-y-2.5 relative">
                     {filteredEvents.map((event, index) => (
-                      <div key={event._id} className="flex gap-6 group">
+                      <div key={event._id || event.id || index} className="flex gap-6 group">
                         {/* Timeline Marker */}
                         <div className="relative flex flex-col items-center">
                           <div className="w-[60px] hidden md:flex flex-col items-center justify-center bg-white border border-french-gray/20 rounded-xl py-1.5 shadow-sm group-hover:border-red/30 transition-colors">
@@ -866,9 +862,9 @@ const TimelinePage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedManagedEvents.map((event) => (
+                  {paginatedManagedEvents.map((event, index) => (
                     <tr
-                      key={event._id}
+                      key={event._id || event.id || index}
                       className="group bg-white-smoke hover:bg-misty-rose/30 transition-colors rounded-xl overflow-hidden"
                     >
                       <td className="px-4 py-3 first:rounded-l-xl">

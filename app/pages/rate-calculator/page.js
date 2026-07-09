@@ -86,49 +86,20 @@ const RateCalculator = () => {
           }
         }
 
-        // console.log(
-//           "⚠️ Customer not found in GlobalContext, fetching from API...",
-//         );
+        // If not found in context, try the standard customer API call
+        const response = await axios.get(`${server}/customer-account?accountCode=${accountCode}`);
 
-        // If not found in context, try API call
-        const response = await axios.get(`${server}/accounts`);
-
-        if (response.data && Array.isArray(response.data)) {
-          const customerAccount = response.data.find(
-            (account) => account.accountCode?.toUpperCase() === accountCode,
-          );
-
-          if (customerAccount) {
-            // console.log("✅ Found customer via API:", customerAccount.name);
-            setCustomerName(customerAccount.name);
-            setValue("customerName", customerAccount.name);
-          } else {
-            // console.log("❌ Customer not found in API response");
-            setCustomerName("Customer not found");
-            setValue("customerName", "Customer not found");
-          }
+        if (response.data && response.data.name) {
+          setCustomerName(response.data.name);
+          setValue("customerName", response.data.name);
         } else {
-          setCustomerName("");
-          setValue("customerName", "");
+          setCustomerName("Customer not found");
+          setValue("customerName", "Customer not found");
         }
       } catch (error) {
         console.error("❌ Error fetching customer name:", error);
-        setCustomerName("");
-        setValue("customerName", "");
-
-        // Fallback: Try with customer-specific endpoint
-        try {
-          const fallbackResponse = await axios.get(
-            `${server}/customers/${accountCode}`,
-          );
-
-          if (fallbackResponse.data && fallbackResponse.data.name) {
-            setCustomerName(fallbackResponse.data.name);
-            setValue("customerName", fallbackResponse.data.name);
-          }
-        } catch (fallbackError) {
-          console.error("❌ Fallback API also failed:", fallbackError);
-        }
+        setCustomerName("Customer not found");
+        setValue("customerName", "Customer not found");
       } finally {
         setLoadingCustomerName(false);
       }

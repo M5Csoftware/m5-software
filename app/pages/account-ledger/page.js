@@ -125,7 +125,7 @@ function AccountLedger() {
         ...item,
         Date: item.originalDate ? formatDate(item.originalDate) : "",
       })),
-    [rowData],
+    [rowData, formatDate],
   );
 
   const handleRefresh = () => {

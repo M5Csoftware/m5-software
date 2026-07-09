@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useForm } from "react-hook-form";
 import axios from "axios";
 import { jsPDF } from "jspdf";
@@ -8,10 +8,10 @@ import { RedLabelHeading } from "../Heading";
 import InputBox, { DateInputBox } from "../InputBox";
 import { OutlinedButtonRed, SimpleButton } from "../Buttons";
 import NotificationFlag from "@/app/components/Notificationflag";
-
-const server = "https://m5c-server.vercel.app/api/portal/get-shipments";
+import { GlobalContext } from "@/app/lib/GlobalContext";
 
 const Poa = () => {
+  const { server } = useContext(GlobalContext);
   const { register, setValue, watch, reset } = useForm();
   const [awbFound, setAwbFound] = useState(false);
   const [receiverName, setReceiverName] = useState("");
@@ -40,15 +40,16 @@ const Poa = () => {
       return `${day}/${month}/${year}`;
     }
 
-    // Format: DD/MM/YYYY  →  already correct
+    // Format: XX/XX/XXXX  →  Check if MM/DD/YYYY or DD/MM/YYYY
     if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+      const [first, second, year] = dateStr.split("/");
+      const fNum = parseInt(first, 10);
+      const sNum = parseInt(second, 10);
+      if (sNum > 12) {
+        // Second part is Day, first is Month (MM/DD/YYYY) -> Convert to DD/MM/YYYY
+        return `${second}/${first}/${year}`;
+      }
       return dateStr;
-    }
-
-    // Format: MM/DD/YYYY  →  DD/MM/YYYY
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
-      const [month, day, year] = dateStr.split("/");
-      return `${day}/${month}/${year}`;
     }
 
     // Format: YYYYMMDD  →  DD/MM/YYYY
@@ -90,7 +91,7 @@ const Poa = () => {
       }
 
       try {
-        const res = await axios.get(server, {
+        const res = await axios.get(`${server}/portal/get-shipments`, {
           params: { awbNo: airwaybillNumber },
         });
 
