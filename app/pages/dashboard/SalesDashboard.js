@@ -64,85 +64,58 @@ function SalesDashboard() {
 
   // Fetch service-wise data
   const fetchServiceWiseData = async () => {
-    try {
-      // Get user object from localStorage
-      const userStr = localStorage.getItem("user");
-
-      if (!userStr) {
-        console.error("No user found in localStorage");
-        setLoading(false);
-        return;
-      }
-
-      // Parse the user object
-      const user = JSON.parse(userStr);
-      const userId = user.userId;
-
-      // console.log("🔍 Retrieved userId:", userId);
-
-      if (!userId) {
-        console.error("No userId found in user object");
-        setLoading(false);
-        return;
-      }
-
-      const response = await axios.post(
-        `${server}/dashboard/sales-dashboard/service-wise`,
-        {
-          userId,
-        }
-      );
-
-      // console.log("📦 Response from API:", response.data);
-
-      if (response.data) {
-        setServiceWiseData(response.data);
-      }
-    } catch (error) {
-      console.error("Error fetching service-wise data:", error);
-      console.error("Error details:", error.response?.data);
-    } finally {
-      setLoading(false);
+    const userStr = localStorage.getItem("user");
+    if (!userStr) {
+      console.error("No user found in localStorage");
+      return;
+    }
+    const user = JSON.parse(userStr);
+    const userId = user.userId;
+    if (!userId) {
+      console.error("No userId found in user object");
+      return;
+    }
+    const response = await axios.post(
+      `${server}/dashboard/sales-dashboard/service-wise`,
+      { userId }
+    );
+    if (response.data) {
+      setServiceWiseData(response.data);
     }
   };
 
   const fetchSectorWiseData = async () => {
-    try {
-      const user = JSON.parse(localStorage.getItem("user"));
-      if (!user) return;
-
-      const response = await axios.post(
-        `${server}/dashboard/sales-dashboard/sector-wise`,
-        { userId: user.userId }
-      );
-
-      setSectorWiseData(response.data);
-    } catch (err) {
-      console.error(err);
-    }
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) return;
+    const response = await axios.post(
+      `${server}/dashboard/sales-dashboard/sector-wise`,
+      { userId: user.userId }
+    );
+    setSectorWiseData(response.data);
   };
 
   const fetchAccountStatus = async () => {
-    try {
-      const userStr = localStorage.getItem("user");
-      if (!userStr) return;
-
-      const user = JSON.parse(userStr);
-      const res = await axios.post(
-        `${server}/dashboard/sales-dashboard/account-status`,
-        { userId: user.userId }
-      );
-
-      setAccountStatusData(res.data);
-    } catch (err) {
-      console.error(err);
-    }
+    const userStr = localStorage.getItem("user");
+    if (!userStr) return;
+    const user = JSON.parse(userStr);
+    const res = await axios.post(
+      `${server}/dashboard/sales-dashboard/account-status`,
+      { userId: user.userId }
+    );
+    setAccountStatusData(res.data);
   };
 
   useEffect(() => {
-    fetchServiceWiseData();
-    fetchSectorWiseData();
-    fetchAccountStatus();
+    const loadAll = async () => {
+      setLoading(true);
+      await Promise.allSettled([
+        fetchServiceWiseData(),
+        fetchSectorWiseData(),
+        fetchAccountStatus(),
+      ]);
+      setLoading(false);
+    };
+    loadAll();
   }, []);
 
   const { user } = useAuth();
