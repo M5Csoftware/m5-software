@@ -75,22 +75,27 @@ const AssignCustomer = () => {
   };
 
   const handleRefresh = () => {
-    // Clear RHF fields
+    // Clear userId FIRST — this prevents the useEffect from re-fetching
+    setValue("userId", "");
+
+    // Clear all other RHF fields
     setValue("stateAssigned", "");
     setValue("cityAssigned", "");
     setValue("customerAccountCode", "");
     setValue("customersAssigned", "[]");
     setValue("citiesAssigned", "");
+    setValue("searchSalePerson", "");
 
-    // Reset dependent UI state
+    // Reset all UI state
     setEmployee({});
     setCitiesAssigned([]);
     setCustomersAssigned([]);
+    setRemovedCustomers([]);
     setSelectedCities([]);
     setFilteredCities([]);
     setSearchQuery("");
 
-    setRefreshKey((prev) => prev + 1); // For controlled InputBox components if needed
+    setRefreshKey((prev) => prev + 1);
     fetchAllSalePersons();
   };
 
@@ -165,9 +170,10 @@ const AssignCustomer = () => {
         });
         const customers = res.data || [];
         customers.forEach((cust) => {
-          if (!newCustomers.some((c) => c.accountCode === cust.accountCode)) {
+          const codeUpper = cust.accountCode.toUpperCase();
+          if (!newCustomers.some((c) => c.accountCode.toUpperCase() === codeUpper)) {
             newCustomers.push({
-              accountCode: cust.accountCode,
+              accountCode: codeUpper,
               name:
                 cust.name ||
                 cust.customerName ||
@@ -192,13 +198,14 @@ const AssignCustomer = () => {
   };
 
   const handleDeleteCustomer = (accountCode) => {
+    const codeUpper = accountCode.toUpperCase();
     setCustomersAssigned((prev) => {
-      const updated = prev.filter((c) => c.accountCode !== accountCode);
+      const updated = prev.filter((c) => c.accountCode.toUpperCase() !== codeUpper);
       setValue("customersAssigned", JSON.stringify(updated));
       return updated;
     });
 
-    setRemovedCustomers((prev) => [...prev, accountCode]);
+    setRemovedCustomers((prev) => [...prev, codeUpper]);
     showNotification("Customer removed successfully", "success");
   };
 
@@ -214,7 +221,9 @@ const AssignCustomer = () => {
       return;
     }
 
-    if (customersAssigned.some((c) => c.accountCode === accountCode)) {
+    const codeUpper = accountCode.toUpperCase();
+
+    if (customersAssigned.some((c) => c.accountCode.toUpperCase() === codeUpper)) {
       setValue("customerAccountCode", "");
       showNotification("Customer already added", "error");
       return;
@@ -222,16 +231,16 @@ const AssignCustomer = () => {
 
     try {
       const res = await axios.get(`${server}/assign-customer`, {
-        params: { accountCode: accountCode.toUpperCase() },
+        params: { accountCode: codeUpper },
       });
       const customer = res.data;
       const name =
         customer.name ||
         customer.customerName ||
         customer.userName ||
-        accountCode;
+        codeUpper;
 
-      const updatedCustomers = [...customersAssigned, { accountCode, name }];
+      const updatedCustomers = [...customersAssigned, { accountCode: codeUpper, name }];
       setCustomersAssigned(updatedCustomers);
       setValue("customersAssigned", JSON.stringify(updatedCustomers));
       setValue("customerAccountCode", "");
@@ -252,14 +261,14 @@ const AssignCustomer = () => {
     }
 
     try {
-      // Prepare payload
+      // Prepare payload — send final desired list + removed list to unlink from CustomerAccount
       const payload = {
         userId: employee.userId,
         userName: employee.userName,
         stateAssigned: watch("stateAssigned") || "",
         cities: citiesAssigned,
-        addCustomers: customersAssigned.map((c) => c.accountCode) || [],
-        removeCustomers: removedCustomers, // <--- send removed customers
+        finalCustomers: customersAssigned, // The complete final list to replace with
+        removedCustomers: removedCustomers, // Codes to unlink from CustomerAccount
         month: selectedMonth.replace(" ", "-"),
       };
 
@@ -272,9 +281,11 @@ const AssignCustomer = () => {
 
       // Refresh local assigned data
       await fetchAssignedData();
+      await fetchAllSalePersons();
     } catch (err) {
       console.error("Assignment failed:", err);
-      showNotification("Assignment failed. Check console.", "error");
+      const errMsg = err?.response?.data?.error || "Assignment failed. Please check console.";
+      showNotification(errMsg, "error");
     }
   };
 
@@ -368,7 +379,15 @@ const AssignCustomer = () => {
       setCitiesAssigned(cities);
       setValue("citiesAssigned", cities.join(", "));
 
-      const customers = targetData.customersAssigned || [];
+      // Deduplicate customers by accountCode (DB may have corrupt duplicate entries)
+      const rawCustomers = targetData.customersAssigned || [];
+      const seenCodes = new Set();
+      const customers = rawCustomers.filter((c) => {
+        const code = c.accountCode?.toUpperCase();
+        if (!code || seenCodes.has(code)) return false;
+        seenCodes.add(code);
+        return true;
+      });
       setCustomersAssigned(customers);
       setValue("customersAssigned", JSON.stringify(customers));
     } catch (err) {
@@ -507,9 +526,8 @@ const AssignCustomer = () => {
     fetchStatesAndCities();
   }, [server]);
 
-  useEffect(() => {
-    fetchAssignedData();
-  }, [userId]);
+
+
 
   useEffect(() => {
     // Fetch all salespersons on mount

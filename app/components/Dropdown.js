@@ -987,6 +987,20 @@ export const MultiSelectDropdown = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [internalSelected, setInternalSelected] = useState([]);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Sync instantly when RHF loads data
   useEffect(() => {
@@ -1009,10 +1023,10 @@ export const MultiSelectDropdown = ({
   const showFloating = isOpen || internalSelected.length > 0;
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" ref={dropdownRef}>
       <label
         className={`absolute left-3 pointer-events-none transition-all px-1
-        ${
+        \${
           showFloating
             ? "-top-2 text-xs font-medium bg-white text-gray-500"
             : "top-1/2 -translate-y-1/2 text-sm text-gray-400"
@@ -1026,7 +1040,7 @@ export const MultiSelectDropdown = ({
         className={`
           border border-[#979797] rounded-md h-8 px-3 py-2
           flex items-center justify-between cursor-pointer
-          ${disabled ? "bg-gray-100 text-gray-400" : "text-gray-700"}
+          \${disabled ? "bg-gray-100 text-gray-400" : "text-gray-700"}
         `}
       >
         <div className="flex-1 text-sm overflow-hidden whitespace-nowrap text-ellipsis">
@@ -1034,13 +1048,13 @@ export const MultiSelectDropdown = ({
             ? ""
             : internalSelected.length <= 2
             ? internalSelected.join(", ")
-            : `${internalSelected.slice(0, 2).join(", ")} +${
+            : `\${internalSelected.slice(0, 2).join(", ")} +\${
                 internalSelected.length - 2
               }`}
         </div>
 
         <Image
-          className={`transition-all ml-2 ${isOpen ? "rotate-180" : ""}`}
+          className={`transition-all ml-2 \${isOpen ? "rotate-180" : ""}`}
           src="/dropdown-arrow.svg"
           height={18}
           width={18}
